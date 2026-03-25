@@ -1,0 +1,26 @@
+.leave-table-surface {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.leave-table-empty-cell {
+  padding: var(--space-6) var(--space-4) !important;
+}
+
+.leave-table-empty-state {
+  display: grid;
+  gap: var(--space-1);
+  justify-items: center;
+  color: var(--color-text-secondary);
+  text-align: center;
+}
+
+.leave-table-empty-state strong {
+  color: var(--color-text-strong);
+  font-size: var(--text-sm);
+  font-weight: var(--fw-semibold);
+}
+
+.leave-table-empty-state span {
+  font-size: var(--text-xs);
+}

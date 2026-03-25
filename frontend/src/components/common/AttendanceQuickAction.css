@@ -1,0 +1,33 @@
+.attendance-quick-action {
+  min-width: 124px;
+}
+
+.attendance-quick-action--compact {
+  min-height: 38px;
+  min-width: 108px;
+  padding: 9px 12px;
+  font-size: var(--text-sm);
+}
+
+.attendance-quick-action--check-in,
+.attendance-quick-action--check-out {
+  color: #fff;
+}
+
+.attendance-quick-action--check-in {
+  background: #16a34a;
+}
+
+.attendance-quick-action--check-out {
+  background: var(--color-accent);
+}
+
+.attendance-quick-action--completed,
+.attendance-quick-action--leave {
+  background: var(--color-surface-secondary);
+  color: var(--color-accent-strong);
+}
+
+.attendance-quick-action-confirm {
+  margin-top: var(--space-2);
+}

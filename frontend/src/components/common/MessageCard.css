@@ -1,0 +1,8 @@
+.message-card {
+  border-left: 4px solid rgba(11, 116, 255, 0.24);
+}
+
+.message-card.error {
+  border-left-color: rgba(180, 35, 24, 0.35);
+  border-color: rgba(180, 35, 24, 0.18);
+}

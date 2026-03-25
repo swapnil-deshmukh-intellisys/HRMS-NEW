@@ -1,0 +1,154 @@
+.employee-profile-page {
+  gap: var(--space-4);
+}
+
+.employee-profile-back-link {
+  display: inline-flex;
+  align-items: center;
+  justify-self: start;
+  color: var(--color-accent-strong);
+  font-size: var(--text-sm);
+  font-weight: var(--fw-medium);
+}
+
+.employee-profile-summary {
+  align-items: stretch;
+}
+
+.employee-profile-snapshot-row {
+  align-items: stretch;
+}
+
+.employee-profile-summary--secondary {
+  gap: var(--space-3);
+}
+
+.employee-profile-payroll-summary {
+  align-items: stretch;
+}
+
+.employee-profile-summary-card {
+  display: grid;
+  gap: var(--space-2);
+  align-content: start;
+  min-height: 118px;
+}
+
+.employee-profile-summary-card strong {
+  color: var(--color-text-strong);
+  font-size: var(--text-xl);
+  font-weight: var(--fw-bold);
+  line-height: 1.15;
+}
+
+.employee-profile-summary-card .muted {
+  font-size: var(--text-xs);
+}
+
+.employee-profile-section {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.employee-profile-chart-grid {
+  align-items: stretch;
+}
+
+.employee-leave-split-chart {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.employee-leave-split-legend {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+
+.employee-leave-split-legend__item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-page);
+}
+
+.employee-leave-split-legend__dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 999px;
+  flex-shrink: 0;
+}
+
+.employee-leave-split-legend__copy {
+  display: grid;
+  gap: 2px;
+}
+
+.employee-leave-split-legend__copy span {
+  color: var(--color-text-secondary);
+  font-size: var(--text-xs);
+}
+
+.employee-leave-split-legend__copy strong {
+  color: var(--color-text-strong);
+  font-size: var(--text-sm);
+  font-weight: var(--fw-semibold);
+}
+
+.employee-overview-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+
+.employee-detail-card {
+  display: grid;
+  gap: 6px;
+  padding: var(--space-3);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-page);
+}
+
+.employee-detail-card__label {
+  color: var(--color-text-secondary);
+  font-size: var(--text-xs);
+  font-weight: var(--fw-medium);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.employee-detail-card__value {
+  color: var(--color-text-strong);
+  font-size: var(--text-sm);
+  font-weight: var(--fw-medium);
+}
+
+.employee-profile-modal {
+  width: min(100%, 760px);
+  max-height: calc(100vh - 48px);
+  overflow-y: auto;
+}
+
+.leave-review-modal {
+  gap: var(--space-3);
+}
+
+@media (max-width: 1100px) {
+  .employee-overview-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 768px) {
+  .employee-overview-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .employee-leave-split-legend {
+    grid-template-columns: 1fr;
+  }
+}

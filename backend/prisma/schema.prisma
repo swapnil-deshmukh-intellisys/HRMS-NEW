@@ -1,0 +1,225 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum RoleName {
+  ADMIN
+  HR
+  MANAGER
+  EMPLOYEE
+}
+
+enum EmploymentStatus {
+  ACTIVE
+  INACTIVE
+  TERMINATED
+}
+
+enum AttendanceStatus {
+  PRESENT
+  ABSENT
+  HALF_DAY
+  LEAVE
+}
+
+enum AttendanceRegularizationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED
+}
+
+enum LeaveStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED
+}
+
+enum LeaveDurationType {
+  FULL_DAY
+  HALF_DAY
+}
+
+enum PayrollStatus {
+  DRAFT
+  FINALIZED
+}
+
+model Role {
+  id        Int      @id @default(autoincrement())
+  name      RoleName @unique
+  createdAt DateTime @default(now())
+  users     User[]
+}
+
+model User {
+  id           Int      @id @default(autoincrement())
+  email        String   @unique
+  passwordHash String
+  roleId       Int
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  role         Role     @relation(fields: [roleId], references: [id])
+  employee     Employee?
+
+  @@index([roleId])
+}
+
+model Department {
+  id        Int      @id @default(autoincrement())
+  name      String
+  code      String   @unique
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  employees Employee[]
+}
+
+model Employee {
+  id               Int              @id @default(autoincrement())
+  userId           Int              @unique
+  employeeCode     String           @unique
+  firstName        String
+  lastName         String
+  phone            String?
+  departmentId     Int
+  managerId        Int?
+  joiningDate      DateTime
+  employmentStatus EmploymentStatus @default(ACTIVE)
+  isActive         Boolean          @default(true)
+  deletedAt        DateTime?
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+
+  user           User           @relation(fields: [userId], references: [id])
+  department     Department     @relation(fields: [departmentId], references: [id])
+  manager        Employee?      @relation("EmployeeManager", fields: [managerId], references: [id])
+  teamMembers    Employee[]     @relation("EmployeeManager")
+  attendances    Attendance[]
+  attendanceRegularizationRequests AttendanceRegularizationRequest[] @relation("AttendanceRegularizationRequester")
+  reviewedAttendanceRegularizations AttendanceRegularizationRequest[] @relation("AttendanceRegularizationReviewer")
+  leaveBalances  LeaveBalance[]
+  leaveRequests  LeaveRequest[] @relation("LeaveRequester")
+  approvedLeaves LeaveRequest[] @relation("LeaveApprover")
+  payrollRecords PayrollRecord[]
+
+  @@index([departmentId])
+  @@index([managerId])
+}
+
+model Attendance {
+  id             Int              @id @default(autoincrement())
+  employeeId     Int
+  attendanceDate DateTime
+  checkInTime    DateTime?
+  checkOutTime   DateTime?
+  workedMinutes  Int              @default(0)
+  status         AttendanceStatus @default(PRESENT)
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+  employee       Employee         @relation(fields: [employeeId], references: [id])
+
+  @@unique([employeeId, attendanceDate])
+  @@index([employeeId])
+  @@index([attendanceDate])
+}
+
+model AttendanceRegularizationRequest {
+  id                   Int                            @id @default(autoincrement())
+  employeeId           Int
+  attendanceDate       DateTime
+  proposedCheckInTime  DateTime?
+  proposedCheckOutTime DateTime?
+  reason               String
+  status               AttendanceRegularizationStatus @default(PENDING)
+  reviewedById         Int?
+  reviewedAt           DateTime?
+  rejectionReason      String?
+  createdAt            DateTime                       @default(now())
+  updatedAt            DateTime                       @updatedAt
+
+  employee   Employee  @relation("AttendanceRegularizationRequester", fields: [employeeId], references: [id])
+  reviewedBy Employee? @relation("AttendanceRegularizationReviewer", fields: [reviewedById], references: [id])
+
+  @@index([employeeId])
+  @@index([status])
+}
+
+model LeaveType {
+  id                 Int      @id @default(autoincrement())
+  name               String   @unique
+  code               String   @unique
+  defaultDaysPerYear Int
+  isActive           Boolean  @default(true)
+  createdAt          DateTime @default(now())
+  balances           LeaveBalance[]
+  requests           LeaveRequest[]
+}
+
+model LeaveBalance {
+  id            Int      @id @default(autoincrement())
+  employeeId    Int
+  leaveTypeId   Int
+  year          Int
+  allocatedDays Float
+  usedDays      Float    @default(0)
+  remainingDays Float
+  updatedAt     DateTime @updatedAt
+  employee      Employee  @relation(fields: [employeeId], references: [id])
+  leaveType     LeaveType @relation(fields: [leaveTypeId], references: [id])
+
+  @@unique([employeeId, leaveTypeId, year])
+}
+
+model LeaveRequest {
+  id              Int         @id @default(autoincrement())
+  employeeId      Int
+  leaveTypeId     Int
+  startDate       DateTime
+  endDate         DateTime
+  startDayDuration LeaveDurationType @default(FULL_DAY)
+  endDayDuration   LeaveDurationType @default(FULL_DAY)
+  totalDays       Float
+  paidDays        Float
+  unpaidDays      Float       @default(0)
+  isUnpaid        Boolean     @default(false)
+  attachmentName  String?
+  attachmentPath  String?
+  attachmentMime  String?
+  reason          String
+  status          LeaveStatus @default(PENDING)
+  approvedById    Int?
+  approvedAt      DateTime?
+  rejectionReason String?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  employee   Employee  @relation("LeaveRequester", fields: [employeeId], references: [id])
+  leaveType  LeaveType @relation(fields: [leaveTypeId], references: [id])
+  approvedBy Employee? @relation("LeaveApprover", fields: [approvedById], references: [id])
+
+  @@index([employeeId])
+  @@index([status])
+}
+
+model PayrollRecord {
+  id         Int           @id @default(autoincrement())
+  employeeId Int
+  month      Int
+  year       Int
+  salary     Decimal       @db.Decimal(10, 2)
+  status     PayrollStatus @default(DRAFT)
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
+  employee   Employee      @relation(fields: [employeeId], references: [id])
+
+  @@unique([employeeId, month, year])
+  @@index([employeeId])
+}

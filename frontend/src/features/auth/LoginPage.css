@@ -1,0 +1,37 @@
+.login-shell {
+  display: grid;
+  min-height: 100vh;
+  padding: var(--space-6);
+  place-items: center;
+}
+
+.login-card {
+  width: min(100%, 480px);
+  padding: var(--space-6);
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  border-radius: var(--radius-xl);
+  background: var(--color-surface-panel);
+}
+
+.login-card h1 {
+  margin-bottom: var(--space-2);
+}
+
+.login-card .stack {
+  margin-top: var(--space-4);
+}
+
+.login-card .eyebrow {
+  margin-bottom: var(--space-2);
+}
+
+@media (max-width: 640px) {
+  .login-shell {
+    padding: var(--space-4);
+  }
+
+  .login-card {
+    padding: var(--space-4);
+    border-radius: 14px;
+  }
+}

@@ -1,0 +1,5 @@
+.employee-modal-surface {
+  width: min(100%, 760px);
+  max-height: calc(100vh - 48px);
+  overflow-y: auto;
+}

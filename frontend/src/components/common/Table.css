@@ -1,0 +1,130 @@
+.table-wrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.table {
+  width: 100%;
+  min-width: 640px;
+  border-collapse: collapse;
+}
+
+.table-wrap--compact .table {
+  min-width: 100%;
+}
+
+.table--compact th,
+.table--compact td {
+  white-space: normal;
+}
+
+.table--dense th,
+.table--dense td {
+  padding: 12px 10px;
+}
+
+.table th,
+.table td {
+  padding: 14px 12px;
+  border-bottom: 1px solid var(--color-border-subtle);
+  font-size: var(--text-sm);
+  text-align: left;
+  vertical-align: middle;
+}
+
+.table th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: #fbfcfe;
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  font-weight: var(--fw-medium);
+}
+
+.table tbody tr:hover {
+  background: #fcfdff;
+}
+
+.table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.table-cell-stack {
+  display: grid;
+  gap: 2px;
+}
+
+.table-cell-primary {
+  color: var(--color-text-strong);
+  font-weight: var(--fw-medium);
+}
+
+.table-cell-secondary {
+  color: var(--color-text-secondary);
+  font-size: var(--text-xs);
+  line-height: 1.4;
+}
+
+.table-action-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.table-empty-state {
+  display: grid;
+  gap: 4px;
+  padding: 8px 0;
+  color: var(--color-text-secondary);
+}
+
+.table-empty-state strong {
+  color: var(--color-text-strong);
+}
+
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: var(--text-xs);
+  font-weight: var(--fw-semibold);
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.status-pill--pending,
+.status-pill--draft,
+.status-pill--inactive,
+.status-pill--probation {
+  background: #fff7ed;
+  color: #b45309;
+}
+
+.status-pill--approved,
+.status-pill--active,
+.status-pill--finalized,
+.status-pill--present {
+  background: #ecfdf3;
+  color: #027a48;
+}
+
+.status-pill--rejected,
+.status-pill--cancelled,
+.status-pill--terminated,
+.status-pill--absent {
+  background: #fef3f2;
+  color: #b42318;
+}
+
+.status-pill--half-day {
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
+.status-pill--leave {
+  background: #f5f3ff;
+  color: #6d28d9;
+}

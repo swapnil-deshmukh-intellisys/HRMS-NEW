@@ -1,0 +1,63 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap");
+
+:root {
+  --font-primary: "Inter", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  --font-mono: "JetBrains Mono", "Cascadia Code", Consolas, monospace;
+
+  --text-xs: 12px;
+  --text-sm: 14px;
+  --text-md: 16px;
+  --text-lg: 18px;
+  --text-xl: 20px;
+  --text-2xl: 24px;
+  --text-3xl: 32px;
+
+  --fw-normal: 400;
+  --fw-medium: 500;
+  --fw-semibold: 600;
+  --fw-bold: 700;
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-7: 32px;
+  --space-8: 40px;
+
+  --radius-sm: 10px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+  --control-height: 46px;
+  --control-padding-x: 14px;
+  --control-padding-y: 10px;
+  --control-icon-space: 42px;
+
+  --color-text-primary: #1d2939;
+  --color-text-strong: #0f172a;
+  --color-text-secondary: #667085;
+  --color-text-muted: #344054;
+
+  --color-surface-page: #fefefe;
+  --color-surface-panel: rgba(254, 254, 254, 0.96);
+  --color-surface-subtle: #f8fafc;
+  --color-surface-secondary: #f5f7fb;
+  --color-surface-hover: #eef4ff;
+  --color-skeleton: #eef2f7;
+
+  --color-border-default: #d6dde8;
+  --color-border-subtle: rgba(148, 163, 184, 0.18);
+  --color-border-card: rgba(148, 163, 184, 0.2);
+  --color-border-accent: rgba(11, 116, 255, 0.12);
+
+  --color-accent: #0b74ff;
+  --color-accent-strong: #1849a9;
+  --color-accent-soft: rgba(11, 116, 255, 0.08);
+
+  --color-success: #0f766e;
+  --color-danger: #b42318;
+
+  --transition-fast: 0.15s ease;
+}

@@ -1,14 +1,21 @@
 import "./DashboardPage.css";
 import { useCallback, useEffect, useState } from "react";
-import AttendanceQuickAction from "../../components/common/AttendanceQuickAction";
+import { Cell, Pie, PieChart, ResponsiveContainer } from "recharts";
+import { useNavigate } from "react-router-dom";
 import { ATTENDANCE_EVENT } from "../../components/common/attendanceQuickActionUtils";
 import MessageCard from "../../components/common/MessageCard";
 import { apiRequest } from "../../services/api";
-import type { Attendance, Role } from "../../types";
-import { formatMetricKey, formatTime } from "../../utils/format";
+import type { Attendance, Employee, LeaveBalance, LeaveRequest, Role } from "../../types";
+import { formatLeaveDays, formatMetricKey, formatTime } from "../../utils/format";
 
 type DashboardData = Record<string, number | string | null | undefined | object>;
 type MetricVariant = "numeric" | "status";
+const LEAVE_BALANCE_COLORS = ["#2563eb", "#16a34a", "#f59e0b", "#7c3aed", "#ef4444"];
+const ATTENDANCE_PROGRESS_COLORS = {
+  completed: "#16a34a",
+  issue: "#ef4444",
+  remaining: "#e5e7eb",
+} as const;
 
 type DashboardPageProps = {
   token: string | null;
@@ -53,8 +60,13 @@ function getDashboardContent(role: Role) {
 }
 
 export default function DashboardPage({ token, role, currentEmployeeId }: DashboardPageProps) {
+  const navigate = useNavigate();
   const [data, setData] = useState<DashboardData>({});
   const [selfAttendance, setSelfAttendance] = useState<Attendance | null>(null);
+  const [attendanceRecords, setAttendanceRecords] = useState<Attendance[]>([]);
+  const [currentEmployee, setCurrentEmployee] = useState<Employee | null>(null);
+  const [leaveBalances, setLeaveBalances] = useState<LeaveBalance[]>([]);
+  const [leaveRequests, setLeaveRequests] = useState<LeaveRequest[]>([]);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
   const [now, setNow] = useState(() => new Date());
@@ -64,11 +76,39 @@ export default function DashboardPage({ token, role, currentEmployeeId }: Dashbo
     const endpoint = role === "EMPLOYEE" ? "/dashboard/employee" : role === "MANAGER" ? "/dashboard/manager" : "/dashboard/hr";
 
     setLoading(true);
-    apiRequest<DashboardData>(endpoint, { token })
-      .then((response) => setData(response.data))
+    const requests =
+      role === "EMPLOYEE"
+        ? Promise.all([
+            apiRequest<DashboardData>(endpoint, { token }),
+            apiRequest<Attendance[]>("/attendance", { token }),
+            ...(currentEmployeeId ? [apiRequest<Employee>(`/employees/${currentEmployeeId}`, { token })] : []),
+            apiRequest<LeaveBalance[]>("/leave-balances/me", { token }),
+            apiRequest<LeaveRequest[]>("/leaves", { token }),
+          ])
+        : Promise.all([apiRequest<DashboardData>(endpoint, { token })]);
+
+    requests
+      .then((responses) => {
+        const dashboardResponse = responses[0];
+        setData(dashboardResponse.data);
+
+        if (role === "EMPLOYEE") {
+          let responseIndex = 1;
+          setAttendanceRecords((responses[responseIndex++] as Awaited<ReturnType<typeof apiRequest<Attendance[]>>>).data);
+
+          if (currentEmployeeId) {
+            setCurrentEmployee((responses[responseIndex++] as Awaited<ReturnType<typeof apiRequest<Employee>>>).data);
+          } else {
+            setCurrentEmployee(null);
+          }
+
+          setLeaveBalances((responses[responseIndex++] as Awaited<ReturnType<typeof apiRequest<LeaveBalance[]>>>).data);
+          setLeaveRequests((responses[responseIndex] as Awaited<ReturnType<typeof apiRequest<LeaveRequest[]>>>).data);
+        }
+      })
       .catch((requestError) => setError(requestError instanceof Error ? requestError.message : "Failed to load dashboard"))
       .finally(() => setLoading(false));
-  }, [role, token]);
+  }, [currentEmployeeId, role, token]);
 
   const loadSelfAttendance = useCallback(async () => {
     if (!currentEmployeeId) {
@@ -110,9 +150,66 @@ export default function DashboardPage({ token, role, currentEmployeeId }: Dashbo
     return () => window.clearInterval(timer);
   }, []);
 
-  const handleQuickActionStateChange = useCallback((attendance: Attendance | null) => {
-    setSelfAttendance(attendance);
-  }, []);
+  const totalRemainingLeave = leaveBalances.reduce((sum, balance) => sum + balance.remainingDays, 0);
+  const totalAllocatedLeave = leaveBalances.reduce((sum, balance) => sum + balance.allocatedDays, 0);
+  const totalUsedLeave = leaveBalances.reduce((sum, balance) => sum + balance.usedDays, 0);
+  const nowDate = new Date();
+  const monthAttendanceRecords = attendanceRecords.filter((attendance) => {
+    const attendanceDate = new Date(attendance.attendanceDate);
+    return (
+      attendanceDate.getFullYear() === nowDate.getFullYear() &&
+      attendanceDate.getMonth() === nowDate.getMonth() &&
+      attendanceDate <= nowDate
+    );
+  });
+  const currentMonthLabel = nowDate.toLocaleDateString(undefined, { month: "long" });
+  const elapsedMonthDays = nowDate.getDate();
+  const presentDays = monthAttendanceRecords.filter((attendance) => attendance.status === "PRESENT").length;
+  const halfDays = monthAttendanceRecords.filter((attendance) => attendance.status === "HALF_DAY").length;
+  const leaveDaysInMonth = monthAttendanceRecords.filter((attendance) => attendance.status === "LEAVE").length;
+  const absentDaysInMonth = monthAttendanceRecords.filter((attendance) => attendance.status === "ABSENT").length;
+  const attendedEquivalentDays = presentDays + halfDays * 0.5;
+  const issueDays = leaveDaysInMonth + absentDaysInMonth;
+  const remainingDays = Math.max(elapsedMonthDays - attendedEquivalentDays - issueDays, 0);
+  const attendancePerformance = elapsedMonthDays ? Math.round((attendedEquivalentDays / elapsedMonthDays) * 100) : 0;
+  const attendanceProgressData = [
+    { key: "completed", label: "Completed", value: attendedEquivalentDays, color: ATTENDANCE_PROGRESS_COLORS.completed },
+    { key: "issue", label: "Leave / absent", value: issueDays, color: ATTENDANCE_PROGRESS_COLORS.issue },
+    { key: "remaining", label: "Remaining", value: remainingDays, color: ATTENDANCE_PROGRESS_COLORS.remaining },
+  ].filter((entry) => entry.value > 0);
+  const leaveChartData = leaveBalances
+    .filter((balance) => balance.remainingDays > 0)
+    .map((balance, index) => ({
+      id: balance.id,
+      name: balance.leaveType.code,
+      fullName: balance.leaveType.name,
+      value: balance.remainingDays,
+      allocated: balance.allocatedDays,
+      color: LEAVE_BALANCE_COLORS[index % LEAVE_BALANCE_COLORS.length],
+    }));
+  const pendingLeaveRequests = leaveRequests.filter((leave) => leave.status === "PENDING");
+  const approvedLeaveRequests = leaveRequests.filter((leave) => leave.status === "APPROVED");
+  const nextApprovedLeave = approvedLeaveRequests
+    .filter((leave) => new Date(leave.endDate) >= new Date())
+    .sort((left, right) => new Date(left.startDate).getTime() - new Date(right.startDate).getTime())[0];
+  const currentMonthLeaveTaken = approvedLeaveRequests.reduce((sum, leave) => {
+    const startDate = new Date(leave.startDate);
+
+    if (startDate.getFullYear() === nowDate.getFullYear() && startDate.getMonth() === nowDate.getMonth()) {
+      return sum + leave.totalDays;
+    }
+
+    return sum;
+  }, 0);
+  const currentMonthUnpaidLeave = approvedLeaveRequests.reduce((sum, leave) => {
+    const startDate = new Date(leave.startDate);
+
+    if (startDate.getFullYear() === nowDate.getFullYear() && startDate.getMonth() === nowDate.getMonth()) {
+      return sum + leave.unpaidDays;
+    }
+
+    return sum;
+  }, 0);
 
   function getMetricVariant(key: string): MetricVariant {
     return key === "attendanceToday" ? "status" : "numeric";
@@ -268,20 +365,259 @@ export default function DashboardPage({ token, role, currentEmployeeId }: Dashbo
           </strong>
         </div>
       </article>
+      {role === "EMPLOYEE" ? (
+        <>
+          <div className="grid cols-3 dashboard-grid">
+            {currentEmployeeId ? (
+              <article className="card metric-card metric-card--attendance-widget">
+                <div className="metric-card-header">
+                  <div>
+                    <p className="eyebrow">Attendance today</p>
+                    <strong>{getAttendanceWidgetTitle(selfAttendance)}</strong>
+                    <p className="muted">{currentMonthLabel} overview</p>
+                  </div>
+                </div>
+                {attendanceProgressData.length ? (
+                  <div className="dashboard-attendance-chart">
+                    <div className="dashboard-attendance-chart__visual">
+                      <ResponsiveContainer width="100%" height={188}>
+                        <PieChart>
+                          <Pie
+                            data={attendanceProgressData}
+                            dataKey="value"
+                            nameKey="label"
+                            innerRadius={52}
+                            outerRadius={76}
+                            paddingAngle={3}
+                            stroke="none"
+                          >
+                            {attendanceProgressData.map((entry) => (
+                              <Cell key={entry.key} fill={entry.color} />
+                            ))}
+                          </Pie>
+                      </PieChart>
+                    </ResponsiveContainer>
+                      <div className="dashboard-attendance-chart__center">
+                        <strong>{attendancePerformance}%</strong>
+                        <span>{currentMonthLabel}</span>
+                      </div>
+                    </div>
+                    <div className="dashboard-attendance-chart__legend">
+                      <div className="dashboard-attendance-chart__summary">
+                        <span>{currentMonthLabel} attendance</span>
+                        <strong>
+                          {attendedEquivalentDays % 1 === 0 ? attendedEquivalentDays : attendedEquivalentDays.toFixed(1)} / {elapsedMonthDays} days
+                        </strong>
+                      </div>
+                      {attendanceProgressData.map((entry) => (
+                        <div key={entry.key} className="dashboard-attendance-chart__legend-item">
+                          <div className="dashboard-attendance-chart__legend-main">
+                            <span className="dashboard-attendance-chart__swatch" style={{ backgroundColor: entry.color }} />
+                            <span>{entry.label}</span>
+                          </div>
+                          <strong>{entry.value}</strong>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+                <div className="attendance-widget-meta">
+                  <div className="table-cell-stack">
+                    <span className="table-cell-secondary">Check in</span>
+                    <span className="table-cell-primary">{formatTime(selfAttendance?.checkInTime)}</span>
+                  </div>
+                  <div className="table-cell-stack">
+                    <span className="table-cell-secondary">Check out</span>
+                    <span className="table-cell-primary">{formatTime(selfAttendance?.checkOutTime)}</span>
+                  </div>
+                  <div className="table-cell-stack">
+                    <span className="table-cell-secondary">Worked</span>
+                    <span className="table-cell-primary">
+                      {selfAttendance?.status === "LEAVE" ? "-" : selfAttendance?.checkOutTime ? formatWorkedDuration(selfAttendance.workedMinutes) : "-"}
+                    </span>
+                  </div>
+                </div>
+              </article>
+            ) : null}
+            <article className="card metric-card">
+              <p className="eyebrow">Leave balance</p>
+              <strong>{formatLeaveDays(totalRemainingLeave)}</strong>
+              <p className="muted">
+                {totalAllocatedLeave
+                  ? `${Math.round((totalRemainingLeave / totalAllocatedLeave) * 100)}% of allocated leave remaining`
+                  : "No leave balances assigned yet"}
+              </p>
+              {leaveChartData.length ? (
+                <div className="dashboard-leave-balance-chart">
+                  <div className="dashboard-leave-balance-chart__top">
+                    <div className="dashboard-leave-balance-chart__visual">
+                      <ResponsiveContainer width="100%" height={188}>
+                        <PieChart>
+                          <Pie
+                            data={leaveChartData}
+                            dataKey="value"
+                            nameKey="name"
+                            innerRadius={52}
+                            outerRadius={76}
+                            paddingAngle={3}
+                            stroke="none"
+                          >
+                            {leaveChartData.map((entry) => (
+                              <Cell key={entry.id} fill={entry.color} />
+                            ))}
+                          </Pie>
+                        </PieChart>
+                      </ResponsiveContainer>
+                      <div className="dashboard-leave-balance-chart__center">
+                        <strong>{Number.isInteger(totalRemainingLeave) ? totalRemainingLeave : totalRemainingLeave.toFixed(1)}</strong>
+                        <span>days left</span>
+                      </div>
+                    </div>
+                    <div className="dashboard-leave-balance-chart__summary">
+                      <div className="table-cell-stack">
+                        <span className="table-cell-secondary">Leaves taken</span>
+                        <span className="table-cell-primary">{formatLeaveDays(totalUsedLeave)}</span>
+                      </div>
+                      <div className="table-cell-stack">
+                        <span className="table-cell-secondary">Allocated</span>
+                        <span className="table-cell-primary">{formatLeaveDays(totalAllocatedLeave)}</span>
+                      </div>
+                      <div className="table-cell-stack">
+                        <span className="table-cell-secondary">Remaining</span>
+                        <span className="table-cell-primary">{formatLeaveDays(totalRemainingLeave)}</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="dashboard-leave-balance-chart__legend">
+                    {leaveChartData.map((entry) => {
+                      const percentage = totalAllocatedLeave ? Math.round((entry.value / totalAllocatedLeave) * 100) : 0;
+
+                      return (
+                        <div key={entry.id} className="dashboard-leave-balance-chart__legend-item">
+                          <div className="dashboard-leave-balance-chart__legend-main">
+                            <span className="dashboard-leave-balance-chart__swatch" style={{ backgroundColor: entry.color }} />
+                            <div className="table-cell-stack">
+                              <span className="table-cell-primary">{entry.fullName}</span>
+                              <span className="table-cell-secondary">
+                                {Number.isInteger(entry.value) ? entry.value : entry.value.toFixed(1)}/{Number.isInteger(entry.allocated) ? entry.allocated : entry.allocated.toFixed(1)} days
+                              </span>
+                            </div>
+                          </div>
+                          <strong>{percentage}% left</strong>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ) : (
+                <div className="dashboard-balance-list">
+                  {leaveBalances.map((balance) => (
+                    <div key={balance.id} className="dashboard-inline-row">
+                      <span>{balance.leaveType.code}</span>
+                      <strong>{formatLeaveDays(balance.remainingDays)}</strong>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </article>
+            <article className="card metric-card metric-card--project">
+              <div className="metric-card-header">
+                <div>
+                  <p className="eyebrow">Ongoing project</p>
+                  <strong>{currentEmployee?.department ? `${currentEmployee.department.name} workspace rollout` : "Project details coming soon"}</strong>
+                </div>
+                <span className="dashboard-project-badge">Setup pending</span>
+              </div>
+              <p className="muted">
+                {currentEmployee?.department
+                  ? "This card will surface your active assignment, milestone, and reporting context once the project workspace is linked."
+                  : "Your active project assignment will appear here once project data is connected."}
+              </p>
+              <div className="dashboard-project-meta">
+                <div className="table-cell-stack">
+                  <span className="table-cell-secondary">Role in project</span>
+                  <span className="table-cell-primary">
+                    {currentEmployee?.user?.role.name === "EMPLOYEE" ? "Project contributor" : currentEmployee?.user?.role.name ?? "Contributor"}
+                  </span>
+                </div>
+                <div className="table-cell-stack">
+                  <span className="table-cell-secondary">Manager</span>
+                  <span className="table-cell-primary">
+                    {currentEmployee?.manager ? `${currentEmployee.manager.firstName} ${currentEmployee.manager.lastName}` : "Not assigned"}
+                  </span>
+                </div>
+                <div className="table-cell-stack">
+                  <span className="table-cell-secondary">Current phase</span>
+                  <span className="table-cell-primary">Planning</span>
+                </div>
+                <div className="table-cell-stack">
+                  <span className="table-cell-secondary">Next milestone</span>
+                  <span className="table-cell-primary">Project page setup</span>
+                </div>
+              </div>
+            </article>
+          </div>
+
+          <article className="card dashboard-actions-card">
+            <div className="dashboard-actions-header">
+              <div>
+                <p className="eyebrow">Quick actions</p>
+                <h3>Get things done faster</h3>
+              </div>
+            </div>
+            <div className="dashboard-quick-actions">
+              <button onClick={() => navigate("/leaves")}>Apply leave</button>
+              <button className="secondary" onClick={() => navigate("/attendance")}>
+                Request correction
+              </button>
+              <button className="secondary" onClick={() => navigate("/payroll")}>
+                View payroll
+              </button>
+              <button className="secondary" onClick={() => navigate("/attendance")}>
+                Open attendance
+              </button>
+            </div>
+          </article>
+
+          <div className="grid cols-2 dashboard-support-grid">
+            <article className="card metric-card">
+              <p className="eyebrow">Leave activity</p>
+              <strong>{pendingLeaveRequests.length}</strong>
+              <p className="muted">
+                {nextApprovedLeave
+                  ? `Next approved leave starts ${new Date(nextApprovedLeave.startDate).toLocaleDateString(undefined, {
+                      day: "numeric",
+                      month: "short",
+                      year: "numeric",
+                    })}`
+                  : "No upcoming approved leave"}
+              </p>
+              <div className="dashboard-inline-row">
+                <span>Pending requests</span>
+                <strong>{pendingLeaveRequests.length}</strong>
+              </div>
+            </article>
+            <article className="card metric-card">
+              <p className="eyebrow">This month</p>
+              <strong>{formatLeaveDays(currentMonthLeaveTaken)}</strong>
+              <p className="muted">Approved leave taken this month</p>
+              <div className="dashboard-inline-row">
+                <span>Unpaid leave</span>
+                <strong>{formatLeaveDays(currentMonthUnpaidLeave)}</strong>
+              </div>
+            </article>
+          </div>
+        </>
+      ) : (
       <div className="grid cols-3 dashboard-grid">
         {currentEmployeeId ? (
-          <article className="card metric-card metric-card--attendance-widget">
-            <div className="metric-card-header">
-              <div>
-                <p className="eyebrow">Attendance today</p>
-                <strong>{getAttendanceWidgetTitle(selfAttendance)}</strong>
-              </div>
-              <AttendanceQuickAction
-                token={token}
-                currentEmployeeId={currentEmployeeId}
-                onStateChange={handleQuickActionStateChange}
-              />
-            </div>
+              <article className="card metric-card metric-card--attendance-widget">
+                <div className="metric-card-header">
+                  <div>
+                    <p className="eyebrow">Attendance today</p>
+                    <strong>{getAttendanceWidgetTitle(selfAttendance)}</strong>
+                  </div>
+                </div>
             <div className="attendance-widget-meta">
               <div className="table-cell-stack">
                 <span className="table-cell-secondary">Check in</span>
@@ -308,6 +644,7 @@ export default function DashboardPage({ token, role, currentEmployeeId }: Dashbo
           </article>
         ))}
       </div>
+      )}
         </>
       ) : null}
     </section>

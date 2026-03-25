@@ -115,6 +115,7 @@ export default function AttendanceQuickAction({
           <div className="button-row">
             <button
               type="button"
+              className="attendance-quick-action-confirm-button"
               onClick={() => {
                 setConfirmOpen(false);
                 void submitAction();

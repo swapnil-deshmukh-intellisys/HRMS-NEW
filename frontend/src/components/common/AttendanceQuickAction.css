@@ -19,7 +19,7 @@
 }
 
 .attendance-quick-action--check-out {
-  background: var(--color-accent);
+  background: #dc2626;
 }
 
 .attendance-quick-action--completed,
@@ -30,4 +30,8 @@
 
 .attendance-quick-action-confirm {
   margin-top: var(--space-2);
+}
+
+.attendance-quick-action-confirm-button {
+  background: #dc2626;
 }

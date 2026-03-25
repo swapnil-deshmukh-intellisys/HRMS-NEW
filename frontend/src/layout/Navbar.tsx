@@ -1,5 +1,6 @@
 import "./Navbar.css";
-import { Bell, Search, Settings } from "lucide-react";
+import { Bell, Search, UserRound } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import AttendanceQuickAction from "../components/common/AttendanceQuickAction";
 import Button from "../components/common/Button";
 
@@ -12,6 +13,8 @@ type NavbarProps = {
 };
 
 export default function Navbar({ title, navOpen, onToggleNav, token, currentEmployeeId }: NavbarProps) {
+  const navigate = useNavigate();
+
   return (
     <div className="topbar">
       <div className="topbar-copy">
@@ -29,8 +32,19 @@ export default function Navbar({ title, navOpen, onToggleNav, token, currentEmpl
         <Button type="button" className="topbar-icon-button" variant="secondary" aria-label="Notifications">
           <Bell size={18} strokeWidth={2} />
         </Button>
-        <Button type="button" className="topbar-icon-button" variant="secondary" aria-label="Settings">
-          <Settings size={18} strokeWidth={2} />
+        <Button
+          type="button"
+          className="topbar-icon-button"
+          variant="secondary"
+          aria-label="Open profile"
+          onClick={() => {
+            if (currentEmployeeId) {
+              navigate(`/employees/${currentEmployeeId}`);
+            }
+          }}
+          disabled={!currentEmployeeId}
+        >
+          <UserRound size={18} strokeWidth={2} />
         </Button>
       </div>
     </div>

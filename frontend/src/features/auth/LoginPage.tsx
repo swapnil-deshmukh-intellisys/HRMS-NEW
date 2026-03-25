@@ -1,4 +1,5 @@
 import "./LoginPage.css";
+import { Eye, EyeOff } from "lucide-react";
 import { useState } from "react";
 import type { FormEvent } from "react";
 import Button from "../../components/common/Button";
@@ -12,6 +13,7 @@ type LoginPageProps = {
 export default function LoginPage({ onLogin }: LoginPageProps) {
   const [email, setEmail] = useState("admin@hrms.local");
   const [password, setPassword] = useState("Admin@123");
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
@@ -37,9 +39,9 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
   return (
     <main className="login-shell">
       <section className="login-card">
-        <p className="eyebrow">HRMS Lean V1</p>
-        <h1>Commercial MVP Workspace</h1>
-        <p className="muted">Sign in to manage employees, attendance, leave, and payroll.</p>
+        <p className="eyebrow">HRMS Portal</p>
+        <h1>Welcome back</h1>
+        <p className="muted">Sign in to your HRMS workspace.</p>
         <form className="stack" onSubmit={handleSubmit}>
           <label>
             Email
@@ -47,7 +49,17 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
           </label>
           <label>
             Password
-            <Input value={password} onChange={(event) => setPassword(event.target.value)} type="password" required />
+            <div className="password-input-wrap">
+              <Input value={password} onChange={(event) => setPassword(event.target.value)} type={showPassword ? "text" : "password"} required />
+              <button
+                type="button"
+                className="password-visibility-toggle"
+                aria-label={showPassword ? "Hide password" : "Show password"}
+                onClick={() => setShowPassword((current) => !current)}
+              >
+                {showPassword ? <EyeOff size={16} strokeWidth={2} /> : <Eye size={16} strokeWidth={2} />}
+              </button>
+            </div>
           </label>
           {error ? <p className="error-text">{error}</p> : null}
           <Button type="submit" disabled={submitting}>

@@ -38,22 +38,24 @@ export default function EmployeeProfileHeader({ employee, role, onEdit, onToggle
             <span>{employee.user?.role.name ?? "-"}</span>
             <span>{employee.department?.name ?? "-"}</span>
           </p>
-          <div className="employee-profile-header__details">
-            <div className="employee-profile-header__detail-item">
+          <div className="employee-profile-header__summary">
+            <div className="employee-profile-header__primary-contact">
               <span className="employee-profile-header__detail-label">Email</span>
-              <strong>{employee.user?.email ?? "-"}</strong>
+              <strong>{employee.user?.email ?? "Not available"}</strong>
             </div>
-            <div className="employee-profile-header__detail-item">
-              <span className="employee-profile-header__detail-label">Phone</span>
-              <strong>{employee.phone || "No phone added"}</strong>
-            </div>
-            <div className="employee-profile-header__detail-item">
-              <span className="employee-profile-header__detail-label">Joined</span>
-              <strong>{formatDateLabel(employee.joiningDate)}</strong>
-            </div>
-            <div className="employee-profile-header__detail-item">
-              <span className="employee-profile-header__detail-label">Manager</span>
-              <strong>{employee.manager ? `${employee.manager.firstName} ${employee.manager.lastName}` : "Not assigned"}</strong>
+            <div className="employee-profile-header__detail-list">
+              <div className="employee-profile-header__detail-row">
+                <span className="employee-profile-header__detail-label">Phone</span>
+                <strong>{employee.phone || "Not provided"}</strong>
+              </div>
+              <div className="employee-profile-header__detail-row">
+                <span className="employee-profile-header__detail-label">Joined</span>
+                <strong>{formatDateLabel(employee.joiningDate)}</strong>
+              </div>
+              <div className="employee-profile-header__detail-row">
+                <span className="employee-profile-header__detail-label">Manager</span>
+                <strong>{employee.manager ? `${employee.manager.firstName} ${employee.manager.lastName}` : "Not assigned"}</strong>
+              </div>
             </div>
           </div>
         </div>

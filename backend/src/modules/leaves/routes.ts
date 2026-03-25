@@ -3,7 +3,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { LeaveDurationType, LeaveStatus } from "@prisma/client";
 import { Router } from "express";
-import multer from "multer";
+import multer, { type FileFilterCallback, type StorageEngine } from "multer";
 import { z } from "zod";
 import { prisma } from "../../config/prisma.js";
 import { authenticate, requireRoles } from "../../middleware/auth.js";
@@ -19,17 +19,25 @@ fs.mkdirSync(uploadsDir, { recursive: true });
 
 const upload = multer({
   storage: multer.diskStorage({
-    destination: (_request, _file, callback) => callback(null, uploadsDir),
-    filename: (_request, file, callback) => {
+    destination: (
+      _request: Express.Request,
+      _file: Express.Multer.File,
+      callback: (error: Error | null, destination: string) => void,
+    ) => callback(null, uploadsDir),
+    filename: (
+      _request: Express.Request,
+      file: Express.Multer.File,
+      callback: (error: Error | null, filename: string) => void,
+    ) => {
       const extension = path.extname(file.originalname);
       const baseName = path.basename(file.originalname, extension).replace(/[^a-zA-Z0-9-_]/g, "_");
       callback(null, `${Date.now()}-${baseName}${extension}`);
     },
-  }),
+  }) satisfies StorageEngine,
   limits: {
     fileSize: 5 * 1024 * 1024,
   },
-  fileFilter: (_request, file, callback) => {
+  fileFilter: (_request: Express.Request, file: Express.Multer.File, callback: FileFilterCallback) => {
     const allowedTypes = ["application/pdf", "image/jpeg", "image/jpg", "image/png"];
     if (!allowedTypes.includes(file.mimetype)) {
       callback(new AppError("Only PDF, JPG, JPEG, and PNG attachments are allowed", 400));

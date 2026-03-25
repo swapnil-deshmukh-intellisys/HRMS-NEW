@@ -46,12 +46,9 @@ export default function Sidebar({ sessionUser, navOpen, onNavigate, onLogout }: 
   return (
     <aside className={`sidebar ${navOpen ? "open" : ""}`}>
       <div className="stack">
-        <div>
+        <div className="sidebar-intro">
           <p className="eyebrow">HRMS Portal</p>
           <div className="sidebar-brand">
-            <div className="sidebar-brand-mark" aria-hidden="true">
-              <Building2 size={18} strokeWidth={2.2} />
-            </div>
             <h2>{sessionUser.role}</h2>
           </div>
           <p className="muted">{sessionUser.employee ? `${sessionUser.employee.firstName} ${sessionUser.employee.lastName}` : "Workspace access"}</p>

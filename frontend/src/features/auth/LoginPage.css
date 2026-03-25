@@ -25,6 +25,37 @@
   margin-bottom: var(--space-2);
 }
 
+.password-input-wrap {
+  position: relative;
+}
+
+.password-input-wrap input {
+  padding-right: 44px;
+}
+
+.password-visibility-toggle {
+  position: absolute;
+  top: 50%;
+  right: 8px;
+  transform: translateY(-50%);
+  min-width: 32px;
+  width: 32px;
+  min-height: 32px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--color-text-secondary);
+}
+
+.password-visibility-toggle:hover {
+  transform: translateY(-50%);
+  background: transparent;
+}
+
+.password-visibility-toggle:hover:not(:disabled) {
+  transform: translateY(-50%);
+}
+
 @media (max-width: 640px) {
   .login-shell {
     padding: var(--space-4);

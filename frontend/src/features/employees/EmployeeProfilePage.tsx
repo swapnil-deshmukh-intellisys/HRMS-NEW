@@ -15,11 +15,12 @@ import EmployeeOverviewTab from "./EmployeeOverviewTab";
 import EmployeePayrollTab from "./EmployeePayrollTab";
 import EmployeeProfileHeader from "./EmployeeProfileHeader";
 import EmployeeProfileTabs, { type EmployeeProfileTabKey } from "./EmployeeProfileTabs";
-import { createInitialEmployeeForm } from "./employeeFormUtils";
+import { createInitialEmployeeForm, formatStoredDateTimeForInput, serializeLocalDateTime } from "./employeeFormUtils";
 
 type EmployeeProfilePageProps = {
   token: string | null;
   role: Role;
+  currentEmployeeId: number | null;
 };
 
 function toEmployeeForm(employee: Employee): EmployeeFormValues {
@@ -34,14 +35,14 @@ function toEmployeeForm(employee: Employee): EmployeeFormValues {
     phone: employee.phone ?? "",
     departmentId: String(employee.departmentId),
     managerId: employee.managerId ? String(employee.managerId) : "",
-    joiningDate: new Date(employee.joiningDate).toISOString().slice(0, 16),
+    joiningDate: formatStoredDateTimeForInput(employee.joiningDate),
     employmentStatus: employee.employmentStatus,
     isTeamLead: Boolean(employee.capabilities?.some((capability) => capability.capability === "TEAM_LEAD")),
     teamLeadScopeIds: employee.scopedTeamMembers?.map((item) => item.employee.id) ?? [],
   };
 }
 
-export default function EmployeeProfilePage({ token, role }: EmployeeProfilePageProps) {
+export default function EmployeeProfilePage({ token, role, currentEmployeeId }: EmployeeProfilePageProps) {
   const { id } = useParams();
   const employeeId = Number(id);
   const [employee, setEmployee] = useState<Employee | null>(null);
@@ -59,8 +60,10 @@ export default function EmployeeProfilePage({ token, role }: EmployeeProfilePage
   const [form, setForm] = useState<EmployeeFormValues>(createInitialEmployeeForm);
   const [reviewingLeaveId, setReviewingLeaveId] = useState<number | null>(null);
   const [rejectionReason, setRejectionReason] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
   const canManageEmployee = role === "ADMIN" || role === "HR";
+  const canViewPayroll = role !== "EMPLOYEE" || currentEmployeeId === employeeId;
 
   const reloadProfile = useCallback(async () => {
     if (!employeeId) {
@@ -77,7 +80,7 @@ export default function EmployeeProfilePage({ token, role }: EmployeeProfilePage
         apiRequest<Attendance[]>(`/attendance?employeeId=${employeeId}`, { token }),
         apiRequest<LeaveBalance[]>(`/leave-balances/me?employeeId=${employeeId}`, { token }),
         apiRequest<LeaveRequest[]>(`/leaves?employeeId=${employeeId}`, { token }),
-        apiRequest<PayrollRecord[]>(`/payroll?employeeId=${employeeId}`, { token }),
+        canViewPayroll ? apiRequest<PayrollRecord[]>(`/payroll?employeeId=${employeeId}`, { token }) : Promise.resolve({ data: [] as PayrollRecord[] }),
       ]);
 
       setEmployee(employeeResponse.data);
@@ -89,7 +92,7 @@ export default function EmployeeProfilePage({ token, role }: EmployeeProfilePage
       if (canManageEmployee) {
         const [departmentsResponse, employeesResponse] = await Promise.all([
           apiRequest<Department[]>("/departments", { token }),
-          apiRequest<{ items: Employee[] }>("/employees", { token }),
+          apiRequest<{ items: Employee[] }>("/employees?limit=100", { token }),
         ]);
         setDepartments(departmentsResponse.data);
         setEmployees(employeesResponse.data.items);
@@ -102,7 +105,7 @@ export default function EmployeeProfilePage({ token, role }: EmployeeProfilePage
     } finally {
       setLoading(false);
     }
-  }, [canManageEmployee, employeeId, token]);
+  }, [canManageEmployee, canViewPayroll, employeeId, token]);
 
   useEffect(() => {
     reloadProfile();
@@ -126,48 +129,82 @@ export default function EmployeeProfilePage({ token, role }: EmployeeProfilePage
     return () => window.clearTimeout(timer);
   }, [message]);
 
+  useEffect(() => {
+    if (!canViewPayroll && activeTab === "payroll") {
+      setActiveTab("overview");
+    }
+  }, [activeTab, canViewPayroll]);
+
   const latestPayroll = payroll[0];
 
   const secondarySummaryCards = useMemo(
-    () => [
-      {
-        label: "Payroll snapshot",
-        value: latestPayroll ? `${latestPayroll.month}/${latestPayroll.year}` : "No payroll yet",
-        hint: latestPayroll ? latestPayroll.status : "No payroll records available",
-      },
-      {
+    () =>
+      [
+        ...(canViewPayroll
+          ? [
+              {
+                label: "Payroll snapshot",
+                value: latestPayroll ? `${latestPayroll.month}/${latestPayroll.year}` : "No payroll yet",
+                hint: latestPayroll ? latestPayroll.status : "No payroll records available",
+              },
+            ]
+          : []),
+        {
         label: "Employment summary",
         value: employee?.department?.name ?? "-",
         hint: employee?.manager ? `Reports to ${employee.manager.firstName} ${employee.manager.lastName}` : "No reporting manager assigned",
-      },
-    ],
-    [employee?.department?.name, employee?.manager, latestPayroll],
+        },
+      ],
+    [canViewPayroll, employee?.department?.name, employee?.manager, latestPayroll],
   );
+
+  async function saveTeamLeadConfig(employeeIdToSave: number, isTeamLead: boolean, teamLeadScopeIds: number[]) {
+    await apiRequest(`/employees/${employeeIdToSave}/team-lead-config`, {
+      method: "PUT",
+      token,
+      body: {
+        enabled: isTeamLead,
+        employeeIds: teamLeadScopeIds,
+      },
+    });
+  }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!employee) {
       return;
     }
+    setSubmitting(true);
+    setError("");
 
-    const { isTeamLead: _isTeamLead, teamLeadScopeIds: _teamLeadScopeIds, ...formValues } = form;
-    const payload = {
-      ...formValues,
-      jobTitle: formValues.jobTitle.trim() || undefined,
-      departmentId: Number(formValues.departmentId),
-      managerId: formValues.managerId ? Number(formValues.managerId) : null,
-      joiningDate: new Date(formValues.joiningDate).toISOString(),
-    };
+    try {
+      const { isTeamLead, teamLeadScopeIds, ...formValues } = form;
+      const payload = {
+        ...formValues,
+        password: formValues.password.trim() || undefined,
+        jobTitle: formValues.jobTitle.trim() || undefined,
+        phone: formValues.phone.trim() || undefined,
+        departmentId: Number(formValues.departmentId),
+        managerId: formValues.managerId ? Number(formValues.managerId) : null,
+        joiningDate: serializeLocalDateTime(formValues.joiningDate),
+      };
 
-    await apiRequest<Employee>(`/employees/${employee.id}`, {
-      method: "PUT",
-      token,
-      body: payload,
-    });
+      await apiRequest<Employee>(`/employees/${employee.id}`, {
+        method: "PUT",
+        token,
+        body: payload,
+      });
 
-    setMessage("Employee updated.");
-    setEmployeeModalOpen(false);
-    await reloadProfile();
+      await saveTeamLeadConfig(employee.id, isTeamLead, teamLeadScopeIds);
+
+      setMessage("Employee updated.");
+      setEmployeeModalOpen(false);
+      await reloadProfile();
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : "Failed to update employee");
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   async function toggleStatus() {
@@ -255,6 +292,14 @@ export default function EmployeeProfilePage({ token, role }: EmployeeProfilePage
     return <MessageCard title="Employee profile" tone="error" message="Employee not found." />;
   }
 
+  const visibleTabs: Array<{ key: EmployeeProfileTabKey; label: string }> | undefined = canViewPayroll
+    ? undefined
+    : [
+        { key: "overview", label: "Overview" },
+        { key: "attendance", label: "Attendance" },
+        { key: "leaves", label: "Leaves" },
+      ];
+
   return (
     <section className="stack employee-profile-page">
       <Link to="/employees" className="employee-profile-back-link">
@@ -275,19 +320,20 @@ export default function EmployeeProfilePage({ token, role }: EmployeeProfilePage
           </article>
         ))}
       </div>
-      <EmployeeProfileTabs activeTab={activeTab} onChange={setActiveTab} />
+      <EmployeeProfileTabs activeTab={activeTab} tabs={visibleTabs} onChange={setActiveTab} />
       {activeTab === "overview" ? <EmployeeOverviewTab employee={employee} /> : null}
       {activeTab === "attendance" ? <EmployeeAttendanceTab attendance={attendance} /> : null}
       {activeTab === "leaves" ? (
-        <EmployeeLeavesTab balances={balances} leaves={leaves} role={role} employeeId={employee.id} onReview={reviewLeave} />
+        <EmployeeLeavesTab balances={balances} leaves={leaves} role={role} viewerEmployeeId={currentEmployeeId} onReview={reviewLeave} />
       ) : null}
-      {activeTab === "payroll" ? <EmployeePayrollTab payroll={payroll} /> : null}
+      {canViewPayroll && activeTab === "payroll" ? <EmployeePayrollTab payroll={payroll} /> : null}
       <Modal open={employeeModalOpen} title="Edit employee" className="employee-profile-modal" onClose={() => setEmployeeModalOpen(false)}>
         <EmployeeForm
           form={form}
           departments={departments}
           employees={employees}
           editingEmployeeId={employee.id}
+          isSubmitting={submitting}
           onChange={setForm}
           onSubmit={handleSubmit}
           onCancelEdit={() => setEmployeeModalOpen(false)}

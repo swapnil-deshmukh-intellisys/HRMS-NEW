@@ -12,9 +12,10 @@ type AttendancePageProps = {
   token: string | null;
   role: Role;
   currentEmployeeId: number | null;
+  currentEmployee: Employee | null;
 };
 
-export default function AttendancePage({ token, role, currentEmployeeId }: AttendancePageProps) {
+export default function AttendancePage({ token, role, currentEmployeeId, currentEmployee }: AttendancePageProps) {
   const today = new Date().toISOString().slice(0, 10);
   const [attendance, setAttendance] = useState<Attendance[]>([]);
   const [regularizations, setRegularizations] = useState<AttendanceRegularizationRequest[]>([]);
@@ -35,7 +36,9 @@ export default function AttendancePage({ token, role, currentEmployeeId }: Atten
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
-  const canManageOthers = role !== "EMPLOYEE";
+  const [teamLeadScopeIds, setTeamLeadScopeIds] = useState<number[]>([]);
+  const isTeamLead = Boolean(currentEmployee?.capabilities?.some((capability) => capability.capability === "TEAM_LEAD"));
+  const canManageOthers = role !== "EMPLOYEE" || isTeamLead;
   const canFinalizeAttendance = role === "ADMIN" || role === "HR";
 
   const dateOptions = Array.from({ length: 14 }, (_, index) => {
@@ -85,17 +88,31 @@ export default function AttendancePage({ token, role, currentEmployeeId }: Atten
   }, [token]);
 
   const reloadEmployees = useCallback(async () => {
-    if (!canManageOthers) {
+    if (role !== "EMPLOYEE") {
+      try {
+        const response = await apiRequest<{ items: Employee[] }>("/employees", { token });
+        setEmployees(response.data.items);
+      } catch (requestError) {
+        setError(requestError instanceof Error ? requestError.message : "Failed to load employees for attendance.");
+      }
+      return;
+    }
+
+    if (!isTeamLead || !currentEmployeeId) {
+      setEmployees([]);
+      setTeamLeadScopeIds([]);
       return;
     }
 
     try {
-      const response = await apiRequest<{ items: Employee[] }>("/employees", { token });
-      setEmployees(response.data.items);
+      const response = await apiRequest<Employee>(`/employees/${currentEmployeeId}`, { token });
+      const scopedEmployees = response.data.scopedTeamMembers?.map((item) => item.employee) ?? [];
+      setEmployees(scopedEmployees);
+      setTeamLeadScopeIds(scopedEmployees.map((employee) => employee.id));
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : "Failed to load employees for attendance.");
+      setError(requestError instanceof Error ? requestError.message : "Failed to load scoped team members.");
     }
-  }, [canManageOthers, token]);
+  }, [currentEmployeeId, isTeamLead, role, token]);
 
   useEffect(() => {
     reloadAttendance();
@@ -235,7 +252,11 @@ export default function AttendancePage({ token, role, currentEmployeeId }: Atten
       return true;
     }
 
-    return role === "MANAGER" && Boolean(currentEmployeeId) && record.employee.managerId === currentEmployeeId && record.employeeId !== currentEmployeeId;
+    if (role === "MANAGER") {
+      return Boolean(currentEmployeeId) && record.employee.managerId === currentEmployeeId && record.employeeId !== currentEmployeeId;
+    }
+
+    return role === "EMPLOYEE" && isTeamLead && record.employeeId !== currentEmployeeId && teamLeadScopeIds.includes(record.employeeId);
   }
 
   const filteredAttendance = attendance.filter((record) => {

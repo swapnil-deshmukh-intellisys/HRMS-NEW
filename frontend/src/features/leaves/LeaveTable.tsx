@@ -7,11 +7,12 @@ type LeaveTableProps = {
   leaves: LeaveRequest[];
   role: Role;
   currentEmployeeId: number | null;
+  teamLeadScopeIds?: number[];
   onReview: (id: number, action: "approve" | "reject") => void | Promise<void>;
   onCancel: (id: number) => void | Promise<void>;
 };
 
-export default function LeaveTable({ leaves, role, currentEmployeeId, onReview, onCancel }: LeaveTableProps) {
+export default function LeaveTable({ leaves, role, currentEmployeeId, teamLeadScopeIds = [], onReview, onCancel }: LeaveTableProps) {
   function getStatusClass(status: LeaveRequest["status"]) {
     return `status-pill status-pill--${status.toLowerCase()}`;
   }
@@ -121,7 +122,10 @@ export default function LeaveTable({ leaves, role, currentEmployeeId, onReview, 
                       role === "ADMIN" ||
                       (role === "MANAGER" &&
                         leave.employee.managerId === currentEmployeeId &&
-                        leave.employee.id !== currentEmployeeId)) ? (
+                        leave.employee.id !== currentEmployeeId) ||
+                      (role === "EMPLOYEE" &&
+                        leave.employee.id !== currentEmployeeId &&
+                        teamLeadScopeIds.includes(leave.employee.id))) ? (
                       <>
                         <button onClick={() => onReview(leave.id, "approve")}>Approve</button>
                         <button className="secondary" onClick={() => onReview(leave.id, "reject")}>

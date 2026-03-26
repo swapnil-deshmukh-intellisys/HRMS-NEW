@@ -9,11 +9,11 @@ type EmployeeLeavesTabProps = {
   balances: LeaveBalance[];
   leaves: LeaveRequest[];
   role: Role;
-  employeeId: number;
+  viewerEmployeeId: number | null;
   onReview: (id: number, action: "approve" | "reject") => void | Promise<void>;
 };
 
-export default function EmployeeLeavesTab({ balances, leaves, role, employeeId, onReview }: EmployeeLeavesTabProps) {
+export default function EmployeeLeavesTab({ balances, leaves, role, viewerEmployeeId, onReview }: EmployeeLeavesTabProps) {
   return (
     <div className="stack">
       <div className="grid cols-2 employee-profile-chart-grid">
@@ -33,7 +33,7 @@ export default function EmployeeLeavesTab({ balances, leaves, role, employeeId, 
           ])}
         />
       </div>
-      <LeaveTable leaves={leaves} role={role} currentEmployeeId={employeeId} onReview={onReview} onCancel={() => undefined} />
+      <LeaveTable leaves={leaves} role={role} currentEmployeeId={viewerEmployeeId} onReview={onReview} onCancel={() => undefined} />
     </div>
   );
 }

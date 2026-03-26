@@ -5,12 +5,11 @@ type EmployeeTableProps = {
   employees: Employee[];
   onAdd: () => void;
   onEdit: (employee: Employee) => void;
-  onManageTeamLead: (employee: Employee) => void;
   onToggleStatus: (employee: Employee) => void | Promise<void>;
   onSelect: (employee: Employee) => void;
 };
 
-export default function EmployeeTable({ employees, onAdd, onEdit, onManageTeamLead, onToggleStatus, onSelect }: EmployeeTableProps) {
+export default function EmployeeTable({ employees, onAdd, onEdit, onToggleStatus, onSelect }: EmployeeTableProps) {
   function getStatusLabel(employee: Employee) {
     return employee.isActive ? employee.employmentStatus : "INACTIVE";
   }
@@ -63,7 +62,9 @@ export default function EmployeeTable({ employees, onAdd, onEdit, onManageTeamLe
                   <div className="table-cell-stack">
                     <span className="table-cell-primary">{`${employee.firstName} ${employee.lastName}`}</span>
                     <span className="table-cell-secondary">
-                      {employee.jobTitle ? `${employee.jobTitle}${isTeamLead(employee) ? " · TL" : ""}` : employee.user?.email ?? employee.employeeCode}
+                      {employee.jobTitle
+                        ? `${employee.jobTitle}${isTeamLead(employee) ? " · TL" : ""}`
+                        : employee.user?.email ?? employee.employeeCode}
                     </span>
                   </div>
                 </td>
@@ -77,35 +78,25 @@ export default function EmployeeTable({ employees, onAdd, onEdit, onManageTeamLe
                 </td>
                 <td>
                   <div className="button-row row-actions">
-                  <button
-                    type="button"
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      onEdit(employee);
-                    }}
-                  >
-                    Edit
-                  </button>
-                  <button
-                    type="button"
-                    className="secondary"
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      onManageTeamLead(employee);
-                    }}
-                  >
-                    TL setup
-                  </button>
-                  <button
-                    type="button"
-                    className="secondary"
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      onToggleStatus(employee);
-                    }}
-                  >
-                    {employee.isActive ? "Deactivate" : "Activate"}
-                  </button>
+                    <button
+                      type="button"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        onEdit(employee);
+                      }}
+                    >
+                      Edit
+                    </button>
+                    <button
+                      type="button"
+                      className="secondary"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        onToggleStatus(employee);
+                      }}
+                    >
+                      {employee.isActive ? "Deactivate" : "Activate"}
+                    </button>
                   </div>
                 </td>
               </tr>

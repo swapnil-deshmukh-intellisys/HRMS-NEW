@@ -5,7 +5,7 @@ import MessageCard from "../../components/common/MessageCard";
 import Modal from "../../components/common/Modal";
 import Table from "../../components/common/Table";
 import { apiRequest } from "../../services/api";
-import type { LeaveBalance, LeaveRequest, LeaveType, Role } from "../../types";
+import type { Employee, LeaveBalance, LeaveRequest, LeaveType, Role } from "../../types";
 import { formatLeaveDays } from "../../utils/format";
 import LeaveForm, { type LeaveFormValues } from "./LeaveForm";
 import LeaveTable from "./LeaveTable";
@@ -14,6 +14,7 @@ type LeavesPageProps = {
   token: string | null;
   role: Role;
   currentEmployeeId: number | null;
+  currentEmployee: Employee | null;
 };
 
 const initialLeaveForm = (): LeaveFormValues => ({
@@ -25,7 +26,7 @@ const initialLeaveForm = (): LeaveFormValues => ({
   reason: "",
 });
 
-export default function LeavesPage({ token, role, currentEmployeeId }: LeavesPageProps) {
+export default function LeavesPage({ token, role, currentEmployeeId, currentEmployee }: LeavesPageProps) {
   const [leaveTypes, setLeaveTypes] = useState<LeaveType[]>([]);
   const [balances, setBalances] = useState<LeaveBalance[]>([]);
   const [leaves, setLeaves] = useState<LeaveRequest[]>([]);
@@ -38,9 +39,11 @@ export default function LeavesPage({ token, role, currentEmployeeId }: LeavesPag
   const [rejectionReason, setRejectionReason] = useState("");
   const [leaveFormOpen, setLeaveFormOpen] = useState(false);
   const [leaveBalancesOpen, setLeaveBalancesOpen] = useState(false);
+  const [teamLeadScopeIds, setTeamLeadScopeIds] = useState<number[]>([]);
   const totalAllocated = balances.reduce((sum, balance) => sum + balance.allocatedDays, 0);
   const totalUsed = balances.reduce((sum, balance) => sum + balance.usedDays, 0);
   const totalRemaining = balances.reduce((sum, balance) => sum + balance.remainingDays, 0);
+  const isTeamLead = Boolean(currentEmployee?.capabilities?.some((capability) => capability.capability === "TEAM_LEAD"));
 
   const reloadData = useCallback(async () => {
     try {
@@ -65,6 +68,21 @@ export default function LeavesPage({ token, role, currentEmployeeId }: LeavesPag
   useEffect(() => {
     reloadData();
   }, [reloadData]);
+
+  useEffect(() => {
+    if (role !== "EMPLOYEE" || !isTeamLead || !currentEmployeeId) {
+      setTeamLeadScopeIds([]);
+      return;
+    }
+
+    apiRequest<Employee>(`/employees/${currentEmployeeId}`, { token })
+      .then((response) => {
+        setTeamLeadScopeIds(response.data.scopedTeamMembers?.map((item) => item.employee.id) ?? []);
+      })
+      .catch((requestError) => {
+        setError(requestError instanceof Error ? requestError.message : "Failed to load scoped team members.");
+      });
+  }, [currentEmployeeId, isTeamLead, role, token]);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -189,7 +207,14 @@ export default function LeavesPage({ token, role, currentEmployeeId }: LeavesPag
               </button>
             </div>
           </div>
-          <LeaveTable leaves={leaves} role={role} currentEmployeeId={currentEmployeeId} onReview={reviewLeave} onCancel={cancelLeave} />
+          <LeaveTable
+            leaves={leaves}
+            role={role}
+            currentEmployeeId={currentEmployeeId}
+            teamLeadScopeIds={teamLeadScopeIds}
+            onReview={reviewLeave}
+            onCancel={cancelLeave}
+          />
         </div>
       )}
       <Modal open={leaveFormOpen} title="Apply leave" className="leave-modal-surface" onClose={() => setLeaveFormOpen(false)}>

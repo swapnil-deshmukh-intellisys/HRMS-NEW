@@ -523,7 +523,13 @@ router.get("/", requireRoles("ADMIN", "HR", "MANAGER", "EMPLOYEE"), async (reque
 
         where = { employeeId: requestedEmployeeId };
       } else {
-        where = { employeeId: request.user.employeeId };
+        const isTeamLead = await hasEmployeeCapability(prisma, request.user.employeeId, "TEAM_LEAD");
+
+        where = isTeamLead
+          ? {
+              OR: [{ employeeId: request.user.employeeId }, { employeeId: { in: await getScopedEmployeeIdsForTeamLead(prisma, request.user.employeeId) } }],
+            }
+          : { employeeId: request.user.employeeId };
       }
     } else if (request.user?.role === "MANAGER" && request.user.employeeId) {
       where = requestedEmployeeId

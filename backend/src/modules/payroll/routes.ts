@@ -25,6 +25,10 @@ router.get("/", async (request, response, next) => {
     let where: Record<string, unknown> = {};
 
     if (request.user?.role === "EMPLOYEE") {
+      if (requestedEmployeeId && requestedEmployeeId !== request.user.employeeId) {
+        throw new AppError("You are not authorized to view this employee payroll", 403);
+      }
+
       where = { employeeId: request.user.employeeId };
     } else if (request.user?.role === "MANAGER" && request.user.employeeId) {
       where = requestedEmployeeId

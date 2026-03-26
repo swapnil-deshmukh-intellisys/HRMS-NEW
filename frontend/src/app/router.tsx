@@ -29,7 +29,16 @@ function AppRoutes() {
         />
         <Route path="/departments" element={<DepartmentsPage token={token} role={sessionUser?.role ?? "EMPLOYEE"} />} />
         <Route path="/employees" element={<EmployeesPage token={token} role={sessionUser?.role ?? "EMPLOYEE"} />} />
-        <Route path="/employees/:id" element={<EmployeeProfilePage token={token} role={sessionUser?.role ?? "EMPLOYEE"} />} />
+        <Route
+          path="/employees/:id"
+          element={
+            <EmployeeProfilePage
+              token={token}
+              role={sessionUser?.role ?? "EMPLOYEE"}
+              currentEmployeeId={sessionUser?.employee?.id ?? null}
+            />
+          }
+        />
         <Route
           path="/attendance"
           element={
@@ -37,6 +46,7 @@ function AppRoutes() {
               token={token}
               role={sessionUser?.role ?? "EMPLOYEE"}
               currentEmployeeId={sessionUser?.employee?.id ?? null}
+              currentEmployee={sessionUser?.employee ?? null}
             />
           }
         />
@@ -47,6 +57,7 @@ function AppRoutes() {
               token={token}
               role={sessionUser?.role ?? "EMPLOYEE"}
               currentEmployeeId={sessionUser?.employee?.id ?? null}
+              currentEmployee={sessionUser?.employee ?? null}
             />
           }
         />

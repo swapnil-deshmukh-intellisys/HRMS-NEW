@@ -1,3 +1,58 @@
 .employee-form-card {
   align-content: start;
 }
+
+.employee-form-fieldset {
+  display: grid;
+  gap: inherit;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+
+.employee-form-fieldset:disabled {
+  opacity: 0.72;
+}
+
+.employee-form-card > .checkbox-row,
+.employee-form-fieldset > .checkbox-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.employee-form-card > .checkbox-row input,
+.employee-form-fieldset > .checkbox-row input {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  flex-shrink: 0;
+}
+
+.employee-form-card > .checkbox-row span,
+.employee-form-fieldset > .checkbox-row span {
+  line-height: 1.2;
+}
+
+.tl-scope-list {
+  max-height: 320px;
+  overflow-y: auto;
+  padding: var(--space-2);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-secondary);
+}
+
+.tl-scope-list .checkbox-row {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+}
+
+.tl-scope-list .checkbox-row input {
+  width: 16px;
+  height: 16px;
+  margin-top: 2px;
+  flex-shrink: 0;
+}

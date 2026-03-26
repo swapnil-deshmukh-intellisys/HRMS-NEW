@@ -39,6 +39,11 @@ const teamLeadScopeSchema = z.object({
   employeeIds: z.array(z.coerce.number().int().positive()).default([]),
 });
 
+const teamLeadConfigSchema = z.object({
+  enabled: z.boolean(),
+  employeeIds: z.array(z.coerce.number().int().positive()).default([]),
+});
+
 router.use(authenticate);
 
 router.get("/", requireRoles("ADMIN", "HR", "MANAGER"), async (request, response, next) => {
@@ -331,12 +336,17 @@ router.put("/:id/team-scope", requireRoles("ADMIN", "HR"), validate(teamLeadScop
         where: {
           id: { in: uniqueEmployeeIds },
           isActive: true,
+          user: {
+            role: {
+              name: RoleName.EMPLOYEE,
+            },
+          },
         },
         select: { id: true },
       });
 
       if (scopedEmployees.length !== uniqueEmployeeIds.length) {
-        throw new AppError("One or more team members are invalid or inactive");
+        throw new AppError("Only active employees can be assigned to a team leader scope");
       }
     }
 
@@ -364,6 +374,116 @@ router.put("/:id/team-scope", requireRoles("ADMIN", "HR"), validate(teamLeadScop
     });
 
     return sendSuccess(response, "Team lead scope updated successfully", scope);
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.put("/:id/team-lead-config", requireRoles("ADMIN", "HR"), validate(teamLeadConfigSchema), async (request, response, next) => {
+  try {
+    const employeeId = Number(request.params.id);
+    const enabled = request.body.enabled;
+    const uniqueEmployeeIds: number[] = [...new Set(request.body.employeeIds as number[])].filter((id) => id !== employeeId);
+
+    const employee = await prisma.employee.findUnique({
+      where: { id: employeeId },
+      include: {
+        user: {
+          include: {
+            role: true,
+          },
+        },
+      },
+    });
+
+    if (!employee || !employee.isActive) {
+      throw new AppError("Employee not found", 404);
+    }
+
+    if (uniqueEmployeeIds.length > 0) {
+      const scopedEmployees = await prisma.employee.findMany({
+        where: {
+          id: { in: uniqueEmployeeIds },
+          isActive: true,
+          user: {
+            role: {
+              name: RoleName.EMPLOYEE,
+            },
+          },
+        },
+        select: { id: true },
+      });
+
+      if (scopedEmployees.length !== uniqueEmployeeIds.length) {
+        throw new AppError("Only active employees can be assigned to a team leader scope");
+      }
+    }
+
+    await prisma.$transaction(async (transaction) => {
+      if (enabled) {
+        await transaction.employeeCapability.upsert({
+          where: {
+            employeeId_capability: {
+              employeeId,
+              capability: EmployeeCapabilityType.TEAM_LEAD,
+            },
+          },
+          update: {},
+          create: {
+            employeeId,
+            capability: EmployeeCapabilityType.TEAM_LEAD,
+          },
+        });
+
+        await transaction.employeeTeamLeadScope.deleteMany({
+          where: { teamLeaderId: employeeId },
+        });
+
+        if (uniqueEmployeeIds.length > 0) {
+          await transaction.employeeTeamLeadScope.createMany({
+            data: uniqueEmployeeIds.map((scopedEmployeeId) => ({
+              teamLeaderId: employeeId,
+              employeeId: scopedEmployeeId,
+            })),
+          });
+        }
+
+        return;
+      }
+
+      await transaction.employeeCapability.deleteMany({
+        where: {
+          employeeId,
+          capability: EmployeeCapabilityType.TEAM_LEAD,
+        },
+      });
+
+      await transaction.employeeTeamLeadScope.deleteMany({
+        where: { teamLeaderId: employeeId },
+      });
+    });
+
+    const updatedEmployee = await prisma.employee.findUnique({
+      where: { id: employeeId },
+      include: {
+        capabilities: true,
+        scopedTeamMembers: {
+          include: {
+            employee: {
+              include: {
+                user: {
+                  include: {
+                    role: true,
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    });
+
+    return sendSuccess(response, "Team lead configuration updated successfully", updatedEmployee);
   } catch (error) {
     next(error);
   }

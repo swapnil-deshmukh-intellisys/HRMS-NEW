@@ -24,7 +24,13 @@ router.post("/login", validate(loginSchema), async (request, response, next) => 
             where: { email: userEmail },
             include: {
               role: true,
-              employee: true,
+              employee: {
+                include: {
+                  department: true,
+                  manager: true,
+                  capabilities: true,
+                },
+              },
             },
           }),
       },
@@ -51,6 +57,7 @@ router.get("/me", authenticate, async (request, response, next) => {
           include: {
             department: true,
             manager: true,
+            capabilities: true,
           },
         },
       },

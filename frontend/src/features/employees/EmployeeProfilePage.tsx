@@ -30,11 +30,14 @@ function toEmployeeForm(employee: Employee): EmployeeFormValues {
     employeeCode: employee.employeeCode,
     firstName: employee.firstName,
     lastName: employee.lastName,
+    jobTitle: employee.jobTitle ?? "",
     phone: employee.phone ?? "",
     departmentId: String(employee.departmentId),
     managerId: employee.managerId ? String(employee.managerId) : "",
     joiningDate: new Date(employee.joiningDate).toISOString().slice(0, 16),
     employmentStatus: employee.employmentStatus,
+    isTeamLead: Boolean(employee.capabilities?.some((capability) => capability.capability === "TEAM_LEAD")),
+    teamLeadScopeIds: employee.scopedTeamMembers?.map((item) => item.employee.id) ?? [],
   };
 }
 
@@ -147,11 +150,15 @@ export default function EmployeeProfilePage({ token, role }: EmployeeProfilePage
       return;
     }
 
+    const formValues = { ...form };
+    delete formValues.isTeamLead;
+    delete formValues.teamLeadScopeIds;
     const payload = {
-      ...form,
-      departmentId: Number(form.departmentId),
-      managerId: form.managerId ? Number(form.managerId) : null,
-      joiningDate: new Date(form.joiningDate).toISOString(),
+      ...formValues,
+      jobTitle: formValues.jobTitle.trim() || undefined,
+      departmentId: Number(formValues.departmentId),
+      managerId: formValues.managerId ? Number(formValues.managerId) : null,
+      joiningDate: new Date(formValues.joiningDate).toISOString(),
     };
 
     await apiRequest<Employee>(`/employees/${employee.id}`, {

@@ -5,17 +5,22 @@ type EmployeeTableProps = {
   employees: Employee[];
   onAdd: () => void;
   onEdit: (employee: Employee) => void;
+  onManageTeamLead: (employee: Employee) => void;
   onToggleStatus: (employee: Employee) => void | Promise<void>;
   onSelect: (employee: Employee) => void;
 };
 
-export default function EmployeeTable({ employees, onAdd, onEdit, onToggleStatus, onSelect }: EmployeeTableProps) {
+export default function EmployeeTable({ employees, onAdd, onEdit, onManageTeamLead, onToggleStatus, onSelect }: EmployeeTableProps) {
   function getStatusLabel(employee: Employee) {
     return employee.isActive ? employee.employmentStatus : "INACTIVE";
   }
 
   function getStatusClass(status: string) {
     return `status-pill status-pill--${status.toLowerCase().replace(/_/g, "-")}`;
+  }
+
+  function isTeamLead(employee: Employee) {
+    return employee.capabilities?.some((capability) => capability.capability === "TEAM_LEAD");
   }
 
   return (
@@ -57,7 +62,9 @@ export default function EmployeeTable({ employees, onAdd, onEdit, onToggleStatus
                 <td>
                   <div className="table-cell-stack">
                     <span className="table-cell-primary">{`${employee.firstName} ${employee.lastName}`}</span>
-                    <span className="table-cell-secondary">{employee.user?.email ?? employee.employeeCode}</span>
+                    <span className="table-cell-secondary">
+                      {employee.jobTitle ? `${employee.jobTitle}${isTeamLead(employee) ? " · TL" : ""}` : employee.user?.email ?? employee.employeeCode}
+                    </span>
                   </div>
                 </td>
                 <td>
@@ -78,6 +85,16 @@ export default function EmployeeTable({ employees, onAdd, onEdit, onToggleStatus
                     }}
                   >
                     Edit
+                  </button>
+                  <button
+                    type="button"
+                    className="secondary"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      onManageTeamLead(employee);
+                    }}
+                  >
+                    TL setup
                   </button>
                   <button
                     type="button"

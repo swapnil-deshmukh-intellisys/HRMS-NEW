@@ -250,6 +250,10 @@
   gap: var(--space-4);
 }
 
+.dashboard-team-lead-card {
+  gap: var(--space-4);
+}
+
 .dashboard-actions-header {
   display: flex;
   align-items: flex-start;
@@ -265,6 +269,10 @@
 
 .dashboard-quick-actions button {
   min-height: 48px;
+}
+
+.dashboard-quick-actions--compact {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .dashboard-balance-list {

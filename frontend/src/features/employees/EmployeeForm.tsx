@@ -9,11 +9,14 @@ export type EmployeeFormValues = {
   employeeCode: string;
   firstName: string;
   lastName: string;
+  jobTitle: string;
   phone: string;
   departmentId: string;
   managerId: string;
   joiningDate: string;
   employmentStatus: "ACTIVE" | "INACTIVE" | "TERMINATED";
+  isTeamLead: boolean;
+  teamLeadScopeIds: number[];
 };
 
 type EmployeeFormProps = {
@@ -72,6 +75,14 @@ export default function EmployeeForm({
         <input value={form.lastName} onChange={(event) => onChange({ ...form, lastName: event.target.value })} required />
       </label>
       <label>
+        Job title
+        <input value={form.jobTitle} onChange={(event) => onChange({ ...form, jobTitle: event.target.value })} placeholder="Software Developer" />
+      </label>
+      <label>
+        Mobile number
+        <input value={form.phone} onChange={(event) => onChange({ ...form, phone: event.target.value })} placeholder="+91 98765 43210" />
+      </label>
+      <label>
         Role
         <select value={form.role} onChange={(event) => onChange({ ...form, role: event.target.value as EmployeeFormValues["role"] })}>
           <option value="EMPLOYEE">Employee</option>
@@ -117,6 +128,34 @@ export default function EmployeeForm({
           <option value="TERMINATED">Terminated</option>
         </select>
       </label>
+      <label className="checkbox-row">
+        <input checked={form.isTeamLead} type="checkbox" onChange={(event) => onChange({ ...form, isTeamLead: event.target.checked })} />
+        <span>Assign Team Leader capability</span>
+      </label>
+      {form.isTeamLead ? (
+        <div className="stack tl-scope-list">
+          <p className="muted">Team members in scope</p>
+          {employees
+            .filter((employee) => employee.id !== editingEmployeeId && employee.isActive)
+            .map((employee) => (
+              <label key={employee.id} className="checkbox-row">
+                <input
+                  checked={form.teamLeadScopeIds.includes(employee.id)}
+                  type="checkbox"
+                  onChange={(event) =>
+                    onChange({
+                      ...form,
+                      teamLeadScopeIds: event.target.checked
+                        ? [...form.teamLeadScopeIds, employee.id]
+                        : form.teamLeadScopeIds.filter((id) => id !== employee.id),
+                    })
+                  }
+                />
+                <span>{`${employee.firstName} ${employee.lastName}`}</span>
+              </label>
+            ))}
+        </div>
+      ) : null}
       <div className="button-row">
         <button type="submit">{editingEmployeeId ? "Update employee" : "Create employee"}</button>
         {editingEmployeeId ? (

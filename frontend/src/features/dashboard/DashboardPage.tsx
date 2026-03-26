@@ -189,6 +189,9 @@ export default function DashboardPage({ token, role, currentEmployeeId }: Dashbo
     }));
   const pendingLeaveRequests = leaveRequests.filter((leave) => leave.status === "PENDING");
   const approvedLeaveRequests = leaveRequests.filter((leave) => leave.status === "APPROVED");
+  const isTeamLead = Boolean(data.isTeamLead) || Boolean(currentEmployee?.capabilities?.some((capability) => capability.capability === "TEAM_LEAD"));
+  const scopedTeamCount = typeof data.scopedTeamCount === "number" ? data.scopedTeamCount : 0;
+  const pendingTeamLeaves = typeof data.pendingTeamLeaves === "number" ? data.pendingTeamLeaves : 0;
   const nextApprovedLeave = approvedLeaveRequests
     .filter((leave) => new Date(leave.endDate) >= new Date())
     .sort((left, right) => new Date(left.startDate).getTime() - new Date(right.startDate).getTime())[0];
@@ -578,6 +581,47 @@ export default function DashboardPage({ token, role, currentEmployeeId }: Dashbo
               </button>
             </div>
           </article>
+
+          {isTeamLead ? (
+            <article className="card dashboard-team-lead-card">
+              <div className="dashboard-actions-header">
+                <div>
+                  <p className="eyebrow">Team Leader desk</p>
+                  <h3>Keep your team flow moving</h3>
+                </div>
+                <span className="dashboard-project-badge">TL</span>
+              </div>
+              <p className="muted">
+                Track your scoped team’s attendance and pending leave flow from here. Task assignment and progress collection can plug into this section next.
+              </p>
+              <div className="dashboard-project-meta">
+                <div className="table-cell-stack">
+                  <span className="table-cell-secondary">Scoped team members</span>
+                  <span className="table-cell-primary">{scopedTeamCount}</span>
+                </div>
+                <div className="table-cell-stack">
+                  <span className="table-cell-secondary">Pending team leaves</span>
+                  <span className="table-cell-primary">{pendingTeamLeaves}</span>
+                </div>
+                <div className="table-cell-stack">
+                  <span className="table-cell-secondary">Primary focus</span>
+                  <span className="table-cell-primary">Daily coordination</span>
+                </div>
+                <div className="table-cell-stack">
+                  <span className="table-cell-secondary">Next workflow</span>
+                  <span className="table-cell-primary">Status collection</span>
+                </div>
+              </div>
+              <div className="dashboard-quick-actions dashboard-quick-actions--compact">
+                <button className="secondary" onClick={() => navigate("/attendance")}>
+                  Review team attendance
+                </button>
+                <button className="secondary" onClick={() => navigate("/leaves")}>
+                  Review team leaves
+                </button>
+              </div>
+            </article>
+          ) : null}
 
           <div className="grid cols-2 dashboard-support-grid">
             <article className="card metric-card">

@@ -7,9 +7,12 @@ export const createInitialEmployeeForm = (): EmployeeFormValues => ({
   employeeCode: "",
   firstName: "",
   lastName: "",
+  jobTitle: "",
   phone: "",
   departmentId: "",
   managerId: "",
   joiningDate: new Date().toISOString().slice(0, 16),
   employmentStatus: "ACTIVE",
+  isTeamLead: false,
+  teamLeadScopeIds: [],
 });

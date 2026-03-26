@@ -6,6 +6,7 @@ import { authenticate, requireRoles } from "../../middleware/auth.js";
 import { validate } from "../../middleware/validate.js";
 import { AppError, sendSuccess } from "../../utils/api.js";
 import { startOfDay } from "../../utils/dates.js";
+import { canTeamLeadAccessEmployee, getScopedEmployeeIdsForTeamLead, hasEmployeeCapability } from "../../utils/team-lead.js";
 import {
   buildApprovedLeaveWhereForAttendanceDate,
   calculateWorkedMinutes,
@@ -281,7 +282,19 @@ router.get("/regularizations", requireRoles("ADMIN", "HR", "MANAGER", "EMPLOYEE"
     let where: Record<string, unknown> = {};
 
     if (request.user?.role === "EMPLOYEE") {
-      where = { employeeId: request.user.employeeId };
+      const employeeId = request.user.employeeId;
+
+      if (!employeeId) {
+        throw new AppError("Employee context is required", 400);
+      }
+
+      const isTeamLead = await hasEmployeeCapability(prisma, employeeId, "TEAM_LEAD");
+
+      where = isTeamLead
+        ? {
+            OR: [{ employeeId }, { employeeId: { in: await getScopedEmployeeIdsForTeamLead(prisma, employeeId) } }],
+          }
+        : { employeeId };
     } else if (request.user?.role === "MANAGER" && request.user.employeeId) {
       where = {
         OR: [{ employeeId: request.user.employeeId }, { employee: { managerId: request.user.employeeId } }],
@@ -305,7 +318,7 @@ router.get("/regularizations", requireRoles("ADMIN", "HR", "MANAGER", "EMPLOYEE"
 
 router.post(
   "/regularizations/:id/review",
-  requireRoles("ADMIN", "HR", "MANAGER"),
+  requireRoles("ADMIN", "HR", "MANAGER", "EMPLOYEE"),
   validate(attendanceRegularizationReviewSchema),
   async (request, response, next) => {
     try {
@@ -337,6 +350,18 @@ router.post(
           regularizationRequest.employeeId === request.user.employeeId)
       ) {
         throw new AppError("You are not authorized to review this attendance correction request", 403);
+      }
+
+      if (request.user?.role === "EMPLOYEE") {
+        if (!request.user.employeeId || regularizationRequest.employeeId === request.user.employeeId) {
+          throw new AppError("You are not authorized to review this attendance correction request", 403);
+        }
+
+        const canAccess = await canTeamLeadAccessEmployee(prisma, request.user.employeeId, regularizationRequest.employeeId);
+
+        if (!canAccess) {
+          throw new AppError("You are not authorized to review this attendance correction request", 403);
+        }
       }
 
       if (request.body.status === "REJECTED" && !request.body.rejectionReason) {
@@ -485,7 +510,21 @@ router.get("/", requireRoles("ADMIN", "HR", "MANAGER", "EMPLOYEE"), async (reque
     let where: Record<string, unknown> = {};
 
     if (request.user?.role === "EMPLOYEE") {
-      where = { employeeId: request.user.employeeId };
+      if (!request.user.employeeId) {
+        throw new AppError("Employee context is required", 400);
+      }
+
+      if (requestedEmployeeId && requestedEmployeeId !== request.user.employeeId) {
+        const canAccess = await canTeamLeadAccessEmployee(prisma, request.user.employeeId, requestedEmployeeId);
+
+        if (!canAccess) {
+          throw new AppError("You are not authorized to view this attendance", 403);
+        }
+
+        where = { employeeId: requestedEmployeeId };
+      } else {
+        where = { employeeId: request.user.employeeId };
+      }
     } else if (request.user?.role === "MANAGER" && request.user.employeeId) {
       where = requestedEmployeeId
         ? requestedEmployeeId === request.user.employeeId

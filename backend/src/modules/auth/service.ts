@@ -13,7 +13,7 @@ type LoginDeps = {
     passwordHash: string;
     isActive: boolean;
     role: { name: string };
-    employee?: { id: number } | null;
+    employee?: Record<string, unknown> & { id: number } | null;
   } | null>;
 };
 

@@ -18,6 +18,7 @@ export type Employee = {
   employeeCode: string;
   firstName: string;
   lastName: string;
+  jobTitle?: string | null;
   phone?: string | null;
   departmentId: number;
   managerId?: number | null;
@@ -32,6 +33,12 @@ export type Employee = {
       name: Role;
     };
   };
+  capabilities?: Array<{
+    capability: "TEAM_LEAD";
+  }>;
+  scopedTeamMembers?: Array<{
+    employee: Employee;
+  }>;
 };
 
 export type LeaveType = {

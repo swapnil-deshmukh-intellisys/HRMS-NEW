@@ -9,6 +9,7 @@ import { prisma } from "../../config/prisma.js";
 import { authenticate, requireRoles } from "../../middleware/auth.js";
 import { validate } from "../../middleware/validate.js";
 import { AppError, sendSuccess } from "../../utils/api.js";
+import { canTeamLeadAccessEmployee, getScopedEmployeeIdsForTeamLead, hasEmployeeCapability } from "../../utils/team-lead.js";
 import { buildApprovedLeaveAttendanceEntries, buildLeaveOverlapWhere, createLeaveRequestForEmployee, hasAttendanceConflict } from "./service.js";
 
 const router = Router();
@@ -87,7 +88,12 @@ router.get("/leave-balances/me", async (request, response, next) => {
 
     if (requestedEmployeeId) {
       if (request.user.role === "EMPLOYEE" && requestedEmployeeId !== request.user.employeeId) {
-        throw new AppError("You are not authorized to view this employee leave balance", 403);
+        const canAccess =
+          request.user.employeeId && (await canTeamLeadAccessEmployee(prisma, request.user.employeeId, requestedEmployeeId));
+
+        if (!canAccess) {
+          throw new AppError("You are not authorized to view this employee leave balance", 403);
+        }
       }
 
       if (request.user.role === "MANAGER") {
@@ -128,10 +134,25 @@ router.get("/leaves", async (request, response, next) => {
 
     if (request.user?.role === "EMPLOYEE") {
       if (requestedEmployeeId && requestedEmployeeId !== request.user.employeeId) {
-        throw new AppError("You are not authorized to view this employee leave requests", 403);
-      }
+        const canAccess =
+          request.user.employeeId && (await canTeamLeadAccessEmployee(prisma, request.user.employeeId, requestedEmployeeId));
 
-      where = { employeeId: request.user.employeeId };
+        if (!canAccess) {
+          throw new AppError("You are not authorized to view this employee leave requests", 403);
+        }
+
+        where = { employeeId: requestedEmployeeId };
+      } else if (request.user.employeeId) {
+        const isTeamLead = await hasEmployeeCapability(prisma, request.user.employeeId, "TEAM_LEAD");
+
+        where = isTeamLead
+          ? {
+              OR: [{ employeeId: request.user.employeeId }, { employeeId: { in: await getScopedEmployeeIdsForTeamLead(prisma, request.user.employeeId) } }],
+            }
+          : { employeeId: request.user.employeeId };
+      } else {
+        where = { employeeId: request.user.employeeId };
+      }
     } else if (request.user?.role === "MANAGER" && request.user.employeeId) {
       if (requestedEmployeeId) {
         const managedEmployee = await prisma.employee.findUnique({
@@ -275,6 +296,18 @@ async function reviewLeave(
     throw new AppError("Managers can only review leave for their direct reports", 403);
   }
 
+  if (actor.role === "EMPLOYEE") {
+    if (!actor.employeeId) {
+      throw new AppError("Employee context is required", 400);
+    }
+
+    const canAccess = await canTeamLeadAccessEmployee(prisma, actor.employeeId, leaveRequest.employeeId);
+
+    if (!canAccess) {
+      throw new AppError("You are not authorized to review this leave request", 403);
+    }
+  }
+
   return prisma.$transaction(async (transaction) => {
     if (status === LeaveStatus.APPROVED) {
       const attendanceEntries = buildApprovedLeaveAttendanceEntries({
@@ -405,7 +438,7 @@ async function cancelLeave(leaveId: number, actor: NonNullable<Express.Request["
   });
 }
 
-router.put("/leaves/:id/approve", requireRoles("ADMIN", "HR", "MANAGER"), async (request, response, next) => {
+router.put("/leaves/:id/approve", requireRoles("ADMIN", "HR", "MANAGER", "EMPLOYEE"), async (request, response, next) => {
   try {
     const leaveId = Number(request.params.id);
     const reviewedLeave = await reviewLeave(LeaveStatus.APPROVED, leaveId, request.user!);
@@ -417,7 +450,7 @@ router.put("/leaves/:id/approve", requireRoles("ADMIN", "HR", "MANAGER"), async 
 
 router.put(
   "/leaves/:id/reject",
-  requireRoles("ADMIN", "HR", "MANAGER"),
+  requireRoles("ADMIN", "HR", "MANAGER", "EMPLOYEE"),
   validate(reviewLeaveSchema),
   async (request, response, next) => {
     try {

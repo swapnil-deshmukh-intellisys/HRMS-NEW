@@ -150,9 +150,7 @@ export default function EmployeeProfilePage({ token, role }: EmployeeProfilePage
       return;
     }
 
-    const formValues = { ...form };
-    delete formValues.isTeamLead;
-    delete formValues.teamLeadScopeIds;
+    const { isTeamLead: _isTeamLead, teamLeadScopeIds: _teamLeadScopeIds, ...formValues } = form;
     const payload = {
       ...formValues,
       jobTitle: formValues.jobTitle.trim() || undefined,

@@ -10,7 +10,7 @@ type EmployeeLeavesTabProps = {
   leaves: LeaveRequest[];
   role: Role;
   viewerEmployeeId: number | null;
-  onReview: (id: number, action: "approve" | "reject") => void | Promise<void>;
+  onReview: (id: number, action: "approve" | "reject", stage: "manager" | "hr") => void | Promise<void>;
 };
 
 export default function EmployeeLeavesTab({ balances, leaves, role, viewerEmployeeId, onReview }: EmployeeLeavesTabProps) {

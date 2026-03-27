@@ -171,6 +171,28 @@ test("createLeaveRequestForEmployee rejects mismatched single-date day durations
   );
 });
 
+test("createLeaveRequestForEmployee excludes non-working days when calendar-aware", async () => {
+  const created = await createLeaveRequestForEmployee(
+    {
+      actor: { id: 1, role: "EMPLOYEE", employeeId: 99, email: "user@test.com" },
+      leaveTypeId: 1,
+      startDate: "2026-03-20",
+      endDate: "2026-03-22",
+      startDayDuration: "FULL_DAY",
+      endDayDuration: "FULL_DAY",
+      reason: "Trip",
+    },
+    {
+      findOverlap: async () => null,
+      findLeaveBalance: async () => ({ remainingDays: 10 }),
+      isWorkingDay: async (date) => ![0, 6].includes(date.getDay()),
+      createLeaveRequest: async (payload) => payload,
+    },
+  );
+
+  assert.equal((created as { totalDays: number }).totalDays, 1);
+});
+
 test("buildApprovedLeaveAttendanceEntries maps single full-day leave to LEAVE", () => {
   const entries = buildApprovedLeaveAttendanceEntries({
     startDate: new Date("2026-03-20"),
@@ -195,6 +217,19 @@ test("buildApprovedLeaveAttendanceEntries maps range endpoints to HALF_DAY when 
   assert.equal(entries[0]?.status, AttendanceStatus.HALF_DAY);
   assert.equal(entries[1]?.status, AttendanceStatus.LEAVE);
   assert.equal(entries[2]?.status, AttendanceStatus.HALF_DAY);
+});
+
+test("buildApprovedLeaveAttendanceEntries skips non-working dates when provided", () => {
+  const entries = buildApprovedLeaveAttendanceEntries({
+    startDate: new Date("2026-03-20"),
+    endDate: new Date("2026-03-22"),
+    startDayDuration: "FULL_DAY",
+    endDayDuration: "FULL_DAY",
+    isWorkingDay: (date) => ![0, 6].includes(date.getDay()),
+  });
+
+  assert.equal(entries.length, 1);
+  assert.equal(entries[0]?.status, AttendanceStatus.LEAVE);
 });
 
 test("hasAttendanceConflict detects worked attendance", () => {

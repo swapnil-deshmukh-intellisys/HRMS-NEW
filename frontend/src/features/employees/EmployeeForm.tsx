@@ -1,6 +1,8 @@
 import "./EmployeeForm.css";
-import { useState } from "react";
+import { Eye, EyeOff } from "lucide-react";
+import { useMemo, useState } from "react";
 import type { Department, Employee } from "../../types";
+import { calculateCompensationPreview } from "./employeeFormUtils";
 
 export type EmployeeFormValues = {
   email: string;
@@ -11,6 +13,9 @@ export type EmployeeFormValues = {
   lastName: string;
   jobTitle: string;
   phone: string;
+  annualPackageLpa: string;
+  isOnProbation: boolean;
+  probationEndDate: string;
   departmentId: string;
   managerId: string;
   joiningDate: string;
@@ -42,6 +47,14 @@ export default function EmployeeForm({
 }: EmployeeFormProps) {
   const [showPassword, setShowPassword] = useState(false);
   const managerOptions = employees.filter((employee) => employee.user?.role.name === "MANAGER");
+  const compensationPreview = useMemo(() => calculateCompensationPreview(form.annualPackageLpa), [form.annualPackageLpa]);
+
+  function formatCompensationValue(value: number) {
+    return value.toLocaleString("en-IN", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
+  }
 
   return (
     <form className="card stack compact-form employee-form-card" onSubmit={onSubmit}>
@@ -54,15 +67,20 @@ export default function EmployeeForm({
         </label>
         <label>
           Password
-          <div className="password-field">
+          <div className="employee-password-input-wrap">
             <input
               value={form.password}
               onChange={(event) => onChange({ ...form, password: event.target.value })}
               type={showPassword ? "text" : "password"}
               placeholder="Password@123"
             />
-            <button type="button" className="icon-button" onClick={() => setShowPassword((current) => !current)}>
-              {showPassword ? "Hide" : "Show"}
+            <button
+              type="button"
+              className="employee-password-visibility-toggle"
+              aria-label={showPassword ? "Hide password" : "Show password"}
+              onClick={() => setShowPassword((current) => !current)}
+            >
+              {showPassword ? <EyeOff size={16} strokeWidth={2} /> : <Eye size={16} strokeWidth={2} />}
             </button>
           </div>
         </label>
@@ -86,6 +104,75 @@ export default function EmployeeForm({
           Mobile number
           <input value={form.phone} onChange={(event) => onChange({ ...form, phone: event.target.value })} placeholder="+91 98765 43210" />
         </label>
+        <div className="employee-form-section employee-form-section--compensation">
+          <div className="employee-form-section__header">
+            <h4>Compensation</h4>
+            <p className="muted">Package is entered in LPA and the monthly breakdown preview updates automatically.</p>
+          </div>
+          <label>
+            Package (LPA)
+            <input
+              value={form.annualPackageLpa}
+              onChange={(event) => onChange({ ...form, annualPackageLpa: event.target.value })}
+              type="number"
+              min="0"
+              step="0.01"
+              placeholder="6.00"
+            />
+          </label>
+          {compensationPreview ? (
+            <div className="employee-compensation-preview" aria-live="polite">
+              <article className="employee-compensation-preview__item">
+                <span>Gross monthly</span>
+                <strong>{formatCompensationValue(compensationPreview.grossMonthlySalary)}</strong>
+              </article>
+              <article className="employee-compensation-preview__item">
+                <span>Basic salary</span>
+                <strong>{formatCompensationValue(compensationPreview.basicMonthlySalary)}</strong>
+              </article>
+              <article className="employee-compensation-preview__item">
+                <span>PF</span>
+                <strong>{formatCompensationValue(compensationPreview.pf)}</strong>
+              </article>
+              <article className="employee-compensation-preview__item">
+                <span>Gratuity</span>
+                <strong>{formatCompensationValue(compensationPreview.gratuity)}</strong>
+              </article>
+              <article className="employee-compensation-preview__item">
+                <span>Estimated PT</span>
+                <strong>{formatCompensationValue(compensationPreview.pt)}</strong>
+              </article>
+              <article className="employee-compensation-preview__item">
+                <span>Estimated net</span>
+                <strong>{formatCompensationValue(compensationPreview.netSalary)}</strong>
+              </article>
+              <article className="employee-compensation-preview__item">
+                <span>Per day salary</span>
+                <strong>{formatCompensationValue(compensationPreview.perDaySalary)}</strong>
+              </article>
+              <article className="employee-compensation-preview__item">
+                <span>Per hour salary</span>
+                <strong>{formatCompensationValue(compensationPreview.perHourSalary)}</strong>
+              </article>
+            </div>
+          ) : (
+            <p className="muted employee-compensation-preview__empty">Enter a package value to preview the salary structure.</p>
+          )}
+          <label className="checkbox-row">
+            <input checked={form.isOnProbation} type="checkbox" onChange={(event) => onChange({ ...form, isOnProbation: event.target.checked })} />
+            <span>On probation</span>
+          </label>
+          {form.isOnProbation ? (
+            <label>
+              Probation end date
+              <input
+                value={form.probationEndDate}
+                onChange={(event) => onChange({ ...form, probationEndDate: event.target.value })}
+                type="date"
+              />
+            </label>
+          ) : null}
+        </div>
         <label>
           Role
           <select value={form.role} onChange={(event) => onChange({ ...form, role: event.target.value as EmployeeFormValues["role"] })}>

@@ -66,6 +66,11 @@
   line-height: 1.4;
 }
 
+.attendance-warning-text {
+  color: var(--color-danger);
+  font-weight: var(--fw-semibold);
+}
+
 .table-action-group {
   display: flex;
   flex-wrap: wrap;
@@ -125,6 +130,6 @@
 }
 
 .status-pill--leave {
-  background: #f5f3ff;
-  color: #6d28d9;
+  background: #fff7ed;
+  color: #b45309;
 }

@@ -2,6 +2,7 @@ import "./DepartmentsPage.css";
 import { useEffect, useState } from "react";
 import type { FormEvent } from "react";
 import MessageCard from "../../components/common/MessageCard";
+import Modal from "../../components/common/Modal";
 import { apiRequest } from "../../services/api";
 import type { Department, Role } from "../../types";
 import DepartmentForm, { type DepartmentFormValues } from "./DepartmentForm";
@@ -17,6 +18,7 @@ export default function DepartmentsPage({ token, role }: DepartmentsPageProps) {
   const [form, setForm] = useState<DepartmentFormValues>({ name: "", code: "" });
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(role !== "EMPLOYEE");
+  const [departmentFormOpen, setDepartmentFormOpen] = useState(false);
 
   useEffect(() => {
     if (role === "EMPLOYEE") return;
@@ -32,6 +34,7 @@ export default function DepartmentsPage({ token, role }: DepartmentsPageProps) {
     setDepartments((current) => [response.data, ...current]);
     setForm({ name: "", code: "" });
     setMessage("Department created.");
+    setDepartmentFormOpen(false);
   }
 
   if (role === "EMPLOYEE") {
@@ -39,28 +42,20 @@ export default function DepartmentsPage({ token, role }: DepartmentsPageProps) {
   }
 
   return (
-    <section className="grid cols-2 page-section page-section--top">
+    <section className="departments-page">
       {loading ? (
-        <>
-          <article className="card skeleton-card skeleton-card--table">
-            <span className="skeleton-line skeleton-line--title" />
-            <span className="skeleton-line skeleton-line--long" />
-            <span className="skeleton-line skeleton-line--long" />
-            <span className="skeleton-line skeleton-line--medium" />
-          </article>
-          <article className="card skeleton-card skeleton-card--table">
-            <span className="skeleton-line skeleton-line--title" />
-            <span className="skeleton-line skeleton-line--long" />
-            <span className="skeleton-line skeleton-line--long" />
-            <span className="skeleton-line skeleton-line--long" />
-          </article>
-        </>
+        <article className="card skeleton-card skeleton-card--table">
+          <span className="skeleton-line skeleton-line--title" />
+          <span className="skeleton-line skeleton-line--long" />
+          <span className="skeleton-line skeleton-line--long" />
+          <span className="skeleton-line skeleton-line--long" />
+        </article>
       ) : (
-        <>
-      <DepartmentForm form={form} onChange={setForm} onSubmit={handleSubmit} message={message} />
-      <DepartmentTable departments={departments} />
-        </>
+        <DepartmentTable departments={departments} onAddDepartment={() => setDepartmentFormOpen(true)} />
       )}
+      <Modal open={departmentFormOpen} title="Add department" onClose={() => setDepartmentFormOpen(false)}>
+        <DepartmentForm form={form} onChange={setForm} onSubmit={handleSubmit} message={message} />
+      </Modal>
     </section>
   );
 }

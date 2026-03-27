@@ -1,10 +1,11 @@
-import { LeaveStatus } from "@prisma/client";
+import { AttendanceStatus, LeaveStatus } from "@prisma/client";
 import { Router } from "express";
 import { prisma } from "../../config/prisma.js";
 import { authenticate, requireRoles } from "../../middleware/auth.js";
 import { sendSuccess } from "../../utils/api.js";
 import { startOfDay } from "../../utils/dates.js";
 import { getScopedEmployeeIdsForTeamLead, hasEmployeeCapability } from "../../utils/team-lead.js";
+import { buildApprovedLeaveWhereForAttendanceDate, getApprovedLeaveAttendanceStatusForDate } from "../attendance/service.js";
 
 const router = Router();
 
@@ -17,13 +18,25 @@ router.get("/employee", requireRoles("EMPLOYEE", "MANAGER", "HR", "ADMIN"), asyn
     const isTeamLead = employeeId ? await hasEmployeeCapability(prisma, employeeId, "TEAM_LEAD") : false;
     const scopedEmployeeIds = isTeamLead && employeeId ? await getScopedEmployeeIdsForTeamLead(prisma, employeeId) : [];
 
-    const [attendanceToday, pendingLeaves, payrollCount, scopedTeamCount, pendingTeamLeaves] = await Promise.all([
+    const [attendanceTodayRecord, approvedLeaveToday, pendingLeaves, payrollCount, scopedTeamCount, pendingTeamLeaves] = await Promise.all([
       prisma.attendance.findUnique({
         where: {
           employeeId_attendanceDate: {
             employeeId,
             attendanceDate: today,
           },
+        },
+      }),
+      prisma.leaveRequest.findFirst({
+        where: {
+          employeeId,
+          ...buildApprovedLeaveWhereForAttendanceDate(today),
+        },
+        select: {
+          startDate: true,
+          endDate: true,
+          startDayDuration: true,
+          endDayDuration: true,
         },
       }),
       prisma.leaveRequest.count({
@@ -52,6 +65,22 @@ router.get("/employee", requireRoles("EMPLOYEE", "MANAGER", "HR", "ADMIN"), asyn
           })
         : Promise.resolve(0),
     ]);
+
+    const attendanceToday =
+      attendanceTodayRecord ??
+      (approvedLeaveToday
+        ? {
+            id: 0,
+            employeeId,
+            attendanceDate: today,
+            checkInTime: null,
+            checkOutTime: null,
+            workedMinutes: 0,
+            status: getApprovedLeaveAttendanceStatusForDate(approvedLeaveToday, today) === AttendanceStatus.HALF_DAY
+              ? AttendanceStatus.HALF_DAY
+              : AttendanceStatus.LEAVE,
+          }
+        : null);
 
     return sendSuccess(response, "Employee dashboard fetched successfully", {
       attendanceToday,

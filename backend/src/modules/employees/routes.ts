@@ -8,6 +8,7 @@ import { AppError, parsePagination, sendSuccess } from "../../utils/api.js";
 import { hashPassword } from "../../utils/auth.js";
 import { ensureEmployeeLeaveBalances } from "../../utils/leave-balance.js";
 import { canTeamLeadAccessEmployee } from "../../utils/team-lead.js";
+import { calculateCompensationFromLpa } from "../payroll/service.js";
 
 const router = Router();
 
@@ -20,6 +21,9 @@ const employeeSchema = z.object({
   lastName: z.string().min(1),
   jobTitle: z.string().trim().min(2).optional(),
   phone: z.string().optional(),
+  annualPackageLpa: z.union([z.coerce.number().positive(), z.null()]).optional(),
+  isOnProbation: z.boolean().optional(),
+  probationEndDate: z.string().datetime().nullable().optional(),
   departmentId: z.coerce.number().int().positive(),
   managerId: z.coerce.number().int().positive().nullable().optional(),
   joiningDate: z.string().datetime(),
@@ -123,6 +127,14 @@ router.post("/", requireRoles("ADMIN", "HR"), validate(employeeSchema), async (r
   try {
     const { password, role, ...employeeData } = request.body;
     const roleRecord = await prisma.role.findUnique({ where: { name: role } });
+    const compensationData =
+      typeof employeeData.annualPackageLpa === "number"
+        ? calculateCompensationFromLpa(employeeData.annualPackageLpa)
+        : {
+            annualPackageLpa: null,
+            grossMonthlySalary: null,
+            basicMonthlySalary: null,
+          };
 
     if (!roleRecord) {
       throw new AppError("Role not found", 404);
@@ -145,6 +157,9 @@ router.post("/", requireRoles("ADMIN", "HR"), validate(employeeSchema), async (r
           lastName: employeeData.lastName,
           jobTitle: employeeData.jobTitle,
           phone: employeeData.phone,
+          ...compensationData,
+          isOnProbation: employeeData.isOnProbation ?? false,
+          probationEndDate: employeeData.probationEndDate ? new Date(employeeData.probationEndDate) : null,
           departmentId: employeeData.departmentId,
           managerId: employeeData.managerId,
           joiningDate: new Date(employeeData.joiningDate),
@@ -180,6 +195,8 @@ router.put("/:id", requireRoles("ADMIN", "HR"), validate(employeeSchema.partial(
     }
 
     const { role, password, email, joiningDate, ...employeeData } = request.body;
+    const compensationData =
+      typeof employeeData.annualPackageLpa === "number" ? calculateCompensationFromLpa(employeeData.annualPackageLpa) : null;
 
     const updatedEmployee = await prisma.$transaction(async (transaction) => {
       if (email || role || password) {
@@ -193,12 +210,32 @@ router.put("/:id", requireRoles("ADMIN", "HR"), validate(employeeSchema.partial(
             ...(roleRecord ? { roleId: roleRecord.id } : {}),
           },
         });
+      } else if (!existingEmployee.user.isActive && existingEmployee.isActive) {
+        await transaction.user.update({
+          where: { id: existingEmployee.userId },
+          data: {
+            isActive: true,
+          },
+        });
       }
 
       return transaction.employee.update({
         where: { id },
         data: {
           ...employeeData,
+          ...(compensationData
+            ? compensationData
+            : request.body.annualPackageLpa === null
+              ? {
+                  annualPackageLpa: null,
+                  grossMonthlySalary: null,
+                  basicMonthlySalary: null,
+                }
+              : {}),
+          ...(request.body.isOnProbation !== undefined ? { isOnProbation: request.body.isOnProbation } : {}),
+          ...(request.body.probationEndDate !== undefined
+            ? { probationEndDate: request.body.probationEndDate ? new Date(request.body.probationEndDate) : null }
+            : {}),
           ...(joiningDate ? { joiningDate: new Date(joiningDate) } : {}),
         },
         include: {

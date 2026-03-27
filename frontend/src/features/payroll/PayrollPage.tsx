@@ -17,6 +17,24 @@ type PayrollFormValues = {
   status: "DRAFT" | "FINALIZED";
 };
 
+type PayrollPreview = {
+  employee: Pick<Employee, "id" | "firstName" | "lastName" | "annualPackageLpa" | "grossMonthlySalary" | "basicMonthlySalary" | "isOnProbation" | "probationEndDate">;
+  month: number;
+  year: number;
+  pf: number;
+  gratuity: number;
+  pt: number;
+  netSalary: number;
+  perDaySalary: number;
+  perHourSalary: number;
+  deductibleDays: number;
+  deductionAmount: number;
+  finalSalaryBeforeProbation: number;
+  probationMultiplier: number;
+  probationAdjustedSalary: number;
+  finalSalary: number;
+};
+
 const initialPayrollForm = (): PayrollFormValues => ({
   employeeId: "",
   month: String(new Date().getMonth() + 1),
@@ -28,6 +46,7 @@ const initialPayrollForm = (): PayrollFormValues => ({
 export default function PayrollPage({ token, role }: PayrollPageProps) {
   const [payroll, setPayroll] = useState<PayrollRecord[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
+  const [preview, setPreview] = useState<PayrollPreview | null>(null);
   const [message, setMessage] = useState("");
   const [editingPayrollId, setEditingPayrollId] = useState<number | null>(null);
   const [form, setForm] = useState<PayrollFormValues>(initialPayrollForm);
@@ -39,7 +58,7 @@ export default function PayrollPage({ token, role }: PayrollPageProps) {
     setPayroll(payrollResponse.data);
 
     if (role === "ADMIN" || role === "HR") {
-      const employeeResponse = await apiRequest<{ items: Employee[] }>("/employees", { token });
+      const employeeResponse = await apiRequest<{ items: Employee[] }>("/employees?limit=100", { token });
       setEmployees(employeeResponse.data.items);
     }
     setLoading(false);
@@ -48,6 +67,33 @@ export default function PayrollPage({ token, role }: PayrollPageProps) {
   useEffect(() => {
     reloadData().catch(() => setLoading(false));
   }, [reloadData]);
+
+  useEffect(() => {
+    if (role !== "ADMIN" && role !== "HR") {
+      setPreview(null);
+      return;
+    }
+
+    if (!form.employeeId || !form.month || !form.year) {
+      setPreview(null);
+      return;
+    }
+
+    apiRequest<PayrollPreview>(`/payroll/preview?employeeId=${form.employeeId}&month=${form.month}&year=${form.year}`, { token })
+      .then((response) => {
+        setPreview(response.data);
+        if (!editingPayrollId) {
+          setForm((current) =>
+            current.salary === String(response.data.finalSalary)
+              ? current
+              : { ...current, salary: String(response.data.finalSalary) },
+          );
+        }
+      })
+      .catch(() => {
+        setPreview(null);
+      });
+  }, [editingPayrollId, form.employeeId, form.month, form.year, role, token]);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -60,7 +106,7 @@ export default function PayrollPage({ token, role }: PayrollPageProps) {
         employeeId: Number(form.employeeId),
         month: Number(form.month),
         year: Number(form.year),
-        salary: Number(form.salary),
+        ...(form.salary ? { salary: Number(form.salary) } : {}),
         status: form.status,
       },
     });
@@ -68,6 +114,7 @@ export default function PayrollPage({ token, role }: PayrollPageProps) {
     setMessage(editingPayrollId ? "Payroll updated." : "Payroll created.");
     setEditingPayrollId(null);
     setForm(initialPayrollForm());
+    setPreview(null);
     await reloadData();
   }
 
@@ -85,6 +132,7 @@ export default function PayrollPage({ token, role }: PayrollPageProps) {
   function cancelEdit() {
     setEditingPayrollId(null);
     setForm(initialPayrollForm());
+    setPreview(null);
   }
 
   function getStatusClass(status: PayrollRecord["status"]) {
@@ -117,7 +165,13 @@ export default function PayrollPage({ token, role }: PayrollPageProps) {
             </label>
             <label>
               Salary
-              <input value={form.salary} onChange={(event) => setForm({ ...form, salary: event.target.value })} type="number" required />
+              <input
+                value={form.salary}
+                onChange={(event) => setForm({ ...form, salary: event.target.value })}
+                type="number"
+                required
+                readOnly={Boolean(preview) && !editingPayrollId}
+              />
             </label>
             <label>
               Status
@@ -127,6 +181,36 @@ export default function PayrollPage({ token, role }: PayrollPageProps) {
               </select>
             </label>
           </div>
+          {preview ? (
+            <div className="grid cols-4">
+              <div className="table-cell-stack">
+                <span className="table-cell-secondary">Net salary</span>
+                <span className="table-cell-primary">{preview.netSalary}</span>
+              </div>
+              <div className="table-cell-stack">
+                <span className="table-cell-secondary">Deductible days</span>
+                <span className="table-cell-primary">{preview.deductibleDays}</span>
+              </div>
+              <div className="table-cell-stack">
+                <span className="table-cell-secondary">Deduction amount</span>
+                <span className="table-cell-primary">{preview.deductionAmount}</span>
+              </div>
+              <div className="table-cell-stack">
+                <span className="table-cell-secondary">Before probation</span>
+                <span className="table-cell-primary">{preview.finalSalaryBeforeProbation}</span>
+              </div>
+              <div className="table-cell-stack">
+                <span className="table-cell-secondary">Probation pay</span>
+                <span className="table-cell-primary">{preview.probationMultiplier === 0.5 ? "50%" : "100%"}</span>
+              </div>
+              <div className="table-cell-stack">
+                <span className="table-cell-secondary">Final salary</span>
+                <span className="table-cell-primary">{preview.finalSalary}</span>
+              </div>
+            </div>
+          ) : null}
+          {preview?.employee.isOnProbation ? <p className="muted">Probation rule is active, so only 50% of the final salary is payable for this payroll cycle.</p> : null}
+          {preview && editingPayrollId ? <p className="muted">Preview is shown for reference only. The saved salary will stay unchanged unless you edit it.</p> : null}
           <div className="button-row">
             <button type="submit">{editingPayrollId ? "Update payroll" : "Create payroll"}</button>
             {editingPayrollId ? (

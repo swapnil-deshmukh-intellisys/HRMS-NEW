@@ -7,6 +7,7 @@ type RequestUser = NonNullable<Express.Request["user"]>;
 type LeaveCreationDeps = {
   findOverlap: (params: { employeeId: number; startDate: Date; endDate: Date }) => Promise<unknown>;
   findLeaveBalance: (params: { employeeId: number; leaveTypeId: number; year: number }) => Promise<{ remainingDays: number } | null>;
+  isWorkingDay?: (date: Date) => Promise<boolean>;
   createLeaveRequest: (data: {
     employeeId: number;
     leaveTypeId: number;
@@ -24,6 +25,45 @@ type LeaveCreationDeps = {
     reason: string;
   }) => Promise<unknown>;
 };
+
+async function calculateCalendarAwareLeaveDays(input: {
+  startDate: Date;
+  endDate: Date;
+  startDayDuration: "FULL_DAY" | "HALF_DAY";
+  endDayDuration: "FULL_DAY" | "HALF_DAY";
+  isWorkingDay: (date: Date) => Promise<boolean>;
+}) {
+  const sameDay =
+    input.startDate.getFullYear() === input.endDate.getFullYear() &&
+    input.startDate.getMonth() === input.endDate.getMonth() &&
+    input.startDate.getDate() === input.endDate.getDate();
+
+  let totalDays = 0;
+  const current = startOfDay(input.startDate);
+  const finalDate = startOfDay(input.endDate);
+
+  while (current <= finalDate) {
+    const attendanceDate = new Date(current);
+    const workingDay = await input.isWorkingDay(attendanceDate);
+
+    if (workingDay) {
+      const isStartDay = attendanceDate.getTime() === startOfDay(input.startDate).getTime();
+      const isEndDay = attendanceDate.getTime() === finalDate.getTime();
+
+      if (sameDay) {
+        totalDays += input.startDayDuration === "HALF_DAY" ? 0.5 : 1;
+      } else if ((isStartDay && input.startDayDuration === "HALF_DAY") || (isEndDay && input.endDayDuration === "HALF_DAY")) {
+        totalDays += 0.5;
+      } else {
+        totalDays += 1;
+      }
+    }
+
+    current.setDate(current.getDate() + 1);
+  }
+
+  return totalDays;
+}
 
 export async function createLeaveRequestForEmployee(
   input: {
@@ -60,24 +100,22 @@ export async function createLeaveRequestForEmployee(
     throw new AppError("For a single-date leave, start and end day duration must match");
   }
 
-  let totalDays = sameDay
-    ? input.startDayDuration === "HALF_DAY"
-      ? 0.5
-      : 1
-    : calculateLeaveDays(startDate, endDate);
-
-  if (!sameDay) {
-    if (input.startDayDuration === "HALF_DAY") {
-      totalDays -= 0.5;
-    }
-
-    if (input.endDayDuration === "HALF_DAY") {
-      totalDays -= 0.5;
-    }
-  }
+  const totalDays = deps.isWorkingDay
+    ? await calculateCalendarAwareLeaveDays({
+        startDate,
+        endDate,
+        startDayDuration: input.startDayDuration,
+        endDayDuration: input.endDayDuration,
+        isWorkingDay: deps.isWorkingDay,
+      })
+    : sameDay
+      ? input.startDayDuration === "HALF_DAY"
+        ? 0.5
+        : 1
+      : calculateLeaveDays(startDate, endDate) - (input.startDayDuration === "HALF_DAY" ? 0.5 : 0) - (input.endDayDuration === "HALF_DAY" ? 0.5 : 0);
 
   if (totalDays <= 0) {
-    throw new AppError("Leave duration must be at least half a day");
+    throw new AppError("Leave duration must include at least half a working day");
   }
   const year = startDate.getFullYear();
 
@@ -133,6 +171,7 @@ export function buildApprovedLeaveAttendanceEntries(input: {
   endDate: Date;
   startDayDuration: "FULL_DAY" | "HALF_DAY";
   endDayDuration: "FULL_DAY" | "HALF_DAY";
+  isWorkingDay?: (date: Date) => boolean;
 }) {
   const entries: Array<{ attendanceDate: Date; status: "LEAVE" | "HALF_DAY" }> = [];
   const current = startOfDay(input.startDate);
@@ -140,6 +179,13 @@ export function buildApprovedLeaveAttendanceEntries(input: {
 
   while (current <= finalDate) {
     const attendanceDate = new Date(current);
+    const workingDay = input.isWorkingDay ? input.isWorkingDay(attendanceDate) : true;
+
+    if (!workingDay) {
+      current.setDate(current.getDate() + 1);
+      continue;
+    }
+
     const isStartDay = attendanceDate.getTime() === startOfDay(input.startDate).getTime();
     const isEndDay = attendanceDate.getTime() === finalDate.getTime();
     const isSameDay = isStartDay && isEndDay;

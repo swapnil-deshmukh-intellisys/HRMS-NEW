@@ -1,4 +1,4 @@
-import { AttendanceStatus, LeaveStatus } from "@prisma/client";
+import { AttendanceStatus, LeaveDurationType, LeaveStatus } from "@prisma/client";
 import { endOfDay, startOfDay } from "../../utils/dates.js";
 
 type ActiveEmployee = {
@@ -11,6 +11,7 @@ type AttendanceFinalizationDeps = {
   findEmployeeIdsWithAttendance: (attendanceDate: Date) => Promise<number[]>;
   findEmployeeIdsWithApprovedLeave: (attendanceDate: Date) => Promise<number[]>;
   createAbsentAttendances: (entries: Array<{ employeeId: number; attendanceDate: Date; status: AttendanceStatus }>) => Promise<number>;
+  isWorkingDay?: (attendanceDate: Date) => Promise<boolean>;
 };
 
 export function parseAttendanceDateInput(date?: string) {
@@ -66,6 +67,15 @@ export async function finalizeAttendanceForDate(
   deps: AttendanceFinalizationDeps,
 ) {
   const attendanceDate = parseAttendanceDateInput(input.date);
+  const isWorkingDay = deps.isWorkingDay ? await deps.isWorkingDay(attendanceDate) : true;
+
+  if (!isWorkingDay) {
+    return {
+      attendanceDate,
+      createdCount: 0,
+    };
+  }
+
   const [employees, employeeIdsWithAttendance, employeeIdsWithApprovedLeave] = await Promise.all([
     deps.findActiveEmployees(),
     deps.findEmployeeIdsWithAttendance(attendanceDate),
@@ -111,4 +121,31 @@ export function buildApprovedLeaveWhereForAttendanceDate(attendanceDate: Date) {
 
 export function hasApprovedLeaveOverlapForAttendanceDate(leaveRequests: Array<{ status: LeaveStatus }>) {
   return leaveRequests.some((leaveRequest) => leaveRequest.status === LeaveStatus.APPROVED);
+}
+
+export function getApprovedLeaveAttendanceStatusForDate(
+  leaveRequest: {
+    startDate: Date;
+    endDate: Date;
+    startDayDuration: LeaveDurationType;
+    endDayDuration: LeaveDurationType;
+  },
+  attendanceDate: Date,
+) {
+  const targetDate = startOfDay(attendanceDate);
+  const startDate = startOfDay(leaveRequest.startDate);
+  const endDate = startOfDay(leaveRequest.endDate);
+  const isStartDay = targetDate.getTime() === startDate.getTime();
+  const isEndDay = targetDate.getTime() === endDate.getTime();
+  const isSameDay = isStartDay && isEndDay;
+
+  if (isSameDay) {
+    return leaveRequest.startDayDuration === LeaveDurationType.HALF_DAY ? AttendanceStatus.HALF_DAY : AttendanceStatus.LEAVE;
+  }
+
+  if ((isStartDay && leaveRequest.startDayDuration === LeaveDurationType.HALF_DAY) || (isEndDay && leaveRequest.endDayDuration === LeaveDurationType.HALF_DAY)) {
+    return AttendanceStatus.HALF_DAY;
+  }
+
+  return AttendanceStatus.LEAVE;
 }

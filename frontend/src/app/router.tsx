@@ -2,6 +2,7 @@ import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import LoginPage from "../features/auth/LoginPage";
 import AttendancePage from "../features/attendance/AttendancePage";
 import DashboardPage from "../features/dashboard/DashboardPage";
+import CalendarPage from "../features/calendar/CalendarPage";
 import DepartmentsPage from "../features/departments/DepartmentsPage";
 import EmployeeProfilePage from "../features/employees/EmployeeProfilePage";
 import EmployeesPage from "../features/employees/EmployeesPage";
@@ -39,6 +40,7 @@ function AppRoutes() {
             />
           }
         />
+        <Route path="/calendar" element={<CalendarPage token={token} role={sessionUser?.role ?? "EMPLOYEE"} />} />
         <Route
           path="/attendance"
           element={

@@ -9,8 +9,8 @@ type EmployeeAttendanceBreakdownChartProps = {
 const STATUS_COLORS: Record<Attendance["status"], string> = {
   PRESENT: "#16a34a",
   HALF_DAY: "#2563eb",
-  ABSENT: "#dc2626",
-  LEAVE: "#7c3aed",
+  ABSENT: "#ef4444",
+  LEAVE: "#f59e0b",
 };
 
 export default function EmployeeAttendanceBreakdownChart({ attendance }: EmployeeAttendanceBreakdownChartProps) {

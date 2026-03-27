@@ -10,7 +10,7 @@ type EmployeeAttendanceTabProps = {
 
 function formatWorkedDuration(workedMinutes: number, checkOutTime?: string | null) {
   if (!checkOutTime) {
-    return "In progress";
+    return "-";
   }
 
   if (!workedMinutes || workedMinutes <= 0) {
@@ -29,6 +29,28 @@ function formatWorkedDuration(workedMinutes: number, checkOutTime?: string | nul
   }
 
   return `${minutes}m`;
+}
+
+function getWorkedDurationLabel(record: Attendance) {
+  if (record.status === "LEAVE") {
+    return "-";
+  }
+
+  if (record.checkOutTime) {
+    return formatWorkedDuration(record.workedMinutes, record.checkOutTime);
+  }
+
+  return isToday(record.attendanceDate) ? "In progress" : "Checkout missing";
+}
+
+function renderWorkedDuration(record: Attendance) {
+  const label = getWorkedDurationLabel(record);
+
+  if (label === "Checkout missing") {
+    return <span className="attendance-warning-text">{label}</span>;
+  }
+
+  return label;
 }
 
 function getStatusClass(status: Attendance["status"]) {
@@ -56,7 +78,7 @@ export default function EmployeeAttendanceTab({ attendance }: EmployeeAttendance
             </div>,
             record.status === "LEAVE" ? "-" : formatTime(record.checkInTime),
             record.status === "LEAVE" ? "-" : formatTime(record.checkOutTime),
-            record.status === "LEAVE" ? "-" : formatWorkedDuration(record.workedMinutes, record.checkOutTime),
+            renderWorkedDuration(record),
             <span key={`status-${record.id}`} className={getStatusClass(record.status)}>
               {record.status}
             </span>,

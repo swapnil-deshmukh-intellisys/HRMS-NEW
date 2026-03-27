@@ -10,6 +10,7 @@ import { errorHandler, notFound } from "./middleware/error.js";
 import authRoutes from "./modules/auth/routes.js";
 import attendanceRoutes from "./modules/attendance/routes.js";
 import dashboardRoutes from "./modules/dashboard/routes.js";
+import calendarRoutes from "./modules/calendar/routes.js";
 import departmentsRoutes from "./modules/departments/routes.js";
 import employeesRoutes from "./modules/employees/routes.js";
 import leaveRoutes from "./modules/leaves/routes.js";
@@ -46,6 +47,7 @@ app.get("/api/health", (_request, response) => {
 
 app.use("/api/auth", authRoutes);
 app.use("/api/departments", departmentsRoutes);
+app.use("/api/calendar", calendarRoutes);
 app.use("/api/employees", employeesRoutes);
 app.use("/api/attendance", attendanceRoutes);
 app.use("/api", leaveRoutes);

@@ -15,7 +15,7 @@ import EmployeeOverviewTab from "./EmployeeOverviewTab";
 import EmployeePayrollTab from "./EmployeePayrollTab";
 import EmployeeProfileHeader from "./EmployeeProfileHeader";
 import EmployeeProfileTabs, { type EmployeeProfileTabKey } from "./EmployeeProfileTabs";
-import { createInitialEmployeeForm, formatStoredDateTimeForInput, serializeLocalDateTime } from "./employeeFormUtils";
+import { createInitialEmployeeForm, formatStoredDateForInput, formatStoredDateTimeForInput, serializeLocalDateTime } from "./employeeFormUtils";
 
 type EmployeeProfilePageProps = {
   token: string | null;
@@ -33,6 +33,9 @@ function toEmployeeForm(employee: Employee): EmployeeFormValues {
     lastName: employee.lastName,
     jobTitle: employee.jobTitle ?? "",
     phone: employee.phone ?? "",
+    annualPackageLpa: employee.annualPackageLpa ? String(employee.annualPackageLpa) : "",
+    isOnProbation: Boolean(employee.isOnProbation),
+    probationEndDate: employee.probationEndDate ? formatStoredDateForInput(employee.probationEndDate) : "",
     departmentId: String(employee.departmentId),
     managerId: employee.managerId ? String(employee.managerId) : "",
     joiningDate: formatStoredDateTimeForInput(employee.joiningDate),
@@ -59,6 +62,7 @@ export default function EmployeeProfilePage({ token, role, currentEmployeeId }: 
   const [employeeModalOpen, setEmployeeModalOpen] = useState(false);
   const [form, setForm] = useState<EmployeeFormValues>(createInitialEmployeeForm);
   const [reviewingLeaveId, setReviewingLeaveId] = useState<number | null>(null);
+  const [reviewStage, setReviewStage] = useState<"manager" | "hr" | null>(null);
   const [rejectionReason, setRejectionReason] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
@@ -184,6 +188,9 @@ export default function EmployeeProfilePage({ token, role, currentEmployeeId }: 
         password: formValues.password.trim() || undefined,
         jobTitle: formValues.jobTitle.trim() || undefined,
         phone: formValues.phone.trim() || undefined,
+        annualPackageLpa: formValues.annualPackageLpa.trim() ? Number(formValues.annualPackageLpa) : null,
+        isOnProbation: formValues.isOnProbation,
+        probationEndDate: formValues.isOnProbation && formValues.probationEndDate ? `${formValues.probationEndDate}T00:00:00.000Z` : null,
         departmentId: Number(formValues.departmentId),
         managerId: formValues.managerId ? Number(formValues.managerId) : null,
         joiningDate: serializeLocalDateTime(formValues.joiningDate),
@@ -225,35 +232,37 @@ export default function EmployeeProfilePage({ token, role, currentEmployeeId }: 
     await reloadProfile();
   }
 
-  async function reviewLeave(id: number, action: "approve" | "reject") {
+  async function reviewLeave(id: number, action: "approve" | "reject", stage: "manager" | "hr") {
     if (action === "reject") {
       setReviewingLeaveId(id);
+      setReviewStage(stage);
       setRejectionReason("");
       return;
     }
 
-    await apiRequest(`/leaves/${id}/approve`, {
+    await apiRequest(`/leaves/${id}/${stage}-approve`, {
       method: "PUT",
       token,
     });
 
-    setMessage("Leave approved successfully.");
+    setMessage(stage === "manager" ? "Leave moved to HR review." : "Leave approved successfully.");
     await reloadProfile();
   }
 
   async function submitRejection() {
-    if (!reviewingLeaveId) {
+    if (!reviewingLeaveId || !reviewStage) {
       return;
     }
 
-    await apiRequest(`/leaves/${reviewingLeaveId}/reject`, {
+    await apiRequest(`/leaves/${reviewingLeaveId}/${reviewStage}-reject`, {
       method: "PUT",
       token,
       body: { rejectionReason },
     });
 
-    setMessage("Leave rejected successfully.");
+    setMessage(reviewStage === "manager" ? "Leave rejected at manager review." : "Leave rejected at HR review.");
     setReviewingLeaveId(null);
+    setReviewStage(null);
     setRejectionReason("");
     await reloadProfile();
   }
@@ -339,7 +348,14 @@ export default function EmployeeProfilePage({ token, role, currentEmployeeId }: 
           onCancelEdit={() => setEmployeeModalOpen(false)}
         />
       </Modal>
-      <Modal open={reviewingLeaveId !== null} title="Reject leave request" onClose={() => setReviewingLeaveId(null)}>
+      <Modal
+        open={reviewingLeaveId !== null}
+        title={reviewStage === "hr" ? "Reject at HR review" : "Reject at manager review"}
+        onClose={() => {
+          setReviewingLeaveId(null);
+          setReviewStage(null);
+        }}
+      >
         <div className="stack leave-review-modal">
           <p className="muted">Add a clear reason so the employee understands why this request was rejected.</p>
           <label>
@@ -347,7 +363,14 @@ export default function EmployeeProfilePage({ token, role, currentEmployeeId }: 
             <textarea value={rejectionReason} onChange={(event) => setRejectionReason(event.target.value)} rows={4} minLength={3} />
           </label>
           <div className="button-row">
-            <button type="button" className="secondary" onClick={() => setReviewingLeaveId(null)}>
+            <button
+              type="button"
+              className="secondary"
+              onClick={() => {
+                setReviewingLeaveId(null);
+                setReviewStage(null);
+              }}
+            >
               Close
             </button>
             <button type="button" onClick={submitRejection} disabled={rejectionReason.trim().length < 3}>

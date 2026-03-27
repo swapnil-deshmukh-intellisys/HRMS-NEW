@@ -7,11 +7,13 @@ import { validate } from "../../middleware/validate.js";
 import { AppError, sendSuccess } from "../../utils/api.js";
 import { startOfDay } from "../../utils/dates.js";
 import { canTeamLeadAccessEmployee, getScopedEmployeeIdsForTeamLead, hasEmployeeCapability } from "../../utils/team-lead.js";
+import { getCalendarDayStatus } from "../calendar/service.js";
 import {
   buildApprovedLeaveWhereForAttendanceDate,
   calculateWorkedMinutes,
   combineAttendanceDateAndTime,
   finalizeAttendanceForDate,
+  getApprovedLeaveAttendanceStatusForDate,
   getRegularizedAttendanceStatus,
   parseAttendanceDateInput,
 } from "./service.js";
@@ -66,6 +68,28 @@ router.post("/check-in", validate(attendanceSchema), async (request, response, n
         },
       },
     });
+
+    const approvedLeaveToday = await prisma.leaveRequest.findFirst({
+      where: {
+        employeeId,
+        ...buildApprovedLeaveWhereForAttendanceDate(today),
+      },
+      select: {
+        startDate: true,
+        endDate: true,
+        startDayDuration: true,
+        endDayDuration: true,
+      },
+    });
+
+    if (approvedLeaveToday) {
+      const leaveStatus = getApprovedLeaveAttendanceStatusForDate(approvedLeaveToday, today);
+      throw new AppError(
+        leaveStatus === AttendanceStatus.HALF_DAY
+          ? "Check-in is not available on approved half-day leave yet"
+          : "You are already marked on approved leave for today",
+      );
+    }
 
     if (existing?.status === AttendanceStatus.LEAVE) {
       throw new AppError("You are already marked on approved leave for today");
@@ -192,6 +216,13 @@ router.post(
             });
 
             return result.count;
+          },
+          isWorkingDay: async (attendanceDate) => {
+            const exceptions = await prisma.calendarException.findMany({
+              where: { date: attendanceDate },
+            });
+
+            return getCalendarDayStatus(attendanceDate, exceptions).isWorkingDay;
           },
         },
       );

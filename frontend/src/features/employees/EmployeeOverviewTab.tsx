@@ -11,6 +11,19 @@ type DetailItem = {
 };
 
 export default function EmployeeOverviewTab({ employee }: EmployeeOverviewTabProps) {
+  const numberFormatter = new Intl.NumberFormat("en-IN", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+
+  const compensationDetails: DetailItem[] = [
+    { label: "Package (LPA)", value: employee.annualPackageLpa != null ? numberFormatter.format(employee.annualPackageLpa) : "Not set" },
+    { label: "Gross monthly", value: employee.grossMonthlySalary != null ? numberFormatter.format(employee.grossMonthlySalary) : "Not set" },
+    { label: "Basic monthly", value: employee.basicMonthlySalary != null ? numberFormatter.format(employee.basicMonthlySalary) : "Not set" },
+    { label: "Probation", value: employee.isOnProbation ? "On probation" : "Not on probation" },
+    { label: "Probation end", value: employee.probationEndDate ? formatDateLabel(employee.probationEndDate) : "Not set" },
+  ];
+
   const employmentDetails: DetailItem[] = [
     { label: "Department", value: employee.department?.name ?? "-" },
     { label: "Role", value: employee.user?.role.name ?? "-" },
@@ -28,6 +41,7 @@ export default function EmployeeOverviewTab({ employee }: EmployeeOverviewTabPro
   const sections = [
     { title: "Employment", items: employmentDetails },
     { title: "Reporting", items: reportingDetails },
+    { title: "Compensation", items: compensationDetails },
   ];
 
   return (

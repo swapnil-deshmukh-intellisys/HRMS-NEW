@@ -73,3 +73,24 @@ test("finalizeAttendanceForDate creates absent records only for eligible employe
   assert.equal(createdEntries[0]?.employeeId, 1);
   assert.equal(createdEntries[0]?.status, AttendanceStatus.ABSENT);
 });
+
+test("finalizeAttendanceForDate skips non-working days", async () => {
+  let createdCount = 0;
+
+  const result = await finalizeAttendanceForDate(
+    { date: "2026-03-29" },
+    {
+      findActiveEmployees: async () => [{ id: 1, joiningDate: new Date(2026, 2, 20) }],
+      findEmployeeIdsWithAttendance: async () => [],
+      findEmployeeIdsWithApprovedLeave: async () => [],
+      createAbsentAttendances: async (entries) => {
+        createdCount += entries.length;
+        return entries.length;
+      },
+      isWorkingDay: async () => false,
+    },
+  );
+
+  assert.equal(result.createdCount, 0);
+  assert.equal(createdCount, 0);
+});

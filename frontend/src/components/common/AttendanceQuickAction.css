@@ -1,3 +1,33 @@
+.attendance-quick-action-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  white-space: nowrap;
+}
+
+.attendance-quick-action-wrap--compact {
+  gap: 10px;
+}
+
+.attendance-quick-action-meta {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  padding: 0 2px;
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+}
+
+.attendance-quick-action-meta__time {
+  font-size: var(--text-xs);
+}
+
+.attendance-quick-action-meta__worked {
+  color: var(--color-text-strong);
+  font-size: var(--text-sm);
+  font-weight: var(--fw-semibold);
+}
+
 .attendance-quick-action {
   min-width: 124px;
 }
@@ -7,6 +37,7 @@
   min-width: 108px;
   padding: 9px 12px;
   font-size: var(--text-sm);
+  align-self: center;
 }
 
 .attendance-quick-action--check-in,
@@ -24,6 +55,11 @@
 
 .attendance-quick-action--completed,
 .attendance-quick-action--leave {
+  background: #fff7ed;
+  color: #b45309;
+}
+
+.attendance-quick-action--completed {
   background: var(--color-surface-secondary);
   color: var(--color-accent-strong);
 }

@@ -8,7 +8,7 @@ import { apiRequest } from "../../services/api";
 import type { Department, Employee, Role } from "../../types";
 import EmployeeForm, { type EmployeeFormValues } from "./EmployeeForm";
 import EmployeeTable from "./EmployeeTable";
-import { createDefaultJoiningDateInput, createInitialEmployeeForm, formatStoredDateTimeForInput, serializeLocalDateTime } from "./employeeFormUtils";
+import { createDefaultJoiningDateInput, createInitialEmployeeForm, formatStoredDateForInput, formatStoredDateTimeForInput, serializeLocalDateTime } from "./employeeFormUtils";
 
 type EmployeesPageProps = {
   token: string | null;
@@ -80,6 +80,9 @@ export default function EmployeesPage({ token, role }: EmployeesPageProps) {
         password: formValues.password.trim() || undefined,
         jobTitle: formValues.jobTitle.trim() || undefined,
         phone: formValues.phone.trim() || undefined,
+        annualPackageLpa: formValues.annualPackageLpa.trim() ? Number(formValues.annualPackageLpa) : null,
+        isOnProbation: formValues.isOnProbation,
+        probationEndDate: formValues.isOnProbation && formValues.probationEndDate ? `${formValues.probationEndDate}T00:00:00.000Z` : null,
         departmentId: Number(formValues.departmentId),
         managerId: formValues.managerId ? Number(formValues.managerId) : null,
         joiningDate: serializeLocalDateTime(formValues.joiningDate),
@@ -119,6 +122,9 @@ export default function EmployeesPage({ token, role }: EmployeesPageProps) {
       lastName: detailedEmployee.lastName,
       jobTitle: detailedEmployee.jobTitle ?? "",
       phone: detailedEmployee.phone ?? "",
+      annualPackageLpa: detailedEmployee.annualPackageLpa ? String(detailedEmployee.annualPackageLpa) : "",
+      isOnProbation: Boolean(detailedEmployee.isOnProbation),
+      probationEndDate: detailedEmployee.probationEndDate ? formatStoredDateForInput(detailedEmployee.probationEndDate) : "",
       departmentId: String(detailedEmployee.departmentId),
       managerId: detailedEmployee.managerId ? String(detailedEmployee.managerId) : "",
       joiningDate: formatStoredDateTimeForInput(detailedEmployee.joiningDate),

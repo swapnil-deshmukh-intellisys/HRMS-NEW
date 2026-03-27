@@ -41,6 +41,28 @@ export default function AttendancePage({ token, role, currentEmployeeId, current
   const canManageOthers = role !== "EMPLOYEE" || isTeamLead;
   const canFinalizeAttendance = role === "ADMIN" || role === "HR";
 
+  function getWorkedDurationLabel(record: Attendance) {
+    if (record.status === "LEAVE") {
+      return "-";
+    }
+
+    if (record.checkOutTime) {
+      return formatWorkedDuration(record.workedMinutes);
+    }
+
+    return isToday(record.attendanceDate) ? "In progress" : "Checkout missing";
+  }
+
+  function renderWorkedDuration(record: Attendance) {
+    const label = getWorkedDurationLabel(record);
+
+    if (label === "Checkout missing") {
+      return <span className="attendance-warning-text">{label}</span>;
+    }
+
+    return label;
+  }
+
   const dateOptions = Array.from({ length: 14 }, (_, index) => {
     const date = new Date();
     date.setDate(date.getDate() - index);
@@ -379,7 +401,7 @@ export default function AttendancePage({ token, role, currentEmployeeId, current
                 </div>,
                 formatTime(record.checkInTime),
                 formatTime(record.checkOutTime),
-                record.status === "LEAVE" ? "-" : record.checkOutTime ? formatWorkedDuration(record.workedMinutes) : "In progress",
+                renderWorkedDuration(record),
                 <span key={`status-${record.id}`} className={getStatusClass(record.status)}>
                   {record.status}
                 </span>,

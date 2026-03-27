@@ -3,7 +3,6 @@ import { Bell, Search, UserRound } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import AttendanceQuickAction from "../components/common/AttendanceQuickAction";
 import Button from "../components/common/Button";
-
 type NavbarProps = {
   title: string;
   navOpen: boolean;

@@ -13,6 +13,27 @@ export type Department = {
   code: string;
 };
 
+export type CalendarException = {
+  id: number;
+  date: string;
+  type: "HOLIDAY" | "WORKING_SATURDAY";
+  name?: string | null;
+  description?: string | null;
+  createdById: number;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type CalendarDay = {
+  date: string;
+  dayNumber: number;
+  weekday: number;
+  status: "WORKING" | "OFF" | "HOLIDAY" | "WORKING_SATURDAY";
+  isWorkingDay: boolean;
+  isPaidDay: boolean;
+  exception: CalendarException | null;
+};
+
 export type Employee = {
   id: number;
   employeeCode: string;
@@ -20,6 +41,11 @@ export type Employee = {
   lastName: string;
   jobTitle?: string | null;
   phone?: string | null;
+  annualPackageLpa?: number | null;
+  grossMonthlySalary?: number | null;
+  basicMonthlySalary?: number | null;
+  isOnProbation?: boolean;
+  probationEndDate?: string | null;
   departmentId: number;
   managerId?: number | null;
   joiningDate: string;
@@ -72,11 +98,16 @@ export type LeaveRequest = {
   attachmentMime?: string | null;
   reason: string;
   status: "PENDING" | "APPROVED" | "REJECTED" | "CANCELLED";
-  approvedAt?: string | null;
-  rejectionReason?: string | null;
+  managerApprovalStatus: "PENDING" | "APPROVED" | "REJECTED";
+  managerApprovedAt?: string | null;
+  managerRejectionReason?: string | null;
+  hrApprovalStatus: "PENDING" | "APPROVED" | "REJECTED";
+  hrApprovedAt?: string | null;
+  hrRejectionReason?: string | null;
   employee: Employee;
   leaveType: LeaveType;
-  approvedBy?: Employee | null;
+  managerApprovedBy?: Employee | null;
+  hrApprovedBy?: Employee | null;
 };
 
 export type Attendance = {

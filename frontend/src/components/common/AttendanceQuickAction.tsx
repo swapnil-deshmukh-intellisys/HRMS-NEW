@@ -4,6 +4,7 @@ import Modal from "./Modal";
 import { apiRequest } from "../../services/api";
 import type { Attendance } from "../../types";
 import { ATTENDANCE_EVENT, dispatchAttendanceUpdated, getSelfAttendanceActionState } from "./attendanceQuickActionUtils";
+import { formatTime } from "../../utils/format";
 
 type AttendanceQuickActionProps = {
   token: string | null;
@@ -27,6 +28,7 @@ export default function AttendanceQuickAction({
   const [attendanceToday, setAttendanceToday] = useState<Attendance | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [now, setNow] = useState(() => Date.now());
 
   const loadAttendance = useCallback(async () => {
     if (!currentEmployeeId) {
@@ -59,8 +61,40 @@ export default function AttendanceQuickAction({
     return () => window.removeEventListener(ATTENDANCE_EVENT, handleAttendanceUpdated);
   }, [loadAttendance]);
 
+  useEffect(() => {
+    if (!attendanceToday?.checkInTime || attendanceToday.checkOutTime) {
+      return;
+    }
+
+    const timer = window.setInterval(() => {
+      setNow(Date.now());
+    }, 60000);
+
+    return () => window.clearInterval(timer);
+  }, [attendanceToday?.checkInTime, attendanceToday?.checkOutTime]);
+
   const actionState = useMemo(() => getSelfAttendanceActionState(attendanceToday), [attendanceToday]);
 
+  const liveWorkedDuration = useMemo(() => {
+    if (!attendanceToday?.checkInTime || attendanceToday.checkOutTime) {
+      return null;
+    }
+
+    const checkInTime = new Date(attendanceToday.checkInTime).getTime();
+    const workedMinutes = Math.max(0, Math.floor((now - checkInTime) / 60000));
+    const hours = Math.floor(workedMinutes / 60);
+    const minutes = workedMinutes % 60;
+
+    if (hours > 0 && minutes > 0) {
+      return `${hours}h ${minutes}m`;
+    }
+
+    if (hours > 0) {
+      return `${hours}h`;
+    }
+
+    return `${minutes}m`;
+  }, [attendanceToday?.checkInTime, attendanceToday?.checkOutTime, now]);
   async function handleClick() {
     if (!actionState.actionPath || actionState.disabled || submitting) {
       return;
@@ -99,16 +133,24 @@ export default function AttendanceQuickAction({
 
   return (
     <>
-      <button
-        type="button"
-        className={`attendance-quick-action attendance-quick-action--${size} ${actionState.toneClass} ${className}`.trim()}
-        onClick={handleClick}
-        disabled={actionState.disabled || submitting}
-        aria-label={actionState.hint}
-        title={actionState.hint}
-      >
-        {submitting ? "Updating..." : actionState.label}
-      </button>
+      <div className={`attendance-quick-action-wrap attendance-quick-action-wrap--${size}`.trim()}>
+        {attendanceToday?.checkInTime && !attendanceToday.checkOutTime ? (
+          <div className="attendance-quick-action-meta" aria-live="polite">
+            <span className="attendance-quick-action-meta__time">In {formatTime(attendanceToday.checkInTime)}</span>
+            <strong className="attendance-quick-action-meta__worked">{liveWorkedDuration}</strong>
+          </div>
+        ) : null}
+        <button
+          type="button"
+          className={`attendance-quick-action attendance-quick-action--${size} ${actionState.toneClass} ${className}`.trim()}
+          onClick={handleClick}
+          disabled={actionState.disabled || submitting}
+          aria-label={actionState.hint}
+          title={actionState.hint}
+        >
+          {submitting ? "Updating..." : actionState.label}
+        </button>
+      </div>
       <Modal open={confirmOpen} title="Confirm check out" onClose={() => setConfirmOpen(false)}>
         <div className="stack attendance-quick-action-confirm">
           <p className="muted">Are you sure you want to check out for today? This will complete today&apos;s attendance entry.</p>

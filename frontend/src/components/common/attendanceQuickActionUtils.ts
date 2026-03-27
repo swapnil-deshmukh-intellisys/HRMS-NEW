@@ -29,6 +29,17 @@ export function getSelfAttendanceActionState(attendance: Attendance | null) {
     };
   }
 
+  if (attendance.status === "HALF_DAY" && !attendance.checkInTime && !attendance.checkOutTime) {
+    return {
+      label: "Half day",
+      actionPath: null,
+      disabled: true,
+      toneClass: "attendance-quick-action--leave",
+      hint: "Approved half-day leave for today",
+      requiresConfirmation: false,
+    };
+  }
+
   if (attendance.status === "ABSENT") {
     return {
       label: "Marked absent",

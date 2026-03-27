@@ -4,12 +4,24 @@ import type { Department } from "../../types";
 
 type DepartmentTableProps = {
   departments: Department[];
+  onAddDepartment?: () => void;
 };
 
-export default function DepartmentTable({ departments }: DepartmentTableProps) {
+export default function DepartmentTable({ departments, onAddDepartment }: DepartmentTableProps) {
   return (
-    <div className="card compact-table-card">
-      <h3>Departments</h3>
+    <div className="card dense-table-card">
+      <div className="action-row">
+        <div>
+          <h3>Departments</h3>
+        </div>
+        {onAddDepartment ? (
+          <div className="button-row row-actions">
+            <button type="button" onClick={onAddDepartment}>
+              Add department
+            </button>
+          </div>
+        ) : null}
+      </div>
       <Table compact columns={["Name", "Code"]} rows={departments.map((department) => [department.name, department.code])} />
     </div>
   );

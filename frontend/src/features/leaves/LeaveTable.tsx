@@ -8,11 +8,20 @@ type LeaveTableProps = {
   role: Role;
   currentEmployeeId: number | null;
   teamLeadScopeIds?: number[];
-  onReview: (id: number, action: "approve" | "reject") => void | Promise<void>;
+  onReview: (id: number, action: "approve" | "reject", stage: "manager" | "hr") => void | Promise<void>;
   onCancel: (id: number) => void | Promise<void>;
+  onRepairAttendance?: (id: number) => void | Promise<void>;
 };
 
-export default function LeaveTable({ leaves, role, currentEmployeeId, teamLeadScopeIds = [], onReview, onCancel }: LeaveTableProps) {
+export default function LeaveTable({
+  leaves,
+  role,
+  currentEmployeeId,
+  teamLeadScopeIds = [],
+  onReview,
+  onCancel,
+  onRepairAttendance,
+}: LeaveTableProps) {
   function getStatusClass(status: LeaveRequest["status"]) {
     return `status-pill status-pill--${status.toLowerCase()}`;
   }
@@ -47,6 +56,60 @@ export default function LeaveTable({ leaves, role, currentEmployeeId, teamLeadSc
     return `${formatDateLabel(leave.startDate)} to ${formatDateLabel(leave.endDate)}`;
   }
 
+  function getStepClass(status: LeaveRequest["managerApprovalStatus"]) {
+    return `leave-step leave-step--${status.toLowerCase()}`;
+  }
+
+  function getReviewSummary(leave: LeaveRequest) {
+    if (leave.status === "APPROVED") {
+      return leave.hrApprovedAt ? formatDateTime(leave.hrApprovedAt) : "HR approved";
+    }
+
+    if (leave.status === "REJECTED") {
+      if (leave.hrApprovalStatus === "REJECTED") {
+        return leave.hrRejectionReason || "Rejected by HR";
+      }
+
+      if (leave.managerApprovalStatus === "REJECTED") {
+        return leave.managerRejectionReason || "Rejected by manager";
+      }
+    }
+
+    if (leave.status === "CANCELLED") {
+      return "Cancelled";
+    }
+
+    if (leave.managerApprovalStatus === "APPROVED") {
+      return leave.managerApprovedAt ? `Mgr ${formatDateTime(leave.managerApprovedAt)}` : "Awaiting HR";
+    }
+
+    return "-";
+  }
+
+  function canManagerReview(leave: LeaveRequest) {
+    if (leave.status !== "PENDING" || leave.managerApprovalStatus !== "PENDING") {
+      return false;
+    }
+
+    if (role === "ADMIN") {
+      return true;
+    }
+
+    return role === "MANAGER" && leave.employee.managerId === currentEmployeeId && leave.employee.id !== currentEmployeeId;
+  }
+
+  function canHrReview(leave: LeaveRequest) {
+    if (
+      leave.status !== "PENDING" ||
+      leave.managerApprovalStatus !== "APPROVED" ||
+      leave.hrApprovalStatus !== "PENDING"
+    ) {
+      return false;
+    }
+
+    return role === "ADMIN" || role === "HR";
+  }
+
   return (
     <div className="leave-table-surface">
       <div className="table-wrap">
@@ -59,6 +122,7 @@ export default function LeaveTable({ leaves, role, currentEmployeeId, teamLeadSc
               <th>Days</th>
               <th>Breakdown</th>
               <th>Status</th>
+              <th>Progress</th>
               <th>Reason</th>
               <th>Reviewed On</th>
               <th>Attachment</th>
@@ -66,85 +130,98 @@ export default function LeaveTable({ leaves, role, currentEmployeeId, teamLeadSc
             </tr>
           </thead>
           <tbody>
-            {leaves.length ? leaves.map((leave) => (
-              <tr key={leave.id}>
-                <td>
-                  <div className="table-cell-stack">
-                    <span className="table-cell-primary">{`${leave.employee.firstName} ${leave.employee.lastName}`}</span>
-                    <span className="table-cell-secondary">{leave.employee.employeeCode}</span>
-                  </div>
-                </td>
-                <td>
-                  <div className="table-cell-stack">
-                    <span className="table-cell-primary">{leave.leaveType.name}</span>
-                    <span className="table-cell-secondary">{leave.leaveType.code}</span>
-                  </div>
-                </td>
-                <td>{formatLeaveRange(leave)}</td>
-                <td>
-                  <div className="table-cell-stack">
-                    <span className="table-cell-primary">{formatLeaveDays(leave.totalDays)}</span>
-                    <span className="table-cell-secondary">{getDurationLabel(leave)}</span>
-                  </div>
-                </td>
-                <td>{`${formatLeaveDays(leave.paidDays)} Paid / ${formatLeaveDays(leave.unpaidDays)} Unpaid`}</td>
-                <td>
-                  <span className={getStatusClass(leave.status)}>{leave.status}</span>
-                </td>
-                <td>{leave.reason}</td>
-                <td>
-                  {leave.status === "APPROVED"
-                    ? leave.approvedAt
-                      ? formatDateTime(leave.approvedAt)
-                      : "-"
-                    : leave.status === "REJECTED"
-                      ? leave.rejectionReason || "Rejected"
-                      : leave.status === "CANCELLED"
-                        ? "Cancelled"
-                        : "-"}
-                </td>
-                <td>
-                  {leave.attachmentPath ? (
+            {leaves.length ? (
+              leaves.map((leave) => (
+                <tr key={leave.id}>
+                  <td>
                     <div className="table-cell-stack">
-                      <a className="table-cell-primary" href={getFileUrl(leave.attachmentPath) ?? "#"} target="_blank" rel="noreferrer">
-                        View
-                      </a>
-                      <span className="table-cell-secondary">{leave.attachmentName ?? "Attachment"}</span>
+                      <span className="table-cell-primary">{`${leave.employee.firstName} ${leave.employee.lastName}`}</span>
+                      <span className="table-cell-secondary">{leave.employee.employeeCode}</span>
                     </div>
-                  ) : (
-                    "-"
-                  )}
-                </td>
-                <td>
-                  <div className="button-row row-actions">
-                    {leave.status === "PENDING" &&
-                    (role === "HR" ||
-                      role === "ADMIN" ||
-                      (role === "MANAGER" &&
-                        leave.employee.managerId === currentEmployeeId &&
-                        leave.employee.id !== currentEmployeeId) ||
-                      (role === "EMPLOYEE" &&
-                        leave.employee.id !== currentEmployeeId &&
-                        teamLeadScopeIds.includes(leave.employee.id))) ? (
-                      <>
-                        <button onClick={() => onReview(leave.id, "approve")}>Approve</button>
-                        <button className="secondary" onClick={() => onReview(leave.id, "reject")}>
-                          Reject
-                        </button>
-                      </>
-                    ) : leave.status === "PENDING" && leave.employee.id === currentEmployeeId ? (
-                      <button className="secondary" onClick={() => onCancel(leave.id)}>
-                        Cancel
-                      </button>
+                  </td>
+                  <td>
+                    <div className="table-cell-stack">
+                      <span className="table-cell-primary">{leave.leaveType.name}</span>
+                      <span className="table-cell-secondary">{leave.leaveType.code}</span>
+                    </div>
+                  </td>
+                  <td>{formatLeaveRange(leave)}</td>
+                  <td>
+                    <div className="table-cell-stack">
+                      <span className="table-cell-primary">{formatLeaveDays(leave.totalDays)}</span>
+                      <span className="table-cell-secondary">{getDurationLabel(leave)}</span>
+                    </div>
+                  </td>
+                  <td>{`${formatLeaveDays(leave.paidDays)} Paid / ${formatLeaveDays(leave.unpaidDays)} Unpaid`}</td>
+                  <td>
+                    <span className={getStatusClass(leave.status)}>{leave.status}</span>
+                  </td>
+                  <td>
+                    <div className="leave-progress">
+                      <div className={getStepClass(leave.managerApprovalStatus)}>
+                        <span className="leave-step__label">Manager</span>
+                        <span className="leave-step__value">{leave.managerApprovalStatus}</span>
+                      </div>
+                      <div className={getStepClass(leave.hrApprovalStatus)}>
+                        <span className="leave-step__label">HR</span>
+                        <span className="leave-step__value">{leave.hrApprovalStatus}</span>
+                      </div>
+                    </div>
+                  </td>
+                  <td>{leave.reason}</td>
+                  <td>{getReviewSummary(leave)}</td>
+                  <td>
+                    {leave.attachmentPath ? (
+                      <div className="table-cell-stack">
+                        <a className="table-cell-primary" href={getFileUrl(leave.attachmentPath) ?? "#"} target="_blank" rel="noreferrer">
+                          View
+                        </a>
+                        <span className="table-cell-secondary">{leave.attachmentName ?? "Attachment"}</span>
+                      </div>
                     ) : (
                       "-"
                     )}
-                  </div>
-                </td>
-              </tr>
-            )) : (
+                  </td>
+                  <td>
+                    <div className="button-row row-actions">
+                      {canManagerReview(leave) ? (
+                        <>
+                          <button onClick={() => onReview(leave.id, "approve", "manager")}>Manager approve</button>
+                          <button className="secondary" onClick={() => onReview(leave.id, "reject", "manager")}>
+                            Reject
+                          </button>
+                        </>
+                      ) : canHrReview(leave) ? (
+                        <>
+                          <button onClick={() => onReview(leave.id, "approve", "hr")}>HR approve</button>
+                          <button className="secondary" onClick={() => onReview(leave.id, "reject", "hr")}>
+                            Reject
+                          </button>
+                        </>
+                      ) : leave.status === "PENDING" &&
+                        leave.managerApprovalStatus === "PENDING" &&
+                        leave.employee.id === currentEmployeeId ? (
+                        <button className="secondary" onClick={() => onCancel(leave.id)}>
+                          Cancel
+                        </button>
+                      ) : leave.status === "APPROVED" && (role === "HR" || role === "ADMIN") ? (
+                        <button className="secondary" onClick={() => onRepairAttendance?.(leave.id)}>
+                          Repair attendance
+                        </button>
+                      ) : role === "EMPLOYEE" &&
+                        leave.employee.id !== currentEmployeeId &&
+                        teamLeadScopeIds.includes(leave.employee.id) ? (
+                        <span className="table-cell-secondary">View only</span>
+                      ) : (
+                        "-"
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              ))
+            ) : (
               <tr>
-                <td colSpan={10} className="leave-table-empty-cell">
+                <td colSpan={11} className="leave-table-empty-cell">
                   <div className="leave-table-empty-state">
                     <strong>No leave requests yet.</strong>
                     <span>Use the Apply for leave action to submit the first request.</span>

@@ -1,0 +1,4 @@
+ALTER TABLE "Employee"
+ADD COLUMN "annualPackageLpa" DOUBLE PRECISION,
+ADD COLUMN "grossMonthlySalary" DOUBLE PRECISION,
+ADD COLUMN "basicMonthlySalary" DOUBLE PRECISION;

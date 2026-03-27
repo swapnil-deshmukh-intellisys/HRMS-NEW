@@ -32,6 +32,7 @@ export default function EmployeeProfileHeader({ employee, role, onEdit, onToggle
           <div className="employee-profile-header__headline">
             <h2>{`${employee.firstName} ${employee.lastName}`}</h2>
             <span className={getStatusClass(getStatusLabel(employee))}>{getStatusLabel(employee)}</span>
+            {employee.isOnProbation ? <span className="status-pill status-pill--pending">ON PROBATION</span> : null}
           </div>
           <p className="employee-profile-header__meta">
             <span className="mono">{employee.employeeCode}</span>

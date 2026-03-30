@@ -43,10 +43,24 @@ const attendanceRegularizationReviewSchema = z.object({
   rejectionReason: z.string().trim().optional(),
 });
 
+function isMobileOrTabletUserAgent(userAgent: string) {
+  return /android|iphone|ipad|ipod|mobile|tablet|silk|kindle|playbook/i.test(userAgent);
+}
+
+function assertDesktopAttendanceRequest(request: { headers?: Record<string, string | string[] | undefined> }) {
+  const userAgentHeader = request.headers?.["user-agent"];
+  const userAgent = Array.isArray(userAgentHeader) ? userAgentHeader.join(" ") : userAgentHeader ?? "";
+
+  if (isMobileOrTabletUserAgent(userAgent)) {
+    throw new AppError("Attendance marking is available only on desktop or laptop devices.", 403);
+  }
+}
+
 router.use(authenticate);
 
 router.post("/check-in", validate(attendanceSchema), async (request, response, next) => {
   try {
+    assertDesktopAttendanceRequest(request);
     const employeeId = request.body.employeeId ?? request.user?.employeeId;
 
     if (!employeeId) {
@@ -128,6 +142,7 @@ router.post("/check-in", validate(attendanceSchema), async (request, response, n
 
 router.post("/check-out", validate(attendanceSchema), async (request, response, next) => {
   try {
+    assertDesktopAttendanceRequest(request);
     const employeeId = request.body.employeeId ?? request.user?.employeeId;
 
     if (!employeeId) {

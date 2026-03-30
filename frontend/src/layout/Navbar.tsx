@@ -23,7 +23,9 @@ export default function Navbar({ title, navOpen, onToggleNav, token, currentEmpl
         <h1>{title}</h1>
       </div>
       <div className="topbar-actions">
-        <AttendanceQuickAction token={token} currentEmployeeId={currentEmployeeId} size="compact" />
+        <div className="topbar-attendance-action">
+          <AttendanceQuickAction token={token} currentEmployeeId={currentEmployeeId} size="compact" />
+        </div>
         <label className="topbar-search-wrap" aria-label="Search workspace">
           <Search className="topbar-search-icon" size={16} strokeWidth={2} />
           <input className="topbar-search" type="search" placeholder="Search..." />

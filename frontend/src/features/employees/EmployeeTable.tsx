@@ -22,8 +22,49 @@ export default function EmployeeTable({ employees, onAdd, onEdit, onToggleStatus
     return employee.capabilities?.some((capability) => capability.capability === "TEAM_LEAD");
   }
 
+  function getDesignationBadgeClass(jobTitle?: string | null) {
+    const normalizedTitle = jobTitle?.trim().toLowerCase();
+
+    if (!normalizedTitle) {
+      return null;
+    }
+
+    if (normalizedTitle === "managing director") {
+      return "employee-designation-badge employee-designation-badge--managing-director";
+    }
+
+    if (normalizedTitle === "ceo" || normalizedTitle === "chief executive officer") {
+      return "employee-designation-badge employee-designation-badge--ceo";
+    }
+
+    if (normalizedTitle === "hr" || normalizedTitle === "hr manager" || normalizedTitle.includes("human resources")) {
+      return "employee-designation-badge employee-designation-badge--hr";
+    }
+
+    if (normalizedTitle === "manager") {
+      return "employee-designation-badge employee-designation-badge--manager";
+    }
+
+    return null;
+  }
+
+  function renderJobTitle(employee: Employee) {
+    if (!employee.jobTitle) {
+      return employee.user?.email ?? employee.employeeCode;
+    }
+
+    const designationBadgeClass = getDesignationBadgeClass(employee.jobTitle);
+
+    return (
+      <>
+        {designationBadgeClass ? <span className={designationBadgeClass}>{employee.jobTitle}</span> : employee.jobTitle}
+        {isTeamLead(employee) ? " · TL" : ""}
+      </>
+    );
+  }
+
   return (
-    <div className="card dense-table-card">
+    <div className="card dense-table-card employee-directory-card">
       <div className="action-row">
         <div>
           <h3>Employee directory</h3>
@@ -32,7 +73,8 @@ export default function EmployeeTable({ employees, onAdd, onEdit, onToggleStatus
           Add employee
         </button>
       </div>
-      <div className="table-wrap">
+
+      <div className="table-wrap employee-directory-table">
         <table className="table table--dense">
           <thead>
             <tr>
@@ -61,11 +103,7 @@ export default function EmployeeTable({ employees, onAdd, onEdit, onToggleStatus
                 <td>
                   <div className="table-cell-stack">
                     <span className="table-cell-primary">{`${employee.firstName} ${employee.lastName}`}</span>
-                    <span className="table-cell-secondary">
-                      {employee.jobTitle
-                        ? `${employee.jobTitle}${isTeamLead(employee) ? " · TL" : ""}`
-                        : employee.user?.email ?? employee.employeeCode}
-                    </span>
+                    <span className="table-cell-secondary">{renderJobTitle(employee)}</span>
                   </div>
                 </td>
                 <td>
@@ -103,6 +141,57 @@ export default function EmployeeTable({ employees, onAdd, onEdit, onToggleStatus
             ))}
           </tbody>
         </table>
+      </div>
+
+      <div className="employee-directory-mobile-list">
+        {employees.map((employee) => (
+          <article key={employee.id} className="employee-mobile-card" onClick={() => onSelect(employee)}>
+            <div className="employee-mobile-card__header">
+              <div className="table-cell-stack">
+                <span className="table-cell-primary">{`${employee.firstName} ${employee.lastName}`}</span>
+                <span className="table-cell-secondary">{renderJobTitle(employee)}</span>
+              </div>
+              <span className={getStatusClass(getStatusLabel(employee))}>{getStatusLabel(employee)}</span>
+            </div>
+
+            <div className="employee-mobile-card__meta">
+              <div className="table-cell-stack">
+                <span className="table-cell-secondary">Code</span>
+                <span className="table-cell-primary mono">{employee.employeeCode}</span>
+              </div>
+              <div className="table-cell-stack">
+                <span className="table-cell-secondary">Department</span>
+                <span className="table-cell-primary">{employee.department?.name ?? "-"}</span>
+              </div>
+              <div className="table-cell-stack">
+                <span className="table-cell-secondary">Role</span>
+                <span className="table-cell-primary">{employee.user?.role.name ?? "-"}</span>
+              </div>
+            </div>
+
+            <div className="button-row row-actions employee-mobile-card__actions">
+              <button
+                type="button"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onEdit(employee);
+                }}
+              >
+                Edit
+              </button>
+              <button
+                type="button"
+                className="secondary"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onToggleStatus(employee);
+                }}
+              >
+                {employee.isActive ? "Deactivate" : "Activate"}
+              </button>
+            </div>
+          </article>
+        ))}
       </div>
     </div>
   );

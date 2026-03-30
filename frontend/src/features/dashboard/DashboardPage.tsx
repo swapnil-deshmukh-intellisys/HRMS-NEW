@@ -1,14 +1,13 @@
 import "./DashboardPage.css";
-import { useCallback, useEffect, useState } from "react";
-import { Bar, BarChart, CartesianGrid, Cell, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { lazy, Suspense, useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ATTENDANCE_EVENT } from "../../components/common/attendanceQuickActionUtils";
 import MessageCard from "../../components/common/MessageCard";
 import { apiRequest } from "../../services/api";
-import type { Attendance, CalendarDay, Employee, LeaveBalance, LeaveRequest, Role } from "../../types";
+import type { Attendance, CalendarDay, Employee, EmployeeDashboardData, LeaveBalance, LeaveRequest, Role } from "../../types";
 import { formatLeaveDays, formatMetricKey, formatTime } from "../../utils/format";
 
-type DashboardData = Record<string, number | string | null | undefined | object>;
+type DashboardData = Record<string, number | string | boolean | null | undefined | object>;
 type MetricVariant = "numeric" | "status";
 type AttendanceOverviewTab = "today" | "month";
 type LeaveRequestsTab = "pending" | "month";
@@ -17,12 +16,21 @@ type CalendarResponse = {
   year: number;
   days: CalendarDay[];
 };
+
+const EmployeeAttendanceWidgetCard = lazy(() =>
+  import("./DashboardChartCards").then((module) => ({ default: module.EmployeeAttendanceWidgetCard })),
+);
+const EmployeeLeaveBalanceCard = lazy(() =>
+  import("./DashboardChartCards").then((module) => ({ default: module.EmployeeLeaveBalanceCard })),
+);
+const AttendanceOverviewCard = lazy(() =>
+  import("./DashboardChartCards").then((module) => ({ default: module.AttendanceOverviewCard })),
+);
+const LeaveRequestsCard = lazy(() =>
+  import("./DashboardChartCards").then((module) => ({ default: module.LeaveRequestsCard })),
+);
+
 const LEAVE_BALANCE_COLORS = ["#2563eb", "#16a34a", "#f59e0b", "#7c3aed", "#ef4444"];
-const ATTENDANCE_PROGRESS_COLORS = {
-  completed: "#16a34a",
-  issue: "#ef4444",
-  remaining: "#e5e7eb",
-} as const;
 const ADMIN_ATTENDANCE_COLORS = {
   present: "#16a34a",
   halfDay: "#2563eb",
@@ -36,6 +44,20 @@ type DashboardPageProps = {
   role: Role;
   currentEmployeeId: number | null;
 };
+
+function DashboardChartCardSkeleton({ eyebrow }: { eyebrow: string }) {
+  return (
+    <article className="card metric-card dashboard-chart-card-skeleton">
+      <p className="eyebrow">{eyebrow}</p>
+      <div className="dashboard-chart-card-skeleton__visual" />
+      <div className="dashboard-chart-card-skeleton__rows">
+        <span className="skeleton-line skeleton-line--short" />
+        <span className="skeleton-line skeleton-line--long" />
+        <span className="skeleton-line skeleton-line--short" />
+      </div>
+    </article>
+  );
+}
 
 function getDashboardContent(role: Role) {
   if (role === "EMPLOYEE") {
@@ -73,45 +95,6 @@ function getDashboardContent(role: Role) {
   };
 }
 
-type AttendanceOverviewTooltipProps = {
-  active?: boolean;
-  payload?: Array<{
-    payload: {
-      label: string;
-      value: number;
-      color: string;
-    };
-  }>;
-  denominator: number;
-  contextLabel: string;
-};
-
-function AttendanceOverviewTooltip({ active, payload, denominator, contextLabel }: AttendanceOverviewTooltipProps) {
-  if (!active || !payload?.length) {
-    return null;
-  }
-
-  const item = payload[0].payload;
-  const percentage = denominator ? Math.round((item.value / denominator) * 100) : 0;
-
-  return (
-    <div className="dashboard-chart-tooltip">
-      <div className="dashboard-chart-tooltip__header">
-        <span className="dashboard-chart-tooltip__swatch" style={{ backgroundColor: item.color }} />
-        <strong>{item.label}</strong>
-      </div>
-      <div className="dashboard-chart-tooltip__metric">
-        <strong>{item.value}</strong>
-        <span>{percentage}% of {contextLabel}</span>
-      </div>
-    </div>
-  );
-}
-
-function formatChartValue(value: number) {
-  return Number.isInteger(value) ? String(value) : value.toFixed(1);
-}
-
 export default function DashboardPage({ token, role, currentEmployeeId }: DashboardPageProps) {
   const navigate = useNavigate();
   const [data, setData] = useState<DashboardData>({});
@@ -136,14 +119,7 @@ export default function DashboardPage({ token, role, currentEmployeeId }: Dashbo
     setLoading(true);
     const requests =
       role === "EMPLOYEE"
-        ? Promise.all([
-            apiRequest<DashboardData>(endpoint, { token }),
-            apiRequest<Attendance[]>("/attendance", { token }),
-            apiRequest<CalendarResponse>(calendarEndpoint, { token }),
-            ...(currentEmployeeId ? [apiRequest<Employee>(`/employees/${currentEmployeeId}`, { token })] : []),
-            apiRequest<LeaveBalance[]>("/leave-balances/me", { token }),
-            apiRequest<LeaveRequest[]>("/leaves", { token }),
-          ])
+        ? apiRequest<EmployeeDashboardData>(endpoint, { token })
         : Promise.all([
             apiRequest<DashboardData>(endpoint, { token }),
             apiRequest<Attendance[]>("/attendance", { token }),
@@ -153,27 +129,38 @@ export default function DashboardPage({ token, role, currentEmployeeId }: Dashbo
 
     requests
       .then((responses) => {
-        const dashboardResponse = responses[0];
-        setData(dashboardResponse.data);
-
         if (role === "EMPLOYEE") {
-          let responseIndex = 1;
-          setAttendanceRecords((responses[responseIndex++] as Awaited<ReturnType<typeof apiRequest<Attendance[]>>>).data);
-          setCalendarDays((responses[responseIndex++] as Awaited<ReturnType<typeof apiRequest<CalendarResponse>>>).data.days);
+          const dashboardResponse = responses as Awaited<ReturnType<typeof apiRequest<EmployeeDashboardData>>>;
+          const employeeDashboard = dashboardResponse.data;
 
-          if (currentEmployeeId) {
-            setCurrentEmployee((responses[responseIndex++] as Awaited<ReturnType<typeof apiRequest<Employee>>>).data);
-          } else {
-            setCurrentEmployee(null);
-          }
-
-          setLeaveBalances((responses[responseIndex++] as Awaited<ReturnType<typeof apiRequest<LeaveBalance[]>>>).data);
-          setLeaveRequests((responses[responseIndex] as Awaited<ReturnType<typeof apiRequest<LeaveRequest[]>>>).data);
-        } else {
-          setAttendanceRecords((responses[1] as Awaited<ReturnType<typeof apiRequest<Attendance[]>>>).data);
-          setCalendarDays((responses[2] as Awaited<ReturnType<typeof apiRequest<CalendarResponse>>>).data.days);
-          setLeaveRequests((responses[3] as Awaited<ReturnType<typeof apiRequest<LeaveRequest[]>>>).data);
+          setData({
+            attendanceToday: employeeDashboard.attendanceToday,
+            pendingLeaves: employeeDashboard.pendingLeaves,
+            payrollCount: employeeDashboard.payrollCount,
+            isTeamLead: employeeDashboard.isTeamLead,
+            scopedTeamCount: employeeDashboard.scopedTeamCount,
+            pendingTeamLeaves: employeeDashboard.pendingTeamLeaves,
+          });
+          setSelfAttendance(employeeDashboard.attendanceToday);
+          setAttendanceRecords(employeeDashboard.attendanceRecords);
+          setCalendarDays(employeeDashboard.calendarDays);
+          setCurrentEmployee(employeeDashboard.currentEmployee);
+          setLeaveBalances(employeeDashboard.leaveBalances);
+          setLeaveRequests(employeeDashboard.leaveRequests);
+          return;
         }
+
+        const [dashboardResponse, attendanceResponse, calendarResponse, leaveResponse] = responses as [
+          Awaited<ReturnType<typeof apiRequest<DashboardData>>>,
+          Awaited<ReturnType<typeof apiRequest<Attendance[]>>>,
+          Awaited<ReturnType<typeof apiRequest<CalendarResponse>>>,
+          Awaited<ReturnType<typeof apiRequest<LeaveRequest[]>>>,
+        ];
+
+        setData(dashboardResponse.data);
+        setAttendanceRecords(attendanceResponse.data);
+        setCalendarDays(calendarResponse.data.days);
+        setLeaveRequests(leaveResponse.data);
       })
       .catch((requestError) => setError(requestError instanceof Error ? requestError.message : "Failed to load dashboard"))
       .finally(() => setLoading(false));
@@ -185,22 +172,21 @@ export default function DashboardPage({ token, role, currentEmployeeId }: Dashbo
       return;
     }
 
-    if (role === "EMPLOYEE" && typeof data.attendanceToday === "object" && data.attendanceToday) {
-      setSelfAttendance(data.attendanceToday as Attendance);
-      return;
-    }
-
     try {
       const response = await apiRequest<{ attendanceToday?: Attendance | null }>("/dashboard/employee", { token });
       setSelfAttendance(response.data.attendanceToday ?? null);
     } catch {
       setSelfAttendance(null);
     }
-  }, [currentEmployeeId, data.attendanceToday, role, token]);
+  }, [currentEmployeeId, token]);
 
   useEffect(() => {
+    if (role === "EMPLOYEE") {
+      return;
+    }
+
     void loadSelfAttendance();
-  }, [loadSelfAttendance]);
+  }, [loadSelfAttendance, role]);
 
   useEffect(() => {
     const handleAttendanceUpdated = () => {
@@ -231,23 +217,12 @@ export default function DashboardPage({ token, role, currentEmployeeId }: Dashbo
       attendanceDate <= nowDate
     );
   });
-  const currentMonthLabel = nowDate.toLocaleDateString(undefined, { month: "long" });
-  const elapsedMonthDays = nowDate.getDate();
   const elapsedWorkingDays = calendarDays.filter((day) => day.isWorkingDay && new Date(day.date) <= nowDate).length;
   const totalWorkingDaysInMonth = calendarDays.filter((day) => day.isWorkingDay).length;
   const presentDays = monthAttendanceRecords.filter((attendance) => attendance.status === "PRESENT").length;
   const halfDays = monthAttendanceRecords.filter((attendance) => attendance.status === "HALF_DAY").length;
   const leaveDaysInMonth = monthAttendanceRecords.filter((attendance) => attendance.status === "LEAVE").length;
   const absentDaysInMonth = monthAttendanceRecords.filter((attendance) => attendance.status === "ABSENT").length;
-  const attendedEquivalentDays = presentDays + halfDays * 0.5;
-  const issueDays = leaveDaysInMonth + absentDaysInMonth;
-  const remainingDays = Math.max(elapsedMonthDays - attendedEquivalentDays - issueDays, 0);
-  const attendancePerformance = elapsedWorkingDays ? Math.round((attendedEquivalentDays / elapsedWorkingDays) * 100) : 0;
-  const attendanceProgressData = [
-    { key: "completed", label: "Completed", value: attendedEquivalentDays, color: ATTENDANCE_PROGRESS_COLORS.completed },
-    { key: "issue", label: "Leave / absent", value: issueDays, color: ATTENDANCE_PROGRESS_COLORS.issue },
-    { key: "remaining", label: "Remaining", value: remainingDays, color: ATTENDANCE_PROGRESS_COLORS.remaining },
-  ].filter((entry) => entry.value > 0);
   const leaveChartData = leaveBalances
     .filter((balance) => balance.remainingDays > 0)
     .map((balance, index) => ({
@@ -422,6 +397,57 @@ export default function DashboardPage({ token, role, currentEmployeeId }: Dashbo
     return attendance.status;
   }
 
+  const shiftTargetMinutes = 8 * 60;
+  const workedTodayMinutes = (() => {
+    if (!selfAttendance || selfAttendance.status === "LEAVE" || selfAttendance.status === "ABSENT") {
+      return 0;
+    }
+
+    if (selfAttendance.checkOutTime) {
+      return selfAttendance.workedMinutes;
+    }
+
+    if (selfAttendance.checkInTime) {
+      const checkIn = new Date(selfAttendance.checkInTime);
+      return Math.max(0, Math.floor((now.getTime() - checkIn.getTime()) / 60000));
+    }
+
+    return 0;
+  })();
+  const attendanceTodayDateLabel = now.toLocaleDateString(undefined, {
+    day: "numeric",
+    month: "long",
+  });
+  const attendanceProgressPercent = Math.min(100, Math.round((workedTodayMinutes / shiftTargetMinutes) * 100));
+  const workedTodayDisplay = selfAttendance?.status === "LEAVE" ? "-" : formatWorkedDuration(workedTodayMinutes);
+  const attendanceTodayProgressData =
+    selfAttendance?.status === "LEAVE"
+      ? [{ key: "leave", value: 1, color: "#f59e0b" }]
+      : selfAttendance?.status === "ABSENT"
+        ? [{ key: "absent", value: 1, color: "#ef4444" }]
+        : selfAttendance?.checkInTime || selfAttendance?.checkOutTime
+          ? [
+              { key: "worked", value: Math.max(workedTodayMinutes, 1), color: "#16a34a" },
+              { key: "remaining", value: Math.max(shiftTargetMinutes - workedTodayMinutes, 0), color: "#e5e7eb" },
+            ]
+          : [{ key: "unmarked", value: 1, color: "#e5e7eb" }];
+  const attendanceCenterPrimary =
+    selfAttendance?.status === "LEAVE"
+      ? "Leave"
+      : selfAttendance?.status === "ABSENT"
+        ? "Absent"
+        : selfAttendance?.checkInTime || selfAttendance?.checkOutTime
+          ? `${attendanceProgressPercent}%`
+          : "Not marked";
+  const attendanceCenterSecondary =
+    selfAttendance?.checkInTime || selfAttendance?.checkOutTime
+      ? "today done"
+      : selfAttendance?.status === "LEAVE"
+        ? "paid day"
+        : selfAttendance?.status === "ABSENT"
+          ? "not worked"
+          : attendanceTodayDateLabel;
+
   const metricEntries = Object.entries(data).filter(([key]) => key !== "attendanceToday");
   const workforceCount = role === "MANAGER" ? Number(data.teamCount ?? 0) : Number(data.employees ?? 0);
   const todayAttendanceRecords = attendanceRecords.filter((attendance) => {
@@ -460,7 +486,17 @@ export default function DashboardPage({ token, role, currentEmployeeId }: Dashbo
       ? nowDate.toLocaleDateString(undefined, { day: "numeric", month: "long" })
       : `${elapsedWorkingDays}/${totalWorkingDaysInMonth} working days`;
   const activeOverviewSummaryLabel = attendanceOverviewTab === "today" ? "Today" : "Month progress";
-  const nonEmployeeMetricEntries = metricEntries.filter(([key]) => key !== "employees" && key !== "teamCount" && key !== "pendingLeaves");
+  const nonEmployeeMetricEntries = metricEntries.filter(([key]) => {
+    if (key === "employees" || key === "teamCount" || key === "pendingLeaves") {
+      return false;
+    }
+
+    if (role === "ADMIN" && key === "payrollCount") {
+      return false;
+    }
+
+    return true;
+  });
 
   return (
     <section className="stack">
@@ -485,6 +521,15 @@ export default function DashboardPage({ token, role, currentEmployeeId }: Dashbo
       {!loading ? (
         <>
       <article className="card dashboard-hero">
+        <img
+          className="dashboard-hero-image"
+          src="/assets/images/bgmain-optimized.jpg"
+          alt=""
+          fetchPriority="high"
+          loading="eager"
+          decoding="async"
+          aria-hidden="true"
+        />
         <div className="dashboard-hero-copy">
           <p className="eyebrow">{bannerContent.eyebrow}</p>
           <h3>{bannerContent.title}</h3>
@@ -512,157 +557,29 @@ export default function DashboardPage({ token, role, currentEmployeeId }: Dashbo
         <>
           <div className="grid cols-3 dashboard-grid">
             {currentEmployeeId ? (
-              <article className="card metric-card metric-card--attendance-widget">
-                <div className="metric-card-header">
-                  <div>
-                    <p className="eyebrow">Attendance today</p>
-                    <strong>{getAttendanceWidgetTitle(selfAttendance)}</strong>
-                    <p className="muted">{currentMonthLabel} overview</p>
-                  </div>
-                </div>
-                {attendanceProgressData.length ? (
-                  <div className="dashboard-attendance-chart">
-                    <div className="dashboard-attendance-chart__visual">
-                      <ResponsiveContainer width="100%" height={188}>
-                        <PieChart>
-                          <Pie
-                            data={attendanceProgressData}
-                            dataKey="value"
-                            nameKey="label"
-                            innerRadius={52}
-                            outerRadius={76}
-                            paddingAngle={3}
-                            stroke="none"
-                          >
-                            {attendanceProgressData.map((entry) => (
-                              <Cell key={entry.key} fill={entry.color} />
-                            ))}
-                          </Pie>
-                      </PieChart>
-                    </ResponsiveContainer>
-                      <div className="dashboard-attendance-chart__center">
-                        <strong>{attendancePerformance}%</strong>
-                        <span>{currentMonthLabel}</span>
-                      </div>
-                    </div>
-                    <div className="dashboard-attendance-chart__legend">
-                      <div className="dashboard-attendance-chart__summary">
-                        <span>{currentMonthLabel} attendance</span>
-                        <strong>
-                          {attendedEquivalentDays % 1 === 0 ? attendedEquivalentDays : attendedEquivalentDays.toFixed(1)} / {elapsedMonthDays} days
-                        </strong>
-                      </div>
-                      {attendanceProgressData.map((entry) => (
-                        <div key={entry.key} className="dashboard-attendance-chart__legend-item">
-                          <div className="dashboard-attendance-chart__legend-main">
-                            <span className="dashboard-attendance-chart__swatch" style={{ backgroundColor: entry.color }} />
-                            <span>{entry.label}</span>
-                          </div>
-                          <strong>{entry.value}</strong>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                ) : null}
-                <div className="attendance-widget-meta">
-                  <div className="table-cell-stack">
-                    <span className="table-cell-secondary">Check in</span>
-                    <span className="table-cell-primary">{formatTime(selfAttendance?.checkInTime)}</span>
-                  </div>
-                  <div className="table-cell-stack">
-                    <span className="table-cell-secondary">Check out</span>
-                    <span className="table-cell-primary">{formatTime(selfAttendance?.checkOutTime)}</span>
-                  </div>
-                  <div className="table-cell-stack">
-                    <span className="table-cell-secondary">Worked</span>
-                    <span className="table-cell-primary">
-                      {selfAttendance?.status === "LEAVE" ? "-" : selfAttendance?.checkOutTime ? formatWorkedDuration(selfAttendance.workedMinutes) : "-"}
-                    </span>
-                  </div>
-                </div>
-              </article>
+              <Suspense fallback={<DashboardChartCardSkeleton eyebrow="Attendance today" />}>
+                <EmployeeAttendanceWidgetCard
+                  title={getAttendanceWidgetTitle(selfAttendance)}
+                  attendanceTodayDateLabel={attendanceTodayDateLabel}
+                  selfAttendance={selfAttendance}
+                  progressData={attendanceTodayProgressData}
+                  centerPrimary={attendanceCenterPrimary}
+                  centerSecondary={attendanceCenterSecondary}
+                  workedTodayDisplay={workedTodayDisplay}
+                  progressPercent={attendanceProgressPercent}
+                  shiftTargetDisplay={formatWorkedDuration(shiftTargetMinutes)}
+                />
+              </Suspense>
             ) : null}
-            <article className="card metric-card">
-              <p className="eyebrow">Leave balance</p>
-              <strong>{formatLeaveDays(totalRemainingLeave)}</strong>
-              <p className="muted">
-                {totalAllocatedLeave
-                  ? `${Math.round((totalRemainingLeave / totalAllocatedLeave) * 100)}% of allocated leave remaining`
-                  : "No leave balances assigned yet"}
-              </p>
-              {leaveChartData.length ? (
-                <div className="dashboard-leave-balance-chart">
-                  <div className="dashboard-leave-balance-chart__top">
-                    <div className="dashboard-leave-balance-chart__visual">
-                      <ResponsiveContainer width="100%" height={188}>
-                        <PieChart>
-                          <Pie
-                            data={leaveChartData}
-                            dataKey="value"
-                            nameKey="name"
-                            innerRadius={52}
-                            outerRadius={76}
-                            paddingAngle={3}
-                            stroke="none"
-                          >
-                            {leaveChartData.map((entry) => (
-                              <Cell key={entry.id} fill={entry.color} />
-                            ))}
-                          </Pie>
-                        </PieChart>
-                      </ResponsiveContainer>
-                      <div className="dashboard-leave-balance-chart__center">
-                        <strong>{Number.isInteger(totalRemainingLeave) ? totalRemainingLeave : totalRemainingLeave.toFixed(1)}</strong>
-                        <span>days left</span>
-                      </div>
-                    </div>
-                    <div className="dashboard-leave-balance-chart__summary">
-                      <div className="table-cell-stack">
-                        <span className="table-cell-secondary">Leaves taken</span>
-                        <span className="table-cell-primary">{formatLeaveDays(totalUsedLeave)}</span>
-                      </div>
-                      <div className="table-cell-stack">
-                        <span className="table-cell-secondary">Allocated</span>
-                        <span className="table-cell-primary">{formatLeaveDays(totalAllocatedLeave)}</span>
-                      </div>
-                      <div className="table-cell-stack">
-                        <span className="table-cell-secondary">Remaining</span>
-                        <span className="table-cell-primary">{formatLeaveDays(totalRemainingLeave)}</span>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="dashboard-leave-balance-chart__legend">
-                    {leaveChartData.map((entry) => {
-                      const percentage = totalAllocatedLeave ? Math.round((entry.value / totalAllocatedLeave) * 100) : 0;
-
-                      return (
-                        <div key={entry.id} className="dashboard-leave-balance-chart__legend-item">
-                          <div className="dashboard-leave-balance-chart__legend-main">
-                            <span className="dashboard-leave-balance-chart__swatch" style={{ backgroundColor: entry.color }} />
-                            <div className="table-cell-stack">
-                              <span className="table-cell-primary">{entry.fullName}</span>
-                              <span className="table-cell-secondary">
-                                {Number.isInteger(entry.value) ? entry.value : entry.value.toFixed(1)}/{Number.isInteger(entry.allocated) ? entry.allocated : entry.allocated.toFixed(1)} days
-                              </span>
-                            </div>
-                          </div>
-                          <strong>{percentage}% left</strong>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              ) : (
-                <div className="dashboard-balance-list">
-                  {leaveBalances.map((balance) => (
-                    <div key={balance.id} className="dashboard-inline-row">
-                      <span>{balance.leaveType.code}</span>
-                      <strong>{formatLeaveDays(balance.remainingDays)}</strong>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </article>
+            <Suspense fallback={<DashboardChartCardSkeleton eyebrow="Leave balance" />}>
+              <EmployeeLeaveBalanceCard
+                totalRemainingLeave={totalRemainingLeave}
+                totalAllocatedLeave={totalAllocatedLeave}
+                totalUsedLeave={totalUsedLeave}
+                leaveChartData={leaveChartData}
+                leaveBalances={leaveBalances}
+              />
+            </Suspense>
             <article className="card metric-card metric-card--project">
               <div className="metric-card-header">
                 <div>
@@ -700,27 +617,6 @@ export default function DashboardPage({ token, role, currentEmployeeId }: Dashbo
               </div>
             </article>
           </div>
-
-          <article className="card dashboard-actions-card">
-            <div className="dashboard-actions-header">
-              <div>
-                <p className="eyebrow">Quick actions</p>
-                <h3>Get things done faster</h3>
-              </div>
-            </div>
-            <div className="dashboard-quick-actions">
-              <button onClick={() => navigate("/leaves")}>Apply leave</button>
-              <button className="secondary" onClick={() => navigate("/attendance")}>
-                Request correction
-              </button>
-              <button className="secondary" onClick={() => navigate("/payroll")}>
-                View payroll
-              </button>
-              <button className="secondary" onClick={() => navigate("/attendance")}>
-                Open attendance
-              </button>
-            </div>
-          </article>
 
           {isTeamLead ? (
             <article className="card dashboard-team-lead-card">
@@ -795,262 +691,47 @@ export default function DashboardPage({ token, role, currentEmployeeId }: Dashbo
       ) : (
       <div className="grid cols-2 dashboard-grid">
         {(role === "ADMIN" || role === "HR" || role === "MANAGER") ? (
-          <article className="card metric-card metric-card--attendance-overview">
-                <div className="metric-card-header">
-                  <div>
-                    <p className="eyebrow">Attendance overview</p>
-                  </div>
-                  <div className="dashboard-overview-tabs" role="tablist" aria-label="Attendance overview range">
-                <button
-                  type="button"
-                  className={attendanceOverviewTab === "today" ? "dashboard-overview-tab active" : "dashboard-overview-tab"}
-                  onClick={() => setAttendanceOverviewTab("today")}
-                >
-                  Today
-                </button>
-                <button
-                  type="button"
-                  className={attendanceOverviewTab === "month" ? "dashboard-overview-tab active" : "dashboard-overview-tab"}
-                  onClick={() => setAttendanceOverviewTab("month")}
-                >
-                  Month
-                </button>
-              </div>
-            </div>
-            <div className="dashboard-attendance-chart__topbar">
-              <div className="dashboard-attendance-chart__summary">
-                <span>{activeOverviewSummaryLabel}</span>
-                <strong>{activeOverviewSummary}</strong>
-              </div>
-            </div>
-            {activeOverviewData.length ? (
-              <div className="dashboard-attendance-chart">
-                <div className="dashboard-attendance-chart__visual">
-                  <ResponsiveContainer width="100%" height={188}>
-                    <PieChart>
-                      <Pie
-                        data={activeOverviewData}
-                        dataKey="value"
-                        nameKey="label"
-                        innerRadius={attendanceOverviewTab === "today" ? 52 : 0}
-                        outerRadius={76}
-                        paddingAngle={3}
-                        stroke="none"
-                        label={
-                          attendanceOverviewTab === "month"
-                            ? ({ value, x, y }: { value?: number; x?: number; y?: number }) =>
-                                value && x !== undefined && y !== undefined ? (
-                                  <text
-                                    x={x}
-                                    y={y}
-                                    fill="#ffffff"
-                                    fontSize="12"
-                                    fontWeight="700"
-                                    textAnchor="middle"
-                                    dominantBaseline="central"
-                                  >
-                                    {formatChartValue(value)}
-                                  </text>
-                                ) : null
-                            : false
-                        }
-                        labelLine={false}
-                      >
-                        {activeOverviewData.map((entry) => (
-                          <Cell key={entry.key} fill={entry.color} />
-                        ))}
-                      </Pie>
-                      <Tooltip
-                        wrapperStyle={{ zIndex: 20 }}
-                        content={
-                          <AttendanceOverviewTooltip
-                            denominator={activeOverviewDenominator}
-                            contextLabel={activeOverviewLabel}
-                          />
-                        }
-                      />
-                    </PieChart>
-                  </ResponsiveContainer>
-                  {attendanceOverviewTab === "today" ? (
-                    <div className="dashboard-attendance-chart__center">
-                      <strong>{activeOverviewCenterTitle}</strong>
-                      <span>{activeOverviewCenterSubtext}</span>
-                    </div>
-                  ) : null}
-                </div>
-                <div className="dashboard-attendance-chart__legend">
-                  {attendanceOverviewTab === "today"
-                    ? activeOverviewData.map((entry) => (
-                        <div key={entry.key} className="dashboard-attendance-chart__legend-item">
-                          <div className="dashboard-attendance-chart__legend-main">
-                            <span className="dashboard-attendance-chart__swatch" style={{ backgroundColor: entry.color }} />
-                            <span>{entry.label}</span>
-                          </div>
-                          <strong>{entry.value}</strong>
-                        </div>
-                      ))
-                    : (
-                      <>
-                        <div className="dashboard-attendance-chart__legend-item">
-                          <div className="dashboard-attendance-chart__legend-main">
-                            <span className="dashboard-attendance-chart__swatch" style={{ backgroundColor: ADMIN_ATTENDANCE_COLORS.unmarked }} />
-                            <span>Total workforce</span>
-                          </div>
-                          <strong>{workforceCount}</strong>
-                        </div>
-                        <div className="dashboard-attendance-chart__legend-item">
-                          <div className="dashboard-attendance-chart__legend-main">
-                            <span className="dashboard-attendance-chart__swatch" style={{ backgroundColor: ADMIN_ATTENDANCE_COLORS.present }} />
-                            <span>Avg present/day</span>
-                          </div>
-                          <strong>{formatChartValue(presentAverageHeadcount)}</strong>
-                        </div>
-                        <div className="dashboard-attendance-chart__legend-item">
-                          <div className="dashboard-attendance-chart__legend-main">
-                            <span className="dashboard-attendance-chart__swatch" style={{ backgroundColor: ADMIN_ATTENDANCE_COLORS.leave }} />
-                            <span>Leaves till date</span>
-                          </div>
-                          <strong>{leaveDaysInMonth}</strong>
-                        </div>
-                        <div className="dashboard-attendance-chart__legend-item">
-                          <div className="dashboard-attendance-chart__legend-main">
-                            <span className="dashboard-attendance-chart__swatch" style={{ backgroundColor: ADMIN_ATTENDANCE_COLORS.absent }} />
-                            <span>Absents till date</span>
-                          </div>
-                          <strong>{absentDaysInMonth}</strong>
-                        </div>
-                        <div className="dashboard-attendance-chart__legend-item">
-                          <div className="dashboard-attendance-chart__legend-main">
-                            <span className="dashboard-attendance-chart__swatch" style={{ backgroundColor: ADMIN_ATTENDANCE_COLORS.halfDay }} />
-                            <span>Half days</span>
-                          </div>
-                          <strong>{halfDays}</strong>
-                        </div>
-                      </>
-                    )}
-                </div>
-              </div>
-            ) : (
-              <div className="dashboard-inline-row">
-                <span>No attendance data yet</span>
-                <strong>-</strong>
-              </div>
-            )}
-          </article>
+          <Suspense fallback={<DashboardChartCardSkeleton eyebrow="Attendance overview" />}>
+            <AttendanceOverviewCard
+              attendanceOverviewTab={attendanceOverviewTab}
+              onTabChange={setAttendanceOverviewTab}
+              activeOverviewSummaryLabel={activeOverviewSummaryLabel}
+              activeOverviewSummary={activeOverviewSummary}
+              activeOverviewData={activeOverviewData}
+              activeOverviewDenominator={activeOverviewDenominator}
+              activeOverviewLabel={activeOverviewLabel}
+              activeOverviewCenterTitle={activeOverviewCenterTitle}
+              activeOverviewCenterSubtext={activeOverviewCenterSubtext}
+              workforceCount={workforceCount}
+              presentAverageHeadcount={presentAverageHeadcount}
+              leaveDaysInMonth={leaveDaysInMonth}
+              absentDaysInMonth={absentDaysInMonth}
+              halfDays={halfDays}
+            />
+          </Suspense>
         ) : null}
         {(role === "ADMIN" || role === "HR" || role === "MANAGER") ? (
-          <article className="card metric-card metric-card--leave-requests">
-            <div className="metric-card-header">
-              <div>
-                <p className="eyebrow">Leave requests</p>
-              </div>
-              <div className="dashboard-card-actions">
-                <div className="dashboard-overview-tabs" role="tablist" aria-label="Leave requests range">
-                  <button
-                    type="button"
-                    className={leaveRequestsTab === "pending" ? "dashboard-overview-tab active" : "dashboard-overview-tab"}
-                    onClick={() => setLeaveRequestsTab("pending")}
-                  >
-                    Pending
-                  </button>
-                  <button
-                    type="button"
-                    className={leaveRequestsTab === "month" ? "dashboard-overview-tab active" : "dashboard-overview-tab"}
-                    onClick={() => setLeaveRequestsTab("month")}
-                  >
-                    Month
-                  </button>
-                </div>
-                <button type="button" className="secondary dashboard-card-link" onClick={() => navigate("/leaves")}>
-                  Review requests
-                </button>
-              </div>
-            </div>
-            {leaveRequestsTab === "pending" ? (
-              <div className="dashboard-leave-requests-card">
-                <div className="dashboard-leave-requests-card__visual">
-                  {pendingLeaveChartData.length ? (
-                    <ResponsiveContainer width="100%" height={188}>
-                      <PieChart>
-                        <Pie data={pendingLeaveChartData} dataKey="value" nameKey="label" innerRadius={52} outerRadius={76} paddingAngle={3} stroke="none">
-                          {pendingLeaveChartData.map((entry) => (
-                            <Cell key={entry.key} fill={entry.color} />
-                          ))}
-                        </Pie>
-                        <Tooltip />
-                      </PieChart>
-                    </ResponsiveContainer>
-                  ) : (
-                    <div className="dashboard-inline-row dashboard-inline-row--empty">
-                      <span>No pending requests</span>
-                    </div>
-                  )}
-                  {pendingLeaveChartData.length ? (
-                    <div className="dashboard-leave-requests-card__center">
-                      <strong>{pendingRequests.length}</strong>
-                      <span>pending</span>
-                    </div>
-                  ) : null}
-                </div>
-                <div className="dashboard-leave-requests-card__stats">
-                  <div className="dashboard-leave-requests-card__stat">
-                    <span>Total pending</span>
-                    <strong>{pendingRequests.length}</strong>
-                  </div>
-                  <div className="dashboard-leave-requests-card__stat">
-                    <span>Unpaid pending</span>
-                    <strong>{pendingUnpaidRequests}</strong>
-                  </div>
-                  <div className="dashboard-leave-requests-card__stat">
-                    <span>Half-day pending</span>
-                    <strong>{pendingHalfDayRequests}</strong>
-                  </div>
-                  <div className="dashboard-leave-requests-card__stat">
-                    <span>Earliest request</span>
-                    <strong>{earliestPendingLeave ? new Date(earliestPendingLeave.startDate).toLocaleDateString(undefined, { day: "numeric", month: "short" }) : "-"}</strong>
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <div className="dashboard-leave-requests-card">
-                <div className="dashboard-leave-requests-card__visual">
-                  {monthLeaveTypeData.length ? (
-                    <ResponsiveContainer width="100%" height={188}>
-                      <BarChart data={monthLeaveTypeData} margin={{ top: 8, right: 8, left: -16, bottom: 0 }}>
-                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
-                        <XAxis dataKey="code" tickLine={false} axisLine={false} fontSize={12} />
-                        <YAxis allowDecimals={false} tickLine={false} axisLine={false} fontSize={12} width={28} />
-                        <Tooltip />
-                        <Bar dataKey="value" fill="#2563eb" radius={[6, 6, 0, 0]} />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  ) : (
-                    <div className="dashboard-inline-row dashboard-inline-row--empty">
-                      <span>No leave activity this month</span>
-                    </div>
-                  )}
-                </div>
-                <div className="dashboard-leave-requests-card__stats">
-                  <div className="dashboard-leave-requests-card__stat">
-                    <span>Approved</span>
-                    <strong>{approvedMonthRequests}</strong>
-                  </div>
-                  <div className="dashboard-leave-requests-card__stat">
-                    <span>Rejected</span>
-                    <strong>{rejectedMonthRequests}</strong>
-                  </div>
-                  <div className="dashboard-leave-requests-card__stat">
-                    <span>Cancelled</span>
-                    <strong>{cancelledMonthRequests}</strong>
-                  </div>
-                  <div className="dashboard-leave-requests-card__stat">
-                    <span>Approved unpaid</span>
-                    <strong>{approvedUnpaidMonthRequests}</strong>
-                  </div>
-                </div>
-              </div>
-            )}
-          </article>
+          <Suspense fallback={<DashboardChartCardSkeleton eyebrow="Leave requests" />}>
+            <LeaveRequestsCard
+              leaveRequestsTab={leaveRequestsTab}
+              onTabChange={setLeaveRequestsTab}
+              onReviewRequests={() => navigate("/leaves")}
+              pendingLeaveChartData={pendingLeaveChartData}
+              pendingRequestsCount={pendingRequests.length}
+              pendingUnpaidRequests={pendingUnpaidRequests}
+              pendingHalfDayRequests={pendingHalfDayRequests}
+              earliestPendingLeaveLabel={
+                earliestPendingLeave
+                  ? new Date(earliestPendingLeave.startDate).toLocaleDateString(undefined, { day: "numeric", month: "short" })
+                  : "-"
+              }
+              monthLeaveTypeData={monthLeaveTypeData}
+              approvedMonthRequests={approvedMonthRequests}
+              rejectedMonthRequests={rejectedMonthRequests}
+              cancelledMonthRequests={cancelledMonthRequests}
+              approvedUnpaidMonthRequests={approvedUnpaidMonthRequests}
+            />
+          </Suspense>
         ) : null}
         {currentEmployeeId && role !== "ADMIN" ? (
               <article className="card metric-card metric-card--attendance-widget">

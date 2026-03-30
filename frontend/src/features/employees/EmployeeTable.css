@@ -2,7 +2,92 @@
   cursor: pointer;
 }
 
+.employee-directory-card .table-wrap {
+  max-height: none;
+}
+
+.employee-directory-mobile-list {
+  display: none;
+}
+
 .employee-row:focus-visible {
   outline: 2px solid var(--color-accent);
   outline-offset: -2px;
+}
+
+.employee-designation-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  padding: 0 10px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  font-size: var(--text-xs);
+  font-weight: var(--fw-semibold);
+  line-height: 1;
+}
+
+.employee-designation-badge--managing-director {
+  color: #0f172a;
+  border-color: rgba(15, 23, 42, 0.14);
+  background: rgba(15, 23, 42, 0.08);
+}
+
+.employee-designation-badge--ceo {
+  color: #4c1d95;
+  border-color: rgba(76, 29, 149, 0.18);
+  background: rgba(124, 58, 237, 0.1);
+}
+
+.employee-designation-badge--hr {
+  color: #0f766e;
+  border-color: rgba(15, 118, 110, 0.18);
+  background: rgba(20, 184, 166, 0.1);
+}
+
+.employee-designation-badge--manager {
+  color: #9a3412;
+  border-color: rgba(154, 52, 18, 0.2);
+  background: rgba(249, 115, 22, 0.12);
+}
+
+.employee-mobile-card {
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface-page);
+}
+
+.employee-mobile-card__header {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.employee-mobile-card__meta {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+
+.employee-mobile-card__actions {
+  justify-content: flex-start;
+}
+
+@media (max-width: 768px) {
+  .employee-directory-table {
+    display: none;
+  }
+
+  .employee-directory-mobile-list {
+    display: grid;
+    gap: var(--space-3);
+  }
+}
+
+@media (max-width: 640px) {
+  .employee-mobile-card__meta {
+    grid-template-columns: 1fr;
+  }
 }

@@ -109,12 +109,18 @@
 }
 
 @media (max-width: 768px) {
+  .employee-profile-header {
+    gap: var(--space-3);
+  }
+
   .employee-profile-header__identity {
     flex-direction: column;
+    gap: var(--space-3);
   }
 
   .employee-profile-header__summary {
     grid-template-columns: 1fr;
+    gap: var(--space-3);
   }
 
   .employee-profile-header__detail-list {
@@ -124,5 +130,9 @@
 
   .employee-profile-header__actions {
     width: 100%;
+  }
+
+  .employee-profile-header__actions button {
+    flex: 1 1 100%;
   }
 }

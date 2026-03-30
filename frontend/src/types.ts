@@ -136,6 +136,20 @@ export type AttendanceRegularizationRequest = {
   reviewedBy?: Employee | null;
 };
 
+export type EmployeeDashboardData = {
+  attendanceToday: Attendance | null;
+  pendingLeaves: number;
+  payrollCount: number;
+  isTeamLead: boolean;
+  scopedTeamCount: number;
+  pendingTeamLeaves: number;
+  attendanceRecords: Attendance[];
+  calendarDays: CalendarDay[];
+  currentEmployee: Employee | null;
+  leaveBalances: LeaveBalance[];
+  leaveRequests: LeaveRequest[];
+};
+
 export type PayrollRecord = {
   id: number;
   employeeId: number;

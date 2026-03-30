@@ -1,15 +1,21 @@
+import { lazy, Suspense } from "react";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
-import LoginPage from "../features/auth/LoginPage";
-import AttendancePage from "../features/attendance/AttendancePage";
-import DashboardPage from "../features/dashboard/DashboardPage";
-import CalendarPage from "../features/calendar/CalendarPage";
-import DepartmentsPage from "../features/departments/DepartmentsPage";
-import EmployeeProfilePage from "../features/employees/EmployeeProfilePage";
-import EmployeesPage from "../features/employees/EmployeesPage";
-import LeavesPage from "../features/leaves/LeavesPage";
-import PayrollPage from "../features/payroll/PayrollPage";
 import { useAuth } from "../hooks/useAuth";
-import AppLayout from "../layout/AppLayout";
+
+const LoginPage = lazy(() => import("../features/auth/LoginPage"));
+const AttendancePage = lazy(() => import("../features/attendance/AttendancePage"));
+const DashboardPage = lazy(() => import("../features/dashboard/DashboardPage"));
+const CalendarPage = lazy(() => import("../features/calendar/CalendarPage"));
+const DepartmentsPage = lazy(() => import("../features/departments/DepartmentsPage"));
+const EmployeeProfilePage = lazy(() => import("../features/employees/EmployeeProfilePage"));
+const EmployeesPage = lazy(() => import("../features/employees/EmployeesPage"));
+const LeavesPage = lazy(() => import("../features/leaves/LeavesPage"));
+const PayrollPage = lazy(() => import("../features/payroll/PayrollPage"));
+const AppLayout = lazy(() => import("../layout/AppLayout"));
+
+function RouteLoadingFallback() {
+  return <div className="center-message">Loading HRMS workspace...</div>;
+}
 
 function AppRoutes() {
   const { token, sessionUser, loadingSession, login, logout } = useAuth();
@@ -19,53 +25,55 @@ function AppRoutes() {
   }
 
   return (
-    <Routes>
-      <Route path="/login" element={sessionUser ? <Navigate to="/" replace /> : <LoginPage onLogin={login} />} />
-      <Route
-        element={sessionUser ? <AppLayout token={token} sessionUser={sessionUser} onLogout={logout} /> : <Navigate to="/login" replace />}
-      >
+    <Suspense fallback={<RouteLoadingFallback />}>
+      <Routes>
+        <Route path="/login" element={sessionUser ? <Navigate to="/" replace /> : <LoginPage onLogin={login} />} />
         <Route
-          index
-          element={<DashboardPage token={token} role={sessionUser?.role ?? "EMPLOYEE"} currentEmployeeId={sessionUser?.employee?.id ?? null} />}
-        />
-        <Route path="/departments" element={<DepartmentsPage token={token} role={sessionUser?.role ?? "EMPLOYEE"} />} />
-        <Route path="/employees" element={<EmployeesPage token={token} role={sessionUser?.role ?? "EMPLOYEE"} />} />
-        <Route
-          path="/employees/:id"
-          element={
-            <EmployeeProfilePage
-              token={token}
-              role={sessionUser?.role ?? "EMPLOYEE"}
-              currentEmployeeId={sessionUser?.employee?.id ?? null}
-            />
-          }
-        />
-        <Route path="/calendar" element={<CalendarPage token={token} role={sessionUser?.role ?? "EMPLOYEE"} />} />
-        <Route
-          path="/attendance"
-          element={
-            <AttendancePage
-              token={token}
-              role={sessionUser?.role ?? "EMPLOYEE"}
-              currentEmployeeId={sessionUser?.employee?.id ?? null}
-              currentEmployee={sessionUser?.employee ?? null}
-            />
-          }
-        />
-        <Route
-          path="/leaves"
-          element={
-            <LeavesPage
-              token={token}
-              role={sessionUser?.role ?? "EMPLOYEE"}
-              currentEmployeeId={sessionUser?.employee?.id ?? null}
-              currentEmployee={sessionUser?.employee ?? null}
-            />
-          }
-        />
-        <Route path="/payroll" element={<PayrollPage token={token} role={sessionUser?.role ?? "EMPLOYEE"} />} />
-      </Route>
-    </Routes>
+          element={sessionUser ? <AppLayout token={token} sessionUser={sessionUser} onLogout={logout} /> : <Navigate to="/login" replace />}
+        >
+          <Route
+            index
+            element={<DashboardPage token={token} role={sessionUser?.role ?? "EMPLOYEE"} currentEmployeeId={sessionUser?.employee?.id ?? null} />}
+          />
+          <Route path="/departments" element={<DepartmentsPage token={token} role={sessionUser?.role ?? "EMPLOYEE"} />} />
+          <Route path="/employees" element={<EmployeesPage token={token} role={sessionUser?.role ?? "EMPLOYEE"} />} />
+          <Route
+            path="/employees/:id"
+            element={
+              <EmployeeProfilePage
+                token={token}
+                role={sessionUser?.role ?? "EMPLOYEE"}
+                currentEmployeeId={sessionUser?.employee?.id ?? null}
+              />
+            }
+          />
+          <Route path="/calendar" element={<CalendarPage token={token} role={sessionUser?.role ?? "EMPLOYEE"} />} />
+          <Route
+            path="/attendance"
+            element={
+              <AttendancePage
+                token={token}
+                role={sessionUser?.role ?? "EMPLOYEE"}
+                currentEmployeeId={sessionUser?.employee?.id ?? null}
+                currentEmployee={sessionUser?.employee ?? null}
+              />
+            }
+          />
+          <Route
+            path="/leaves"
+            element={
+              <LeavesPage
+                token={token}
+                role={sessionUser?.role ?? "EMPLOYEE"}
+                currentEmployeeId={sessionUser?.employee?.id ?? null}
+                currentEmployee={sessionUser?.employee ?? null}
+              />
+            }
+          />
+          <Route path="/payroll" element={<PayrollPage token={token} role={sessionUser?.role ?? "EMPLOYEE"} />} />
+        </Route>
+      </Routes>
+    </Suspense>
   );
 }
 

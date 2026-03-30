@@ -11,10 +11,17 @@
   grid-template-columns: minmax(0, 1fr) auto;
   min-height: 180px;
   overflow: hidden;
-  background:
-    linear-gradient(90deg, rgba(15, 23, 42, 0.28) 0%, rgba(15, 23, 42, 0.1) 38%, rgba(15, 23, 42, 0.03) 100%),
-    url("/assets/images/bgmain.png") 72% center / cover no-repeat;
+  background: linear-gradient(90deg, rgba(15, 23, 42, 0.28) 0%, rgba(15, 23, 42, 0.1) 38%, rgba(15, 23, 42, 0.03) 100%);
   color: #fff;
+}
+
+.dashboard-hero-image {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 72% center;
 }
 
 .dashboard-hero::after {
@@ -136,6 +143,23 @@
   gap: var(--space-3);
 }
 
+.dashboard-chart-card-skeleton {
+  gap: var(--space-3);
+}
+
+.dashboard-chart-card-skeleton__visual {
+  min-height: 188px;
+  border-radius: 18px;
+  background:
+    radial-gradient(circle at 50% 50%, rgba(148, 163, 184, 0.14) 0 42%, transparent 43%),
+    linear-gradient(180deg, rgba(148, 163, 184, 0.12), rgba(148, 163, 184, 0.05));
+}
+
+.dashboard-chart-card-skeleton__rows {
+  display: grid;
+  gap: 10px;
+}
+
 .metric-card-header {
   display: flex;
   align-items: flex-start;
@@ -162,6 +186,90 @@
   gap: var(--space-3);
   padding-top: var(--space-2);
   border-top: 1px solid var(--color-border-subtle);
+}
+
+.dashboard-attendance-progress {
+  display: grid;
+  grid-template-columns: minmax(180px, 220px) minmax(0, 1fr);
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.dashboard-attendance-progress__visual {
+  position: relative;
+  display: grid;
+  place-items: center;
+  min-height: 188px;
+}
+
+.dashboard-attendance-progress__center {
+  position: absolute;
+  display: grid;
+  gap: 2px;
+  justify-items: center;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.dashboard-attendance-progress__center strong {
+  font-size: var(--text-xl);
+  font-weight: var(--fw-bold);
+  line-height: 1;
+}
+
+.dashboard-attendance-progress__center span {
+  color: var(--color-text-secondary);
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.dashboard-attendance-progress__details {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.dashboard-attendance-progress__summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding-bottom: var(--space-2);
+  border-bottom: 1px solid var(--color-border-subtle);
+}
+
+.dashboard-attendance-progress__summary span {
+  color: var(--color-text-secondary);
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.dashboard-attendance-progress__summary strong {
+  font-size: var(--text-md);
+  font-weight: var(--fw-semibold);
+  color: var(--color-text-strong);
+}
+
+.dashboard-attendance-progress__stats {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+
+.dashboard-attendance-progress__bar {
+  position: relative;
+  height: 10px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #e5e7eb;
+}
+
+.dashboard-attendance-progress__bar-fill {
+  height: 100%;
+  border-radius: inherit;
+  background: #16a34a;
+  transition: width 180ms ease;
 }
 
 .dashboard-attendance-chart {
@@ -637,13 +745,46 @@
     font-size: var(--text-xl);
   }
 
-  .metric-card-header,
-  .attendance-widget-meta {
+  .metric-card-header {
+    display: grid;
+  }
+
+  .dashboard-hero {
+    min-height: 0;
+    gap: var(--space-3);
+  }
+
+  .dashboard-hero-copy {
+    gap: 6px;
+  }
+
+  .dashboard-hero-copy .muted {
+    display: none;
+  }
+
+  .dashboard-hero-meta {
+    min-width: 0;
+    min-height: 0;
+    width: 100%;
+  }
+
+  .dashboard-attendance-progress,
+  .dashboard-attendance-chart,
+  .dashboard-leave-balance-chart__top,
+  .dashboard-leave-requests-card {
     grid-template-columns: 1fr;
   }
 
-  .metric-card-header {
+  .dashboard-attendance-progress__stats,
+  .dashboard-project-meta {
+    grid-template-columns: 1fr;
+  }
+
+  .dashboard-attendance-progress__summary,
+  .dashboard-attendance-chart__summary {
     display: grid;
+    justify-content: stretch;
+    text-align: left;
   }
 
   .dashboard-quick-actions,
@@ -653,6 +794,24 @@
 
   .dashboard-card-actions {
     width: 100%;
+    justify-content: stretch;
+  }
+
+  .dashboard-card-actions > * {
+    width: 100%;
+  }
+
+  .dashboard-overview-tabs {
+    width: 100%;
     justify-content: space-between;
+  }
+
+  .dashboard-overview-tab {
+    flex: 1 1 0;
+  }
+
+  .dashboard-chart-tooltip {
+    min-width: 150px;
+    max-width: 190px;
   }
 }

@@ -1,7 +1,7 @@
 import "./EmployeeSnapshotCards.css";
 import { useMemo, useState } from "react";
 import type { Attendance } from "../../types";
-import { formatTime } from "../../utils/format";
+import { formatAttendanceTime } from "../../utils/format";
 
 type EmployeeAttendanceSnapshotCardProps = {
   attendance: Attendance[];
@@ -84,9 +84,9 @@ export default function EmployeeAttendanceSnapshotCard({ attendance }: EmployeeA
             <strong>{todayRecord?.checkOutTime ? formatWorkedDuration(todayRecord.workedMinutes) : todayRecord?.checkInTime ? "In progress" : "Not marked"}</strong>
             <p className="muted">
               {todayRecord?.checkOutTime
-                ? `Checked out ${formatTime(todayRecord.checkOutTime)}`
+                ? `Checked out ${formatAttendanceTime(todayRecord.checkOutTime)}`
                 : todayRecord?.checkInTime
-                  ? `Checked in ${formatTime(todayRecord.checkInTime)}`
+                  ? `Checked in ${formatAttendanceTime(todayRecord.checkInTime)}`
                   : "No attendance recorded for today"}
             </p>
           </div>
@@ -109,7 +109,7 @@ export default function EmployeeAttendanceSnapshotCard({ attendance }: EmployeeA
             </div>
             <div className="employee-snapshot-mini-card">
               <span className="employee-snapshot-mini-card__label">Check in</span>
-              <strong>{todayRecord?.checkInTime ? formatTime(todayRecord.checkInTime) : "-"}</strong>
+              <strong>{todayRecord?.checkInTime ? formatAttendanceTime(todayRecord.checkInTime) : "-"}</strong>
             </div>
           </div>
         </div>

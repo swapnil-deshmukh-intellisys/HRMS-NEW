@@ -1,6 +1,6 @@
 import { Bar, BarChart, CartesianGrid, Cell, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import type { Attendance, LeaveBalance } from "../../types";
-import { formatLeaveDays, formatTime } from "../../utils/format";
+import { formatAttendanceTime, formatLeaveDays } from "../../utils/format";
 
 type EmployeeAttendanceProgressEntry = {
   key: string;
@@ -135,11 +135,11 @@ export function EmployeeAttendanceWidgetCard(props: {
           <div className="dashboard-attendance-progress__stats">
             <div className="table-cell-stack">
               <span className="table-cell-secondary">Check in</span>
-              <span className="table-cell-primary">{formatTime(selfAttendance?.checkInTime)}</span>
+              <span className="table-cell-primary">{formatAttendanceTime(selfAttendance?.checkInTime)}</span>
             </div>
             <div className="table-cell-stack">
               <span className="table-cell-secondary">Check out</span>
-              <span className="table-cell-primary">{formatTime(selfAttendance?.checkOutTime)}</span>
+              <span className="table-cell-primary">{formatAttendanceTime(selfAttendance?.checkOutTime)}</span>
             </div>
             <div className="table-cell-stack">
               <span className="table-cell-secondary">Worked</span>

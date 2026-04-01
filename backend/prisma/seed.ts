@@ -1,6 +1,4 @@
-import bcrypt from "bcryptjs";
 import { PrismaClient, RoleName } from "@prisma/client";
-import { ensureEmployeeLeaveBalances } from "../src/utils/leave-balance.js";
 
 const prisma = new PrismaClient();
 
@@ -13,11 +11,7 @@ async function main() {
     });
   }
 
-  const adminRole = await prisma.role.findUniqueOrThrow({
-    where: { name: RoleName.ADMIN },
-  });
-
-  const department = await prisma.department.upsert({
+  await prisma.department.upsert({
     where: { code: "ADMIN" },
     update: {},
     create: { name: "Administration", code: "ADMIN" },
@@ -43,21 +37,6 @@ async function main() {
       create: departmentSeed,
     });
   }
-
-  const adminUser = await prisma.user.upsert({
-    where: { email: "admin@hrms.local" },
-    update: {
-      roleId: adminRole.id,
-      isActive: true,
-    },
-    create: {
-      email: "admin@hrms.local",
-      passwordHash: await bcrypt.hash("Admin@123", 10),
-      roleId: adminRole.id,
-      isActive: true,
-    },
-  });
-
   for (const leaveType of [
     { name: "Casual Leave", code: "CL", defaultDaysPerYear: 12 },
     { name: "Sick Leave", code: "SL", defaultDaysPerYear: 10 },
@@ -69,25 +48,6 @@ async function main() {
       create: leaveType,
     });
   }
-
-  const adminEmployee = await prisma.employee.upsert({
-    where: { userId: adminUser.id },
-    update: {
-      departmentId: department.id,
-      employmentStatus: "ACTIVE",
-      isActive: true,
-    },
-    create: {
-      userId: adminUser.id,
-      employeeCode: "EMP001",
-      firstName: "System",
-      lastName: "Admin",
-      departmentId: department.id,
-      joiningDate: new Date(),
-    },
-  });
-
-  await ensureEmployeeLeaveBalances(prisma, adminEmployee.id);
 }
 
 main()

@@ -5,7 +5,7 @@ import { ATTENDANCE_EVENT } from "../../components/common/attendanceQuickActionU
 import MessageCard from "../../components/common/MessageCard";
 import { apiRequest } from "../../services/api";
 import type { Attendance, CalendarDay, Employee, EmployeeDashboardData, LeaveBalance, LeaveRequest, Role } from "../../types";
-import { formatLeaveDays, formatMetricKey, formatTime } from "../../utils/format";
+import { formatAttendanceTime, formatLeaveDays, formatMetricKey } from "../../utils/format";
 
 type DashboardData = Record<string, number | string | boolean | null | undefined | object>;
 type MetricVariant = "numeric" | "status";
@@ -744,11 +744,11 @@ export default function DashboardPage({ token, role, currentEmployeeId }: Dashbo
             <div className="attendance-widget-meta">
               <div className="table-cell-stack">
                 <span className="table-cell-secondary">Check in</span>
-                <span className="table-cell-primary">{formatTime(selfAttendance?.checkInTime)}</span>
+                <span className="table-cell-primary">{formatAttendanceTime(selfAttendance?.checkInTime)}</span>
               </div>
               <div className="table-cell-stack">
                 <span className="table-cell-secondary">Check out</span>
-                <span className="table-cell-primary">{formatTime(selfAttendance?.checkOutTime)}</span>
+                <span className="table-cell-primary">{formatAttendanceTime(selfAttendance?.checkOutTime)}</span>
               </div>
               <div className="table-cell-stack">
                 <span className="table-cell-secondary">Worked</span>

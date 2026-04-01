@@ -1,12 +1,12 @@
 import "./AttendancePage.css";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import MessageCard from "../../components/common/MessageCard";
 import Modal from "../../components/common/Modal";
 import Table from "../../components/common/Table";
 import { ATTENDANCE_EVENT } from "../../components/common/attendanceQuickActionUtils";
 import { apiRequest } from "../../services/api";
 import type { Attendance, AttendanceRegularizationRequest, Employee, Role } from "../../types";
-import { formatDateLabel, formatDateTime, formatTime, formatWeekday, isToday } from "../../utils/format";
+import { formatAttendanceTime, formatDateLabel, formatDateTime, formatWeekday, isToday } from "../../utils/format";
 
 type AttendancePageProps = {
   token: string | null;
@@ -20,6 +20,7 @@ export default function AttendancePage({ token, role, currentEmployeeId, current
   const [attendance, setAttendance] = useState<Attendance[]>([]);
   const [regularizations, setRegularizations] = useState<AttendanceRegularizationRequest[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
+  const [employeesTotal, setEmployeesTotal] = useState(0);
   const [filterEmployeeId, setFilterEmployeeId] = useState("");
   const [filterStatus, setFilterStatus] = useState("");
   const [filterDate, setFilterDate] = useState(today);
@@ -27,6 +28,8 @@ export default function AttendancePage({ token, role, currentEmployeeId, current
   const [reviewModalOpen, setReviewModalOpen] = useState(false);
   const [reviewTarget, setReviewTarget] = useState<AttendanceRegularizationRequest | null>(null);
   const [reviewRejectionReason, setReviewRejectionReason] = useState("");
+  const [employeeMonthHistoryOpen, setEmployeeMonthHistoryOpen] = useState(false);
+  const [employeeMonthHistoryTarget, setEmployeeMonthHistoryTarget] = useState<Employee | null>(null);
   const [regularizationForm, setRegularizationForm] = useState({
     attendanceDate: today,
     proposedCheckInTime: "",
@@ -93,8 +96,9 @@ export default function AttendancePage({ token, role, currentEmployeeId, current
   const reloadEmployees = useCallback(async () => {
     if (role !== "EMPLOYEE") {
       try {
-        const response = await apiRequest<{ items: Employee[] }>("/employees", { token });
+        const response = await apiRequest<{ items: Employee[]; pagination?: { total: number } }>("/employees", { token });
         setEmployees(response.data.items);
+        setEmployeesTotal(response.data.pagination?.total ?? response.data.items.length);
       } catch (requestError) {
         setError(requestError instanceof Error ? requestError.message : "Failed to load employees for attendance.");
       }
@@ -103,6 +107,7 @@ export default function AttendancePage({ token, role, currentEmployeeId, current
 
     if (!isTeamLead || !currentEmployeeId) {
       setEmployees([]);
+      setEmployeesTotal(currentEmployeeId ? 1 : 0);
       setTeamLeadScopeIds([]);
       return;
     }
@@ -111,6 +116,7 @@ export default function AttendancePage({ token, role, currentEmployeeId, current
       const response = await apiRequest<Employee>(`/employees/${currentEmployeeId}`, { token });
       const scopedEmployees = response.data.scopedTeamMembers?.map((item) => item.employee) ?? [];
       setEmployees(scopedEmployees);
+      setEmployeesTotal(new Set([currentEmployeeId, ...scopedEmployees.map((employee) => employee.id)]).size);
       setTeamLeadScopeIds(scopedEmployees.map((employee) => employee.id));
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : "Failed to load scoped team members.");
@@ -286,6 +292,70 @@ export default function AttendancePage({ token, role, currentEmployeeId, current
     return true;
   });
 
+  const employeeMonthHistory = useMemo(() => {
+    if (!employeeMonthHistoryTarget) {
+      return [];
+    }
+
+    const referenceDate = filterDate ? new Date(filterDate) : new Date();
+    const month = referenceDate.getMonth();
+    const year = referenceDate.getFullYear();
+
+    return attendance
+      .filter((record) => {
+        if ((record.employee?.id ?? record.employeeId) !== employeeMonthHistoryTarget.id) {
+          return false;
+        }
+
+        const recordDate = new Date(record.attendanceDate);
+        return recordDate.getMonth() === month && recordDate.getFullYear() === year;
+      })
+      .sort((left, right) => new Date(left.attendanceDate).getTime() - new Date(right.attendanceDate).getTime());
+  }, [attendance, employeeMonthHistoryTarget, filterDate]);
+
+  const employeeMonthHistoryLabel = useMemo(() => {
+    const referenceDate = filterDate ? new Date(filterDate) : new Date();
+    return referenceDate.toLocaleDateString("en-IN", {
+      month: "long",
+      year: "numeric",
+    });
+  }, [filterDate]);
+
+  const attendanceOverview = useMemo(
+    () =>
+      filteredAttendance.reduce(
+        (summary, record) => {
+          if (record.status === "PRESENT" || record.status === "HALF_DAY") {
+            summary.present += 1;
+          } else if (record.status === "ABSENT") {
+            summary.absent += 1;
+          } else if (record.status === "LEAVE") {
+            summary.leave += 1;
+          }
+
+          return summary;
+        },
+        { present: 0, absent: 0, leave: 0 },
+      ),
+    [filteredAttendance],
+  );
+
+  const totalWorkforceCount = useMemo(() => {
+    if (role === "EMPLOYEE") {
+      if (isTeamLead) {
+        return new Set([currentEmployeeId, ...teamLeadScopeIds].filter((value): value is number => Boolean(value))).size;
+      }
+
+      return currentEmployeeId ? 1 : 0;
+    }
+
+    if (employeesTotal > 0) {
+      return employeesTotal;
+    }
+
+    return new Set(attendance.map((record) => record.employee?.id ?? record.employeeId)).size;
+  }, [attendance, currentEmployeeId, employeesTotal, isTeamLead, role, teamLeadScopeIds]);
+
   const columns = [
     ...(canManageOthers ? ["Employee"] : []),
     "Date",
@@ -305,11 +375,13 @@ export default function AttendancePage({ token, role, currentEmployeeId, current
     "Actions",
   ];
 
+  const monthHistoryColumns = ["Date", "Check in", "Check out", "Worked duration", "Status"];
+
   return (
     <section className="stack">
       {error ? <MessageCard title="Attendance issue" tone="error" message={error} /> : null}
       {message ? <p className="success-text">{message}</p> : null}
-      <div className="card dense-table-card">
+      <div className="card dense-table-card attendance-table-card">
         <div className="stack">
           <div className="attendance-history-header">
             <div>
@@ -359,6 +431,22 @@ export default function AttendancePage({ token, role, currentEmployeeId, current
               </label>
             ) : null}
           </div>
+          <div className="attendance-overview-row">
+            <div className="attendance-overview-chip attendance-overview-chip--present">
+              <span className="attendance-overview-chip__label">Present</span>
+              <strong className="attendance-overview-chip__value">
+                {attendanceOverview.present}/{totalWorkforceCount}
+              </strong>
+            </div>
+            <div className="attendance-overview-chip attendance-overview-chip--absent">
+              <span className="attendance-overview-chip__label">Absent</span>
+              <strong className="attendance-overview-chip__value">{attendanceOverview.absent}</strong>
+            </div>
+            <div className="attendance-overview-chip attendance-overview-chip--leave">
+              <span className="attendance-overview-chip__label">On leave</span>
+              <strong className="attendance-overview-chip__value">{attendanceOverview.leave}</strong>
+            </div>
+          </div>
         </div>
         {loading ? (
           <div className="page-loading">
@@ -379,8 +467,8 @@ export default function AttendancePage({ token, role, currentEmployeeId, current
                     {isToday(record.attendanceDate) ? formatDateLabel(record.attendanceDate) : formatWeekday(record.attendanceDate)}
                   </span>
                 </div>,
-                formatTime(record.checkInTime),
-                formatTime(record.checkOutTime),
+                formatAttendanceTime(record.checkInTime),
+                formatAttendanceTime(record.checkOutTime),
                 renderWorkedDuration(record),
                 <span key={`status-${record.id}`} className={getStatusClass(record.status)}>
                   {record.status}
@@ -390,9 +478,20 @@ export default function AttendancePage({ token, role, currentEmployeeId, current
               if (canManageOthers) {
                 cells.unshift(
                   <div className="table-cell-stack" key={`employee-${record.id}`}>
-                    <span className="table-cell-primary">
+                    <button
+                      type="button"
+                      className="attendance-history-person-trigger table-cell-primary"
+                      onClick={() => {
+                        if (!record.employee) {
+                          return;
+                        }
+
+                        setEmployeeMonthHistoryTarget(record.employee);
+                        setEmployeeMonthHistoryOpen(true);
+                      }}
+                    >
                       {record.employee ? `${record.employee.firstName} ${record.employee.lastName}` : "Unknown employee"}
-                    </span>
+                    </button>
                     <span className="table-cell-secondary">{record.employee?.employeeCode ?? "-"}</span>
                   </div>,
                 );
@@ -403,7 +502,7 @@ export default function AttendancePage({ token, role, currentEmployeeId, current
           />
         )}
       </div>
-      <div className="card dense-table-card">
+      <div className="card dense-table-card attendance-table-card">
         <div className="attendance-history-header">
           <div>
             <h3>Correction requests</h3>
@@ -421,7 +520,7 @@ export default function AttendancePage({ token, role, currentEmployeeId, current
               </div>,
               <div className="table-cell-stack" key={`regularization-times-${record.id}`}>
                 <span className="table-cell-primary">
-                  {formatTime(record.proposedCheckInTime)} to {formatTime(record.proposedCheckOutTime)}
+                  {formatAttendanceTime(record.proposedCheckInTime)} to {formatAttendanceTime(record.proposedCheckOutTime)}
                 </span>
                 <span className="table-cell-secondary">
                   {record.proposedCheckInTime && record.proposedCheckOutTime
@@ -559,6 +658,45 @@ export default function AttendancePage({ token, role, currentEmployeeId, current
               Close
             </button>
           </div>
+        </div>
+      </Modal>
+
+      <Modal
+        open={employeeMonthHistoryOpen}
+        title={
+          employeeMonthHistoryTarget
+            ? `${employeeMonthHistoryTarget.firstName} ${employeeMonthHistoryTarget.lastName} attendance`
+            : "Attendance"
+        }
+        onClose={() => {
+          setEmployeeMonthHistoryOpen(false);
+          setEmployeeMonthHistoryTarget(null);
+        }}
+      >
+        <div className="stack">
+          <p className="muted">
+            Showing attendance records for {employeeMonthHistoryLabel}.
+          </p>
+          <Table
+            compact
+            columns={monthHistoryColumns}
+            rows={employeeMonthHistory.map((record) => [
+              <div className="table-cell-stack" key={`month-date-${record.id}`}>
+                <span className="table-cell-primary">{formatDateLabel(record.attendanceDate)}</span>
+                <span className="table-cell-secondary">{formatWeekday(record.attendanceDate)}</span>
+              </div>,
+              formatAttendanceTime(record.checkInTime),
+              formatAttendanceTime(record.checkOutTime),
+              renderWorkedDuration(record),
+              <span key={`month-status-${record.id}`} className={getStatusClass(record.status)}>
+                {record.status}
+              </span>,
+            ])}
+            emptyState={{
+              title: "No attendance records for this month",
+              description: "No entries were found for the selected employee in this month.",
+            }}
+          />
         </div>
       </Modal>
     </section>

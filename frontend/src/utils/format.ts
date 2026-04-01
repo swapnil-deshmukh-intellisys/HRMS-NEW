@@ -49,6 +49,7 @@ export function formatDateTime(value?: string | null) {
         year: "numeric",
         hour: "numeric",
         minute: "2-digit",
+        hour12: true,
       })
     : "-";
 }
@@ -58,6 +59,18 @@ export function formatTime(value?: string | null) {
     ? new Date(value).toLocaleTimeString(undefined, {
         hour: "numeric",
         minute: "2-digit",
+        hour12: true,
+      })
+    : "-";
+}
+
+export function formatAttendanceTime(value?: string | null) {
+  return value
+    ? new Date(value).toLocaleTimeString("en-IN", {
+        hour: "numeric",
+        minute: "2-digit",
+        hour12: true,
+        timeZone: "Asia/Kolkata",
       })
     : "-";
 }

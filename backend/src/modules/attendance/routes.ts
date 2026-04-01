@@ -564,6 +564,7 @@ router.post("/regularizations/:id/cancel", requireRoles("ADMIN", "HR", "MANAGER"
 router.get("/", requireRoles("ADMIN", "HR", "MANAGER", "EMPLOYEE"), async (request, response, next) => {
   try {
     const requestedEmployeeId = request.query.employeeId ? Number(request.query.employeeId) : undefined;
+    const requestedDate = request.query.date ? parseAttendanceDateInput(String(request.query.date)) : undefined;
     let where: Record<string, unknown> = {};
 
     if (request.user?.role === "EMPLOYEE") {
@@ -596,6 +597,18 @@ router.get("/", requireRoles("ADMIN", "HR", "MANAGER", "EMPLOYEE"), async (reque
         : { employee: { managerId: request.user.employeeId } };
     } else if (requestedEmployeeId) {
       where = { employeeId: requestedEmployeeId };
+    }
+
+    if (requestedDate) {
+      const dateRange = {
+        gte: startOfDay(requestedDate),
+        lte: endOfDay(requestedDate),
+      };
+
+      where = {
+        ...where,
+        attendanceDate: dateRange,
+      };
     }
 
     const attendance = await prisma.attendance.findMany({

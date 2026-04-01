@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import MessageCard from "../../components/common/MessageCard";
 import { apiRequest } from "../../services/api";
 import type { Attendance, EmployeeDashboardData, Role } from "../../types";
-import { formatLeaveDays, formatTime } from "../../utils/format";
+import { formatAttendanceTime, formatLeaveDays } from "../../utils/format";
 
 type DashboardData = Record<string, number | string | boolean | null | undefined | object>;
 
@@ -222,11 +222,11 @@ export default function DashboardPage({ token, role }: DashboardPageProps) {
                   <div className="attendance-widget-meta">
                     <div className="table-cell-stack">
                       <span className="table-cell-secondary">Check in</span>
-                      <span className="table-cell-primary">{formatTime(attendanceToday?.checkInTime)}</span>
+                      <span className="table-cell-primary">{formatAttendanceTime(attendanceToday?.checkInTime)}</span>
                     </div>
                     <div className="table-cell-stack">
                       <span className="table-cell-secondary">Check out</span>
-                      <span className="table-cell-primary">{formatTime(attendanceToday?.checkOutTime)}</span>
+                      <span className="table-cell-primary">{formatAttendanceTime(attendanceToday?.checkOutTime)}</span>
                     </div>
                     <div className="table-cell-stack">
                       <span className="table-cell-secondary">Worked</span>
@@ -353,16 +353,16 @@ export default function DashboardPage({ token, role }: DashboardPageProps) {
                 ))}
               </div>
 
-              <article className="card metric-card">
-                <div className="metric-card-header">
-                  <div>
-                    <p className="eyebrow">Analytics workspace</p>
-                    <strong>Charts and visual trends moved out of dashboard</strong>
+                <article className="card metric-card">
+                  <div className="metric-card-header">
+                    <div>
+                      <p className="eyebrow">Analytics workspace</p>
+                      <strong>Open detailed analytics</strong>
+                    </div>
                   </div>
-                </div>
-                <p className="muted">
-                  Open the new Analytics section to review attendance distributions, leave activity, and other chart-based insights.
-                </p>
+                  <p className="muted">
+                    Open the new Analytics section to review attendance distributions, leave activity, and other chart-based insights.
+                  </p>
                 <div className="dashboard-quick-actions dashboard-quick-actions--compact">
                   <button className="secondary" onClick={() => navigate("/analytics")}>
                     Open analytics

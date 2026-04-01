@@ -1,6 +1,6 @@
 import Table from "../../components/common/Table";
 import type { Attendance } from "../../types";
-import { formatDateLabel, formatTime, formatWeekday, isToday } from "../../utils/format";
+import { formatAttendanceTime, formatDateLabel, formatWeekday, isToday } from "../../utils/format";
 import EmployeeAttendanceBreakdownChart from "./charts/EmployeeAttendanceBreakdownChart";
 import EmployeeWorkedHoursChart from "./charts/EmployeeWorkedHoursChart";
 
@@ -76,8 +76,8 @@ export default function EmployeeAttendanceTab({ attendance }: EmployeeAttendance
                 {isToday(record.attendanceDate) ? formatDateLabel(record.attendanceDate) : formatWeekday(record.attendanceDate)}
               </span>
             </div>,
-            record.status === "LEAVE" ? "-" : formatTime(record.checkInTime),
-            record.status === "LEAVE" ? "-" : formatTime(record.checkOutTime),
+            record.status === "LEAVE" ? "-" : formatAttendanceTime(record.checkInTime),
+            record.status === "LEAVE" ? "-" : formatAttendanceTime(record.checkOutTime),
             renderWorkedDuration(record),
             <span key={`status-${record.id}`} className={getStatusClass(record.status)}>
               {record.status}

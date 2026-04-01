@@ -4,7 +4,7 @@ import Modal from "./Modal";
 import { apiRequest } from "../../services/api";
 import type { Attendance } from "../../types";
 import { ATTENDANCE_EVENT, dispatchAttendanceUpdated, getSelfAttendanceActionState } from "./attendanceQuickActionUtils";
-import { formatTime } from "../../utils/format";
+import { formatAttendanceTime } from "../../utils/format";
 
 type AttendanceQuickActionProps = {
   token: string | null;
@@ -136,7 +136,7 @@ export default function AttendanceQuickAction({
       <div className={`attendance-quick-action-wrap attendance-quick-action-wrap--${size}`.trim()}>
         {attendanceToday?.checkInTime && !attendanceToday.checkOutTime ? (
           <div className="attendance-quick-action-meta" aria-live="polite">
-            <span className="attendance-quick-action-meta__time">In {formatTime(attendanceToday.checkInTime)}</span>
+            <span className="attendance-quick-action-meta__time">In {formatAttendanceTime(attendanceToday.checkInTime)}</span>
             <strong className="attendance-quick-action-meta__worked">{liveWorkedDuration}</strong>
           </div>
         ) : null}

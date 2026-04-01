@@ -37,6 +37,70 @@
   min-width: 180px;
 }
 
+.attendance-table-card .table-wrap {
+  max-height: none;
+}
+
+.attendance-history-content {
+  gap: var(--space-3);
+}
+
+.attendance-overview-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+.attendance-overview-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-secondary);
+}
+
+.attendance-overview-chip__label {
+  color: var(--color-text-secondary);
+  font-size: var(--text-xs);
+  font-weight: var(--fw-semibold);
+}
+
+.attendance-overview-chip__value {
+  color: var(--color-text-strong);
+  font-size: var(--text-sm);
+  font-weight: var(--fw-semibold);
+}
+
+.attendance-overview-chip--present {
+  background: #f0fdf4;
+}
+
+.attendance-overview-chip--absent {
+  background: #fef2f2;
+}
+
+.attendance-overview-chip--leave {
+  background: #fff7ed;
+}
+
+.attendance-history-person-trigger {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--color-primary);
+  font: inherit;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+
+.attendance-history-person-trigger:hover,
+.attendance-history-person-trigger:focus-visible {
+  text-decoration: underline;
+}
+
 @media (max-width: 768px) {
   .regularization-time-grid {
     grid-template-columns: 1fr;

@@ -39,6 +39,8 @@ test("calculatePayrollPreview applies absent-day deduction on top of net salary"
     grossMonthlySalary: 60000,
     basicMonthlySalary: 30000,
     month: 3,
+    absentDeductionDays: 2,
+    halfDayDeductionDays: 0,
     deductibleDays: 2,
   }), {
     pf: 3600,
@@ -47,6 +49,8 @@ test("calculatePayrollPreview applies absent-day deduction on top of net salary"
     netSalary: 54657,
     perDaySalary: 1821.9,
     perHourSalary: 202.43,
+    absentDeductionDays: 2,
+    halfDayDeductionDays: 0,
     deductibleDays: 2,
     deductionAmount: 3643.8,
     finalSalaryBeforeProbation: 51013.2,
@@ -61,6 +65,8 @@ test("calculatePayrollPreview applies 50 percent probation adjustment at final s
     grossMonthlySalary: 60000,
     basicMonthlySalary: 30000,
     month: 3,
+    absentDeductionDays: 2,
+    halfDayDeductionDays: 0,
     deductibleDays: 2,
     isOnProbation: true,
   }), {
@@ -70,11 +76,39 @@ test("calculatePayrollPreview applies 50 percent probation adjustment at final s
     netSalary: 54657,
     perDaySalary: 1821.9,
     perHourSalary: 202.43,
+    absentDeductionDays: 2,
+    halfDayDeductionDays: 0,
     deductibleDays: 2,
     deductionAmount: 3643.8,
     finalSalaryBeforeProbation: 51013.2,
     probationMultiplier: 0.5,
     probationAdjustedSalary: 25506.6,
     finalSalary: 25506.6,
+  });
+});
+
+test("calculatePayrollPreview supports half-day deduction separately from full absents", () => {
+  assert.deepEqual(calculatePayrollPreview({
+    grossMonthlySalary: 60000,
+    basicMonthlySalary: 30000,
+    month: 3,
+    absentDeductionDays: 1,
+    halfDayDeductionDays: 0.5,
+    deductibleDays: 1.5,
+  }), {
+    pf: 3600,
+    gratuity: 1443,
+    pt: 300,
+    netSalary: 54657,
+    perDaySalary: 1821.9,
+    perHourSalary: 202.43,
+    absentDeductionDays: 1,
+    halfDayDeductionDays: 0.5,
+    deductibleDays: 1.5,
+    deductionAmount: 2732.85,
+    finalSalaryBeforeProbation: 51924.15,
+    probationMultiplier: 1,
+    probationAdjustedSalary: 51924.15,
+    finalSalary: 51924.15,
   });
 });

@@ -36,6 +36,14 @@ function getWorkedDurationLabel(record: Attendance) {
     return "-";
   }
 
+  if (record.status === "ABSENT") {
+    return "Absent";
+  }
+
+  if (record.status === "HALF_DAY" && !record.checkInTime && !record.checkOutTime) {
+    return "Half day";
+  }
+
   if (record.checkOutTime) {
     return formatWorkedDuration(record.workedMinutes, record.checkOutTime);
   }
@@ -55,6 +63,16 @@ function renderWorkedDuration(record: Attendance) {
 
 function getStatusClass(status: Attendance["status"]) {
   return `status-pill status-pill--${status.toLowerCase().replace(/_/g, "-")}`;
+}
+
+function getStatusLabel(record: Attendance) {
+  const baseLabel = record.status === "HALF_DAY" ? "Half day" : record.status.charAt(0) + record.status.slice(1).toLowerCase();
+
+  if (record.leaveTypeCode && (record.status === "LEAVE" || record.status === "HALF_DAY")) {
+    return `${baseLabel} (${record.leaveTypeCode})`;
+  }
+
+  return baseLabel;
 }
 
 export default function EmployeeAttendanceTab({ attendance }: EmployeeAttendanceTabProps) {
@@ -79,9 +97,9 @@ export default function EmployeeAttendanceTab({ attendance }: EmployeeAttendance
             record.status === "LEAVE" ? "-" : formatAttendanceTime(record.checkInTime),
             record.status === "LEAVE" ? "-" : formatAttendanceTime(record.checkOutTime),
             renderWorkedDuration(record),
-            <span key={`status-${record.id}`} className={getStatusClass(record.status)}>
-              {record.status}
-            </span>,
+            <div className="table-cell-stack" key={`status-${record.id}`}>
+              <span className={getStatusClass(record.status)}>{getStatusLabel(record)}</span>
+            </div>,
           ])}
         />
       </div>

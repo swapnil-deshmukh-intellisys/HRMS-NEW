@@ -1,7 +1,7 @@
 import "./EmployeeProfilePage.css";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { FormEvent } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useParams, useSearchParams } from "react-router-dom";
 import MessageCard from "../../components/common/MessageCard";
 import Modal from "../../components/common/Modal";
 import { apiRequest } from "../../services/api";
@@ -47,6 +47,7 @@ function toEmployeeForm(employee: Employee): EmployeeFormValues {
 
 export default function EmployeeProfilePage({ token, role, currentEmployeeId }: EmployeeProfilePageProps) {
   const { id } = useParams();
+  const [searchParams] = useSearchParams();
   const employeeId = Number(id);
   const [employee, setEmployee] = useState<Employee | null>(null);
   const [attendance, setAttendance] = useState<Attendance[]>([]);
@@ -58,8 +59,14 @@ export default function EmployeeProfilePage({ token, role, currentEmployeeId }: 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
-  const [activeTab, setActiveTab] = useState<EmployeeProfileTabKey>("overview");
+  const [activeTab, setActiveTab] = useState<EmployeeProfileTabKey>(() => {
+    const requestedTab = searchParams.get("tab");
+    return requestedTab === "attendance" || requestedTab === "leaves" || requestedTab === "payroll" || requestedTab === "overview"
+      ? requestedTab
+      : "overview";
+  });
   const [employeeModalOpen, setEmployeeModalOpen] = useState(false);
+  const [statusConfirmOpen, setStatusConfirmOpen] = useState(false);
   const [form, setForm] = useState<EmployeeFormValues>(createInitialEmployeeForm);
   const [reviewingLeaveId, setReviewingLeaveId] = useState<number | null>(null);
   const [reviewStage, setReviewStage] = useState<"manager" | "hr" | null>(null);
@@ -138,6 +145,14 @@ export default function EmployeeProfilePage({ token, role, currentEmployeeId }: 
       setActiveTab("overview");
     }
   }, [activeTab, canViewPayroll]);
+
+  useEffect(() => {
+    const requestedTab = searchParams.get("tab");
+
+    if (requestedTab === "attendance" || requestedTab === "leaves" || requestedTab === "payroll" || requestedTab === "overview") {
+      setActiveTab(requestedTab);
+    }
+  }, [searchParams]);
 
   const latestPayroll = payroll[0];
 
@@ -315,7 +330,12 @@ export default function EmployeeProfilePage({ token, role, currentEmployeeId }: 
         Back to employee directory
       </Link>
       {message ? <p className="success-text">{message}</p> : null}
-      <EmployeeProfileHeader employee={employee} role={role} onEdit={() => setEmployeeModalOpen(true)} onToggleStatus={toggleStatus} />
+      <EmployeeProfileHeader
+        employee={employee}
+        role={role}
+        onEdit={() => setEmployeeModalOpen(true)}
+        onToggleStatus={() => setStatusConfirmOpen(true)}
+      />
       <div className="grid cols-2 employee-profile-snapshot-row">
         <EmployeeAttendanceSnapshotCard attendance={attendance} />
         <EmployeeLeaveSnapshotCard balances={balances} leaves={leaves} />
@@ -347,6 +367,37 @@ export default function EmployeeProfilePage({ token, role, currentEmployeeId }: 
           onSubmit={handleSubmit}
           onCancelEdit={() => setEmployeeModalOpen(false)}
         />
+      </Modal>
+      <Modal
+        open={statusConfirmOpen}
+        title={employee.isActive ? "Confirm deactivation" : "Confirm activation"}
+        onClose={() => setStatusConfirmOpen(false)}
+      >
+        <div className="stack leave-review-modal">
+          <p className="muted">
+            {employee.isActive
+              ? "Deactivating this employee will disable access and mark them inactive in the system."
+              : "Activating this employee will restore access and mark them active in the system."}
+          </p>
+          <div className="button-row">
+            <button
+              type="button"
+              className="secondary"
+              onClick={() => setStatusConfirmOpen(false)}
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setStatusConfirmOpen(false);
+                void toggleStatus();
+              }}
+            >
+              {employee.isActive ? "Deactivate employee" : "Activate employee"}
+            </button>
+          </div>
+        </div>
       </Modal>
       <Modal
         open={reviewingLeaveId !== null}

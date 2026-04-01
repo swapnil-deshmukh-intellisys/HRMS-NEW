@@ -27,6 +27,8 @@ type PayrollPreview = {
   netSalary: number;
   perDaySalary: number;
   perHourSalary: number;
+  absentDeductionDays: number;
+  halfDayDeductionDays: number;
   deductibleDays: number;
   deductionAmount: number;
   finalSalaryBeforeProbation: number;
@@ -186,6 +188,14 @@ export default function PayrollPage({ token, role }: PayrollPageProps) {
               <div className="table-cell-stack">
                 <span className="table-cell-secondary">Net salary</span>
                 <span className="table-cell-primary">{preview.netSalary}</span>
+              </div>
+              <div className="table-cell-stack">
+                <span className="table-cell-secondary">Absent days</span>
+                <span className="table-cell-primary">{preview.absentDeductionDays}</span>
+              </div>
+              <div className="table-cell-stack">
+                <span className="table-cell-secondary">Half days</span>
+                <span className="table-cell-primary">{preview.halfDayDeductionDays}</span>
               </div>
               <div className="table-cell-stack">
                 <span className="table-cell-secondary">Deductible days</span>

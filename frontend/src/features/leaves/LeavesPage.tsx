@@ -40,6 +40,7 @@ export default function LeavesPage({ token, role, currentEmployeeId, currentEmpl
   const [rejectionReason, setRejectionReason] = useState("");
   const [leaveFormOpen, setLeaveFormOpen] = useState(false);
   const [leaveBalancesOpen, setLeaveBalancesOpen] = useState(false);
+  const [confirmAction, setConfirmAction] = useState<{ type: "cancel" | "repair"; leaveId: number } | null>(null);
   const [teamLeadScopeIds, setTeamLeadScopeIds] = useState<number[]>([]);
   const totalAllocated = balances.reduce((sum, balance) => sum + balance.allocatedDays, 0);
   const totalUsed = balances.reduce((sum, balance) => sum + balance.usedDays, 0);
@@ -232,8 +233,8 @@ export default function LeavesPage({ token, role, currentEmployeeId, currentEmpl
             currentEmployeeId={currentEmployeeId}
             teamLeadScopeIds={teamLeadScopeIds}
             onReview={reviewLeave}
-            onCancel={cancelLeave}
-            onRepairAttendance={repairLeaveAttendance}
+            onCancel={(id) => setConfirmAction({ type: "cancel", leaveId: id })}
+            onRepairAttendance={(id) => setConfirmAction({ type: "repair", leaveId: id })}
           />
         </div>
       )}
@@ -296,6 +297,10 @@ export default function LeavesPage({ token, role, currentEmployeeId, currentEmpl
       <Modal
         open={reviewingLeaveId !== null}
         title={reviewStage === "hr" ? "Reject at HR review" : "Reject at manager review"}
+        onClose={() => {
+          setReviewingLeaveId(null);
+          setReviewStage(null);
+        }}
       >
         <div className="stack leave-review-modal">
           <p className="muted">Add a clear reason so the employee understands why this request was rejected.</p>
@@ -316,6 +321,48 @@ export default function LeavesPage({ token, role, currentEmployeeId, currentEmpl
             </button>
             <button type="button" onClick={submitRejection} disabled={rejectionReason.trim().length < 3}>
               Reject leave
+            </button>
+          </div>
+        </div>
+      </Modal>
+      <Modal
+        open={confirmAction !== null}
+        title={confirmAction?.type === "repair" ? "Repair leave attendance" : "Cancel leave request"}
+        onClose={() => setConfirmAction(null)}
+      >
+        <div className="stack leave-review-modal">
+          <p className="muted">
+            {confirmAction?.type === "repair"
+              ? "This will rewrite attendance entries from the approved leave request dates."
+              : "This will cancel the leave request and remove it from the active approval flow."}
+          </p>
+          <div className="button-row">
+            <button
+              type="button"
+              className="secondary"
+              onClick={() => setConfirmAction(null)}
+            >
+              Keep as is
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                const action = confirmAction;
+                setConfirmAction(null);
+
+                if (!action) {
+                  return;
+                }
+
+                if (action.type === "repair") {
+                  void repairLeaveAttendance(action.leaveId);
+                  return;
+                }
+
+                void cancelLeave(action.leaveId);
+              }}
+            >
+              {confirmAction?.type === "repair" ? "Repair attendance" : "Cancel leave"}
             </button>
           </div>
         </div>

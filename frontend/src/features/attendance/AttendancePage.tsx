@@ -1,5 +1,6 @@
 import "./AttendancePage.css";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import MessageCard from "../../components/common/MessageCard";
 import Modal from "../../components/common/Modal";
 import Table from "../../components/common/Table";
@@ -15,6 +16,10 @@ type AttendancePageProps = {
   currentEmployee: Employee | null;
 };
 
+type AttendanceListRow = Omit<Attendance, "status"> & {
+  status: Attendance["status"] | "UNMARKED";
+};
+
 export default function AttendancePage({ token, role, currentEmployeeId, currentEmployee }: AttendancePageProps) {
   const today = new Date().toISOString().slice(0, 10);
   const [attendance, setAttendance] = useState<Attendance[]>([]);
@@ -25,11 +30,10 @@ export default function AttendancePage({ token, role, currentEmployeeId, current
   const [filterStatus, setFilterStatus] = useState("");
   const [filterDate, setFilterDate] = useState(today);
   const [regularizationOpen, setRegularizationOpen] = useState(false);
+  const [finalizeConfirmOpen, setFinalizeConfirmOpen] = useState(false);
   const [reviewModalOpen, setReviewModalOpen] = useState(false);
   const [reviewTarget, setReviewTarget] = useState<AttendanceRegularizationRequest | null>(null);
   const [reviewRejectionReason, setReviewRejectionReason] = useState("");
-  const [employeeMonthHistoryOpen, setEmployeeMonthHistoryOpen] = useState(false);
-  const [employeeMonthHistoryTarget, setEmployeeMonthHistoryTarget] = useState<Employee | null>(null);
   const [regularizationForm, setRegularizationForm] = useState({
     attendanceDate: today,
     proposedCheckInTime: "",
@@ -43,14 +47,20 @@ export default function AttendancePage({ token, role, currentEmployeeId, current
   const isTeamLead = Boolean(currentEmployee?.capabilities?.some((capability) => capability.capability === "TEAM_LEAD"));
   const canManageOthers = role !== "EMPLOYEE" || isTeamLead;
   const canFinalizeAttendance = role === "ADMIN" || role === "HR";
+  const activeOverviewFilter = filterStatus === "HALF_DAY" ? "PRESENT" : filterStatus;
+  const navigate = useNavigate();
 
-  function getWorkedDurationLabel(record: Attendance) {
+  function getWorkedDurationLabel(record: AttendanceListRow) {
     if (record.status === "LEAVE") {
       return "-";
     }
 
     if (record.status === "ABSENT") {
       return "Absent";
+    }
+
+    if (record.status === "UNMARKED") {
+      return "Unmarked";
     }
 
     if (record.checkOutTime) {
@@ -60,7 +70,7 @@ export default function AttendancePage({ token, role, currentEmployeeId, current
     return isToday(record.attendanceDate) ? "In progress" : "Checkout missing";
   }
 
-  function renderWorkedDuration(record: Attendance) {
+  function renderWorkedDuration(record: AttendanceListRow) {
     const label = getWorkedDurationLabel(record);
 
     if (label === "Checkout missing") {
@@ -96,7 +106,7 @@ export default function AttendancePage({ token, role, currentEmployeeId, current
   const reloadEmployees = useCallback(async () => {
     if (role !== "EMPLOYEE") {
       try {
-        const response = await apiRequest<{ items: Employee[]; pagination?: { total: number } }>("/employees", { token });
+        const response = await apiRequest<{ items: Employee[]; pagination?: { total: number } }>("/employees?limit=1000", { token });
         setEmployees(response.data.items);
         setEmployeesTotal(response.data.pagination?.total ?? response.data.items.length);
       } catch (requestError) {
@@ -252,6 +262,16 @@ export default function AttendancePage({ token, role, currentEmployeeId, current
     return `status-pill status-pill--${status.toLowerCase().replace(/_/g, "-")}`;
   }
 
+  function getStatusLabel(record: AttendanceListRow) {
+    const baseLabel = record.status === "HALF_DAY" ? "Half day" : record.status === "UNMARKED" ? "Unmarked" : record.status.charAt(0) + record.status.slice(1).toLowerCase();
+
+    if (record.leaveTypeCode && (record.status === "LEAVE" || record.status === "HALF_DAY")) {
+      return `${baseLabel} (${record.leaveTypeCode})`;
+    }
+
+    return baseLabel;
+  }
+
   function getRegularizationStatusClass(status: AttendanceRegularizationRequest["status"]) {
     return `status-pill status-pill--${status.toLowerCase().replace(/_/g, "-")}`;
   }
@@ -275,8 +295,14 @@ export default function AttendancePage({ token, role, currentEmployeeId, current
       return false;
     }
 
-    if (filterStatus && record.status !== filterStatus) {
-      return false;
+    if (filterStatus) {
+      if (filterStatus === "PRESENT") {
+        if (record.status !== "PRESENT" && record.status !== "HALF_DAY") {
+          return false;
+        }
+      } else if (record.status !== filterStatus) {
+        return false;
+      }
     }
 
     if (filterDate) {
@@ -292,38 +318,45 @@ export default function AttendancePage({ token, role, currentEmployeeId, current
     return true;
   });
 
-  const employeeMonthHistory = useMemo(() => {
-    if (!employeeMonthHistoryTarget) {
-      return [];
+  const workforceEmployees = useMemo(() => {
+    if (role === "EMPLOYEE") {
+      if (isTeamLead) {
+        const scopedEmployees = employees.filter((employee) => employee.id !== currentEmployeeId);
+        return currentEmployee ? [currentEmployee, ...scopedEmployees] : scopedEmployees;
+      }
+
+      return currentEmployee ? [currentEmployee] : [];
     }
 
-    const referenceDate = filterDate ? new Date(filterDate) : new Date();
-    const month = referenceDate.getMonth();
-    const year = referenceDate.getFullYear();
+    return employees;
+  }, [currentEmployee, currentEmployeeId, employees, isTeamLead, role]);
 
-    return attendance
-      .filter((record) => {
-        if ((record.employee?.id ?? record.employeeId) !== employeeMonthHistoryTarget.id) {
+  const attendanceOverviewSource = useMemo(() => {
+    return attendance.filter((record) => {
+      const recordDate = new Date(record.attendanceDate);
+
+      if (filterEmployeeId && String(record.employee?.id ?? record.employeeId) !== filterEmployeeId) {
+        return false;
+      }
+
+      if (filterDate) {
+        const selectedDate = new Date(filterDate);
+        selectedDate.setHours(0, 0, 0, 0);
+        const nextDay = new Date(selectedDate);
+        nextDay.setDate(nextDay.getDate() + 1);
+
+        if (recordDate < selectedDate || recordDate >= nextDay) {
           return false;
         }
+      }
 
-        const recordDate = new Date(record.attendanceDate);
-        return recordDate.getMonth() === month && recordDate.getFullYear() === year;
-      })
-      .sort((left, right) => new Date(left.attendanceDate).getTime() - new Date(right.attendanceDate).getTime());
-  }, [attendance, employeeMonthHistoryTarget, filterDate]);
-
-  const employeeMonthHistoryLabel = useMemo(() => {
-    const referenceDate = filterDate ? new Date(filterDate) : new Date();
-    return referenceDate.toLocaleDateString("en-IN", {
-      month: "long",
-      year: "numeric",
+      return true;
     });
-  }, [filterDate]);
+  }, [attendance, filterDate, filterEmployeeId]);
 
   const attendanceOverview = useMemo(
     () =>
-      filteredAttendance.reduce(
+      attendanceOverviewSource.reduce(
         (summary, record) => {
           if (record.status === "PRESENT" || record.status === "HALF_DAY") {
             summary.present += 1;
@@ -337,24 +370,70 @@ export default function AttendancePage({ token, role, currentEmployeeId, current
         },
         { present: 0, absent: 0, leave: 0 },
       ),
-    [filteredAttendance],
+    [attendanceOverviewSource],
   );
 
   const totalWorkforceCount = useMemo(() => {
-    if (role === "EMPLOYEE") {
-      if (isTeamLead) {
-        return new Set([currentEmployeeId, ...teamLeadScopeIds].filter((value): value is number => Boolean(value))).size;
-      }
-
-      return currentEmployeeId ? 1 : 0;
+    if (filterEmployeeId) {
+      return 1;
     }
 
     if (employeesTotal > 0) {
       return employeesTotal;
     }
 
-    return new Set(attendance.map((record) => record.employee?.id ?? record.employeeId)).size;
-  }, [attendance, currentEmployeeId, employeesTotal, isTeamLead, role, teamLeadScopeIds]);
+    return workforceEmployees.length;
+  }, [employeesTotal, filterEmployeeId, workforceEmployees.length]);
+
+  const markedEmployeeIds = useMemo(
+    () => new Set(attendanceOverviewSource.map((record) => record.employee?.id ?? record.employeeId)),
+    [attendanceOverviewSource],
+  );
+
+  const unmarkedRows = useMemo<AttendanceListRow[]>(() => {
+    if (!filterDate) {
+      return [];
+    }
+
+    return workforceEmployees
+      .filter((employee) => {
+        if (filterEmployeeId && String(employee.id) !== filterEmployeeId) {
+          return false;
+        }
+
+        return !markedEmployeeIds.has(employee.id);
+      })
+      .map((employee) => ({
+        id: -employee.id,
+        employeeId: employee.id,
+        attendanceDate: new Date(filterDate).toISOString(),
+        checkInTime: null,
+        checkOutTime: null,
+        workedMinutes: 0,
+        status: "UNMARKED",
+        employee,
+      }));
+  }, [filterDate, filterEmployeeId, markedEmployeeIds, workforceEmployees]);
+
+  const attendanceRows = useMemo<AttendanceListRow[]>(() => {
+    if (filterStatus === "UNMARKED") {
+      return unmarkedRows;
+    }
+
+    return filteredAttendance;
+  }, [filterStatus, filteredAttendance, unmarkedRows]);
+
+  const unmarkedCount = useMemo(() => {
+    if (filterEmployeeId) {
+      return unmarkedRows.length;
+    }
+
+    if (employeesTotal > 0) {
+      return Math.max(0, employeesTotal - markedEmployeeIds.size);
+    }
+
+    return unmarkedRows.length;
+  }, [employeesTotal, filterEmployeeId, markedEmployeeIds.size, unmarkedRows.length]);
 
   const columns = [
     ...(canManageOthers ? ["Employee"] : []),
@@ -375,8 +454,6 @@ export default function AttendancePage({ token, role, currentEmployeeId, current
     "Actions",
   ];
 
-  const monthHistoryColumns = ["Date", "Check in", "Check out", "Worked duration", "Status"];
-
   return (
     <section className="stack">
       {error ? <MessageCard title="Attendance issue" tone="error" message={error} /> : null}
@@ -393,7 +470,7 @@ export default function AttendancePage({ token, role, currentEmployeeId, current
                 Request correction
               </button>
               {canFinalizeAttendance ? (
-                <button className="secondary" onClick={handleFinalizeAttendance}>
+                <button className="secondary" onClick={() => setFinalizeConfirmOpen(true)}>
                   Finalize selected day
                 </button>
               ) : null}
@@ -417,6 +494,7 @@ export default function AttendancePage({ token, role, currentEmployeeId, current
                 <option value="HALF_DAY">Half day</option>
                 <option value="LEAVE">Leave</option>
                 <option value="ABSENT">Absent</option>
+                <option value="UNMARKED">Unmarked</option>
               </select>
             </label>
             {canManageOthers ? (
@@ -432,20 +510,40 @@ export default function AttendancePage({ token, role, currentEmployeeId, current
             ) : null}
           </div>
           <div className="attendance-overview-row">
-            <div className="attendance-overview-chip attendance-overview-chip--present">
+            <button
+              type="button"
+              className={`attendance-overview-chip attendance-overview-chip--present ${activeOverviewFilter === "PRESENT" ? "attendance-overview-chip--active" : ""}`.trim()}
+              onClick={() => setFilterStatus((current) => (current === "PRESENT" || current === "HALF_DAY" ? "" : "PRESENT"))}
+            >
               <span className="attendance-overview-chip__label">Present</span>
               <strong className="attendance-overview-chip__value">
                 {attendanceOverview.present}/{totalWorkforceCount}
               </strong>
-            </div>
-            <div className="attendance-overview-chip attendance-overview-chip--absent">
+            </button>
+            <button
+              type="button"
+              className={`attendance-overview-chip attendance-overview-chip--absent ${activeOverviewFilter === "ABSENT" ? "attendance-overview-chip--active" : ""}`.trim()}
+              onClick={() => setFilterStatus((current) => (current === "ABSENT" ? "" : "ABSENT"))}
+            >
               <span className="attendance-overview-chip__label">Absent</span>
               <strong className="attendance-overview-chip__value">{attendanceOverview.absent}</strong>
-            </div>
-            <div className="attendance-overview-chip attendance-overview-chip--leave">
+            </button>
+            <button
+              type="button"
+              className={`attendance-overview-chip attendance-overview-chip--leave ${activeOverviewFilter === "LEAVE" ? "attendance-overview-chip--active" : ""}`.trim()}
+              onClick={() => setFilterStatus((current) => (current === "LEAVE" ? "" : "LEAVE"))}
+            >
               <span className="attendance-overview-chip__label">On leave</span>
               <strong className="attendance-overview-chip__value">{attendanceOverview.leave}</strong>
-            </div>
+            </button>
+            <button
+              type="button"
+              className={`attendance-overview-chip attendance-overview-chip--unmarked ${activeOverviewFilter === "UNMARKED" ? "attendance-overview-chip--active" : ""}`.trim()}
+              onClick={() => setFilterStatus((current) => (current === "UNMARKED" ? "" : "UNMARKED"))}
+            >
+              <span className="attendance-overview-chip__label">Unmarked</span>
+              <strong className="attendance-overview-chip__value">{unmarkedCount}</strong>
+            </button>
           </div>
         </div>
         {loading ? (
@@ -459,7 +557,7 @@ export default function AttendancePage({ token, role, currentEmployeeId, current
           <Table
             compact
             columns={columns}
-            rows={filteredAttendance.map((record) => {
+            rows={attendanceRows.map((record) => {
               const cells = [
                 <div className="table-cell-stack" key={`date-${record.id}`}>
                   <span className="table-cell-primary">{isToday(record.attendanceDate) ? "Today" : formatDateLabel(record.attendanceDate)}</span>
@@ -470,9 +568,9 @@ export default function AttendancePage({ token, role, currentEmployeeId, current
                 formatAttendanceTime(record.checkInTime),
                 formatAttendanceTime(record.checkOutTime),
                 renderWorkedDuration(record),
-                <span key={`status-${record.id}`} className={getStatusClass(record.status)}>
-                  {record.status}
-                </span>,
+                <div className="table-cell-stack" key={`status-${record.id}`}>
+                  <span className={getStatusClass(record.status)}>{getStatusLabel(record)}</span>
+                </div>,
               ];
 
               if (canManageOthers) {
@@ -485,9 +583,7 @@ export default function AttendancePage({ token, role, currentEmployeeId, current
                         if (!record.employee) {
                           return;
                         }
-
-                        setEmployeeMonthHistoryTarget(record.employee);
-                        setEmployeeMonthHistoryOpen(true);
+                        navigate(`/employees/${record.employee.id}?tab=attendance`);
                       }}
                     >
                       {record.employee ? `${record.employee.firstName} ${record.employee.lastName}` : "Unknown employee"}
@@ -631,6 +727,31 @@ export default function AttendancePage({ token, role, currentEmployeeId, current
           </div>
         </div>
       </Modal>
+      <Modal open={finalizeConfirmOpen} title="Finalize attendance" onClose={() => setFinalizeConfirmOpen(false)}>
+        <div className="stack regularization-form">
+          <p className="muted">
+            Finalizing this date will mark all unrecorded working-day employees absent for the selected day.
+          </p>
+          <div className="button-row">
+            <button
+              type="button"
+              className="secondary"
+              onClick={() => setFinalizeConfirmOpen(false)}
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setFinalizeConfirmOpen(false);
+                void handleFinalizeAttendance();
+              }}
+            >
+              Finalize selected day
+            </button>
+          </div>
+        </div>
+      </Modal>
 
       <Modal open={reviewModalOpen} title="Reject correction request" onClose={() => setReviewModalOpen(false)}>
         <div className="stack regularization-form">
@@ -661,44 +782,6 @@ export default function AttendancePage({ token, role, currentEmployeeId, current
         </div>
       </Modal>
 
-      <Modal
-        open={employeeMonthHistoryOpen}
-        title={
-          employeeMonthHistoryTarget
-            ? `${employeeMonthHistoryTarget.firstName} ${employeeMonthHistoryTarget.lastName} attendance`
-            : "Attendance"
-        }
-        onClose={() => {
-          setEmployeeMonthHistoryOpen(false);
-          setEmployeeMonthHistoryTarget(null);
-        }}
-      >
-        <div className="stack">
-          <p className="muted">
-            Showing attendance records for {employeeMonthHistoryLabel}.
-          </p>
-          <Table
-            compact
-            columns={monthHistoryColumns}
-            rows={employeeMonthHistory.map((record) => [
-              <div className="table-cell-stack" key={`month-date-${record.id}`}>
-                <span className="table-cell-primary">{formatDateLabel(record.attendanceDate)}</span>
-                <span className="table-cell-secondary">{formatWeekday(record.attendanceDate)}</span>
-              </div>,
-              formatAttendanceTime(record.checkInTime),
-              formatAttendanceTime(record.checkOutTime),
-              renderWorkedDuration(record),
-              <span key={`month-status-${record.id}`} className={getStatusClass(record.status)}>
-                {record.status}
-              </span>,
-            ])}
-            emptyState={{
-              title: "No attendance records for this month",
-              description: "No entries were found for the selected employee in this month.",
-            }}
-          />
-        </div>
-      </Modal>
     </section>
   );
 }

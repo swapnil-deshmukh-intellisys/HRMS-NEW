@@ -96,7 +96,7 @@
 }
 
 .employee-snapshot-progress__fill--leave {
-  background: linear-gradient(90deg, #16a34a, #22c55e);
+  background: linear-gradient(90deg, #dc2626, #ef4444);
 }
 
 .employee-snapshot-mini-grid {
@@ -120,41 +120,61 @@
   font-weight: var(--fw-semibold);
 }
 
-.employee-snapshot-week-bars {
+.employee-snapshot-week-summary {
   display: grid;
-  grid-template-columns: repeat(7, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 1fr) minmax(220px, 280px);
+  gap: var(--space-3);
+  align-items: stretch;
+}
+
+.employee-snapshot-week-highlight {
+  display: grid;
+  gap: 6px;
+  align-content: center;
+  padding: var(--space-4);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-lg);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--color-brand-primary) 7%, white), var(--color-surface-page));
+}
+
+.employee-snapshot-week-highlight strong {
+  color: var(--color-text-strong);
+  font-size: clamp(1.5rem, 2.5vw, 2rem);
+  font-weight: var(--fw-bold);
+  line-height: 1;
+}
+
+.employee-snapshot-week-list {
+  display: grid;
   gap: var(--space-2);
-  align-items: end;
-  min-height: 132px;
 }
 
-.employee-snapshot-week-bar {
+.employee-snapshot-week-list__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: 10px 12px;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-page);
+}
+
+.employee-snapshot-week-list__day,
+.employee-snapshot-week-list__meta {
   display: grid;
-  gap: 8px;
-  justify-items: center;
-  align-items: end;
-  min-height: 132px;
+  gap: 4px;
 }
 
-.employee-snapshot-week-bar__fill {
-  width: 100%;
-  min-height: 14px;
-  border-radius: 999px 999px 4px 4px;
+.employee-snapshot-week-list__day strong,
+.employee-snapshot-week-list__meta strong {
+  color: var(--color-text-strong);
+  font-size: var(--text-sm);
+  font-weight: var(--fw-semibold);
 }
 
-.employee-snapshot-week-bar__fill--present {
-  background: #16a34a;
-}
-
-.employee-snapshot-week-bar__fill--half-day {
-  background: #2563eb;
-}
-
-.employee-snapshot-week-bar__fill--absent {
-  background: #ef4444;
-}
-
-.employee-snapshot-week-bar small {
+.employee-snapshot-week-list__day span,
+.employee-snapshot-week-list__meta span {
   color: var(--color-text-secondary);
   font-size: var(--text-xs);
 }
@@ -184,8 +204,79 @@
   font-weight: var(--fw-semibold);
 }
 
+.employee-snapshot-breakdown-chart {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(220px, 0.8fr);
+  gap: var(--space-4);
+  align-items: center;
+}
+
+.employee-snapshot-breakdown-chart__visual {
+  min-width: 0;
+}
+
+.employee-snapshot-breakdown-chart__legend {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.employee-snapshot-breakdown-chart__legend-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: 10px 12px;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-page);
+}
+
+.employee-snapshot-breakdown-chart__legend-label,
+.employee-snapshot-breakdown-chart__legend-value {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.employee-snapshot-breakdown-chart__legend-label {
+  color: var(--color-text-strong);
+  font-size: var(--text-sm);
+  font-weight: var(--fw-medium);
+}
+
+.employee-snapshot-breakdown-chart__legend-value {
+  color: var(--color-text-secondary);
+  font-size: var(--text-xs);
+}
+
+.employee-snapshot-breakdown-chart__legend-value strong {
+  color: var(--color-text-strong);
+  font-size: var(--text-sm);
+  font-weight: var(--fw-semibold);
+}
+
+.employee-snapshot-breakdown-chart__dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  flex-shrink: 0;
+}
+
 @media (max-width: 768px) {
   .employee-snapshot-mini-grid {
     grid-template-columns: 1fr;
+  }
+
+  .employee-snapshot-breakdown-chart {
+    grid-template-columns: 1fr;
+  }
+
+  .employee-snapshot-week-summary {
+    grid-template-columns: 1fr;
+  }
+
+  .employee-snapshot-week-list__row {
+    align-items: flex-start;
+    flex-direction: column;
   }
 }

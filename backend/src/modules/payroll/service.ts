@@ -44,6 +44,8 @@ export function calculatePayrollPreview(input: {
   grossMonthlySalary: number;
   basicMonthlySalary: number;
   month: number;
+  absentDeductionDays?: number;
+  halfDayDeductionDays?: number;
   deductibleDays: number;
   isOnProbation?: boolean;
 }) {
@@ -56,6 +58,8 @@ export function calculatePayrollPreview(input: {
 
   return {
     ...breakdown,
+    absentDeductionDays: input.absentDeductionDays ?? input.deductibleDays,
+    halfDayDeductionDays: input.halfDayDeductionDays ?? 0,
     deductibleDays: input.deductibleDays,
     deductionAmount,
     finalSalaryBeforeProbation,

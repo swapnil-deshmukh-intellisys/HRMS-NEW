@@ -12,6 +12,66 @@ const router = Router();
 
 router.use(authenticate);
 
+async function enrichAttendanceWithLeaveContext(
+  records: Array<{
+    id: number;
+    employeeId: number;
+    attendanceDate: Date;
+    status: AttendanceStatus;
+  }>,
+) {
+  if (!records.length) {
+    return records;
+  }
+
+  const employeeIds = [...new Set(records.map((record) => record.employeeId))];
+  const attendanceDates = records.map((record) => record.attendanceDate.getTime());
+  const rangeStart = new Date(Math.min(...attendanceDates));
+  const rangeEnd = new Date(Math.max(...attendanceDates));
+
+  const leaveRequests = await prisma.leaveRequest.findMany({
+    where: {
+      employeeId: { in: employeeIds },
+      status: LeaveStatus.APPROVED,
+      startDate: { lte: endOfDay(rangeEnd) },
+      endDate: { gte: startOfDay(rangeStart) },
+    },
+    include: {
+      leaveType: {
+        select: {
+          code: true,
+          name: true,
+        },
+      },
+    },
+  });
+
+  return records.map((record) => {
+    if (record.status !== AttendanceStatus.LEAVE && record.status !== AttendanceStatus.HALF_DAY) {
+      return record;
+    }
+
+    const matchingLeave = leaveRequests.find((leaveRequest) => {
+      if (leaveRequest.employeeId !== record.employeeId) {
+        return false;
+      }
+
+      const derivedStatus = getApprovedLeaveAttendanceStatusForDate(leaveRequest, record.attendanceDate);
+      return (
+        derivedStatus === record.status &&
+        startOfDay(record.attendanceDate) >= startOfDay(leaveRequest.startDate) &&
+        startOfDay(record.attendanceDate) <= startOfDay(leaveRequest.endDate)
+      );
+    });
+
+    return {
+      ...record,
+      leaveTypeCode: matchingLeave?.leaveType.code ?? null,
+      leaveTypeName: matchingLeave?.leaveType.name ?? null,
+    };
+  });
+}
+
 router.get("/employee", requireRoles("EMPLOYEE", "MANAGER", "HR", "ADMIN"), async (request, response, next) => {
   try {
     const employeeId = request.user?.employeeId ?? 0;
@@ -50,11 +110,13 @@ router.get("/employee", requireRoles("EMPLOYEE", "MANAGER", "HR", "ADMIN"), asyn
           employeeId,
           ...buildApprovedLeaveWhereForAttendanceDate(today),
         },
-        select: {
-          startDate: true,
-          endDate: true,
-          startDayDuration: true,
-          endDayDuration: true,
+        include: {
+          leaveType: {
+            select: {
+              code: true,
+              name: true,
+            },
+          },
         },
       }),
       prisma.leaveRequest.count({
@@ -219,8 +281,12 @@ router.get("/employee", requireRoles("EMPLOYEE", "MANAGER", "HR", "ADMIN"), asyn
             status: getApprovedLeaveAttendanceStatusForDate(approvedLeaveToday, today) === AttendanceStatus.HALF_DAY
               ? AttendanceStatus.HALF_DAY
               : AttendanceStatus.LEAVE,
+            leaveTypeCode: approvedLeaveToday.leaveType.code,
+            leaveTypeName: approvedLeaveToday.leaveType.name,
           }
         : null);
+
+    const enrichedAttendanceRecords = await enrichAttendanceWithLeaveContext(attendanceRecords);
 
     const calendarDays = buildMonthCalendarDays({
       year: currentYear,
@@ -235,7 +301,7 @@ router.get("/employee", requireRoles("EMPLOYEE", "MANAGER", "HR", "ADMIN"), asyn
       isTeamLead,
       scopedTeamCount,
       pendingTeamLeaves,
-      attendanceRecords,
+      attendanceRecords: enrichedAttendanceRecords,
       calendarDays,
       currentEmployee,
       leaveBalances,

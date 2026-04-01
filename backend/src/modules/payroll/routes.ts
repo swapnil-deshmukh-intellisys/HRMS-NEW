@@ -153,6 +153,8 @@ async function buildPayrollPreview(employeeId: number, month: number, year: numb
   }
 
   let deductibleDays = 0;
+  let absentDeductionDays = 0;
+  let halfDayDeductionDays = 0;
   const cursor = startOfDay(effectiveRangeStart);
 
   while (cursor <= effectiveRangeEnd) {
@@ -160,9 +162,14 @@ async function buildPayrollPreview(employeeId: number, month: number, year: numb
     const isWorkingDay = getCalendarDayStatus(cursor, calendarExceptions).isWorkingDay;
     const attendance = attendanceByDate.get(timestamp);
     const hasApprovedLeave = leaveDates.has(timestamp);
+    const isHalfDay = attendance?.status === "HALF_DAY";
     const hasQualifyingAttendance = Boolean(attendance && attendance.status !== "ABSENT");
 
-    if (isWorkingDay && !hasQualifyingAttendance && !hasApprovedLeave) {
+    if (isWorkingDay && !hasApprovedLeave && isHalfDay) {
+      halfDayDeductionDays += 0.5;
+      deductibleDays += 0.5;
+    } else if (isWorkingDay && !hasQualifyingAttendance && !hasApprovedLeave) {
+      absentDeductionDays += 1;
       deductibleDays += 1;
     }
 
@@ -173,6 +180,8 @@ async function buildPayrollPreview(employeeId: number, month: number, year: numb
     grossMonthlySalary: employee.grossMonthlySalary,
     basicMonthlySalary: employee.basicMonthlySalary,
     month,
+    absentDeductionDays,
+    halfDayDeductionDays,
     deductibleDays,
     isOnProbation: employee.isOnProbation,
   });

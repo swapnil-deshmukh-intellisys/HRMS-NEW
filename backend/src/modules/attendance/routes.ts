@@ -1,4 +1,4 @@
-import { AttendanceRegularizationStatus, AttendanceStatus } from "@prisma/client";
+import { AttendanceRegularizationStatus, AttendanceStatus, LeaveStatus } from "@prisma/client";
 import { Router } from "express";
 import { z } from "zod";
 import { prisma } from "../../config/prisma.js";
@@ -54,6 +54,66 @@ function assertDesktopAttendanceRequest(request: { headers?: Record<string, stri
   if (isMobileOrTabletUserAgent(userAgent)) {
     throw new AppError("Attendance marking is available only on desktop or laptop devices.", 403);
   }
+}
+
+async function enrichAttendanceWithLeaveContext(
+  records: Array<{
+    id: number;
+    employeeId: number;
+    attendanceDate: Date;
+    status: AttendanceStatus;
+  }>,
+) {
+  if (!records.length) {
+    return records;
+  }
+
+  const employeeIds = [...new Set(records.map((record) => record.employeeId))];
+  const attendanceDates = records.map((record) => record.attendanceDate.getTime());
+  const rangeStart = new Date(Math.min(...attendanceDates));
+  const rangeEnd = new Date(Math.max(...attendanceDates));
+
+  const leaveRequests = await prisma.leaveRequest.findMany({
+    where: {
+      employeeId: { in: employeeIds },
+      status: LeaveStatus.APPROVED,
+      startDate: { lte: endOfDay(rangeEnd) },
+      endDate: { gte: startOfDay(rangeStart) },
+    },
+    include: {
+      leaveType: {
+        select: {
+          code: true,
+          name: true,
+        },
+      },
+    },
+  });
+
+  return records.map((record) => {
+    if (record.status !== AttendanceStatus.LEAVE && record.status !== AttendanceStatus.HALF_DAY) {
+      return record;
+    }
+
+    const matchingLeave = leaveRequests.find((leaveRequest) => {
+      if (leaveRequest.employeeId !== record.employeeId) {
+        return false;
+      }
+
+      const derivedStatus = getApprovedLeaveAttendanceStatusForDate(leaveRequest, record.attendanceDate);
+      return (
+        derivedStatus === record.status &&
+        startOfDay(record.attendanceDate) >= startOfDay(leaveRequest.startDate) &&
+        startOfDay(record.attendanceDate) <= startOfDay(leaveRequest.endDate)
+      );
+    });
+
+    return {
+      ...record,
+      leaveTypeCode: matchingLeave?.leaveType.code ?? null,
+      leaveTypeName: matchingLeave?.leaveType.name ?? null,
+    };
+  });
 }
 
 router.use(authenticate);
@@ -619,7 +679,9 @@ router.get("/", requireRoles("ADMIN", "HR", "MANAGER", "EMPLOYEE"), async (reque
       orderBy: [{ attendanceDate: "desc" }, { createdAt: "desc" }],
     });
 
-    return sendSuccess(response, "Attendance records fetched successfully", attendance);
+    const enrichedAttendance = await enrichAttendanceWithLeaveContext(attendance);
+
+    return sendSuccess(response, "Attendance records fetched successfully", enrichedAttendance);
   } catch (error) {
     next(error);
   }

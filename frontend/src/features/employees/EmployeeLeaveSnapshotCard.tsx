@@ -10,38 +10,40 @@ type EmployeeLeaveSnapshotCardProps = {
 
 type LeaveSnapshotTab = "balance" | "requests";
 
-function getRemainingPercentage(remainingDays: number, allocatedDays: number) {
+function getUsedPercentage(usedDays: number, allocatedDays: number) {
   if (!allocatedDays) {
     return 0;
   }
 
-  return Math.max(0, Math.min(100, Math.round((remainingDays / allocatedDays) * 100)));
+  return Math.max(0, Math.min(100, Math.round((usedDays / allocatedDays) * 100)));
 }
 
 export default function EmployeeLeaveSnapshotCard({ balances, leaves }: EmployeeLeaveSnapshotCardProps) {
   const [activeTab, setActiveTab] = useState<LeaveSnapshotTab>("balance");
+  const approvedLeaves = useMemo(() => leaves.filter((leave) => leave.status === "APPROVED"), [leaves]);
 
   const totalRemainingLeave = balances.reduce((total, balance) => total + balance.remainingDays, 0);
   const totalAllocatedLeave = balances.reduce((total, balance) => total + balance.allocatedDays, 0);
   const pendingLeaves = leaves.filter((leave) => leave.status === "PENDING").length;
   const latestLeave = useMemo(() => leaves[0], [leaves]);
-  const totalPaidDays = leaves.reduce((total, leave) => total + leave.paidDays, 0);
-  const totalUnpaidDays = leaves.reduce((total, leave) => total + leave.unpaidDays, 0);
+  const totalPaidDays = approvedLeaves.reduce((total, leave) => total + leave.paidDays, 0);
+  const totalUnpaidDays = approvedLeaves.reduce((total, leave) => total + leave.unpaidDays, 0);
   const currentMonthTakenLeave = useMemo(() => {
     const now = new Date();
-    return leaves.reduce((total, leave) => {
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+
+    return approvedLeaves.reduce((total, leave) => {
       const startDate = new Date(leave.startDate);
-      if (
-        startDate.getFullYear() === now.getFullYear() &&
-        startDate.getMonth() === now.getMonth() &&
-        leave.status === "APPROVED"
-      ) {
+      const endDate = new Date(leave.endDate);
+
+      if (startDate <= monthEnd && endDate >= monthStart) {
         return total + leave.totalDays;
       }
 
       return total;
     }, 0);
-  }, [leaves]);
+  }, [approvedLeaves]);
 
   return (
     <article className="card employee-snapshot-card">
@@ -81,12 +83,12 @@ export default function EmployeeLeaveSnapshotCard({ balances, leaves }: Employee
                 <div key={balance.id} className="employee-snapshot-balance-row">
                   <div className="employee-snapshot-balance-row__meta">
                     <span>{balance.leaveType.code}</span>
-                    <span>{`${formatLeaveDays(balance.remainingDays)} / ${formatLeaveDays(balance.allocatedDays)}`}</span>
+                    <span>{`${formatLeaveDays(balance.usedDays)} used / ${formatLeaveDays(balance.allocatedDays)}`}</span>
                   </div>
                   <div className="employee-snapshot-progress__track">
                     <span
                       className="employee-snapshot-progress__fill employee-snapshot-progress__fill--leave"
-                      style={{ width: `${getRemainingPercentage(balance.remainingDays, balance.allocatedDays)}%` }}
+                      style={{ width: `${getUsedPercentage(balance.usedDays, balance.allocatedDays)}%` }}
                     />
                   </div>
                 </div>

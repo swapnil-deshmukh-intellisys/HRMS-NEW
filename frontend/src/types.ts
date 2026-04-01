@@ -118,6 +118,8 @@ export type Attendance = {
   checkOutTime?: string | null;
   workedMinutes: number;
   status: "PRESENT" | "ABSENT" | "HALF_DAY" | "LEAVE";
+  leaveTypeCode?: string | null;
+  leaveTypeName?: string | null;
   employee?: Employee;
 };
 

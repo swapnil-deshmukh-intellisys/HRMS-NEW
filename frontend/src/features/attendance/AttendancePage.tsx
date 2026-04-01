@@ -46,6 +46,10 @@ export default function AttendancePage({ token, role, currentEmployeeId, current
       return "-";
     }
 
+    if (record.status === "ABSENT") {
+      return "Absent";
+    }
+
     if (record.checkOutTime) {
       return formatWorkedDuration(record.workedMinutes);
     }
@@ -62,29 +66,6 @@ export default function AttendancePage({ token, role, currentEmployeeId, current
 
     return label;
   }
-
-  const dateOptions = Array.from({ length: 14 }, (_, index) => {
-    const date = new Date();
-    date.setDate(date.getDate() - index);
-    const value = date.toISOString().slice(0, 10);
-
-    if (index === 0) {
-      return { value, label: "Today" };
-    }
-
-    if (index === 1) {
-      return { value, label: "Yesterday" };
-    }
-
-    return {
-      value,
-      label: date.toLocaleDateString(undefined, {
-        weekday: "short",
-        day: "numeric",
-        month: "short",
-      }),
-    };
-  });
 
   const reloadAttendance = useCallback(async () => {
     try {
@@ -349,13 +330,12 @@ export default function AttendancePage({ token, role, currentEmployeeId, current
           <div className="attendance-history-filters">
             <label className="attendance-filter-field">
               Date
-              <select value={filterDate} onChange={(event) => setFilterDate(event.target.value)}>
-                {dateOptions.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
+              <input
+                type="date"
+                max={today}
+                value={filterDate}
+                onChange={(event) => setFilterDate(event.target.value)}
+              />
             </label>
             <label className="attendance-filter-field">
               Status

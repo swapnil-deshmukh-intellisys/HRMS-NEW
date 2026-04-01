@@ -4,6 +4,7 @@ import { useAuth } from "../hooks/useAuth";
 
 const LoginPage = lazy(() => import("../features/auth/LoginPage"));
 const AttendancePage = lazy(() => import("../features/attendance/AttendancePage"));
+const AnalyticsPage = lazy(() => import("../features/dashboard/AnalyticsPage"));
 const DashboardPage = lazy(() => import("../features/dashboard/DashboardPage"));
 const CalendarPage = lazy(() => import("../features/calendar/CalendarPage"));
 const DepartmentsPage = lazy(() => import("../features/departments/DepartmentsPage"));
@@ -34,6 +35,10 @@ function AppRoutes() {
           <Route
             index
             element={<DashboardPage token={token} role={sessionUser?.role ?? "EMPLOYEE"} currentEmployeeId={sessionUser?.employee?.id ?? null} />}
+          />
+          <Route
+            path="/analytics"
+            element={<AnalyticsPage token={token} role={sessionUser?.role ?? "EMPLOYEE"} currentEmployeeId={sessionUser?.employee?.id ?? null} />}
           />
           <Route path="/departments" element={<DepartmentsPage token={token} role={sessionUser?.role ?? "EMPLOYEE"} />} />
           <Route path="/employees" element={<EmployeesPage token={token} role={sessionUser?.role ?? "EMPLOYEE"} />} />

@@ -5,7 +5,7 @@ import { prisma } from "../../config/prisma.js";
 import { authenticate, requireRoles } from "../../middleware/auth.js";
 import { validate } from "../../middleware/validate.js";
 import { AppError, sendSuccess } from "../../utils/api.js";
-import { startOfDay } from "../../utils/dates.js";
+import { endOfDay, startOfDay } from "../../utils/dates.js";
 import { canTeamLeadAccessEmployee, getScopedEmployeeIdsForTeamLead, hasEmployeeCapability } from "../../utils/team-lead.js";
 import { getCalendarDayStatus } from "../calendar/service.js";
 import {
@@ -209,8 +209,14 @@ router.post(
             }),
           findEmployeeIdsWithAttendance: async (attendanceDate) => {
             const records = await prisma.attendance.findMany({
-              where: { attendanceDate },
+              where: {
+                attendanceDate: {
+                  gte: startOfDay(attendanceDate),
+                  lte: endOfDay(attendanceDate),
+                },
+              },
               select: { employeeId: true },
+              distinct: ["employeeId"],
             });
 
             return records.map((record) => record.employeeId);
@@ -234,7 +240,12 @@ router.post(
           },
           isWorkingDay: async (attendanceDate) => {
             const exceptions = await prisma.calendarException.findMany({
-              where: { date: attendanceDate },
+              where: {
+                date: {
+                  gte: startOfDay(attendanceDate),
+                  lte: endOfDay(attendanceDate),
+                },
+              },
             });
 
             return getCalendarDayStatus(attendanceDate, exceptions).isWorkingDay;

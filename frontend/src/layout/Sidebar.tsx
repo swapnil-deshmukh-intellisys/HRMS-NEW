@@ -1,5 +1,5 @@
 import "./Sidebar.css";
-import { Building2, Calendar, CalendarDays, Clock3, Home, LogOut, Users, Wallet, type LucideIcon } from "lucide-react";
+import { BarChart3, Building2, Calendar, CalendarDays, Clock3, Home, LogOut, Users, Wallet, type LucideIcon } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import Button from "../components/common/Button";
 import type { Role, SessionUser } from "../types";
@@ -19,6 +19,7 @@ type NavItem = {
 
 function getNavItems(role: Role): NavItem[] {
   const items: NavItem[] = [{ to: "/", label: "Dashboard", icon: Home }];
+  items.push({ to: "/analytics", label: "Analytics", icon: BarChart3 });
 
   if (role !== "EMPLOYEE") {
     items.push({ to: "/departments", label: "Departments", icon: Building2 });

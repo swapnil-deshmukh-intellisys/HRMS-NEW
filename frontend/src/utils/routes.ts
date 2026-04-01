@@ -1,4 +1,5 @@
 export function getPageTitle(pathname: string) {
+  if (pathname === "/analytics") return "Analytics";
   if (pathname === "/departments") return "Departments";
   if (pathname === "/employees") return "Employees";
   if (pathname.startsWith("/employees/")) return "Employee Profile";

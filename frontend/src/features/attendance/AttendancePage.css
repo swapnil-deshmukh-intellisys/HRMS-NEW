@@ -32,7 +32,8 @@
   min-width: 180px;
 }
 
-.attendance-filter-field select {
+.attendance-filter-field select,
+.attendance-filter-field input[type="date"] {
   min-width: 180px;
 }
 

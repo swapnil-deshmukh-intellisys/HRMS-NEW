@@ -1,7 +1,7 @@
 import "./DashboardPage.css";
 import { lazy, Suspense, useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ATTENDANCE_EVENT } from "../../components/common/attendanceQuickActionUtils";
+import { ATTENDANCE_EVENT, getAttendanceUpdatedDetail } from "../../components/common/attendanceQuickActionUtils";
 import MessageCard from "../../components/common/MessageCard";
 import { apiRequest } from "../../services/api";
 import type { Attendance, CalendarDay, Employee, EmployeeDashboardData, LeaveBalance, LeaveRequest, Role } from "../../types";
@@ -189,7 +189,15 @@ export default function DashboardPage({ token, role, currentEmployeeId }: Dashbo
   }, [loadSelfAttendance, role]);
 
   useEffect(() => {
-    const handleAttendanceUpdated = () => {
+    const handleAttendanceUpdated = (event: Event) => {
+      const detail = getAttendanceUpdatedDetail(event);
+
+      if (detail) {
+        setSelfAttendance(detail.attendanceToday);
+        setData((current) => ({ ...current, attendanceToday: detail.attendanceToday }));
+        return;
+      }
+
       void loadSelfAttendance();
     };
 

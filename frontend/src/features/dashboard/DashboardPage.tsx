@@ -1,6 +1,7 @@
 import "./DashboardPage.css";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { ATTENDANCE_EVENT, getAttendanceUpdatedDetail } from "../../components/common/attendanceQuickActionUtils";
 import MessageCard from "../../components/common/MessageCard";
 import { apiRequest } from "../../services/api";
 import type { Attendance, EmployeeDashboardData, Role } from "../../types";
@@ -144,6 +145,26 @@ export default function DashboardPage({ token, role }: DashboardPageProps) {
 
     return () => window.clearInterval(timer);
   }, []);
+
+  useEffect(() => {
+    if (role !== "EMPLOYEE") {
+      return;
+    }
+
+    const handleAttendanceUpdated = (event: Event) => {
+      const detail = getAttendanceUpdatedDetail(event);
+
+      if (!detail) {
+        return;
+      }
+
+      setEmployeeDashboard((current) => (current ? { ...current, attendanceToday: detail.attendanceToday } : current));
+      setData((current) => ({ ...current, attendanceToday: detail.attendanceToday }));
+    };
+
+    window.addEventListener(ATTENDANCE_EVENT, handleAttendanceUpdated);
+    return () => window.removeEventListener(ATTENDANCE_EVENT, handleAttendanceUpdated);
+  }, [role]);
 
   const attendanceToday = employeeDashboard?.attendanceToday ?? null;
   const leaveBalances = employeeDashboard?.leaveBalances ?? [];

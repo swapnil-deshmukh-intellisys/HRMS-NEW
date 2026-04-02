@@ -2,8 +2,20 @@ import type { Attendance } from "../../types";
 
 export const ATTENDANCE_EVENT = "hrms:attendance-updated";
 
-export function dispatchAttendanceUpdated() {
-  window.dispatchEvent(new CustomEvent(ATTENDANCE_EVENT));
+export type AttendanceUpdatedDetail = {
+  attendanceToday: Attendance | null;
+};
+
+export function dispatchAttendanceUpdated(attendanceToday: Attendance | null = null) {
+  window.dispatchEvent(
+    new CustomEvent<AttendanceUpdatedDetail>(ATTENDANCE_EVENT, {
+      detail: { attendanceToday },
+    }),
+  );
+}
+
+export function getAttendanceUpdatedDetail(event: Event) {
+  return (event as CustomEvent<AttendanceUpdatedDetail>).detail ?? null;
 }
 
 export function getSelfAttendanceActionState(attendance: Attendance | null) {

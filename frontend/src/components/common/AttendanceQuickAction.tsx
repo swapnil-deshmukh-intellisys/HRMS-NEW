@@ -3,7 +3,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import Modal from "./Modal";
 import { apiRequest } from "../../services/api";
 import type { Attendance } from "../../types";
-import { ATTENDANCE_EVENT, dispatchAttendanceUpdated, getSelfAttendanceActionState } from "./attendanceQuickActionUtils";
+import { ATTENDANCE_EVENT, dispatchAttendanceUpdated, getAttendanceUpdatedDetail, getSelfAttendanceActionState } from "./attendanceQuickActionUtils";
 import { formatAttendanceTime } from "../../utils/format";
 
 type AttendanceQuickActionProps = {
@@ -53,7 +53,15 @@ export default function AttendanceQuickAction({
   }, [loadAttendance]);
 
   useEffect(() => {
-    const handleAttendanceUpdated = () => {
+    const handleAttendanceUpdated = (event: Event) => {
+      const detail = getAttendanceUpdatedDetail(event);
+
+      if (detail) {
+        setAttendanceToday(detail.attendanceToday);
+        onStateChange?.(detail.attendanceToday);
+        return;
+      }
+
       void loadAttendance();
     };
 
@@ -115,13 +123,15 @@ export default function AttendanceQuickAction({
 
     try {
       setSubmitting(true);
-      await apiRequest(actionState.actionPath, {
+      const response = await apiRequest<Attendance>(actionState.actionPath, {
         method: "POST",
         token,
         body: {},
       });
-      await loadAttendance();
-      dispatchAttendanceUpdated();
+      const nextAttendance = response.data;
+      setAttendanceToday(nextAttendance);
+      onStateChange?.(nextAttendance);
+      dispatchAttendanceUpdated(nextAttendance);
     } finally {
       setSubmitting(false);
     }

@@ -28,7 +28,7 @@ function toDateInputValue(year: number, month: number, day: number) {
   return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
 }
 
-const weekdayLabels = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const weekdayLabels = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
 export default function CalendarPage({ token, role }: CalendarPageProps) {
   const [visibleMonth, setVisibleMonth] = useState(() => {
@@ -75,7 +75,8 @@ export default function CalendarPage({ token, role }: CalendarPageProps) {
       return [];
     }
 
-    const leadingBlanks = Array.from({ length: days[0]!.weekday }, () => null);
+    const leadingBlankCount = (days[0]!.weekday + 6) % 7;
+    const leadingBlanks = Array.from({ length: leadingBlankCount }, () => null);
     const calendarCells = [...leadingBlanks, ...days];
     const rows: Array<Array<CalendarDay | null>> = [];
 
@@ -180,19 +181,19 @@ export default function CalendarPage({ token, role }: CalendarPageProps) {
           </div>
           <div className="calendar-page__actions">
             <div className="button-row">
-              <button type="button" className="secondary" onClick={() => shiftMonth(-1)}>
+              <button type="button" className="secondary calendar-action-button" onClick={() => shiftMonth(-1)}>
                 Previous
               </button>
-              <button type="button" className="secondary" onClick={() => shiftMonth(1)}>
+              <button type="button" className="secondary calendar-action-button" onClick={() => shiftMonth(1)}>
                 Next
               </button>
             </div>
             {canManageCalendar ? (
               <div className="button-row">
-                <button type="button" className="secondary" onClick={openWorkingSaturdayModal}>
+                <button type="button" className="secondary calendar-action-button" onClick={openWorkingSaturdayModal}>
                   Working Saturday
                 </button>
-                <button type="button" onClick={openHolidayModal}>
+                <button type="button" className="calendar-action-button calendar-action-button--primary" onClick={openHolidayModal}>
                   Add holiday
                 </button>
               </div>
@@ -236,7 +237,7 @@ export default function CalendarPage({ token, role }: CalendarPageProps) {
                       </div>
                       {day.exception?.name ? <p className="calendar-day-card__name">{day.exception.name}</p> : null}
                       {canManageCalendar && day.exception ? (
-                        <button type="button" className="secondary calendar-day-card__remove" onClick={() => handleRemoveException(day.exception!.id)}>
+                        <button type="button" className="secondary calendar-day-card__remove calendar-action-button" onClick={() => handleRemoveException(day.exception!.id)}>
                           Remove
                         </button>
                       ) : null}
@@ -263,10 +264,15 @@ export default function CalendarPage({ token, role }: CalendarPageProps) {
             <textarea rows={3} value={holidayForm.description} onChange={(event) => setHolidayForm((current) => ({ ...current, description: event.target.value }))} />
           </label>
           <div className="button-row">
-            <button type="button" className="secondary" onClick={() => setHolidayModalOpen(false)}>
+            <button type="button" className="secondary calendar-action-button" onClick={() => setHolidayModalOpen(false)}>
               Close
             </button>
-            <button type="button" onClick={handleCreateHoliday} disabled={!holidayForm.date || !holidayForm.name.trim()}>
+            <button
+              type="button"
+              className="calendar-action-button calendar-action-button--primary"
+              onClick={handleCreateHoliday}
+              disabled={!holidayForm.date || !holidayForm.name.trim()}
+            >
               Save holiday
             </button>
           </div>
@@ -295,10 +301,15 @@ export default function CalendarPage({ token, role }: CalendarPageProps) {
             />
           </label>
           <div className="button-row">
-            <button type="button" className="secondary" onClick={() => setWorkingSaturdayModalOpen(false)}>
+            <button type="button" className="secondary calendar-action-button" onClick={() => setWorkingSaturdayModalOpen(false)}>
               Close
             </button>
-            <button type="button" onClick={handleCreateWorkingSaturday} disabled={!workingSaturdayForm.date}>
+            <button
+              type="button"
+              className="calendar-action-button calendar-action-button--primary"
+              onClick={handleCreateWorkingSaturday}
+              disabled={!workingSaturdayForm.date}
+            >
               Save working Saturday
             </button>
           </div>

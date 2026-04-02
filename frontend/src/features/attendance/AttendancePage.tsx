@@ -1,5 +1,5 @@
 import "./AttendancePage.css";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import MessageCard from "../../components/common/MessageCard";
 import Modal from "../../components/common/Modal";
@@ -23,6 +23,11 @@ type AttendanceListRow = Omit<Attendance, "status"> & {
 type VisibleMonth = {
   month: number;
   year: number;
+};
+
+type AttendanceStatusOption = {
+  value: string;
+  label: string;
 };
 
 function toLocalDateString(value: Date) {
@@ -60,6 +65,83 @@ function getCalendarDays({ month, year }: VisibleMonth) {
       inCurrentMonth: date.getMonth() === month,
     };
   });
+}
+
+function AttendanceStatusFilter({
+  value,
+  options,
+  onChange,
+}: {
+  value: string;
+  options: AttendanceStatusOption[];
+  onChange: (value: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const selectedOption = options.find((option) => option.value === value) ?? options[0];
+
+  useEffect(() => {
+    if (!open) {
+      return undefined;
+    }
+
+    function handlePointerDown(event: MouseEvent) {
+      if (!containerRef.current?.contains(event.target as Node)) {
+        setOpen(false);
+      }
+    }
+
+    function handleEscape(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setOpen(false);
+      }
+    }
+
+    document.addEventListener("mousedown", handlePointerDown);
+    document.addEventListener("keydown", handleEscape);
+
+    return () => {
+      document.removeEventListener("mousedown", handlePointerDown);
+      document.removeEventListener("keydown", handleEscape);
+    };
+  }, [open]);
+
+  return (
+    <div className={`attendance-status-filter ${open ? "attendance-status-filter--open" : ""}`} ref={containerRef}>
+      <button
+        type="button"
+        className="attendance-status-select attendance-status-select--trigger"
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        onClick={() => setOpen((current) => !current)}
+      >
+        <span>{selectedOption?.label ?? "All statuses"}</span>
+      </button>
+      {open ? (
+        <div className="attendance-status-popover" role="listbox" aria-label="Attendance status">
+          {options.map((option) => {
+            const selected = option.value === value;
+
+            return (
+              <button
+                key={option.value || "all-statuses"}
+                type="button"
+                className={`attendance-status-popover__option ${selected ? "attendance-status-popover__option--selected" : ""}`.trim()}
+                role="option"
+                aria-selected={selected}
+                onClick={() => {
+                  onChange(option.value);
+                  setOpen(false);
+                }}
+              >
+                {option.label}
+              </button>
+            );
+          })}
+        </div>
+      ) : null}
+    </div>
+  );
 }
 
 export default function AttendancePage({ token, role, currentEmployeeId, currentEmployee }: AttendancePageProps) {
@@ -100,6 +182,14 @@ export default function AttendancePage({ token, role, currentEmployeeId, current
     month: "long",
     year: "numeric",
   });
+  const attendanceStatusOptions: AttendanceStatusOption[] = [
+    { value: "", label: "All statuses" },
+    { value: "PRESENT", label: "Present" },
+    { value: "HALF_DAY", label: "Half day" },
+    { value: "LEAVE", label: "Leave" },
+    { value: "ABSENT", label: "Absent" },
+    { value: "UNMARKED", label: "Unmarked" },
+  ];
 
   function getWorkedDurationLabel(record: AttendanceListRow) {
     if (record.status === "LEAVE") {
@@ -569,14 +659,7 @@ export default function AttendancePage({ token, role, currentEmployeeId, current
               </label>
               <label className="attendance-filter-field attendance-filter-field--status">
                 Status
-                <select className="attendance-status-select" value={filterStatus} onChange={(event) => setFilterStatus(event.target.value)}>
-                  <option value="">All statuses</option>
-                  <option value="PRESENT">Present</option>
-                  <option value="HALF_DAY">Half day</option>
-                  <option value="LEAVE">Leave</option>
-                  <option value="ABSENT">Absent</option>
-                  <option value="UNMARKED">Unmarked</option>
-                </select>
+                <AttendanceStatusFilter value={filterStatus} options={attendanceStatusOptions} onChange={setFilterStatus} />
               </label>
             </div>
             <div className="attendance-overview-row">

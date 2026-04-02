@@ -8,7 +8,7 @@ import { apiRequest } from "../../services/api";
 import type { Department, Employee, Role } from "../../types";
 import EmployeeForm, { type EmployeeFormValues } from "./EmployeeForm";
 import EmployeeTable from "./EmployeeTable";
-import { createDefaultJoiningDateInput, createInitialEmployeeForm, formatStoredDateForInput, formatStoredDateTimeForInput, serializeLocalDateTime } from "./employeeFormUtils";
+import { createDefaultJoiningDateInput, createInitialEmployeeForm, serializeLocalDateTime } from "./employeeFormUtils";
 
 type EmployeesPageProps = {
   token: string | null;
@@ -114,38 +114,6 @@ export default function EmployeesPage({ token, role }: EmployeesPageProps) {
     }
   }
 
-  async function startEdit(employee: Employee) {
-    try {
-      await ensureDepartmentsLoaded();
-      const detailResponse = await apiRequest<Employee>(`/employees/${employee.id}`, { token });
-      const detailedEmployee = detailResponse.data;
-
-      setEditingEmployeeId(employee.id);
-      setForm({
-        email: detailedEmployee.user?.email ?? "",
-        password: "",
-        role: detailedEmployee.user?.role.name ?? "EMPLOYEE",
-        employeeCode: detailedEmployee.employeeCode,
-        firstName: detailedEmployee.firstName,
-        lastName: detailedEmployee.lastName,
-        jobTitle: detailedEmployee.jobTitle ?? "",
-        phone: detailedEmployee.phone ?? "",
-        annualPackageLpa: detailedEmployee.annualPackageLpa ? String(detailedEmployee.annualPackageLpa) : "",
-        isOnProbation: Boolean(detailedEmployee.isOnProbation),
-        probationEndDate: detailedEmployee.probationEndDate ? formatStoredDateForInput(detailedEmployee.probationEndDate) : "",
-        departmentId: String(detailedEmployee.departmentId),
-        managerId: detailedEmployee.managerId ? String(detailedEmployee.managerId) : "",
-        joiningDate: formatStoredDateTimeForInput(detailedEmployee.joiningDate),
-        employmentStatus: detailedEmployee.employmentStatus,
-        isTeamLead: Boolean(detailedEmployee.capabilities?.some((capability) => capability.capability === "TEAM_LEAD")),
-        teamLeadScopeIds: detailedEmployee.scopedTeamMembers?.map((item) => item.employee.id) ?? [],
-      });
-      setEmployeeModalOpen(true);
-    } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : "Failed to load employee");
-    }
-  }
-
   function startCreate() {
     ensureDepartmentsLoaded()
       .then(() => {
@@ -156,20 +124,6 @@ export default function EmployeesPage({ token, role }: EmployeesPageProps) {
       .catch((requestError) => {
         setError(requestError instanceof Error ? requestError.message : "Failed to load departments");
       });
-  }
-
-  async function toggleStatus(employee: Employee) {
-    await apiRequest<Employee>(`/employees/${employee.id}/status`, {
-      method: "PATCH",
-      token,
-      body: {
-        isActive: !employee.isActive,
-        employmentStatus: !employee.isActive ? "ACTIVE" : "INACTIVE",
-      },
-    });
-
-    setMessage(`Employee ${employee.isActive ? "deactivated" : "activated"}.`);
-    await reloadData();
   }
 
   function cancelEdit() {
@@ -197,8 +151,6 @@ export default function EmployeesPage({ token, role }: EmployeesPageProps) {
         <EmployeeTable
           employees={employees}
           onAdd={startCreate}
-          onEdit={startEdit}
-          onToggleStatus={toggleStatus}
           onSelect={(employee) => navigate(`/employees/${employee.id}`)}
         />
       )}

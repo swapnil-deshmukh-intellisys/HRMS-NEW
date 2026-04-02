@@ -46,17 +46,24 @@ export default function LeavesPage({ token, role, currentEmployeeId, currentEmpl
   const totalRemaining = balances.reduce((sum, balance) => sum + balance.remainingDays, 0);
   const teamLeadScopeIds = currentEmployee?.scopedTeamMembers?.map((item) => item.employee.id) ?? [];
 
+  const loadLeaveTypes = useCallback(async () => {
+    if (leaveTypes.length) {
+      return;
+    }
+
+    const response = await apiRequest<LeaveType[]>("/leave-types", { token });
+    setLeaveTypes(response.data);
+  }, [leaveTypes.length, token]);
+
   const reloadData = useCallback(async () => {
     try {
       setLoading(true);
       setError("");
-      const [typesResponse, balancesResponse, leavesResponse] = await Promise.all([
-        apiRequest<LeaveType[]>("/leave-types", { token }),
+      const [balancesResponse, leavesResponse] = await Promise.all([
         apiRequest<LeaveBalance[]>("/leave-balances/me", { token }),
         apiRequest<LeaveRequest[]>("/leaves", { token }),
       ]);
 
-      setLeaveTypes(typesResponse.data);
       setBalances(balancesResponse.data);
       setLeaves(leavesResponse.data);
     } catch (requestError) {
@@ -69,6 +76,12 @@ export default function LeavesPage({ token, role, currentEmployeeId, currentEmpl
   useEffect(() => {
     reloadData();
   }, [reloadData]);
+
+  useEffect(() => {
+    loadLeaveTypes().catch((requestError) => {
+      setError(requestError instanceof Error ? requestError.message : "Failed to load leave types.");
+    });
+  }, [loadLeaveTypes]);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -122,7 +135,7 @@ export default function LeavesPage({ token, role, currentEmployeeId, currentEmpl
         token,
       });
 
-      setMessage(stage === "manager" ? "Leave moved to HR review." : "Leave approved successfully.");
+      setMessage(stage === "manager" ? "Manager approval recorded." : "HR approval recorded.");
       await reloadData();
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : "Failed to review leave request.");

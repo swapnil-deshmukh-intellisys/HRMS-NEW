@@ -9,7 +9,7 @@ type DepartmentTableProps = {
 
 export default function DepartmentTable({ departments, onAddDepartment }: DepartmentTableProps) {
   return (
-    <div className="card dense-table-card">
+    <div className="card dense-table-card department-table-card">
       <div className="action-row">
         <div>
           <h3>Departments</h3>

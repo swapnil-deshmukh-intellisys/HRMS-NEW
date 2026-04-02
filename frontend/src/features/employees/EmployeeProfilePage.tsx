@@ -287,7 +287,7 @@ export default function EmployeeProfilePage({ token, role, currentEmployeeId }: 
       token,
     });
 
-    setMessage(stage === "manager" ? "Leave moved to HR review." : "Leave approved successfully.");
+    setMessage(stage === "manager" ? "Manager approval recorded." : "HR approval recorded.");
     await reloadProfile();
   }
 

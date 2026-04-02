@@ -5,12 +5,10 @@ import type { Employee } from "../../types";
 type EmployeeTableProps = {
   employees: Employee[];
   onAdd: () => void;
-  onEdit: (employee: Employee) => void;
-  onToggleStatus: (employee: Employee) => void | Promise<void>;
   onSelect: (employee: Employee) => void;
 };
 
-export default function EmployeeTable({ employees, onAdd, onEdit, onToggleStatus, onSelect }: EmployeeTableProps) {
+export default function EmployeeTable({ employees, onAdd, onSelect }: EmployeeTableProps) {
   const [searchTerm, setSearchTerm] = useState("");
 
   function getStatusLabel(employee: Employee) {
@@ -96,6 +94,14 @@ export default function EmployeeTable({ employees, onAdd, onEdit, onToggleStatus
         </div>
         <div className="employee-directory-actions">
           <label className="employee-directory-search" aria-label="Search employees">
+            <span className="employee-directory-search__icon" aria-hidden="true">
+              <svg viewBox="0 0 20 20" focusable="false">
+                <path
+                  d="M8.75 3.75a5 5 0 1 0 0 10a5 5 0 0 0 0-10Zm-6.5 5a6.5 6.5 0 1 1 11.11 4.596l3.022 3.022a.75.75 0 1 1-1.06 1.06L12.3 14.407A6.5 6.5 0 0 1 2.25 8.75Z"
+                  fill="currentColor"
+                />
+              </svg>
+            </span>
             <input
               type="search"
               value={searchTerm}
@@ -118,7 +124,6 @@ export default function EmployeeTable({ employees, onAdd, onEdit, onToggleStatus
               <th>Department</th>
               <th>Role</th>
               <th>Status</th>
-              <th>Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -148,29 +153,6 @@ export default function EmployeeTable({ employees, onAdd, onEdit, onToggleStatus
                 <td>{employee.user?.role.name ?? "-"}</td>
                 <td>
                   <span className={getStatusClass(getStatusLabel(employee))}>{getStatusLabel(employee)}</span>
-                </td>
-                <td>
-                  <div className="button-row row-actions">
-                    <button
-                      type="button"
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        onEdit(employee);
-                      }}
-                    >
-                      Edit
-                    </button>
-                    <button
-                      type="button"
-                      className="secondary"
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        onToggleStatus(employee);
-                      }}
-                    >
-                      {employee.isActive ? "Deactivate" : "Activate"}
-                    </button>
-                  </div>
                 </td>
               </tr>
             ))}
@@ -204,27 +186,6 @@ export default function EmployeeTable({ employees, onAdd, onEdit, onToggleStatus
               </div>
             </div>
 
-            <div className="button-row row-actions employee-mobile-card__actions">
-              <button
-                type="button"
-                onClick={(event) => {
-                  event.stopPropagation();
-                  onEdit(employee);
-                }}
-              >
-                Edit
-              </button>
-              <button
-                type="button"
-                className="secondary"
-                onClick={(event) => {
-                  event.stopPropagation();
-                  onToggleStatus(employee);
-                }}
-              >
-                {employee.isActive ? "Deactivate" : "Activate"}
-              </button>
-            </div>
           </article>
         ))}
       </div>

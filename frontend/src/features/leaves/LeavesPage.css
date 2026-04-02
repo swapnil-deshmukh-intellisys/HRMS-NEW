@@ -2,6 +2,10 @@
   min-width: min(100%, 420px);
 }
 
+.leaves-page-table-card .table-wrap {
+  max-height: none;
+}
+
 .leaves-page-header {
   margin-bottom: var(--space-2);
 }
@@ -83,4 +87,35 @@
   .leave-balance-modal-summary {
     grid-template-columns: 1fr;
   }
+}
+.leaves-page-actions .leaves-page-balance-button,
+.leaves-page-actions .leaves-page-primary-button,
+.leave-action-button {
+  min-height: 42px;
+  padding: 10px 16px;
+  border: 1px solid rgba(15, 23, 42, 0.06);
+  border-radius: 999px;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.95),
+    0 2px 8px rgba(15, 23, 42, 0.04);
+}
+
+.leaves-page-actions .leaves-page-balance-button,
+.leave-action-button.secondary {
+  background: linear-gradient(180deg, #fbfcfe, #f3f6fa);
+  color: var(--color-text-strong);
+}
+
+.leaves-page-actions .leaves-page-primary-button,
+.leave-action-button:not(.secondary) {
+  background: linear-gradient(180deg, #1f87ff, #0b74ff);
+  color: #fff;
+}
+
+.leaves-page-actions .leaves-page-balance-button:hover:not(:disabled),
+.leaves-page-actions .leaves-page-primary-button:hover:not(:disabled),
+.leave-action-button:hover:not(:disabled) {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.98),
+    0 8px 18px rgba(15, 23, 42, 0.08);
 }

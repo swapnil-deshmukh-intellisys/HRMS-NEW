@@ -336,6 +336,13 @@ export default function EmployeeProfilePage({ token, role, currentEmployeeId }: 
         onEdit={() => setEmployeeModalOpen(true)}
         onToggleStatus={() => setStatusConfirmOpen(true)}
       />
+      <EmployeeProfileTabs activeTab={activeTab} tabs={visibleTabs} onChange={setActiveTab} />
+      {activeTab === "overview" ? <EmployeeOverviewTab employee={employee} /> : null}
+      {activeTab === "attendance" ? <EmployeeAttendanceTab attendance={attendance} /> : null}
+      {activeTab === "leaves" ? (
+        <EmployeeLeavesTab balances={balances} leaves={leaves} role={role} viewerEmployeeId={currentEmployeeId} onReview={reviewLeave} />
+      ) : null}
+      {canViewPayroll && activeTab === "payroll" ? <EmployeePayrollTab payroll={payroll} /> : null}
       <div className="grid cols-2 employee-profile-snapshot-row">
         <EmployeeAttendanceSnapshotCard attendance={attendance} />
         <EmployeeLeaveSnapshotCard balances={balances} leaves={leaves} />
@@ -349,13 +356,6 @@ export default function EmployeeProfilePage({ token, role, currentEmployeeId }: 
           </article>
         ))}
       </div>
-      <EmployeeProfileTabs activeTab={activeTab} tabs={visibleTabs} onChange={setActiveTab} />
-      {activeTab === "overview" ? <EmployeeOverviewTab employee={employee} /> : null}
-      {activeTab === "attendance" ? <EmployeeAttendanceTab attendance={attendance} /> : null}
-      {activeTab === "leaves" ? (
-        <EmployeeLeavesTab balances={balances} leaves={leaves} role={role} viewerEmployeeId={currentEmployeeId} onReview={reviewLeave} />
-      ) : null}
-      {canViewPayroll && activeTab === "payroll" ? <EmployeePayrollTab payroll={payroll} /> : null}
       <Modal open={employeeModalOpen} title="Edit employee" className="employee-profile-modal" onClose={() => setEmployeeModalOpen(false)}>
         <EmployeeForm
           form={form}

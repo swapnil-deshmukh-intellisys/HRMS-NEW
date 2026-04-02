@@ -40,7 +40,7 @@ export default function LeavesPage({ token, role, currentEmployeeId, currentEmpl
   const [rejectionReason, setRejectionReason] = useState("");
   const [leaveFormOpen, setLeaveFormOpen] = useState(false);
   const [leaveBalancesOpen, setLeaveBalancesOpen] = useState(false);
-  const [confirmAction, setConfirmAction] = useState<{ type: "cancel" | "repair"; leaveId: number } | null>(null);
+  const [confirmAction, setConfirmAction] = useState<{ type: "cancel"; leaveId: number } | null>(null);
   const [teamLeadScopeIds, setTeamLeadScopeIds] = useState<number[]>([]);
   const totalAllocated = balances.reduce((sum, balance) => sum + balance.allocatedDays, 0);
   const totalUsed = balances.reduce((sum, balance) => sum + balance.usedDays, 0);
@@ -185,22 +185,6 @@ export default function LeavesPage({ token, role, currentEmployeeId, currentEmpl
     }
   }
 
-  async function repairLeaveAttendance(id: number) {
-    try {
-      setError("");
-      setMessage("");
-      await apiRequest(`/leaves/${id}/repair-attendance`, {
-        method: "POST",
-        token,
-      });
-
-      setMessage("Leave attendance repaired successfully.");
-      await reloadData();
-    } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : "Failed to repair leave attendance.");
-    }
-  }
-
   return (
     <section className="stack">
       {error ? <MessageCard title="Leave issue" tone="error" message={error} /> : null}
@@ -213,7 +197,7 @@ export default function LeavesPage({ token, role, currentEmployeeId, currentEmpl
           <span className="skeleton-line skeleton-line--long" />
         </article>
       ) : (
-        <div className="card dense-table-card">
+        <div className="card dense-table-card leaves-page-table-card">
           <div className="action-row leaves-page-header">
             <div>
               <h3>Leave requests</h3>
@@ -234,7 +218,6 @@ export default function LeavesPage({ token, role, currentEmployeeId, currentEmpl
             teamLeadScopeIds={teamLeadScopeIds}
             onReview={reviewLeave}
             onCancel={(id) => setConfirmAction({ type: "cancel", leaveId: id })}
-            onRepairAttendance={(id) => setConfirmAction({ type: "repair", leaveId: id })}
           />
         </div>
       )}
@@ -327,14 +310,12 @@ export default function LeavesPage({ token, role, currentEmployeeId, currentEmpl
       </Modal>
       <Modal
         open={confirmAction !== null}
-        title={confirmAction?.type === "repair" ? "Repair leave attendance" : "Cancel leave request"}
+        title="Cancel leave request"
         onClose={() => setConfirmAction(null)}
       >
         <div className="stack leave-review-modal">
           <p className="muted">
-            {confirmAction?.type === "repair"
-              ? "This will rewrite attendance entries from the approved leave request dates."
-              : "This will cancel the leave request and remove it from the active approval flow."}
+            This will cancel the leave request and remove it from the active approval flow.
           </p>
           <div className="button-row">
             <button
@@ -354,15 +335,10 @@ export default function LeavesPage({ token, role, currentEmployeeId, currentEmpl
                   return;
                 }
 
-                if (action.type === "repair") {
-                  void repairLeaveAttendance(action.leaveId);
-                  return;
-                }
-
                 void cancelLeave(action.leaveId);
               }}
             >
-              {confirmAction?.type === "repair" ? "Repair attendance" : "Cancel leave"}
+              Cancel leave
             </button>
           </div>
         </div>

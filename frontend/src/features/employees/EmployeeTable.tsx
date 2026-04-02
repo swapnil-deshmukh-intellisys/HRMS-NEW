@@ -1,4 +1,5 @@
 import "./EmployeeTable.css";
+import { useMemo, useState } from "react";
 import type { Employee } from "../../types";
 
 type EmployeeTableProps = {
@@ -10,6 +11,8 @@ type EmployeeTableProps = {
 };
 
 export default function EmployeeTable({ employees, onAdd, onEdit, onToggleStatus, onSelect }: EmployeeTableProps) {
+  const [searchTerm, setSearchTerm] = useState("");
+
   function getStatusLabel(employee: Employee) {
     return employee.isActive ? employee.employmentStatus : "INACTIVE";
   }
@@ -63,15 +66,47 @@ export default function EmployeeTable({ employees, onAdd, onEdit, onToggleStatus
     );
   }
 
+  const filteredEmployees = useMemo(() => {
+    const normalizedSearch = searchTerm.trim().toLowerCase();
+
+    if (!normalizedSearch) {
+      return employees;
+    }
+
+    return employees.filter((employee) => {
+      const fullName = `${employee.firstName} ${employee.lastName}`.toLowerCase();
+      const fields = [
+        fullName,
+        employee.employeeCode,
+        employee.jobTitle ?? "",
+        employee.department?.name ?? "",
+        employee.user?.role.name ?? "",
+        employee.user?.email ?? "",
+      ];
+
+      return fields.some((value) => value.toLowerCase().includes(normalizedSearch));
+    });
+  }, [employees, searchTerm]);
+
   return (
     <div className="card dense-table-card employee-directory-card">
       <div className="action-row">
-        <div>
+        <div className="employee-directory-heading">
           <h3>Employee directory</h3>
         </div>
-        <button type="button" onClick={onAdd}>
-          Add employee
-        </button>
+        <div className="employee-directory-actions">
+          <label className="employee-directory-search" aria-label="Search employees">
+            <input
+              type="search"
+              value={searchTerm}
+              onChange={(event) => setSearchTerm(event.target.value)}
+              placeholder="Search employees"
+            />
+          </label>
+          <button type="button" onClick={onAdd}>
+            Add employee
+          </button>
+        </div>
       </div>
 
       <div className="table-wrap employee-directory-table">
@@ -87,7 +122,7 @@ export default function EmployeeTable({ employees, onAdd, onEdit, onToggleStatus
             </tr>
           </thead>
           <tbody>
-            {employees.map((employee) => (
+            {filteredEmployees.map((employee) => (
               <tr
                 key={employee.id}
                 className="employee-row"
@@ -144,7 +179,7 @@ export default function EmployeeTable({ employees, onAdd, onEdit, onToggleStatus
       </div>
 
       <div className="employee-directory-mobile-list">
-        {employees.map((employee) => (
+        {filteredEmployees.map((employee) => (
           <article key={employee.id} className="employee-mobile-card" onClick={() => onSelect(employee)}>
             <div className="employee-mobile-card__header">
               <div className="table-cell-stack">

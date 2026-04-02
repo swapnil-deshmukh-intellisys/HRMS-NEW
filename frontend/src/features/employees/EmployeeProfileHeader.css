@@ -1,28 +1,35 @@
 .employee-profile-header {
+  position: relative;
   display: flex;
-  align-items: flex-start;
+  align-items: stretch;
   justify-content: space-between;
-  flex-wrap: wrap;
-  gap: var(--space-4);
+  flex-wrap: nowrap;
+  gap: var(--space-5);
+  padding: clamp(20px, 3vw, 28px);
+  border-color: rgba(15, 23, 42, 0.08);
+  border-radius: 24px;
+  background: #fefefe;
 }
 
 .employee-profile-header__identity {
   display: flex;
-  align-items: flex-start;
-  gap: var(--space-4);
+  align-items: center;
+  gap: clamp(18px, 3vw, 28px);
   min-width: 0;
+  flex: 1 1 auto;
 }
 
 .employee-profile-header__avatar {
   display: grid;
   flex-shrink: 0;
-  width: 56px;
-  height: 56px;
+  width: clamp(88px, 9vw, 132px);
+  height: clamp(88px, 9vw, 132px);
   place-items: center;
-  border-radius: 18px;
-  background: var(--color-surface-secondary);
-  color: var(--color-accent-strong);
-  font-size: var(--text-lg);
+  border: 3px solid rgba(255, 255, 255, 0.72);
+  border-radius: 999px;
+  background: linear-gradient(180deg, #0b7a4b, #04603a);
+  color: #f7fff9;
+  font-size: clamp(2rem, 3.5vw, 3.5rem);
   font-weight: var(--fw-bold);
 }
 
@@ -30,61 +37,72 @@
   display: grid;
   gap: var(--space-2);
   min-width: 0;
+  flex: 1 1 auto;
 }
 
 .employee-profile-header__headline {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: var(--space-3);
+  display: grid;
+  gap: 10px;
 }
 
 .employee-profile-header__headline h2 {
+  margin: 0;
   color: var(--color-text-strong);
+  font-size: clamp(1.75rem, 2.6vw, 2.5rem);
+  font-weight: var(--fw-bold);
+  line-height: 1;
 }
 
-.employee-profile-header__meta,
-.employee-profile-header__summary {
+.employee-profile-header__badges {
   display: flex;
+  align-items: center;
   flex-wrap: wrap;
-  gap: var(--space-3);
+  gap: 10px;
 }
 
 .employee-profile-header__meta {
-  color: var(--color-text-secondary);
-  font-size: var(--text-sm);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 18px;
+  color: var(--color-text-muted);
+  font-size: var(--text-xs);
+  font-weight: var(--fw-medium);
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
 }
 
 .employee-profile-header__summary {
   display: grid;
-  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1.8fr);
-  gap: var(--space-5);
+  grid-template-columns: minmax(0, 1.35fr) minmax(0, 1.65fr);
+  gap: clamp(18px, 3vw, 32px);
   align-items: start;
+  margin-top: 6px;
 }
 
 .employee-profile-header__primary-contact {
   display: grid;
-  gap: 8px;
+  gap: 4px;
   min-width: 0;
 }
 
 .employee-profile-header__primary-contact strong {
   color: var(--color-text-strong);
-  font-size: var(--text-lg);
+  font-size: clamp(0.92rem, 1.1vw, 1rem);
   font-weight: var(--fw-semibold);
-  line-height: 1.35;
+  line-height: 1.25;
   word-break: break-word;
 }
 
 .employee-profile-header__detail-list {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: var(--space-4);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 22px;
 }
 
 .employee-profile-header__detail-row {
   display: grid;
   gap: 4px;
+  min-width: 132px;
 }
 
 .employee-profile-header__detail-label {
@@ -97,25 +115,39 @@
 
 .employee-profile-header__detail-row strong {
   color: var(--color-text-strong);
-  font-size: var(--text-sm);
-  font-weight: var(--fw-medium);
+  font-size: clamp(0.92rem, 1.1vw, 1rem);
+  font-weight: var(--fw-semibold);
+  line-height: 1.25;
 }
 
 .employee-profile-header__actions {
   display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: var(--space-2);
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: flex-start;
+  flex: 0 0 220px;
+  gap: 12px;
+  padding-top: 4px;
+}
+
+.employee-profile-header__actions button {
+  width: 100%;
+  min-height: 50px;
+  border-radius: 14px;
 }
 
 @media (max-width: 768px) {
   .employee-profile-header {
+    align-items: flex-start;
+    flex-direction: column;
+    flex-wrap: wrap;
     gap: var(--space-3);
   }
 
   .employee-profile-header__identity {
     flex-direction: column;
     gap: var(--space-3);
+    align-items: flex-start;
   }
 
   .employee-profile-header__summary {
@@ -124,15 +156,17 @@
   }
 
   .employee-profile-header__detail-list {
+    display: grid;
     grid-template-columns: 1fr;
     gap: var(--space-3);
   }
 
   .employee-profile-header__actions {
     width: 100%;
+    flex: 1 1 auto;
   }
 
   .employee-profile-header__actions button {
-    flex: 1 1 100%;
+    width: 100%;
   }
 }

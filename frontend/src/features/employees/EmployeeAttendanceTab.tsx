@@ -78,10 +78,6 @@ function getStatusLabel(record: Attendance) {
 export default function EmployeeAttendanceTab({ attendance }: EmployeeAttendanceTabProps) {
   return (
     <div className="stack">
-      <div className="grid cols-2 employee-profile-chart-grid">
-        <EmployeeAttendanceBreakdownChart attendance={attendance} />
-        <EmployeeWorkedHoursChart attendance={attendance} />
-      </div>
       <div className="card employee-profile-section">
         <h3>Attendance history</h3>
         <Table
@@ -102,6 +98,10 @@ export default function EmployeeAttendanceTab({ attendance }: EmployeeAttendance
             </div>,
           ])}
         />
+      </div>
+      <div className="grid cols-2 employee-profile-chart-grid">
+        <EmployeeAttendanceBreakdownChart attendance={attendance} />
+        <EmployeeWorkedHoursChart attendance={attendance} />
       </div>
     </div>
   );

@@ -10,7 +10,6 @@ type LeaveTableProps = {
   teamLeadScopeIds?: number[];
   onReview: (id: number, action: "approve" | "reject", stage: "manager" | "hr") => void | Promise<void>;
   onCancel: (id: number) => void | Promise<void>;
-  onRepairAttendance?: (id: number) => void | Promise<void>;
 };
 
 export default function LeaveTable({
@@ -20,7 +19,6 @@ export default function LeaveTable({
   teamLeadScopeIds = [],
   onReview,
   onCancel,
-  onRepairAttendance,
 }: LeaveTableProps) {
   function getStatusClass(status: LeaveRequest["status"]) {
     return `status-pill status-pill--${status.toLowerCase()}`;
@@ -121,7 +119,6 @@ export default function LeaveTable({
               <th>Dates</th>
               <th>Days</th>
               <th>Breakdown</th>
-              <th>Status</th>
               <th>Progress</th>
               <th>Reason</th>
               <th>Reviewed On</th>
@@ -154,9 +151,6 @@ export default function LeaveTable({
                   </td>
                   <td>{`${formatLeaveDays(leave.paidDays)} Paid / ${formatLeaveDays(leave.unpaidDays)} Unpaid`}</td>
                   <td>
-                    <span className={getStatusClass(leave.status)}>{leave.status}</span>
-                  </td>
-                  <td>
                     <div className="leave-progress">
                       <div className={getStepClass(leave.managerApprovalStatus)}>
                         <span className="leave-step__label">Manager</span>
@@ -183,37 +177,33 @@ export default function LeaveTable({
                     )}
                   </td>
                   <td>
-                    <div className="button-row row-actions">
+                    <div className="button-row row-actions leave-table-actions">
                       {canManagerReview(leave) ? (
                         <>
-                          <button onClick={() => onReview(leave.id, "approve", "manager")}>Manager approve</button>
-                          <button className="secondary" onClick={() => onReview(leave.id, "reject", "manager")}>
+                          <button className="leave-action-button" onClick={() => onReview(leave.id, "approve", "manager")}>Manager approve</button>
+                          <button className="secondary leave-action-button" onClick={() => onReview(leave.id, "reject", "manager")}>
                             Reject
                           </button>
                         </>
                       ) : canHrReview(leave) ? (
                         <>
-                          <button onClick={() => onReview(leave.id, "approve", "hr")}>HR approve</button>
-                          <button className="secondary" onClick={() => onReview(leave.id, "reject", "hr")}>
+                          <button className="leave-action-button" onClick={() => onReview(leave.id, "approve", "hr")}>HR approve</button>
+                          <button className="secondary leave-action-button" onClick={() => onReview(leave.id, "reject", "hr")}>
                             Reject
                           </button>
                         </>
                       ) : leave.status === "PENDING" &&
                         leave.managerApprovalStatus === "PENDING" &&
                         leave.employee.id === currentEmployeeId ? (
-                        <button className="secondary" onClick={() => onCancel(leave.id)}>
+                        <button className="secondary leave-action-button" onClick={() => onCancel(leave.id)}>
                           Cancel
-                        </button>
-                      ) : leave.status === "APPROVED" && (role === "HR" || role === "ADMIN") ? (
-                        <button className="secondary" onClick={() => onRepairAttendance?.(leave.id)}>
-                          Repair attendance
                         </button>
                       ) : role === "EMPLOYEE" &&
                         leave.employee.id !== currentEmployeeId &&
                         teamLeadScopeIds.includes(leave.employee.id) ? (
                         <span className="table-cell-secondary">View only</span>
                       ) : (
-                        "-"
+                        <span className={getStatusClass(leave.status)}>{leave.status}</span>
                       )}
                     </div>
                   </td>
@@ -221,7 +211,7 @@ export default function LeaveTable({
               ))
             ) : (
               <tr>
-                <td colSpan={11} className="leave-table-empty-cell">
+                <td colSpan={10} className="leave-table-empty-cell">
                   <div className="leave-table-empty-state">
                     <strong>No leave requests yet.</strong>
                     <span>Use the Apply for leave action to submit the first request.</span>

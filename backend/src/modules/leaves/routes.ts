@@ -607,86 +607,6 @@ async function cancelLeave(leaveId: number, actor: NonNullable<Express.Request["
   });
 }
 
-async function repairApprovedLeaveAttendanceSync(leaveId: number) {
-  const leaveRequest = await prisma.leaveRequest.findUnique({
-    where: { id: leaveId },
-    include: {
-      employee: true,
-      leaveType: true,
-      managerApprovedBy: true,
-      hrApprovedBy: true,
-    },
-  });
-
-  if (!leaveRequest) {
-    throw new AppError("Leave request not found", 404);
-  }
-
-  if (leaveRequest.status !== LeaveStatus.APPROVED) {
-    throw new AppError("Only approved leave requests can repair attendance sync");
-  }
-
-  return prisma.$transaction(async (transaction) => {
-    const calendarExceptions = await transaction.calendarException.findMany({
-      where: {
-        date: {
-          gte: startOfDay(leaveRequest.startDate),
-          lte: startOfDay(leaveRequest.endDate),
-        },
-      },
-      orderBy: { date: "asc" },
-    });
-    const attendanceEntries = buildApprovedLeaveAttendanceEntries({
-      startDate: leaveRequest.startDate,
-      endDate: leaveRequest.endDate,
-      startDayDuration: leaveRequest.startDayDuration,
-      endDayDuration: leaveRequest.endDayDuration,
-      isWorkingDay: (date) => getCalendarDayStatus(date, calendarExceptions).isWorkingDay,
-    });
-
-    const existingAttendances = await transaction.attendance.findMany({
-      where: {
-        employeeId: leaveRequest.employeeId,
-        attendanceDate: {
-          in: attendanceEntries.map((entry) => entry.attendanceDate),
-        },
-      },
-    });
-
-    for (const entry of attendanceEntries) {
-      const existingAttendance = existingAttendances.find(
-        (attendance) => attendance.attendanceDate.getTime() === entry.attendanceDate.getTime(),
-      );
-
-      if (existingAttendance) {
-        await transaction.attendance.update({
-          where: { id: existingAttendance.id },
-          data: {
-            status: entry.status,
-            checkInTime: null,
-            checkOutTime: null,
-            workedMinutes: 0,
-          },
-        });
-      } else {
-        await transaction.attendance.create({
-          data: {
-            employeeId: leaveRequest.employeeId,
-            attendanceDate: entry.attendanceDate,
-            status: entry.status,
-            workedMinutes: 0,
-          },
-        });
-      }
-    }
-
-    return {
-      leave: leaveRequest,
-      repairedAttendanceCount: attendanceEntries.length,
-    };
-  });
-}
-
 router.put("/leaves/:id/manager-approve", requireRoles("ADMIN", "MANAGER"), async (request, response, next) => {
   try {
     const leaveId = Number(request.params.id);
@@ -742,16 +662,6 @@ router.put("/leaves/:id/cancel", requireRoles("ADMIN", "HR", "MANAGER", "EMPLOYE
     const leaveId = Number(request.params.id);
     const cancelledLeave = await cancelLeave(leaveId, request.user!);
     return sendSuccess(response, "Leave cancelled successfully", cancelledLeave);
-  } catch (error) {
-    next(error);
-  }
-});
-
-router.post("/leaves/:id/repair-attendance", requireRoles("ADMIN", "HR"), async (request, response, next) => {
-  try {
-    const leaveId = Number(request.params.id);
-    const repairedLeave = await repairApprovedLeaveAttendanceSync(leaveId);
-    return sendSuccess(response, "Leave attendance repaired successfully", repairedLeave);
   } catch (error) {
     next(error);
   }

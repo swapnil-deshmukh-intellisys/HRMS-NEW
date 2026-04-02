@@ -52,30 +52,6 @@ export default function EmployeeOverviewTab({ employee }: EmployeeOverviewTabPro
           <h3>Employee details</h3>
         </div>
       </div>
-      <section className="employee-identity-panel">
-        <div className="employee-identity-panel__header">
-          <div>
-            <h4>Identity & contact</h4>
-            <p className="muted">Primary contact details and employee identifiers.</p>
-          </div>
-        </div>
-        <div className="employee-identity-panel__body">
-          <div className="employee-identity-panel__lead">
-            <span className="employee-identity-panel__label">Email</span>
-            <strong className="employee-identity-panel__email">{employee.user?.email ?? "Not available"}</strong>
-          </div>
-          <div className="employee-identity-panel__meta">
-            <div className="employee-identity-chip">
-              <span>Employee code</span>
-              <strong>{employee.employeeCode}</strong>
-            </div>
-            <div className="employee-identity-chip">
-              <span>Phone</span>
-              <strong>{employee.phone || "Not provided"}</strong>
-            </div>
-          </div>
-        </div>
-      </section>
       <div className="employee-overview-sections">
         {sections.map((section) => (
           <section key={section.title} className="employee-detail-section">

@@ -20,15 +20,58 @@ type AttendanceListRow = Omit<Attendance, "status"> & {
   status: Attendance["status"] | "UNMARKED";
 };
 
+type VisibleMonth = {
+  month: number;
+  year: number;
+};
+
+function toLocalDateString(value: Date) {
+  const year = value.getFullYear();
+  const month = String(value.getMonth() + 1).padStart(2, "0");
+  const day = String(value.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function parseLocalDateString(value: string) {
+  const [year, month, day] = value.split("-").map(Number);
+  return new Date(year, (month || 1) - 1, day || 1);
+}
+
+function getVisibleMonthFromDate(value: string) {
+  const date = parseLocalDateString(value);
+  return {
+    month: date.getMonth(),
+    year: date.getFullYear(),
+  };
+}
+
+function getCalendarDays({ month, year }: VisibleMonth) {
+  const firstDay = new Date(year, month, 1);
+  const lastDay = new Date(year, month + 1, 0);
+  const leadingDays = (firstDay.getDay() + 6) % 7;
+  const totalDays = lastDay.getDate();
+  const totalCells = Math.ceil((leadingDays + totalDays) / 7) * 7;
+
+  return Array.from({ length: totalCells }, (_, index) => {
+    const date = new Date(year, month, index - leadingDays + 1);
+    return {
+      key: date.toISOString(),
+      value: date,
+      inCurrentMonth: date.getMonth() === month,
+    };
+  });
+}
+
 export default function AttendancePage({ token, role, currentEmployeeId, currentEmployee }: AttendancePageProps) {
-  const today = new Date().toISOString().slice(0, 10);
+  const today = toLocalDateString(new Date());
   const [attendance, setAttendance] = useState<Attendance[]>([]);
   const [regularizations, setRegularizations] = useState<AttendanceRegularizationRequest[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [employeesTotal, setEmployeesTotal] = useState(0);
-  const [filterEmployeeId, setFilterEmployeeId] = useState("");
   const [filterStatus, setFilterStatus] = useState("");
   const [filterDate, setFilterDate] = useState(today);
+  const [datePickerOpen, setDatePickerOpen] = useState(false);
+  const [visibleMonth, setVisibleMonth] = useState<VisibleMonth>(() => getVisibleMonthFromDate(today));
   const [regularizationOpen, setRegularizationOpen] = useState(false);
   const [finalizeConfirmOpen, setFinalizeConfirmOpen] = useState(false);
   const [reviewModalOpen, setReviewModalOpen] = useState(false);
@@ -49,6 +92,11 @@ export default function AttendancePage({ token, role, currentEmployeeId, current
   const canFinalizeAttendance = role === "ADMIN" || role === "HR";
   const activeOverviewFilter = filterStatus === "HALF_DAY" ? "PRESENT" : filterStatus;
   const navigate = useNavigate();
+  const calendarDays = useMemo(() => getCalendarDays(visibleMonth), [visibleMonth]);
+  const currentMonthLabel = new Date(visibleMonth.year, visibleMonth.month, 1).toLocaleDateString("en-IN", {
+    month: "long",
+    year: "numeric",
+  });
 
   function getWorkedDurationLabel(record: AttendanceListRow) {
     if (record.status === "LEAVE") {
@@ -153,6 +201,10 @@ export default function AttendancePage({ token, role, currentEmployeeId, current
   useEffect(() => {
     reloadEmployees();
   }, [reloadEmployees]);
+
+  useEffect(() => {
+    setVisibleMonth(getVisibleMonthFromDate(filterDate || today));
+  }, [filterDate, today]);
 
   async function handleFinalizeAttendance() {
     try {
@@ -291,10 +343,6 @@ export default function AttendancePage({ token, role, currentEmployeeId, current
   const filteredAttendance = attendance.filter((record) => {
     const recordDate = new Date(record.attendanceDate);
 
-    if (filterEmployeeId && String(record.employee?.id ?? record.employeeId) !== filterEmployeeId) {
-      return false;
-    }
-
     if (filterStatus) {
       if (filterStatus === "PRESENT") {
         if (record.status !== "PRESENT" && record.status !== "HALF_DAY") {
@@ -335,10 +383,6 @@ export default function AttendancePage({ token, role, currentEmployeeId, current
     return attendance.filter((record) => {
       const recordDate = new Date(record.attendanceDate);
 
-      if (filterEmployeeId && String(record.employee?.id ?? record.employeeId) !== filterEmployeeId) {
-        return false;
-      }
-
       if (filterDate) {
         const selectedDate = new Date(filterDate);
         selectedDate.setHours(0, 0, 0, 0);
@@ -352,7 +396,7 @@ export default function AttendancePage({ token, role, currentEmployeeId, current
 
       return true;
     });
-  }, [attendance, filterDate, filterEmployeeId]);
+  }, [attendance, filterDate]);
 
   const attendanceOverview = useMemo(
     () =>
@@ -374,16 +418,12 @@ export default function AttendancePage({ token, role, currentEmployeeId, current
   );
 
   const totalWorkforceCount = useMemo(() => {
-    if (filterEmployeeId) {
-      return 1;
-    }
-
     if (employeesTotal > 0) {
       return employeesTotal;
     }
 
     return workforceEmployees.length;
-  }, [employeesTotal, filterEmployeeId, workforceEmployees.length]);
+  }, [employeesTotal, workforceEmployees.length]);
 
   const markedEmployeeIds = useMemo(
     () => new Set(attendanceOverviewSource.map((record) => record.employee?.id ?? record.employeeId)),
@@ -396,24 +436,18 @@ export default function AttendancePage({ token, role, currentEmployeeId, current
     }
 
     return workforceEmployees
-      .filter((employee) => {
-        if (filterEmployeeId && String(employee.id) !== filterEmployeeId) {
-          return false;
-        }
-
-        return !markedEmployeeIds.has(employee.id);
-      })
+      .filter((employee) => !markedEmployeeIds.has(employee.id))
       .map((employee) => ({
         id: -employee.id,
         employeeId: employee.id,
-        attendanceDate: new Date(filterDate).toISOString(),
+        attendanceDate: parseLocalDateString(filterDate).toISOString(),
         checkInTime: null,
         checkOutTime: null,
         workedMinutes: 0,
         status: "UNMARKED",
         employee,
       }));
-  }, [filterDate, filterEmployeeId, markedEmployeeIds, workforceEmployees]);
+  }, [filterDate, markedEmployeeIds, workforceEmployees]);
 
   const attendanceRows = useMemo<AttendanceListRow[]>(() => {
     if (filterStatus === "UNMARKED") {
@@ -424,16 +458,12 @@ export default function AttendancePage({ token, role, currentEmployeeId, current
   }, [filterStatus, filteredAttendance, unmarkedRows]);
 
   const unmarkedCount = useMemo(() => {
-    if (filterEmployeeId) {
-      return unmarkedRows.length;
-    }
-
     if (employeesTotal > 0) {
       return Math.max(0, employeesTotal - markedEmployeeIds.size);
     }
 
     return unmarkedRows.length;
-  }, [employeesTotal, filterEmployeeId, markedEmployeeIds.size, unmarkedRows.length]);
+  }, [employeesTotal, markedEmployeeIds.size, unmarkedRows.length]);
 
   const columns = [
     ...(canManageOthers ? ["Employee"] : []),
@@ -466,84 +496,142 @@ export default function AttendancePage({ token, role, currentEmployeeId, current
               <p className="muted">Track attendance entries, mark today, and manage correction requests from one workspace.</p>
             </div>
             <div className="button-row row-actions">
-              <button className="secondary" onClick={() => setRegularizationOpen(true)}>
+              <button className="secondary attendance-header-action" onClick={() => setRegularizationOpen(true)}>
                 Request correction
               </button>
               {canFinalizeAttendance ? (
-                <button className="secondary" onClick={() => setFinalizeConfirmOpen(true)}>
+                <button className="secondary attendance-header-action" onClick={() => setFinalizeConfirmOpen(true)}>
                   Finalize selected day
                 </button>
               ) : null}
             </div>
           </div>
-          <div className="attendance-history-filters">
-            <label className="attendance-filter-field">
-              Date
-              <input
-                type="date"
-                max={today}
-                value={filterDate}
-                onChange={(event) => setFilterDate(event.target.value)}
-              />
-            </label>
-            <label className="attendance-filter-field">
-              Status
-              <select value={filterStatus} onChange={(event) => setFilterStatus(event.target.value)}>
-                <option value="">All statuses</option>
-                <option value="PRESENT">Present</option>
-                <option value="HALF_DAY">Half day</option>
-                <option value="LEAVE">Leave</option>
-                <option value="ABSENT">Absent</option>
-                <option value="UNMARKED">Unmarked</option>
-              </select>
-            </label>
-            {canManageOthers ? (
-              <label className="attendance-filter-field">
-                Employee
-                <select value={filterEmployeeId} onChange={(event) => setFilterEmployeeId(event.target.value)}>
-                  <option value="">All employees</option>
-                  {employees.map((employee) => (
-                    <option key={employee.id} value={employee.id}>{`${employee.firstName} ${employee.lastName}`}</option>
-                  ))}
+          <div className="attendance-toolbar">
+            <div className="attendance-history-filters">
+              <label className="attendance-filter-field attendance-filter-field--date">
+                Date
+                <div className="attendance-date-picker">
+                  <button
+                    type="button"
+                    className="attendance-date-input attendance-date-trigger"
+                    onClick={() => setDatePickerOpen((current) => !current)}
+                  >
+                    <span>{formatDateLabel(filterDate)}</span>
+                  </button>
+                  {datePickerOpen ? (
+                    <div className="attendance-date-popover">
+                      <div className="attendance-date-popover__header">
+                        <button
+                          type="button"
+                          className="secondary attendance-date-popover__nav"
+                          onClick={() =>
+                            setVisibleMonth((current) => {
+                              const previousMonth = new Date(current.year, current.month - 1, 1);
+                              return {
+                                month: previousMonth.getMonth(),
+                                year: previousMonth.getFullYear(),
+                              };
+                            })
+                          }
+                        >
+                          Prev
+                        </button>
+                        <strong>{currentMonthLabel}</strong>
+                        <button
+                          type="button"
+                          className="secondary attendance-date-popover__nav"
+                          onClick={() =>
+                            setVisibleMonth((current) => {
+                              const nextMonth = new Date(current.year, current.month + 1, 1);
+                              return {
+                                month: nextMonth.getMonth(),
+                                year: nextMonth.getFullYear(),
+                              };
+                            })
+                          }
+                        >
+                          Next
+                        </button>
+                      </div>
+                      <div className="attendance-date-popover__weekdays">
+                        {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((label) => (
+                          <span key={label}>{label}</span>
+                        ))}
+                      </div>
+                      <div className="attendance-date-popover__grid">
+                        {calendarDays.map((day) => {
+                          const isoDate = toLocalDateString(day.value);
+                          const isSelected = isoDate === filterDate;
+                          const isFuture = isoDate > today;
+
+                          return (
+                            <button
+                              key={day.key}
+                              type="button"
+                              className={`attendance-date-popover__day ${!day.inCurrentMonth ? "attendance-date-popover__day--muted" : ""} ${isSelected ? "attendance-date-popover__day--selected" : ""}`.trim()}
+                              disabled={isFuture}
+                              onClick={() => {
+                                setFilterDate(isoDate);
+                                setDatePickerOpen(false);
+                              }}
+                            >
+                              {day.value.getDate()}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ) : null}
+                </div>
+              </label>
+              <label className="attendance-filter-field attendance-filter-field--status">
+                Status
+                <select className="attendance-status-select" value={filterStatus} onChange={(event) => setFilterStatus(event.target.value)}>
+                  <option value="">All statuses</option>
+                  <option value="PRESENT">Present</option>
+                  <option value="HALF_DAY">Half day</option>
+                  <option value="LEAVE">Leave</option>
+                  <option value="ABSENT">Absent</option>
+                  <option value="UNMARKED">Unmarked</option>
                 </select>
               </label>
-            ) : null}
-          </div>
-          <div className="attendance-overview-row">
-            <button
-              type="button"
-              className={`attendance-overview-chip attendance-overview-chip--present ${activeOverviewFilter === "PRESENT" ? "attendance-overview-chip--active" : ""}`.trim()}
-              onClick={() => setFilterStatus((current) => (current === "PRESENT" || current === "HALF_DAY" ? "" : "PRESENT"))}
-            >
-              <span className="attendance-overview-chip__label">Present</span>
-              <strong className="attendance-overview-chip__value">
-                {attendanceOverview.present}/{totalWorkforceCount}
-              </strong>
-            </button>
-            <button
-              type="button"
-              className={`attendance-overview-chip attendance-overview-chip--absent ${activeOverviewFilter === "ABSENT" ? "attendance-overview-chip--active" : ""}`.trim()}
-              onClick={() => setFilterStatus((current) => (current === "ABSENT" ? "" : "ABSENT"))}
-            >
-              <span className="attendance-overview-chip__label">Absent</span>
-              <strong className="attendance-overview-chip__value">{attendanceOverview.absent}</strong>
-            </button>
-            <button
-              type="button"
-              className={`attendance-overview-chip attendance-overview-chip--leave ${activeOverviewFilter === "LEAVE" ? "attendance-overview-chip--active" : ""}`.trim()}
-              onClick={() => setFilterStatus((current) => (current === "LEAVE" ? "" : "LEAVE"))}
-            >
-              <span className="attendance-overview-chip__label">On leave</span>
-              <strong className="attendance-overview-chip__value">{attendanceOverview.leave}</strong>
-            </button>
-            <button
-              type="button"
-              className={`attendance-overview-chip attendance-overview-chip--unmarked ${activeOverviewFilter === "UNMARKED" ? "attendance-overview-chip--active" : ""}`.trim()}
-              onClick={() => setFilterStatus((current) => (current === "UNMARKED" ? "" : "UNMARKED"))}
-            >
-              <span className="attendance-overview-chip__label">Unmarked</span>
-              <strong className="attendance-overview-chip__value">{unmarkedCount}</strong>
-            </button>
+            </div>
+            <div className="attendance-overview-row">
+              <button
+                type="button"
+                className={`attendance-overview-chip attendance-overview-chip--present ${activeOverviewFilter === "PRESENT" ? "attendance-overview-chip--active" : ""}`.trim()}
+                onClick={() => setFilterStatus((current) => (current === "PRESENT" || current === "HALF_DAY" ? "" : "PRESENT"))}
+              >
+                <span className="attendance-overview-chip__label">Present</span>
+                <strong className="attendance-overview-chip__value">
+                  {attendanceOverview.present}/{totalWorkforceCount}
+                </strong>
+              </button>
+              <button
+                type="button"
+                className={`attendance-overview-chip attendance-overview-chip--absent ${activeOverviewFilter === "ABSENT" ? "attendance-overview-chip--active" : ""}`.trim()}
+                onClick={() => setFilterStatus((current) => (current === "ABSENT" ? "" : "ABSENT"))}
+              >
+                <span className="attendance-overview-chip__label">Absent</span>
+                <strong className="attendance-overview-chip__value">{attendanceOverview.absent}</strong>
+              </button>
+              <button
+                type="button"
+                className={`attendance-overview-chip attendance-overview-chip--leave ${activeOverviewFilter === "LEAVE" ? "attendance-overview-chip--active" : ""}`.trim()}
+                onClick={() => setFilterStatus((current) => (current === "LEAVE" ? "" : "LEAVE"))}
+              >
+                <span className="attendance-overview-chip__label">On leave</span>
+                <strong className="attendance-overview-chip__value">{attendanceOverview.leave}</strong>
+              </button>
+              <button
+                type="button"
+                className={`attendance-overview-chip attendance-overview-chip--unmarked ${activeOverviewFilter === "UNMARKED" ? "attendance-overview-chip--active" : ""}`.trim()}
+                onClick={() => setFilterStatus((current) => (current === "UNMARKED" ? "" : "UNMARKED"))}
+              >
+                <span className="attendance-overview-chip__label">Unmarked</span>
+                <strong className="attendance-overview-chip__value">{unmarkedCount}</strong>
+              </button>
+            </div>
           </div>
         </div>
         {loading ? (
@@ -575,10 +663,10 @@ export default function AttendancePage({ token, role, currentEmployeeId, current
 
               if (canManageOthers) {
                 cells.unshift(
-                  <div className="table-cell-stack" key={`employee-${record.id}`}>
+                  <div className="table-cell-stack attendance-person-cell" key={`employee-${record.id}`}>
                     <button
                       type="button"
-                      className="attendance-history-person-trigger table-cell-primary"
+                      className="attendance-history-person-trigger attendance-history-person-trigger--name"
                       onClick={() => {
                         if (!record.employee) {
                           return;
@@ -588,7 +676,7 @@ export default function AttendancePage({ token, role, currentEmployeeId, current
                     >
                       {record.employee ? `${record.employee.firstName} ${record.employee.lastName}` : "Unknown employee"}
                     </button>
-                    <span className="table-cell-secondary">{record.employee?.employeeCode ?? "-"}</span>
+                    <span className="table-cell-secondary attendance-person-cell__code">{record.employee?.employeeCode ?? "-"}</span>
                   </div>,
                 );
               }

@@ -72,53 +72,62 @@ async function enrichAttendanceWithLeaveContext(
   });
 }
 
-router.get("/employee", requireRoles("EMPLOYEE", "MANAGER", "HR", "ADMIN"), async (request, response, next) => {
-  try {
-    const employeeId = request.user?.employeeId ?? 0;
-    const today = startOfDay(new Date());
-    const currentYear = today.getFullYear();
-    const currentMonth = today.getMonth() + 1;
-    const monthStart = startOfDay(new Date(currentYear, today.getMonth(), 1));
-    const monthEnd = endOfDay(new Date(currentYear, today.getMonth() + 1, 0));
-    const yearStart = startOfDay(new Date(currentYear, 0, 1));
-    const isTeamLead = employeeId ? await hasEmployeeCapability(prisma, employeeId, "TEAM_LEAD") : false;
-    const scopedEmployeeIds = isTeamLead && employeeId ? await getScopedEmployeeIdsForTeamLead(prisma, employeeId) : [];
-
-    const [
-      attendanceTodayRecord,
-      approvedLeaveToday,
-      pendingLeaves,
-      payrollCount,
-      scopedTeamCount,
-      pendingTeamLeaves,
-      attendanceRecords,
-      calendarExceptions,
-      currentEmployee,
-      leaveBalances,
-      leaveRequests,
-    ] = await Promise.all([
-      prisma.attendance.findUnique({
-        where: {
-          employeeId_attendanceDate: {
-            employeeId,
-            attendanceDate: today,
-          },
-        },
-      }),
-      prisma.leaveRequest.findFirst({
-        where: {
+async function getAttendanceTodayForEmployee(employeeId: number, today: Date) {
+  const [attendanceTodayRecord, approvedLeaveToday] = await Promise.all([
+    prisma.attendance.findUnique({
+      where: {
+        employeeId_attendanceDate: {
           employeeId,
-          ...buildApprovedLeaveWhereForAttendanceDate(today),
+          attendanceDate: today,
         },
-        include: {
-          leaveType: {
-            select: {
-              code: true,
-              name: true,
-            },
+      },
+    }),
+    prisma.leaveRequest.findFirst({
+      where: {
+        employeeId,
+        ...buildApprovedLeaveWhereForAttendanceDate(today),
+      },
+      include: {
+        leaveType: {
+          select: {
+            code: true,
+            name: true,
           },
         },
-      }),
+      },
+    }),
+  ]);
+
+  return (
+    attendanceTodayRecord ??
+    (approvedLeaveToday
+      ? {
+          id: 0,
+          employeeId,
+          attendanceDate: today,
+          checkInTime: null,
+          checkOutTime: null,
+          workedMinutes: 0,
+          status:
+            getApprovedLeaveAttendanceStatusForDate(approvedLeaveToday, today) === AttendanceStatus.HALF_DAY
+              ? AttendanceStatus.HALF_DAY
+              : AttendanceStatus.LEAVE,
+          leaveTypeCode: approvedLeaveToday.leaveType.code,
+          leaveTypeName: approvedLeaveToday.leaveType.name,
+        }
+      : null)
+  );
+}
+
+async function getEmployeeDashboardSharedData(employeeId: number, today: Date) {
+  const currentYear = today.getFullYear();
+  const yearStart = startOfDay(new Date(currentYear, 0, 1));
+  const isTeamLead = employeeId ? await hasEmployeeCapability(prisma, employeeId, "TEAM_LEAD") : false;
+  const scopedEmployeeIds = isTeamLead && employeeId ? await getScopedEmployeeIdsForTeamLead(prisma, employeeId) : [];
+
+  const [attendanceToday, pendingLeaves, payrollCount, scopedTeamCount, pendingTeamLeaves, currentEmployee, leaveBalances, leaveRequests] =
+    await Promise.all([
+      getAttendanceTodayForEmployee(employeeId, today),
       prisma.leaveRequest.count({
         where: {
           employeeId,
@@ -144,29 +153,6 @@ router.get("/employee", requireRoles("EMPLOYEE", "MANAGER", "HR", "ADMIN"), asyn
             },
           })
         : Promise.resolve(0),
-      prisma.attendance.findMany({
-        where: {
-          employeeId,
-          attendanceDate: {
-            gte: monthStart,
-            lte: monthEnd,
-          },
-        },
-        orderBy: {
-          attendanceDate: "asc",
-        },
-      }),
-      prisma.calendarException.findMany({
-        where: {
-          date: {
-            gte: monthStart,
-            lte: monthEnd,
-          },
-        },
-        orderBy: {
-          date: "asc",
-        },
-      }),
       employeeId
         ? prisma.employee.findUnique({
             where: {
@@ -216,11 +202,7 @@ router.get("/employee", requireRoles("EMPLOYEE", "MANAGER", "HR", "ADMIN"), asyn
       prisma.leaveRequest.findMany({
         where: {
           employeeId,
-          OR: [
-            { startDate: { gte: yearStart } },
-            { endDate: { gte: today } },
-            { status: LeaveStatus.PENDING },
-          ],
+          OR: [{ startDate: { gte: yearStart } }, { endDate: { gte: today } }, { status: LeaveStatus.PENDING }],
         },
         include: {
           employee: {
@@ -268,23 +250,65 @@ router.get("/employee", requireRoles("EMPLOYEE", "MANAGER", "HR", "ADMIN"), asyn
       }),
     ]);
 
-    const attendanceToday =
-      attendanceTodayRecord ??
-      (approvedLeaveToday
-        ? {
-            id: 0,
-            employeeId,
-            attendanceDate: today,
-            checkInTime: null,
-            checkOutTime: null,
-            workedMinutes: 0,
-            status: getApprovedLeaveAttendanceStatusForDate(approvedLeaveToday, today) === AttendanceStatus.HALF_DAY
-              ? AttendanceStatus.HALF_DAY
-              : AttendanceStatus.LEAVE,
-            leaveTypeCode: approvedLeaveToday.leaveType.code,
-            leaveTypeName: approvedLeaveToday.leaveType.name,
-          }
-        : null);
+  return {
+    attendanceToday,
+    pendingLeaves,
+    payrollCount,
+    isTeamLead,
+    scopedTeamCount,
+    pendingTeamLeaves,
+    currentEmployee,
+    leaveBalances,
+    leaveRequests,
+  };
+}
+
+router.get("/employee-summary", requireRoles("EMPLOYEE", "MANAGER", "HR", "ADMIN"), async (request, response, next) => {
+  try {
+    const employeeId = request.user?.employeeId ?? 0;
+    const today = startOfDay(new Date());
+    const summary = await getEmployeeDashboardSharedData(employeeId, today);
+
+    return sendSuccess(response, "Employee dashboard summary fetched successfully", summary);
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.get("/employee", requireRoles("EMPLOYEE", "MANAGER", "HR", "ADMIN"), async (request, response, next) => {
+  try {
+    const employeeId = request.user?.employeeId ?? 0;
+    const today = startOfDay(new Date());
+    const currentYear = today.getFullYear();
+    const currentMonth = today.getMonth() + 1;
+    const monthStart = startOfDay(new Date(currentYear, today.getMonth(), 1));
+    const monthEnd = endOfDay(new Date(currentYear, today.getMonth() + 1, 0));
+    const [sharedData, attendanceRecords, calendarExceptions] = await Promise.all([
+      getEmployeeDashboardSharedData(employeeId, today),
+      prisma.attendance.findMany({
+        where: {
+          employeeId,
+          attendanceDate: {
+            gte: monthStart,
+            lte: monthEnd,
+          },
+        },
+        orderBy: {
+          attendanceDate: "asc",
+        },
+      }),
+      prisma.calendarException.findMany({
+        where: {
+          date: {
+            gte: monthStart,
+            lte: monthEnd,
+          },
+        },
+        orderBy: {
+          date: "asc",
+        },
+      }),
+    ]);
 
     const enrichedAttendanceRecords = await enrichAttendanceWithLeaveContext(attendanceRecords);
 
@@ -295,17 +319,9 @@ router.get("/employee", requireRoles("EMPLOYEE", "MANAGER", "HR", "ADMIN"), asyn
     });
 
     return sendSuccess(response, "Employee dashboard fetched successfully", {
-      attendanceToday,
-      pendingLeaves,
-      payrollCount,
-      isTeamLead,
-      scopedTeamCount,
-      pendingTeamLeaves,
+      ...sharedData,
       attendanceRecords: enrichedAttendanceRecords,
       calendarDays,
-      currentEmployee,
-      leaveBalances,
-      leaveRequests,
     });
   } catch (error) {
     next(error);

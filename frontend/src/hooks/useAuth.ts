@@ -8,16 +8,25 @@ export function useAuth() {
   const [token, setToken] = useState<string | null>(() => localStorage.getItem(TOKEN_KEY));
   const [sessionUser, setSessionUser] = useState<SessionUser | null>(null);
   const [loadingSession, setLoadingSession] = useState(Boolean(token));
+  const [skipSessionFetch, setSkipSessionFetch] = useState(false);
 
   useEffect(() => {
     if (!token) {
       setSessionUser(null);
       setLoadingSession(false);
+      setSkipSessionFetch(false);
       localStorage.removeItem(TOKEN_KEY);
       return;
     }
 
     localStorage.setItem(TOKEN_KEY, token);
+
+    if (skipSessionFetch) {
+      setSkipSessionFetch(false);
+      setLoadingSession(false);
+      return;
+    }
+
     setLoadingSession(true);
 
     apiRequest<SessionUser>("/auth/me", { token })
@@ -27,10 +36,17 @@ export function useAuth() {
         setSessionUser(null);
       })
       .finally(() => setLoadingSession(false));
-  }, [token]);
+  }, [skipSessionFetch, token]);
 
-  function login(nextToken: string) {
+  function login(nextToken: string, nextUser?: SessionUser | null) {
+    if (nextUser !== undefined) {
+      setSkipSessionFetch(true);
+    }
     setToken(nextToken);
+    if (nextUser !== undefined) {
+      setSessionUser(nextUser);
+      setLoadingSession(false);
+    }
   }
 
   async function logout() {

@@ -173,7 +173,7 @@ export default function DashboardPage({ token, role, currentEmployeeId }: Dashbo
     }
 
     try {
-      const response = await apiRequest<{ attendanceToday?: Attendance | null }>("/dashboard/employee", { token });
+      const response = await apiRequest<{ attendanceToday?: Attendance | null }>("/attendance/today", { token });
       setSelfAttendance(response.data.attendanceToday ?? null);
     } catch {
       setSelfAttendance(null);

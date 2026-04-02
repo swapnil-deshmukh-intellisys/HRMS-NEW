@@ -116,7 +116,70 @@ async function enrichAttendanceWithLeaveContext(
   });
 }
 
+async function getAttendanceTodayForEmployee(employeeId: number) {
+  const today = startOfDay(new Date());
+  const [attendanceTodayRecord, approvedLeaveToday] = await Promise.all([
+    prisma.attendance.findUnique({
+      where: {
+        employeeId_attendanceDate: {
+          employeeId,
+          attendanceDate: today,
+        },
+      },
+    }),
+    prisma.leaveRequest.findFirst({
+      where: {
+        employeeId,
+        ...buildApprovedLeaveWhereForAttendanceDate(today),
+      },
+      include: {
+        leaveType: {
+          select: {
+            code: true,
+            name: true,
+          },
+        },
+      },
+    }),
+  ]);
+
+  return (
+    attendanceTodayRecord ??
+    (approvedLeaveToday
+      ? {
+          id: 0,
+          employeeId,
+          attendanceDate: today,
+          checkInTime: null,
+          checkOutTime: null,
+          workedMinutes: 0,
+          status:
+            getApprovedLeaveAttendanceStatusForDate(approvedLeaveToday, today) === AttendanceStatus.HALF_DAY
+              ? AttendanceStatus.HALF_DAY
+              : AttendanceStatus.LEAVE,
+          leaveTypeCode: approvedLeaveToday.leaveType.code,
+          leaveTypeName: approvedLeaveToday.leaveType.name,
+        }
+      : null)
+  );
+}
+
 router.use(authenticate);
+
+router.get("/today", requireRoles("EMPLOYEE", "MANAGER", "HR", "ADMIN"), async (request, response, next) => {
+  try {
+    const employeeId = request.user?.employeeId;
+
+    if (!employeeId) {
+      throw new AppError("Employee context is required", 400);
+    }
+
+    const attendanceToday = await getAttendanceTodayForEmployee(employeeId);
+    return sendSuccess(response, "Today's attendance fetched successfully", { attendanceToday });
+  } catch (error) {
+    next(error);
+  }
+});
 
 router.post("/check-in", validate(attendanceSchema), async (request, response, next) => {
   try {

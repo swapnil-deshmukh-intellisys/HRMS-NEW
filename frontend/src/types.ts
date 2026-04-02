@@ -7,6 +7,11 @@ export type SessionUser = {
   employee?: Employee | null;
 };
 
+export type AuthLoginResponse = {
+  token: string;
+  user: SessionUser;
+};
+
 export type Department = {
   id: number;
   name: string;
@@ -147,6 +152,18 @@ export type EmployeeDashboardData = {
   pendingTeamLeaves: number;
   attendanceRecords: Attendance[];
   calendarDays: CalendarDay[];
+  currentEmployee: Employee | null;
+  leaveBalances: LeaveBalance[];
+  leaveRequests: LeaveRequest[];
+};
+
+export type EmployeeDashboardSummaryData = {
+  attendanceToday: Attendance | null;
+  pendingLeaves: number;
+  payrollCount: number;
+  isTeamLead: boolean;
+  scopedTeamCount: number;
+  pendingTeamLeaves: number;
   currentEmployee: Employee | null;
   leaveBalances: LeaveBalance[];
   leaveRequests: LeaveRequest[];

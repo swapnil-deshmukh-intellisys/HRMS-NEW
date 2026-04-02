@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { ATTENDANCE_EVENT, getAttendanceUpdatedDetail } from "../../components/common/attendanceQuickActionUtils";
 import MessageCard from "../../components/common/MessageCard";
 import { apiRequest } from "../../services/api";
-import type { Attendance, EmployeeDashboardData, Role } from "../../types";
+import type { Attendance, EmployeeDashboardSummaryData, Role } from "../../types";
 import { formatAttendanceTime, formatLeaveDays } from "../../utils/format";
 
 type DashboardData = Record<string, number | string | boolean | null | undefined | object>;
@@ -101,25 +101,25 @@ function formatWorkedDuration(workedMinutes?: number) {
 export default function DashboardPage({ token, role }: DashboardPageProps) {
   const navigate = useNavigate();
   const [data, setData] = useState<DashboardData>({});
-  const [employeeDashboard, setEmployeeDashboard] = useState<EmployeeDashboardData | null>(null);
+  const [employeeDashboard, setEmployeeDashboard] = useState<EmployeeDashboardSummaryData | null>(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
   const [now, setNow] = useState(() => new Date());
   const bannerContent = getDashboardContent(role);
 
   useEffect(() => {
-    const endpoint = role === "EMPLOYEE" ? "/dashboard/employee" : role === "MANAGER" ? "/dashboard/manager" : "/dashboard/hr";
+    const endpoint = role === "EMPLOYEE" ? "/dashboard/employee-summary" : role === "MANAGER" ? "/dashboard/manager" : "/dashboard/hr";
 
     setLoading(true);
     const request =
       role === "EMPLOYEE"
-        ? apiRequest<EmployeeDashboardData>(endpoint, { token })
+        ? apiRequest<EmployeeDashboardSummaryData>(endpoint, { token })
         : apiRequest<DashboardData>(endpoint, { token });
 
     request
       .then((response) => {
         if (role === "EMPLOYEE") {
-          const payload = response as Awaited<ReturnType<typeof apiRequest<EmployeeDashboardData>>>;
+          const payload = response as Awaited<ReturnType<typeof apiRequest<EmployeeDashboardSummaryData>>>;
           setEmployeeDashboard(payload.data);
           setData({
             attendanceToday: payload.data.attendanceToday,

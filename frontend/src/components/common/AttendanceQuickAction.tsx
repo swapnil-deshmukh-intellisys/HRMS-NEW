@@ -38,7 +38,7 @@ export default function AttendanceQuickAction({
     }
 
     try {
-      const response = await apiRequest<SelfDashboardData>("/dashboard/employee", { token });
+      const response = await apiRequest<SelfDashboardData>("/attendance/today", { token });
       const nextAttendance = response.data.attendanceToday ?? null;
       setAttendanceToday(nextAttendance);
       onStateChange?.(nextAttendance);

@@ -5,9 +5,10 @@ import type { FormEvent } from "react";
 import Button from "../../components/common/Button";
 import Input from "../../components/common/Input";
 import { apiRequest } from "../../services/api";
+import type { AuthLoginResponse, SessionUser } from "../../types";
 
 type LoginPageProps = {
-  onLogin: (token: string) => void;
+  onLogin: (token: string, user?: SessionUser | null) => void;
 };
 
 export default function LoginPage({ onLogin }: LoginPageProps) {
@@ -23,12 +24,12 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
     setError("");
 
     try {
-      const response = await apiRequest<{ token: string }>("/auth/login", {
+      const response = await apiRequest<AuthLoginResponse>("/auth/login", {
         method: "POST",
         body: { email, password },
       });
 
-      onLogin(response.data.token);
+      onLogin(response.data.token, response.data.user);
     } catch (submitError) {
       setError(submitError instanceof Error ? submitError.message : "Login failed");
     } finally {

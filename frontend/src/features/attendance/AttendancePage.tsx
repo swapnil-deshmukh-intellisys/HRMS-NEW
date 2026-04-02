@@ -326,7 +326,7 @@ export default function AttendancePage({ token, role, currentEmployeeId, current
     return `${minutes}m`;
   }
 
-  function getStatusClass(status: Attendance["status"]) {
+  function getStatusClass(status: AttendanceListRow["status"]) {
     return `status-pill status-pill--${status.toLowerCase().replace(/_/g, "-")}`;
   }
 

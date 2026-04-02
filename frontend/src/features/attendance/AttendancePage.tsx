@@ -132,7 +132,11 @@ export default function AttendancePage({ token, role, currentEmployeeId, current
     try {
       setLoading(true);
       setError("");
-      const path = "/attendance";
+      const searchParams = new URLSearchParams();
+      if (filterDate) {
+        searchParams.set("date", filterDate);
+      }
+      const path = `/attendance${searchParams.toString() ? `?${searchParams.toString()}` : ""}`;
       const response = await apiRequest<Attendance[]>(path, { token });
       setAttendance(response.data);
     } catch (requestError) {
@@ -140,7 +144,7 @@ export default function AttendancePage({ token, role, currentEmployeeId, current
     } finally {
       setLoading(false);
     }
-  }, [token]);
+  }, [filterDate, token]);
 
   const reloadRegularizations = useCallback(async () => {
     try {
@@ -193,6 +197,18 @@ export default function AttendancePage({ token, role, currentEmployeeId, current
     window.addEventListener(ATTENDANCE_EVENT, handleAttendanceUpdated);
     return () => window.removeEventListener(ATTENDANCE_EVENT, handleAttendanceUpdated);
   }, [reloadAttendance]);
+
+  useEffect(() => {
+    if (filterDate !== today) {
+      return undefined;
+    }
+
+    const intervalId = window.setInterval(() => {
+      void reloadAttendance();
+    }, 30000);
+
+    return () => window.clearInterval(intervalId);
+  }, [filterDate, reloadAttendance, today]);
 
   useEffect(() => {
     reloadRegularizations();
@@ -341,24 +357,12 @@ export default function AttendancePage({ token, role, currentEmployeeId, current
   }
 
   const filteredAttendance = attendance.filter((record) => {
-    const recordDate = new Date(record.attendanceDate);
-
     if (filterStatus) {
       if (filterStatus === "PRESENT") {
         if (record.status !== "PRESENT" && record.status !== "HALF_DAY") {
           return false;
         }
       } else if (record.status !== filterStatus) {
-        return false;
-      }
-    }
-
-    if (filterDate) {
-      const selectedDate = new Date(filterDate);
-      selectedDate.setHours(0, 0, 0, 0);
-      const nextDay = new Date(selectedDate);
-      nextDay.setDate(nextDay.getDate() + 1);
-      if (recordDate < selectedDate || recordDate >= nextDay) {
         return false;
       }
     }
@@ -379,24 +383,7 @@ export default function AttendancePage({ token, role, currentEmployeeId, current
     return employees;
   }, [currentEmployee, currentEmployeeId, employees, isTeamLead, role]);
 
-  const attendanceOverviewSource = useMemo(() => {
-    return attendance.filter((record) => {
-      const recordDate = new Date(record.attendanceDate);
-
-      if (filterDate) {
-        const selectedDate = new Date(filterDate);
-        selectedDate.setHours(0, 0, 0, 0);
-        const nextDay = new Date(selectedDate);
-        nextDay.setDate(nextDay.getDate() + 1);
-
-        if (recordDate < selectedDate || recordDate >= nextDay) {
-          return false;
-        }
-      }
-
-      return true;
-    });
-  }, [attendance, filterDate]);
+  const attendanceOverviewSource = useMemo(() => attendance, [attendance]);
 
   const attendanceOverview = useMemo(
     () =>

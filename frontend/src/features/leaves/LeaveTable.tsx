@@ -23,10 +23,6 @@ export default function LeaveTable({
 }: LeaveTableProps) {
   const [expandedLeaveIds, setExpandedLeaveIds] = useState<number[]>([]);
 
-  function getStatusClass(status: LeaveRequest["status"]) {
-    return `status-pill status-pill--${status.toLowerCase()}`;
-  }
-
   function getDurationLabel(leave: LeaveRequest) {
     const sameDay = formatDateLabel(leave.startDate) === formatDateLabel(leave.endDate);
 

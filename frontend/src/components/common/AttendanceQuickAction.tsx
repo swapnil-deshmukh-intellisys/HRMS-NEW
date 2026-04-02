@@ -67,7 +67,7 @@ export default function AttendanceQuickAction({
 
     window.addEventListener(ATTENDANCE_EVENT, handleAttendanceUpdated);
     return () => window.removeEventListener(ATTENDANCE_EVENT, handleAttendanceUpdated);
-  }, [loadAttendance]);
+  }, [loadAttendance, onStateChange]);
 
   useEffect(() => {
     if (!attendanceToday?.checkInTime || attendanceToday.checkOutTime) {

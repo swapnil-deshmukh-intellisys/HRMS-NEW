@@ -39,14 +39,20 @@ export default function EmployeesPage({ token, role }: EmployeesPageProps) {
 
   const reloadData = useCallback(async () => {
     setLoading(true);
-    const [employeesResponse, departmentsResponse] = await Promise.all([
-      apiRequest<{ items: Employee[] }>("/employees?limit=100", { token }),
-      apiRequest<Department[]>("/departments", { token }),
-    ]);
+    const employeesResponse = await apiRequest<{ items: Employee[] }>("/employees?limit=100", { token });
     setEmployees(employeesResponse.data.items);
-    setDepartments(departmentsResponse.data);
     setLoading(false);
   }, [token]);
+
+  const ensureDepartmentsLoaded = useCallback(async () => {
+    if (departments.length) {
+      return departments;
+    }
+
+    const response = await apiRequest<Department[]>("/departments", { token });
+    setDepartments(response.data);
+    return response.data;
+  }, [departments, token]);
 
   useEffect(() => {
     if (role === "EMPLOYEE") return;
@@ -109,36 +115,47 @@ export default function EmployeesPage({ token, role }: EmployeesPageProps) {
   }
 
   async function startEdit(employee: Employee) {
-    const detailResponse = await apiRequest<Employee>(`/employees/${employee.id}`, { token });
-    const detailedEmployee = detailResponse.data;
+    try {
+      await ensureDepartmentsLoaded();
+      const detailResponse = await apiRequest<Employee>(`/employees/${employee.id}`, { token });
+      const detailedEmployee = detailResponse.data;
 
-    setEditingEmployeeId(employee.id);
-    setForm({
-      email: detailedEmployee.user?.email ?? "",
-      password: "",
-      role: detailedEmployee.user?.role.name ?? "EMPLOYEE",
-      employeeCode: detailedEmployee.employeeCode,
-      firstName: detailedEmployee.firstName,
-      lastName: detailedEmployee.lastName,
-      jobTitle: detailedEmployee.jobTitle ?? "",
-      phone: detailedEmployee.phone ?? "",
-      annualPackageLpa: detailedEmployee.annualPackageLpa ? String(detailedEmployee.annualPackageLpa) : "",
-      isOnProbation: Boolean(detailedEmployee.isOnProbation),
-      probationEndDate: detailedEmployee.probationEndDate ? formatStoredDateForInput(detailedEmployee.probationEndDate) : "",
-      departmentId: String(detailedEmployee.departmentId),
-      managerId: detailedEmployee.managerId ? String(detailedEmployee.managerId) : "",
-      joiningDate: formatStoredDateTimeForInput(detailedEmployee.joiningDate),
-      employmentStatus: detailedEmployee.employmentStatus,
-      isTeamLead: Boolean(detailedEmployee.capabilities?.some((capability) => capability.capability === "TEAM_LEAD")),
-      teamLeadScopeIds: detailedEmployee.scopedTeamMembers?.map((item) => item.employee.id) ?? [],
-    });
-    setEmployeeModalOpen(true);
+      setEditingEmployeeId(employee.id);
+      setForm({
+        email: detailedEmployee.user?.email ?? "",
+        password: "",
+        role: detailedEmployee.user?.role.name ?? "EMPLOYEE",
+        employeeCode: detailedEmployee.employeeCode,
+        firstName: detailedEmployee.firstName,
+        lastName: detailedEmployee.lastName,
+        jobTitle: detailedEmployee.jobTitle ?? "",
+        phone: detailedEmployee.phone ?? "",
+        annualPackageLpa: detailedEmployee.annualPackageLpa ? String(detailedEmployee.annualPackageLpa) : "",
+        isOnProbation: Boolean(detailedEmployee.isOnProbation),
+        probationEndDate: detailedEmployee.probationEndDate ? formatStoredDateForInput(detailedEmployee.probationEndDate) : "",
+        departmentId: String(detailedEmployee.departmentId),
+        managerId: detailedEmployee.managerId ? String(detailedEmployee.managerId) : "",
+        joiningDate: formatStoredDateTimeForInput(detailedEmployee.joiningDate),
+        employmentStatus: detailedEmployee.employmentStatus,
+        isTeamLead: Boolean(detailedEmployee.capabilities?.some((capability) => capability.capability === "TEAM_LEAD")),
+        teamLeadScopeIds: detailedEmployee.scopedTeamMembers?.map((item) => item.employee.id) ?? [],
+      });
+      setEmployeeModalOpen(true);
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : "Failed to load employee");
+    }
   }
 
   function startCreate() {
-    setEditingEmployeeId(null);
-    setForm(createEmployeeFormWithDefaults());
-    setEmployeeModalOpen(true);
+    ensureDepartmentsLoaded()
+      .then(() => {
+        setEditingEmployeeId(null);
+        setForm(createEmployeeFormWithDefaults());
+        setEmployeeModalOpen(true);
+      })
+      .catch((requestError) => {
+        setError(requestError instanceof Error ? requestError.message : "Failed to load departments");
+      });
   }
 
   async function toggleStatus(employee: Employee) {

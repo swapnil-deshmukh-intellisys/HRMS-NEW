@@ -99,24 +99,12 @@ export default function EmployeeProfilePage({ token, role, currentEmployeeId }: 
       setBalances(balancesResponse.data);
       setLeaves(leavesResponse.data);
       setPayroll(payrollResponse.data);
-
-      if (canManageEmployee) {
-        const [departmentsResponse, employeesResponse] = await Promise.all([
-          apiRequest<Department[]>("/departments", { token }),
-          apiRequest<{ items: Employee[] }>("/employees?limit=100", { token }),
-        ]);
-        setDepartments(departmentsResponse.data);
-        setEmployees(employeesResponse.data.items);
-      } else {
-        setDepartments([]);
-        setEmployees([]);
-      }
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : "Failed to load employee profile.");
     } finally {
       setLoading(false);
     }
-  }, [canManageEmployee, canViewPayroll, employeeId, token]);
+  }, [canViewPayroll, employeeId, token]);
 
   useEffect(() => {
     reloadProfile();
@@ -186,6 +174,45 @@ export default function EmployeeProfilePage({ token, role, currentEmployeeId }: 
         employeeIds: teamLeadScopeIds,
       },
     });
+  }
+
+  const ensureEmployeeFormOptionsLoaded = useCallback(async () => {
+    if (!canManageEmployee) {
+      return;
+    }
+
+    const requests: Array<Promise<unknown>> = [];
+
+    if (!departments.length) {
+      requests.push(
+        apiRequest<Department[]>("/departments", { token }).then((response) => {
+          setDepartments(response.data);
+        }),
+      );
+    }
+
+    if (!employees.length) {
+      requests.push(
+        apiRequest<{ items: Employee[] }>("/employees?limit=100", { token }).then((response) => {
+          setEmployees(response.data.items);
+        }),
+      );
+    }
+
+    await Promise.all(requests);
+  }, [canManageEmployee, departments.length, employees.length, token]);
+
+  async function openEmployeeModal() {
+    if (!canManageEmployee) {
+      return;
+    }
+
+    try {
+      await ensureEmployeeFormOptionsLoaded();
+      setEmployeeModalOpen(true);
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : "Failed to load employee form options.");
+    }
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -333,7 +360,9 @@ export default function EmployeeProfilePage({ token, role, currentEmployeeId }: 
       <EmployeeProfileHeader
         employee={employee}
         role={role}
-        onEdit={() => setEmployeeModalOpen(true)}
+        onEdit={() => {
+          void openEmployeeModal();
+        }}
         onToggleStatus={() => setStatusConfirmOpen(true)}
       />
       <EmployeeProfileTabs activeTab={activeTab} tabs={visibleTabs} onChange={setActiveTab} />

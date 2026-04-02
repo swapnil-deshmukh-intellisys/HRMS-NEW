@@ -41,11 +41,10 @@ export default function LeavesPage({ token, role, currentEmployeeId, currentEmpl
   const [leaveFormOpen, setLeaveFormOpen] = useState(false);
   const [leaveBalancesOpen, setLeaveBalancesOpen] = useState(false);
   const [confirmAction, setConfirmAction] = useState<{ type: "cancel"; leaveId: number } | null>(null);
-  const [teamLeadScopeIds, setTeamLeadScopeIds] = useState<number[]>([]);
   const totalAllocated = balances.reduce((sum, balance) => sum + balance.allocatedDays, 0);
   const totalUsed = balances.reduce((sum, balance) => sum + balance.usedDays, 0);
   const totalRemaining = balances.reduce((sum, balance) => sum + balance.remainingDays, 0);
-  const isTeamLead = Boolean(currentEmployee?.capabilities?.some((capability) => capability.capability === "TEAM_LEAD"));
+  const teamLeadScopeIds = currentEmployee?.scopedTeamMembers?.map((item) => item.employee.id) ?? [];
 
   const reloadData = useCallback(async () => {
     try {
@@ -70,21 +69,6 @@ export default function LeavesPage({ token, role, currentEmployeeId, currentEmpl
   useEffect(() => {
     reloadData();
   }, [reloadData]);
-
-  useEffect(() => {
-    if (role !== "EMPLOYEE" || !isTeamLead || !currentEmployeeId) {
-      setTeamLeadScopeIds([]);
-      return;
-    }
-
-    apiRequest<Employee>(`/employees/${currentEmployeeId}`, { token })
-      .then((response) => {
-        setTeamLeadScopeIds(response.data.scopedTeamMembers?.map((item) => item.employee.id) ?? []);
-      })
-      .catch((requestError) => {
-        setError(requestError instanceof Error ? requestError.message : "Failed to load scoped team members.");
-      });
-  }, [currentEmployeeId, isTeamLead, role, token]);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();

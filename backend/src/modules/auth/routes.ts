@@ -29,6 +29,11 @@ router.post("/login", validate(loginSchema), async (request, response, next) => 
                   department: true,
                   manager: true,
                   capabilities: true,
+                  scopedTeamMembers: {
+                    include: {
+                      employee: true,
+                    },
+                  },
                 },
               },
             },
@@ -58,6 +63,11 @@ router.get("/me", authenticate, async (request, response, next) => {
             department: true,
             manager: true,
             capabilities: true,
+            scopedTeamMembers: {
+              include: {
+                employee: true,
+              },
+            },
           },
         },
       },

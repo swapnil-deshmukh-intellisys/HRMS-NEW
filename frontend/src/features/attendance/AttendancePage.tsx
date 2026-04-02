@@ -86,8 +86,11 @@ export default function AttendancePage({ token, role, currentEmployeeId, current
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
-  const [teamLeadScopeIds, setTeamLeadScopeIds] = useState<number[]>([]);
   const isTeamLead = Boolean(currentEmployee?.capabilities?.some((capability) => capability.capability === "TEAM_LEAD"));
+  const teamLeadScopeIds = useMemo(
+    () => currentEmployee?.scopedTeamMembers?.map((item) => item.employee.id) ?? [],
+    [currentEmployee?.scopedTeamMembers],
+  );
   const canManageOthers = role !== "EMPLOYEE" || isTeamLead;
   const canFinalizeAttendance = role === "ADMIN" || role === "HR";
   const activeOverviewFilter = filterStatus === "HALF_DAY" ? "PRESENT" : filterStatus;
@@ -170,20 +173,13 @@ export default function AttendancePage({ token, role, currentEmployeeId, current
     if (!isTeamLead || !currentEmployeeId) {
       setEmployees([]);
       setEmployeesTotal(currentEmployeeId ? 1 : 0);
-      setTeamLeadScopeIds([]);
       return;
     }
 
-    try {
-      const response = await apiRequest<Employee>(`/employees/${currentEmployeeId}`, { token });
-      const scopedEmployees = response.data.scopedTeamMembers?.map((item) => item.employee) ?? [];
-      setEmployees(scopedEmployees);
-      setEmployeesTotal(new Set([currentEmployeeId, ...scopedEmployees.map((employee) => employee.id)]).size);
-      setTeamLeadScopeIds(scopedEmployees.map((employee) => employee.id));
-    } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : "Failed to load scoped team members.");
-    }
-  }, [currentEmployeeId, isTeamLead, role, token]);
+    const scopedEmployees = currentEmployee?.scopedTeamMembers?.map((item) => item.employee) ?? [];
+    setEmployees(scopedEmployees);
+    setEmployeesTotal(new Set([currentEmployeeId, ...scopedEmployees.map((employee) => employee.id)]).size);
+  }, [currentEmployee, currentEmployeeId, isTeamLead, role, token]);
 
   useEffect(() => {
     reloadAttendance();

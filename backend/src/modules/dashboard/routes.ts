@@ -4,6 +4,7 @@ import { prisma } from "../../config/prisma.js";
 import { authenticate, requireRoles } from "../../middleware/auth.js";
 import { sendSuccess } from "../../utils/api.js";
 import { endOfDay, startOfDay } from "../../utils/dates.js";
+import { getEmployeeLeaveBalances } from "../../utils/leave-balance.js";
 import { getScopedEmployeeIdsForTeamLead, hasEmployeeCapability } from "../../utils/team-lead.js";
 import { buildApprovedLeaveWhereForAttendanceDate, getApprovedLeaveAttendanceStatusForDate } from "../attendance/service.js";
 import { buildMonthCalendarDays } from "../calendar/service.js";
@@ -185,20 +186,7 @@ async function getEmployeeDashboardSharedData(employeeId: number, today: Date) {
             },
           })
         : Promise.resolve(null),
-      prisma.leaveBalance.findMany({
-        where: {
-          employeeId,
-          year: currentYear,
-        },
-        include: {
-          leaveType: true,
-        },
-        orderBy: {
-          leaveType: {
-            code: "asc",
-          },
-        },
-      }),
+      getEmployeeLeaveBalances(prisma, employeeId, currentYear, today),
       prisma.leaveRequest.findMany({
         where: {
           employeeId,

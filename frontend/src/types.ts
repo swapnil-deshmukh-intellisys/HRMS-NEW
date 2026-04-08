@@ -77,6 +77,14 @@ export type LeaveType = {
   name: string;
   code: string;
   defaultDaysPerYear: number;
+  allocationMode?: "YEARLY" | "QUARTERLY";
+  quarterlyAllocationDays?: number | null;
+  carryForwardAllowed?: boolean;
+  carryForwardCap?: number | null;
+  requiresAttachmentAfterDays?: number | null;
+  deductFullQuotaOnApproval?: boolean;
+  maxUsagesPerYear?: number | null;
+  policyEffectiveFromYear?: number | null;
 };
 
 export type LeaveBalance = {
@@ -85,6 +93,9 @@ export type LeaveBalance = {
   allocatedDays: number;
   usedDays: number;
   remainingDays: number;
+  visibleDays: number;
+  carryForwardDays: number;
+  lastQuarterProcessed?: number | null;
   leaveType: LeaveType;
 };
 
@@ -98,6 +109,8 @@ export type LeaveRequest = {
   paidDays: number;
   unpaidDays: number;
   isUnpaid: boolean;
+  deductedDays?: number | null;
+  fullQuotaDeducted?: boolean;
   attachmentName?: string | null;
   attachmentPath?: string | null;
   attachmentMime?: string | null;

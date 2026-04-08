@@ -4,6 +4,47 @@ import { AttendanceStatus } from "@prisma/client";
 import { AppError } from "../../utils/api.js";
 import { buildApprovedLeaveAttendanceEntries, buildLeaveOverlapWhere, createLeaveRequestForEmployee, hasAttendanceConflict } from "./service.js";
 
+function createTestLeaveType(overrides: Partial<{
+  code: string;
+  name: string;
+  defaultDaysPerYear: number;
+  allocationMode: "YEARLY" | "QUARTERLY";
+  quarterlyAllocationDays: number | null;
+  carryForwardAllowed: boolean;
+  carryForwardCap: number | null;
+  requiresAttachmentAfterDays: number | null;
+  deductFullQuotaOnApproval: boolean;
+  maxUsagesPerYear: number | null;
+  policyEffectiveFromYear: number | null;
+}> = {}) {
+  return {
+    id: 1,
+    code: "EL",
+    name: "Earned Leave",
+    defaultDaysPerYear: 15,
+    allocationMode: "YEARLY" as const,
+    quarterlyAllocationDays: null,
+    carryForwardAllowed: false,
+    carryForwardCap: null,
+    requiresAttachmentAfterDays: null,
+    deductFullQuotaOnApproval: false,
+    maxUsagesPerYear: null,
+    policyEffectiveFromYear: null,
+    ...overrides,
+  };
+}
+
+function createLeaveDeps(overrides: Partial<Parameters<typeof createLeaveRequestForEmployee>[1]> = {}) {
+  return {
+    findOverlap: async () => null,
+    findLeaveType: async () => createTestLeaveType(),
+    findLeaveBalance: async () => ({ remainingDays: 10, visibleDays: 10, carryForwardDays: 0 }),
+    countExistingYearRequests: async () => 0,
+    createLeaveRequest: async (payload: unknown) => payload,
+    ...overrides,
+  };
+}
+
 test("buildLeaveOverlapWhere includes pending and approved statuses", () => {
   const where = buildLeaveOverlapWhere(1, new Date("2026-03-20"), new Date("2026-03-22"));
   assert.deepEqual(where.status, { in: ["PENDING", "APPROVED"] });
@@ -25,7 +66,9 @@ test("createLeaveRequestForEmployee rejects overlap", async () => {
         },
         {
           findOverlap: async () => ({ id: 1 }),
-          findLeaveBalance: async () => ({ remainingDays: 10 }),
+          findLeaveType: async () => createTestLeaveType(),
+          findLeaveBalance: async () => ({ remainingDays: 10, visibleDays: 10, carryForwardDays: 0 }),
+          countExistingYearRequests: async () => 0,
           createLeaveRequest: async () => ({ id: 10 }),
         },
       ),
@@ -44,11 +87,9 @@ test("createLeaveRequestForEmployee converts excess days to unpaid leave", async
       endDayDuration: "FULL_DAY",
       reason: "Trip",
     },
-    {
-      findOverlap: async () => null,
-      findLeaveBalance: async () => ({ remainingDays: 2 }),
-      createLeaveRequest: async (payload) => payload,
-    },
+    createLeaveDeps({
+      findLeaveBalance: async () => ({ remainingDays: 2, visibleDays: 2, carryForwardDays: 0 }),
+    }),
   );
 
   assert.equal((created as { totalDays: number }).totalDays, 6);
@@ -68,11 +109,9 @@ test("createLeaveRequestForEmployee creates fully unpaid leave when no balance e
       endDayDuration: "FULL_DAY",
       reason: "Trip",
     },
-    {
-      findOverlap: async () => null,
+    createLeaveDeps({
       findLeaveBalance: async () => null,
-      createLeaveRequest: async (payload) => payload,
-    },
+    }),
   );
 
   assert.equal((created as { paidDays: number }).paidDays, 0);
@@ -91,11 +130,7 @@ test("createLeaveRequestForEmployee creates request when rules pass", async () =
       endDayDuration: "FULL_DAY",
       reason: "Trip",
     },
-    {
-      findOverlap: async () => null,
-      findLeaveBalance: async () => ({ remainingDays: 10 }),
-      createLeaveRequest: async (payload) => payload,
-    },
+    createLeaveDeps(),
   );
 
   assert.equal((created as { totalDays: number }).totalDays, 2);
@@ -115,11 +150,7 @@ test("createLeaveRequestForEmployee creates half-day leave for a single date", a
       endDayDuration: "HALF_DAY",
       reason: "Doctor visit",
     },
-    {
-      findOverlap: async () => null,
-      findLeaveBalance: async () => ({ remainingDays: 10 }),
-      createLeaveRequest: async (payload) => payload,
-    },
+    createLeaveDeps(),
   );
 
   assert.equal((created as { totalDays: number }).totalDays, 0.5);
@@ -138,11 +169,7 @@ test("createLeaveRequestForEmployee supports start and end day half leave for ra
       endDayDuration: "HALF_DAY",
       reason: "Doctor visit",
     },
-    {
-      findOverlap: async () => null,
-      findLeaveBalance: async () => ({ remainingDays: 10 }),
-      createLeaveRequest: async (payload) => payload,
-    },
+    createLeaveDeps(),
   );
 
   assert.equal((created as { totalDays: number }).totalDays, 2);
@@ -161,11 +188,7 @@ test("createLeaveRequestForEmployee rejects mismatched single-date day durations
           endDayDuration: "HALF_DAY",
           reason: "Doctor visit",
         },
-        {
-          findOverlap: async () => null,
-          findLeaveBalance: async () => ({ remainingDays: 10 }),
-          createLeaveRequest: async (payload) => payload,
-        },
+        createLeaveDeps(),
       ),
     (error: unknown) => error instanceof AppError && error.message === "For a single-date leave, start and end day duration must match",
   );
@@ -182,12 +205,9 @@ test("createLeaveRequestForEmployee excludes non-working days when calendar-awar
       endDayDuration: "FULL_DAY",
       reason: "Trip",
     },
-    {
-      findOverlap: async () => null,
-      findLeaveBalance: async () => ({ remainingDays: 10 }),
+    createLeaveDeps({
       isWorkingDay: async (date) => ![0, 6].includes(date.getDay()),
-      createLeaveRequest: async (payload) => payload,
-    },
+    }),
   );
 
   assert.equal((created as { totalDays: number }).totalDays, 1);
@@ -238,4 +258,97 @@ test("hasAttendanceConflict detects worked attendance", () => {
   assert.equal(hasAttendanceConflict({ checkOutTime: new Date(), workedMinutes: 0 }), true);
   assert.equal(hasAttendanceConflict({ workedMinutes: 0 }), false);
   assert.equal(hasAttendanceConflict(null), false);
+});
+
+test("createLeaveRequestForEmployee limits quarterly leave to visible balance", async () => {
+  const created = await createLeaveRequestForEmployee(
+    {
+      actor: { id: 1, role: "EMPLOYEE", employeeId: 99, email: "user@test.com" },
+      leaveTypeId: 1,
+      startDate: "2026-04-10",
+      endDate: "2026-04-12",
+      startDayDuration: "FULL_DAY",
+      endDayDuration: "FULL_DAY",
+      reason: "Personal work",
+    },
+    createLeaveDeps({
+      findLeaveType: async () =>
+        createTestLeaveType({
+          code: "CL",
+          name: "Casual Leave",
+          defaultDaysPerYear: 12,
+          allocationMode: "QUARTERLY",
+          quarterlyAllocationDays: 3,
+          policyEffectiveFromYear: 2026,
+        }),
+      findLeaveBalance: async () => ({ remainingDays: 12, visibleDays: 1, carryForwardDays: 0 }),
+    }),
+  );
+
+  assert.equal((created as { paidDays: number }).paidDays, 1);
+  assert.equal((created as { unpaidDays: number }).unpaidDays, 2);
+});
+
+test("createLeaveRequestForEmployee requires attachment for two-day sick leave", async () => {
+  await assert.rejects(
+    () =>
+      createLeaveRequestForEmployee(
+        {
+          actor: { id: 1, role: "EMPLOYEE", employeeId: 99, email: "user@test.com" },
+          leaveTypeId: 1,
+          startDate: "2026-04-10",
+          endDate: "2026-04-11",
+          startDayDuration: "FULL_DAY",
+          endDayDuration: "FULL_DAY",
+          reason: "Medical rest",
+        },
+        createLeaveDeps({
+          findLeaveType: async () =>
+            createTestLeaveType({
+              code: "SL",
+              name: "Sick Leave",
+              defaultDaysPerYear: 8,
+              allocationMode: "QUARTERLY",
+              quarterlyAllocationDays: 2,
+              carryForwardAllowed: true,
+              carryForwardCap: 15,
+              requiresAttachmentAfterDays: 2,
+              policyEffectiveFromYear: 2026,
+            }),
+          findLeaveBalance: async () => ({ remainingDays: 8, visibleDays: 2, carryForwardDays: 0 }),
+        }),
+      ),
+    (error: unknown) => error instanceof AppError && error.message.includes("Attachment is required"),
+  );
+});
+
+test("createLeaveRequestForEmployee blocks repeated one-time yearly leave", async () => {
+  await assert.rejects(
+    () =>
+      createLeaveRequestForEmployee(
+        {
+          actor: { id: 1, role: "EMPLOYEE", employeeId: 99, email: "user@test.com" },
+          leaveTypeId: 1,
+          startDate: "2026-05-10",
+          endDate: "2026-05-12",
+          startDayDuration: "FULL_DAY",
+          endDayDuration: "FULL_DAY",
+          reason: "Family event",
+        },
+        createLeaveDeps({
+          findLeaveType: async () =>
+            createTestLeaveType({
+              code: "BL",
+              name: "Bereavement Leave",
+              defaultDaysPerYear: 5,
+              deductFullQuotaOnApproval: true,
+              maxUsagesPerYear: 1,
+              policyEffectiveFromYear: 2026,
+            }),
+          findLeaveBalance: async () => ({ remainingDays: 5, visibleDays: 5, carryForwardDays: 0 }),
+          countExistingYearRequests: async () => 1,
+        }),
+      ),
+    (error: unknown) => error instanceof AppError && error.message === "Bereavement Leave can only be used once per year",
+  );
 });

@@ -1,0 +1,177 @@
+.time-card {
+  width: 100%;
+  padding: 20px 24px;
+  border: 1px solid #374151;
+  border-radius: 16px;
+  background: #1c1c1c;
+  color: #f9fafb;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.18);
+}
+
+.time-card__content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+}
+
+.time-card__details {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.time-card__time {
+  color: #ffffff;
+  font-size: 36px;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.03em;
+}
+
+.time-card__location {
+  color: #9ca3af;
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 1.4;
+}
+
+.time-card__offset {
+  color: #6b7280;
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 1.4;
+}
+
+.time-card__analog {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+}
+
+.time-card__dial {
+  position: relative;
+  width: 112px;
+  height: 112px;
+  border: 2px solid rgba(255, 255, 255, 0.08);
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at center, rgba(255, 255, 255, 0.04), transparent 62%),
+    linear-gradient(180deg, #232323, #171717);
+}
+
+.time-card__tick {
+  position: absolute;
+  left: 50%;
+  width: 2px;
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.32);
+  transform: translateX(-50%);
+}
+
+.time-card__tick--top {
+  top: 10px;
+}
+
+.time-card__tick--right {
+  top: 50%;
+  left: auto;
+  right: 10px;
+  width: 8px;
+  height: 2px;
+  transform: translateY(-50%);
+}
+
+.time-card__tick--bottom {
+  bottom: 10px;
+}
+
+.time-card__tick--left {
+  top: 50%;
+  left: 10px;
+  width: 8px;
+  height: 2px;
+  transform: translateY(-50%);
+}
+
+.time-card__hand {
+  position: absolute;
+  bottom: 50%;
+  left: 50%;
+  transform-origin: bottom center;
+  border-radius: 999px;
+}
+
+.time-card__hand--hour {
+  width: 4px;
+  height: 24px;
+  background: #ffffff;
+}
+
+.time-card__hand--minute {
+  width: 3px;
+  height: 34px;
+  background: #f3f4f6;
+}
+
+.time-card__hand--second {
+  width: 2px;
+  height: 40px;
+  background: #ef4444;
+}
+
+.time-card__center-dot {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 10px;
+  height: 10px;
+  border: 2px solid #111827;
+  border-radius: 50%;
+  background: #ffffff;
+  transform: translate(-50%, -50%);
+}
+
+@media (max-width: 640px) {
+  .time-card {
+    padding: 18px;
+  }
+
+  .time-card__content {
+    gap: 18px;
+  }
+
+  .time-card__time {
+    font-size: 32px;
+  }
+
+  .time-card__dial {
+    width: 96px;
+    height: 96px;
+  }
+
+  .time-card__hand--hour {
+    height: 20px;
+  }
+
+  .time-card__hand--minute {
+    height: 30px;
+  }
+
+  .time-card__hand--second {
+    height: 34px;
+  }
+}
+
+@media (max-width: 480px) {
+  .time-card__content {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .time-card__analog {
+    width: 100%;
+    justify-content: center;
+  }
+}

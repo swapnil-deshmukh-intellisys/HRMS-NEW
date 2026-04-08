@@ -4,8 +4,9 @@ import { useNavigate } from "react-router-dom";
 import { ATTENDANCE_EVENT, getAttendanceUpdatedDetail } from "../../components/common/attendanceQuickActionUtils";
 import MessageCard from "../../components/common/MessageCard";
 import { apiRequest } from "../../services/api";
-import type { Attendance, CalendarDay, Employee, EmployeeDashboardData, LeaveBalance, LeaveRequest, Role } from "../../types";
-import { formatAttendanceTime, formatLeaveDays, formatMetricKey } from "../../utils/format";
+import type { Attendance, CalendarDay, Employee, EmployeeDashboardData, LeaveRequest, Role } from "../../types";
+import { formatAttendanceTime, formatMetricKey } from "../../utils/format";
+import { formatWorkedDuration, getAttendanceWidgetTitle } from "./dashboardUtils";
 
 type DashboardData = Record<string, number | string | boolean | null | undefined | object>;
 type MetricVariant = "numeric" | "status";
@@ -18,10 +19,7 @@ type CalendarResponse = {
 };
 
 const EmployeeAttendanceWidgetCard = lazy(() =>
-  import("./DashboardChartCards").then((module) => ({ default: module.EmployeeAttendanceWidgetCard })),
-);
-const EmployeeLeaveBalanceCard = lazy(() =>
-  import("./DashboardChartCards").then((module) => ({ default: module.EmployeeLeaveBalanceCard })),
+  import("./DashboardChartCards").then((module) => ({ default: module.MemoizedEmployeeAttendanceWidgetCard })),
 );
 const AttendanceOverviewCard = lazy(() =>
   import("./DashboardChartCards").then((module) => ({ default: module.AttendanceOverviewCard })),
@@ -30,7 +28,6 @@ const LeaveRequestsCard = lazy(() =>
   import("./DashboardChartCards").then((module) => ({ default: module.LeaveRequestsCard })),
 );
 
-const LEAVE_BALANCE_COLORS = ["#2563eb", "#16a34a", "#f59e0b", "#7c3aed", "#ef4444"];
 const ADMIN_ATTENDANCE_COLORS = {
   present: "#16a34a",
   halfDay: "#2563eb",
@@ -59,42 +56,6 @@ function DashboardChartCardSkeleton({ eyebrow }: { eyebrow: string }) {
   );
 }
 
-function getDashboardContent(role: Role) {
-  if (role === "EMPLOYEE") {
-    return {
-      eyebrow: "Today at a glance",
-      title: "Good morning",
-      description: "Stay on top of attendance, leave balance, and payroll updates from your employee workspace.",
-      metaLabel: "Employee workspace",
-    };
-  }
-
-  if (role === "MANAGER") {
-    return {
-      eyebrow: "Team operations",
-      title: "Team overview",
-      description: "Monitor team attendance, review pending leave requests, and keep daily approvals moving on time.",
-      metaLabel: "Manager console",
-    };
-  }
-
-  if (role === "HR") {
-    return {
-      eyebrow: "HR operations",
-      title: "Workforce in motion",
-      description: "Track attendance, leave activity, payroll actions, and employee operations from one HR workspace.",
-      metaLabel: "HR console",
-    };
-  }
-
-  return {
-    eyebrow: "Executive overview",
-    title: "Operations command center",
-    description: "Monitor workforce operations, policy execution, and payroll activity across the organization.",
-    metaLabel: "Admin console",
-  };
-}
-
 export default function DashboardPage({ token, role, currentEmployeeId }: DashboardPageProps) {
   const navigate = useNavigate();
   const [data, setData] = useState<DashboardData>({});
@@ -102,14 +63,11 @@ export default function DashboardPage({ token, role, currentEmployeeId }: Dashbo
   const [attendanceRecords, setAttendanceRecords] = useState<Attendance[]>([]);
   const [calendarDays, setCalendarDays] = useState<CalendarDay[]>([]);
   const [currentEmployee, setCurrentEmployee] = useState<Employee | null>(null);
-  const [leaveBalances, setLeaveBalances] = useState<LeaveBalance[]>([]);
   const [leaveRequests, setLeaveRequests] = useState<LeaveRequest[]>([]);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
-  const [now, setNow] = useState(() => new Date());
   const [attendanceOverviewTab, setAttendanceOverviewTab] = useState<AttendanceOverviewTab>("today");
   const [leaveRequestsTab, setLeaveRequestsTab] = useState<LeaveRequestsTab>("pending");
-  const bannerContent = getDashboardContent(role);
 
   useEffect(() => {
     const endpoint = role === "EMPLOYEE" ? "/dashboard/employee" : role === "MANAGER" ? "/dashboard/manager" : "/dashboard/hr";
@@ -145,7 +103,6 @@ export default function DashboardPage({ token, role, currentEmployeeId }: Dashbo
           setAttendanceRecords(employeeDashboard.attendanceRecords);
           setCalendarDays(employeeDashboard.calendarDays);
           setCurrentEmployee(employeeDashboard.currentEmployee);
-          setLeaveBalances(employeeDashboard.leaveBalances);
           setLeaveRequests(employeeDashboard.leaveRequests);
           return;
         }
@@ -205,17 +162,6 @@ export default function DashboardPage({ token, role, currentEmployeeId }: Dashbo
     return () => window.removeEventListener(ATTENDANCE_EVENT, handleAttendanceUpdated);
   }, [loadSelfAttendance]);
 
-  useEffect(() => {
-    const timer = window.setInterval(() => {
-      setNow(new Date());
-    }, 1000);
-
-    return () => window.clearInterval(timer);
-  }, []);
-
-  const totalRemainingLeave = leaveBalances.reduce((sum, balance) => sum + balance.remainingDays, 0);
-  const totalAllocatedLeave = leaveBalances.reduce((sum, balance) => sum + balance.allocatedDays, 0);
-  const totalUsedLeave = leaveBalances.reduce((sum, balance) => sum + balance.usedDays, 0);
   const nowDate = new Date();
   const monthAttendanceRecords = attendanceRecords.filter((attendance) => {
     const attendanceDate = new Date(attendance.attendanceDate);
@@ -231,16 +177,6 @@ export default function DashboardPage({ token, role, currentEmployeeId }: Dashbo
   const halfDays = monthAttendanceRecords.filter((attendance) => attendance.status === "HALF_DAY").length;
   const leaveDaysInMonth = monthAttendanceRecords.filter((attendance) => attendance.status === "LEAVE").length;
   const absentDaysInMonth = monthAttendanceRecords.filter((attendance) => attendance.status === "ABSENT").length;
-  const leaveChartData = leaveBalances
-    .filter((balance) => balance.remainingDays > 0)
-    .map((balance, index) => ({
-      id: balance.id,
-      name: balance.leaveType.code,
-      fullName: balance.leaveType.name,
-      value: balance.remainingDays,
-      allocated: balance.allocatedDays,
-      color: LEAVE_BALANCE_COLORS[index % LEAVE_BALANCE_COLORS.length],
-    }));
   const pendingLeaveRequests = leaveRequests.filter((leave) => leave.status === "PENDING");
   const approvedLeaveRequests = leaveRequests.filter((leave) => leave.status === "APPROVED");
   const isTeamLead = Boolean(data.isTeamLead) || Boolean(currentEmployee?.capabilities?.some((capability) => capability.capability === "TEAM_LEAD"));
@@ -350,25 +286,6 @@ export default function DashboardPage({ token, role, currentEmployeeId }: Dashbo
     return "Live metric";
   }
 
-  function formatWorkedDuration(workedMinutes?: number) {
-    if (!workedMinutes || workedMinutes <= 0) {
-      return "0m";
-    }
-
-    const hours = Math.floor(workedMinutes / 60);
-    const minutes = workedMinutes % 60;
-
-    if (hours > 0 && minutes > 0) {
-      return `${hours}h ${minutes}m`;
-    }
-
-    if (hours > 0) {
-      return `${hours}h`;
-    }
-
-    return `${minutes}m`;
-  }
-
   function formatMetricValue(value: DashboardData[string]) {
     if (typeof value === "object") {
       return "Available";
@@ -376,85 +293,6 @@ export default function DashboardPage({ token, role, currentEmployeeId }: Dashbo
 
     return String(value ?? "-");
   }
-
-  function getAttendanceWidgetTitle(attendance: Attendance | null) {
-    if (!attendance) {
-      return "Not marked";
-    }
-
-    if (attendance.status === "LEAVE") {
-      return "On leave";
-    }
-
-    if (attendance.checkOutTime) {
-      return "Completed";
-    }
-
-    if (attendance.checkInTime) {
-      return "Checked in";
-    }
-
-    if (attendance.status === "HALF_DAY") {
-      return "Half day";
-    }
-
-    if (attendance.status === "ABSENT") {
-      return "Absent";
-    }
-
-    return attendance.status;
-  }
-
-  const shiftTargetMinutes = 8 * 60;
-  const workedTodayMinutes = (() => {
-    if (!selfAttendance || selfAttendance.status === "LEAVE" || selfAttendance.status === "ABSENT") {
-      return 0;
-    }
-
-    if (selfAttendance.checkOutTime) {
-      return selfAttendance.workedMinutes;
-    }
-
-    if (selfAttendance.checkInTime) {
-      const checkIn = new Date(selfAttendance.checkInTime);
-      return Math.max(0, Math.floor((now.getTime() - checkIn.getTime()) / 60000));
-    }
-
-    return 0;
-  })();
-  const attendanceTodayDateLabel = now.toLocaleDateString(undefined, {
-    day: "numeric",
-    month: "long",
-  });
-  const attendanceProgressPercent = Math.min(100, Math.round((workedTodayMinutes / shiftTargetMinutes) * 100));
-  const workedTodayDisplay = selfAttendance?.status === "LEAVE" ? "-" : formatWorkedDuration(workedTodayMinutes);
-  const attendanceTodayProgressData =
-    selfAttendance?.status === "LEAVE"
-      ? [{ key: "leave", value: 1, color: "#f59e0b" }]
-      : selfAttendance?.status === "ABSENT"
-        ? [{ key: "absent", value: 1, color: "#ef4444" }]
-        : selfAttendance?.checkInTime || selfAttendance?.checkOutTime
-          ? [
-              { key: "worked", value: Math.max(workedTodayMinutes, 1), color: "#16a34a" },
-              { key: "remaining", value: Math.max(shiftTargetMinutes - workedTodayMinutes, 0), color: "#e5e7eb" },
-            ]
-          : [{ key: "unmarked", value: 1, color: "#e5e7eb" }];
-  const attendanceCenterPrimary =
-    selfAttendance?.status === "LEAVE"
-      ? "Leave"
-      : selfAttendance?.status === "ABSENT"
-        ? "Absent"
-        : selfAttendance?.checkInTime || selfAttendance?.checkOutTime
-          ? `${attendanceProgressPercent}%`
-          : "Not marked";
-  const attendanceCenterSecondary =
-    selfAttendance?.checkInTime || selfAttendance?.checkOutTime
-      ? "today done"
-      : selfAttendance?.status === "LEAVE"
-        ? "paid day"
-        : selfAttendance?.status === "ABSENT"
-          ? "not worked"
-          : attendanceTodayDateLabel;
 
   const metricEntries = Object.entries(data).filter(([key]) => key !== "attendanceToday");
   const workforceCount = role === "MANAGER" ? Number(data.teamCount ?? 0) : Number(data.employees ?? 0);
@@ -528,39 +366,6 @@ export default function DashboardPage({ token, role, currentEmployeeId }: Dashbo
       ) : null}
       {!loading ? (
         <>
-      <article className="card dashboard-hero">
-        <img
-          className="dashboard-hero-image"
-          src="/assets/images/bgmain-optimized.jpg"
-          alt=""
-          fetchPriority="high"
-          loading="eager"
-          decoding="async"
-          aria-hidden="true"
-        />
-        <div className="dashboard-hero-copy">
-          <p className="eyebrow">{bannerContent.eyebrow}</p>
-          <h3>{bannerContent.title}</h3>
-          <p className="muted">{bannerContent.description}</p>
-        </div>
-        <div className="dashboard-hero-meta">
-          <span>{bannerContent.metaLabel}</span>
-          <p className="dashboard-hero-time">
-            {now.toLocaleTimeString([], {
-              hour: "2-digit",
-              minute: "2-digit",
-              second: "2-digit",
-            })}
-          </p>
-          <strong>
-            {now.toLocaleDateString(undefined, {
-              weekday: "long",
-              day: "numeric",
-              month: "long",
-            })}
-          </strong>
-        </div>
-      </article>
       {role === "EMPLOYEE" ? (
         <>
           <div className="grid cols-3 dashboard-grid">
@@ -568,26 +373,10 @@ export default function DashboardPage({ token, role, currentEmployeeId }: Dashbo
               <Suspense fallback={<DashboardChartCardSkeleton eyebrow="Attendance today" />}>
                 <EmployeeAttendanceWidgetCard
                   title={getAttendanceWidgetTitle(selfAttendance)}
-                  attendanceTodayDateLabel={attendanceTodayDateLabel}
                   selfAttendance={selfAttendance}
-                  progressData={attendanceTodayProgressData}
-                  centerPrimary={attendanceCenterPrimary}
-                  centerSecondary={attendanceCenterSecondary}
-                  workedTodayDisplay={workedTodayDisplay}
-                  progressPercent={attendanceProgressPercent}
-                  shiftTargetDisplay={formatWorkedDuration(shiftTargetMinutes)}
                 />
               </Suspense>
             ) : null}
-            <Suspense fallback={<DashboardChartCardSkeleton eyebrow="Leave balance" />}>
-              <EmployeeLeaveBalanceCard
-                totalRemainingLeave={totalRemainingLeave}
-                totalAllocatedLeave={totalAllocatedLeave}
-                totalUsedLeave={totalUsedLeave}
-                leaveChartData={leaveChartData}
-                leaveBalances={leaveBalances}
-              />
-            </Suspense>
             <article className="card metric-card metric-card--project">
               <div className="metric-card-header">
                 <div>
@@ -687,11 +476,11 @@ export default function DashboardPage({ token, role, currentEmployeeId }: Dashbo
             </article>
             <article className="card metric-card">
               <p className="eyebrow">This month</p>
-              <strong>{formatLeaveDays(currentMonthLeaveTaken)}</strong>
+              <strong>{currentMonthLeaveTaken}</strong>
               <p className="muted">Approved leave taken this month</p>
               <div className="dashboard-inline-row">
                 <span>Unpaid leave</span>
-                <strong>{formatLeaveDays(currentMonthUnpaidLeave)}</strong>
+                <strong>{currentMonthUnpaidLeave}</strong>
               </div>
             </article>
           </div>

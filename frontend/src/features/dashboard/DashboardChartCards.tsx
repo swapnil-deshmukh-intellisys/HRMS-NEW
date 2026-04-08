@@ -1,12 +1,8 @@
+import { memo, useEffect, useMemo, useState } from "react";
 import { Bar, BarChart, CartesianGrid, Cell, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import type { Attendance, LeaveBalance } from "../../types";
 import { formatAttendanceTime, formatLeaveDays } from "../../utils/format";
-
-type EmployeeAttendanceProgressEntry = {
-  key: string;
-  value: number;
-  color: string;
-};
+import { formatWorkedDuration } from "./dashboardUtils";
 
 type LeaveBalanceChartEntry = {
   id: number;
@@ -73,26 +69,77 @@ function formatChartValue(value: number) {
 
 export function EmployeeAttendanceWidgetCard(props: {
   title: string;
-  attendanceTodayDateLabel: string;
   selfAttendance: Attendance | null;
-  progressData: EmployeeAttendanceProgressEntry[];
-  centerPrimary: string;
-  centerSecondary: string;
-  workedTodayDisplay: string;
-  progressPercent: number;
-  shiftTargetDisplay: string;
 }) {
-  const {
-    title,
-    attendanceTodayDateLabel,
-    selfAttendance,
-    progressData,
-    centerPrimary,
-    centerSecondary,
-    workedTodayDisplay,
-    progressPercent,
-    shiftTargetDisplay,
-  } = props;
+  const { title, selfAttendance } = props;
+  const [now, setNow] = useState(() => new Date());
+
+  useEffect(() => {
+    if (!selfAttendance?.checkInTime || selfAttendance.checkOutTime || selfAttendance.status === "LEAVE" || selfAttendance.status === "ABSENT") {
+      return;
+    }
+
+    const timer = window.setInterval(() => {
+      setNow(new Date());
+    }, 1000);
+
+    return () => window.clearInterval(timer);
+  }, [selfAttendance?.checkInTime, selfAttendance?.checkOutTime, selfAttendance?.status]);
+
+  const attendanceTodayDateLabel = useMemo(
+    () =>
+      new Date().toLocaleDateString(undefined, {
+        day: "numeric",
+        month: "long",
+      }),
+    [],
+  );
+  const shiftTargetMinutes = 8 * 60;
+  const shiftTargetDisplay = formatWorkedDuration(shiftTargetMinutes);
+  const workedTodayMinutes = useMemo(() => {
+    if (!selfAttendance || selfAttendance.status === "LEAVE" || selfAttendance.status === "ABSENT") {
+      return 0;
+    }
+
+    if (selfAttendance.checkOutTime) {
+      return selfAttendance.workedMinutes;
+    }
+
+    if (selfAttendance.checkInTime) {
+      const checkIn = new Date(selfAttendance.checkInTime);
+      return Math.max(0, Math.floor((now.getTime() - checkIn.getTime()) / 60000));
+    }
+
+    return 0;
+  }, [now, selfAttendance]);
+  const progressPercent = Math.min(100, Math.round((workedTodayMinutes / shiftTargetMinutes) * 100));
+  const workedTodayDisplay = selfAttendance?.status === "LEAVE" ? "-" : formatWorkedDuration(workedTodayMinutes);
+  const progressData = selfAttendance?.status === "LEAVE"
+    ? [{ key: "leave", value: 1, color: "#f59e0b" }]
+    : selfAttendance?.status === "ABSENT"
+      ? [{ key: "absent", value: 1, color: "#ef4444" }]
+      : selfAttendance?.checkInTime || selfAttendance?.checkOutTime
+        ? [
+            { key: "worked", value: Math.max(workedTodayMinutes, 1), color: "#16a34a" },
+            { key: "remaining", value: Math.max(shiftTargetMinutes - workedTodayMinutes, 0), color: "#e5e7eb" },
+          ]
+        : [{ key: "unmarked", value: 1, color: "#e5e7eb" }];
+  const centerPrimary =
+    selfAttendance?.status === "LEAVE"
+      ? "Leave"
+      : selfAttendance?.status === "ABSENT"
+        ? "Absent"
+        : selfAttendance?.checkInTime || selfAttendance?.checkOutTime
+          ? `${progressPercent}%`
+          : "Not marked";
+  const centerSecondary =
+    selfAttendance?.checkInTime || selfAttendance?.checkOutTime
+      ? "today done"
+      : selfAttendance?.status === "LEAVE"
+        ? "paid day"
+        : selfAttendance?.status === "ABSENT"
+          ? "not worked"
+          : attendanceTodayDateLabel;
 
   return (
     <article className="card metric-card metric-card--attendance-widget">
@@ -167,6 +214,8 @@ export function EmployeeAttendanceWidgetCard(props: {
     </article>
   );
 }
+
+export const MemoizedEmployeeAttendanceWidgetCard = memo(EmployeeAttendanceWidgetCard);
 
 export function EmployeeLeaveBalanceCard(props: {
   totalRemainingLeave: number;

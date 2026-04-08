@@ -44,6 +44,7 @@ export default function LeavesPage({ token, role, currentEmployeeId, currentEmpl
   const totalAllocated = balances.reduce((sum, balance) => sum + balance.allocatedDays, 0);
   const totalUsed = balances.reduce((sum, balance) => sum + balance.usedDays, 0);
   const totalRemaining = balances.reduce((sum, balance) => sum + balance.remainingDays, 0);
+  const totalUsableNow = balances.reduce((sum, balance) => sum + (balance.visibleDays ?? balance.remainingDays), 0);
   const teamLeadScopeIds = currentEmployee?.scopedTeamMembers?.map((item) => item.employee.id) ?? [];
 
   const loadLeaveTypes = useCallback(async () => {
@@ -249,6 +250,10 @@ export default function LeavesPage({ token, role, currentEmployeeId, currentEmpl
         </aside>
         <div className="leave-balance-modal-summary">
           <div className="leave-balance-modal-stat">
+            <span>Usable now</span>
+            <strong>{formatLeaveDays(totalUsableNow)}</strong>
+          </div>
+          <div className="leave-balance-modal-stat">
             <span>Allocated</span>
             <strong>{formatLeaveDays(totalAllocated)}</strong>
           </div>
@@ -264,12 +269,13 @@ export default function LeavesPage({ token, role, currentEmployeeId, currentEmpl
         <div className="card compact-table-card leave-balance-card leave-balance-modal-card">
           <Table
             compact
-            columns={["Type", "Allocated", "Used", "Remaining"]}
+            columns={["Type", "Usable now", "Carry forward", "Used", "Year total"]}
             rows={balances.map((balance) => [
               balance.leaveType.name,
-              formatLeaveDays(balance.allocatedDays),
+              formatLeaveDays(balance.visibleDays ?? balance.remainingDays),
+              formatLeaveDays(balance.carryForwardDays),
               formatLeaveDays(balance.usedDays),
-              formatLeaveDays(balance.remainingDays),
+              formatLeaveDays(balance.allocatedDays),
             ])}
           />
         </div>

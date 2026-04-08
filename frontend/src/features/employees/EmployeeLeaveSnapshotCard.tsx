@@ -22,7 +22,7 @@ export default function EmployeeLeaveSnapshotCard({ balances, leaves }: Employee
   const [activeTab, setActiveTab] = useState<LeaveSnapshotTab>("balance");
   const approvedLeaves = useMemo(() => leaves.filter((leave) => leave.status === "APPROVED"), [leaves]);
 
-  const totalRemainingLeave = balances.reduce((total, balance) => total + balance.remainingDays, 0);
+  const totalUsableLeave = balances.reduce((total, balance) => total + (balance.visibleDays ?? balance.remainingDays), 0);
   const totalAllocatedLeave = balances.reduce((total, balance) => total + balance.allocatedDays, 0);
   const pendingLeaves = leaves.filter((leave) => leave.status === "PENDING").length;
   const latestLeave = useMemo(() => leaves[0], [leaves]);
@@ -73,17 +73,25 @@ export default function EmployeeLeaveSnapshotCard({ balances, leaves }: Employee
       {activeTab === "balance" ? (
         <div className="employee-snapshot-card__body">
           <div className="employee-snapshot-stat">
-            <span className="employee-snapshot-stat__label">Remaining leave</span>
-            <strong>{formatLeaveDays(totalRemainingLeave)}</strong>
-            <p className="muted">{totalAllocatedLeave ? `${Math.round((totalRemainingLeave / totalAllocatedLeave) * 100)}% of allocated leave still available` : "No leave balances assigned yet"}</p>
+            <span className="employee-snapshot-stat__label">Usable now</span>
+            <strong>{formatLeaveDays(totalUsableLeave)}</strong>
+            <p className="muted">
+              {totalAllocatedLeave
+                ? "Current usable balance across leave types."
+                : "No leave balances assigned yet"}
+            </p>
           </div>
           <div className="employee-snapshot-balance-list">
             {balances.length ? (
               balances.map((balance) => (
                 <div key={balance.id} className="employee-snapshot-balance-row">
                   <div className="employee-snapshot-balance-row__meta">
-                    <span>{balance.leaveType.code}</span>
-                    <span>{`${formatLeaveDays(balance.usedDays)} used / ${formatLeaveDays(balance.allocatedDays)}`}</span>
+                    <span>{balance.leaveType.name}</span>
+                    <strong>{formatLeaveDays(balance.visibleDays ?? balance.remainingDays)}</strong>
+                  </div>
+                  <div className="employee-snapshot-balance-row__details">
+                    <span>{`${formatLeaveDays(balance.usedDays)} used / ${formatLeaveDays(balance.allocatedDays)} yearly`}</span>
+                    {balance.carryForwardDays > 0 ? <span>{`${formatLeaveDays(balance.carryForwardDays)} carry forward`}</span> : null}
                   </div>
                   <div className="employee-snapshot-progress__track">
                     <span

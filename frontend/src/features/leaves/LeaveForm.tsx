@@ -28,6 +28,7 @@ export default function LeaveForm({ form, attachmentName, leaveTypes, onChange, 
       <h3>Apply leave</h3>
       <p className="muted">If your paid balance is not enough, the remaining days will be submitted as unpaid leave.</p>
       <p className="muted">For multi-day leave, you can mark the start day and end day as half day if needed.</p>
+      <p className="muted">For sick leave of 2 or more consecutive days, upload the medical certificate with the request.</p>
       <label>
         Leave type
         <select value={form.leaveTypeId} onChange={(event) => onChange({ ...form, leaveTypeId: event.target.value })} required>

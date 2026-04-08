@@ -4,8 +4,10 @@ import { useNavigate } from "react-router-dom";
 import { ATTENDANCE_EVENT, getAttendanceUpdatedDetail } from "../../components/common/attendanceQuickActionUtils";
 import MessageCard from "../../components/common/MessageCard";
 import { apiRequest } from "../../services/api";
-import type { Attendance, EmployeeDashboardSummaryData, Role } from "../../types";
-import { formatAttendanceTime, formatLeaveDays } from "../../utils/format";
+import type { EmployeeDashboardSummaryData, Role } from "../../types";
+import { formatAttendanceTime } from "../../utils/format";
+import TimeCard from "../../components/common/TimeCard";
+import { formatWorkedDuration, getAttendanceWidgetTitle } from "./dashboardUtils";
 
 type DashboardData = Record<string, number | string | boolean | null | undefined | object>;
 
@@ -21,7 +23,6 @@ function getDashboardContent(role: Role) {
       eyebrow: "Today at a glance",
       title: "Good morning",
       description: "Use this dashboard for quick actions and essential workday updates.",
-      metaLabel: "Employee workspace",
     };
   }
 
@@ -30,7 +31,6 @@ function getDashboardContent(role: Role) {
       eyebrow: "Team operations",
       title: "Team overview",
       description: "Stay on top of the main team counters and move into analytics when you need trends.",
-      metaLabel: "Manager console",
     };
   }
 
@@ -39,7 +39,6 @@ function getDashboardContent(role: Role) {
       eyebrow: "HR operations",
       title: "Workforce in motion",
       description: "Keep the dashboard focused on essential operations and use analytics for deeper visual review.",
-      metaLabel: "HR console",
     };
   }
 
@@ -47,55 +46,35 @@ function getDashboardContent(role: Role) {
     eyebrow: "Executive overview",
     title: "Operations command center",
     description: "Track the key workforce numbers here and open analytics for detailed patterns and trends.",
-    metaLabel: "Admin console",
   };
 }
 
-function getAttendanceWidgetTitle(attendance: Attendance | null) {
+function getAttendanceStatusNote(attendance: EmployeeDashboardSummaryData["attendanceToday"]) {
   if (!attendance) {
-    return "Not marked";
+    return "You have not marked attendance yet.";
   }
 
   if (attendance.status === "LEAVE") {
-    return "On leave";
+    return attendance.leaveTypeName ? `${attendance.leaveTypeName} leave is active for today.` : "You are marked on leave for today.";
   }
 
   if (attendance.checkOutTime) {
-    return "Completed";
+    return "Your workday has been completed and checked out.";
   }
 
   if (attendance.checkInTime) {
-    return "Checked in";
+    return "You are checked in. Check out when your workday ends.";
   }
 
   if (attendance.status === "HALF_DAY") {
-    return "Half day";
+    return "Half day is marked for today.";
   }
 
   if (attendance.status === "ABSENT") {
-    return "Absent";
+    return "You are marked absent for today.";
   }
 
-  return attendance.status;
-}
-
-function formatWorkedDuration(workedMinutes?: number) {
-  if (!workedMinutes || workedMinutes <= 0) {
-    return "0m";
-  }
-
-  const hours = Math.floor(workedMinutes / 60);
-  const minutes = workedMinutes % 60;
-
-  if (hours > 0 && minutes > 0) {
-    return `${hours}h ${minutes}m`;
-  }
-
-  if (hours > 0) {
-    return `${hours}h`;
-  }
-
-  return `${minutes}m`;
+  return "Attendance status is available for today.";
 }
 
 export default function DashboardPage({ token, role }: DashboardPageProps) {
@@ -104,7 +83,6 @@ export default function DashboardPage({ token, role }: DashboardPageProps) {
   const [employeeDashboard, setEmployeeDashboard] = useState<EmployeeDashboardSummaryData | null>(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
-  const [now, setNow] = useState(() => new Date());
   const bannerContent = getDashboardContent(role);
 
   useEffect(() => {
@@ -139,14 +117,6 @@ export default function DashboardPage({ token, role }: DashboardPageProps) {
   }, [role, token]);
 
   useEffect(() => {
-    const timer = window.setInterval(() => {
-      setNow(new Date());
-    }, 1000);
-
-    return () => window.clearInterval(timer);
-  }, []);
-
-  useEffect(() => {
     if (role !== "EMPLOYEE") {
       return;
     }
@@ -167,15 +137,10 @@ export default function DashboardPage({ token, role }: DashboardPageProps) {
   }, [role]);
 
   const attendanceToday = employeeDashboard?.attendanceToday ?? null;
-  const leaveBalances = employeeDashboard?.leaveBalances ?? [];
-  const totalRemainingLeave = leaveBalances.reduce((sum, balance) => sum + balance.remainingDays, 0);
-  const totalAllocatedLeave = leaveBalances.reduce((sum, balance) => sum + balance.allocatedDays, 0);
-  const totalUsedLeave = leaveBalances.reduce((sum, balance) => sum + balance.usedDays, 0);
-  const nextApprovedLeave = (employeeDashboard?.leaveRequests ?? [])
-    .filter((leave) => leave.status === "APPROVED" && new Date(leave.endDate) >= new Date())
-    .sort((left, right) => new Date(left.startDate).getTime() - new Date(right.startDate).getTime())[0];
+  const todayLabel = new Date().toLocaleDateString(undefined, { day: "numeric", month: "long" });
   const isTeamLead = Boolean(employeeDashboard?.isTeamLead);
   const currentEmployee = employeeDashboard?.currentEmployee ?? null;
+  const attendanceStatusNote = getAttendanceStatusNote(attendanceToday);
 
   return (
     <section className="stack">
@@ -200,46 +165,28 @@ export default function DashboardPage({ token, role }: DashboardPageProps) {
       {!loading ? (
         <>
           <article className="card dashboard-hero">
-            <img
-              className="dashboard-hero-image"
-              src="/assets/images/bgmain-optimized.jpg"
-              alt=""
-              fetchPriority="high"
-              loading="eager"
-              decoding="async"
-              aria-hidden="true"
-            />
             <div className="dashboard-hero-copy">
               <p className="eyebrow">{bannerContent.eyebrow}</p>
               <h3>{bannerContent.title}</h3>
               <p className="muted">{bannerContent.description}</p>
-            </div>
-            <div className="dashboard-hero-meta">
-              <span>{bannerContent.metaLabel}</span>
-              <p className="dashboard-hero-time">
-                {now.toLocaleTimeString([], {
-                  hour: "2-digit",
-                  minute: "2-digit",
-                  second: "2-digit",
-                })}
-              </p>
-              <strong>
-                {now.toLocaleDateString(undefined, {
-                  weekday: "long",
-                  day: "numeric",
-                  month: "long",
-                })}
-              </strong>
+              {role === "EMPLOYEE" ? (
+                <div className="dashboard-hero-timezone-group">
+                  <TimeCard timezone="Asia/Kolkata" />
+                  <TimeCard timezone="Europe/London" />
+                  <TimeCard timezone="America/New_York" />
+                </div>
+              ) : null}
             </div>
           </article>
 
           {role === "EMPLOYEE" ? (
             <>
-              <div className="grid cols-3 dashboard-grid">
+              <div className="grid dashboard-grid">
                 <article className="card metric-card metric-card--status">
                   <p className="eyebrow">Attendance today</p>
                   <strong>{getAttendanceWidgetTitle(attendanceToday)}</strong>
-                  <p className="muted">{now.toLocaleDateString(undefined, { day: "numeric", month: "long" })}</p>
+                  <p className="muted">{todayLabel}</p>
+                  <p className="dashboard-attendance-note">{attendanceStatusNote}</p>
                   <div className="attendance-widget-meta">
                     <div className="table-cell-stack">
                       <span className="table-cell-secondary">Check in</span>
@@ -256,56 +203,16 @@ export default function DashboardPage({ token, role }: DashboardPageProps) {
                       </span>
                     </div>
                   </div>
-                </article>
-
-                <article className="card metric-card">
-                  <p className="eyebrow">Leave balance</p>
-                  <strong>{formatLeaveDays(totalRemainingLeave)}</strong>
-                  <p className="muted">
-                    {totalAllocatedLeave
-                      ? `${Math.round((totalRemainingLeave / totalAllocatedLeave) * 100)}% of allocated leave remaining`
-                      : "No leave balances assigned yet"}
-                  </p>
                   <div className="dashboard-inline-row">
-                    <span>Used</span>
-                    <strong>{formatLeaveDays(totalUsedLeave)}</strong>
-                  </div>
-                </article>
-
-                <article className="card metric-card">
-                  <p className="eyebrow">Payroll records</p>
-                  <strong>{String(data.payrollCount ?? 0)}</strong>
-                  <p className="muted">Available payroll entries</p>
-                  <div className="dashboard-inline-row">
-                    <span>Analytics</span>
-                    <button className="secondary" onClick={() => navigate("/analytics")}>
-                      Open charts
+                    <span>Next step</span>
+                    <button className="secondary" onClick={() => navigate(attendanceToday?.status === "LEAVE" ? "/leaves" : "/attendance")}>
+                      {attendanceToday?.status === "LEAVE" ? "Open leaves" : "Open attendance"}
                     </button>
                   </div>
                 </article>
               </div>
 
-              <div className="grid cols-2 dashboard-support-grid">
-                <article className="card metric-card">
-                  <p className="eyebrow">Leave activity</p>
-                  <strong>{String(data.pendingLeaves ?? 0)}</strong>
-                  <p className="muted">
-                    {nextApprovedLeave
-                      ? `Next approved leave starts ${new Date(nextApprovedLeave.startDate).toLocaleDateString(undefined, {
-                          day: "numeric",
-                          month: "short",
-                          year: "numeric",
-                        })}`
-                      : "No upcoming approved leave"}
-                  </p>
-                  <div className="dashboard-inline-row">
-                    <span>Next stop</span>
-                    <button className="secondary" onClick={() => navigate("/leaves")}>
-                      Open leaves
-                    </button>
-                  </div>
-                </article>
-
+              <div className="grid dashboard-support-grid">
                 <article className="card metric-card metric-card--project">
                   <div className="metric-card-header">
                     <div>

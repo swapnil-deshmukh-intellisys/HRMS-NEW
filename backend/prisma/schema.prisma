@@ -52,6 +52,11 @@ enum LeaveDurationType {
   HALF_DAY
 }
 
+enum LeaveAllocationMode {
+  YEARLY
+  QUARTERLY
+}
+
 enum PayrollStatus {
   DRAFT
   FINALIZED
@@ -202,27 +207,38 @@ model AttendanceRegularizationRequest {
 }
 
 model LeaveType {
-  id                 Int      @id @default(autoincrement())
-  name               String   @unique
-  code               String   @unique
-  defaultDaysPerYear Int
-  isActive           Boolean  @default(true)
-  createdAt          DateTime @default(now())
-  balances           LeaveBalance[]
-  requests           LeaveRequest[]
+  id                           Int                 @id @default(autoincrement())
+  name                         String              @unique
+  code                         String              @unique
+  defaultDaysPerYear           Int
+  allocationMode               LeaveAllocationMode @default(YEARLY)
+  quarterlyAllocationDays      Float?
+  carryForwardAllowed          Boolean             @default(false)
+  carryForwardCap              Float?
+  requiresAttachmentAfterDays  Float?
+  deductFullQuotaOnApproval    Boolean             @default(false)
+  maxUsagesPerYear             Int?
+  policyEffectiveFromYear      Int?
+  isActive                     Boolean             @default(true)
+  createdAt                    DateTime            @default(now())
+  balances                     LeaveBalance[]
+  requests                     LeaveRequest[]
 }
 
 model LeaveBalance {
-  id            Int      @id @default(autoincrement())
-  employeeId    Int
-  leaveTypeId   Int
-  year          Int
-  allocatedDays Float
-  usedDays      Float    @default(0)
-  remainingDays Float
-  updatedAt     DateTime @updatedAt
-  employee      Employee  @relation(fields: [employeeId], references: [id])
-  leaveType     LeaveType @relation(fields: [leaveTypeId], references: [id])
+  id                 Int      @id @default(autoincrement())
+  employeeId         Int
+  leaveTypeId        Int
+  year               Int
+  allocatedDays      Float
+  usedDays           Float    @default(0)
+  remainingDays      Float
+  visibleDays        Float    @default(0)
+  carryForwardDays   Float    @default(0)
+  lastQuarterProcessed Int?
+  updatedAt          DateTime @updatedAt
+  employee           Employee  @relation(fields: [employeeId], references: [id])
+  leaveType          LeaveType @relation(fields: [leaveTypeId], references: [id])
 
   @@unique([employeeId, leaveTypeId, year])
 }
@@ -239,6 +255,8 @@ model LeaveRequest {
   paidDays         Float
   unpaidDays       Float       @default(0)
   isUnpaid         Boolean     @default(false)
+  deductedDays     Float?
+  fullQuotaDeducted Boolean    @default(false)
   attachmentName   String?
   attachmentPath   String?
   attachmentMime   String?

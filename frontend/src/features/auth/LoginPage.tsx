@@ -39,34 +39,71 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
 
   return (
     <main className="login-shell">
-      <section className="login-card">
-        <p className="eyebrow">HRMS Portal</p>
-        <h1>Welcome back</h1>
-        <p className="muted">Sign in to your HRMS workspace.</p>
-        <form className="stack" onSubmit={handleSubmit}>
-          <label>
-            Email
-            <Input value={email} onChange={(event) => setEmail(event.target.value)} type="email" required />
-          </label>
-          <label>
-            Password
-            <div className="password-input-wrap">
-              <Input value={password} onChange={(event) => setPassword(event.target.value)} type={showPassword ? "text" : "password"} required />
-              <button
-                type="button"
-                className="password-visibility-toggle"
-                aria-label={showPassword ? "Hide password" : "Show password"}
-                onClick={() => setShowPassword((current) => !current)}
-              >
-                {showPassword ? <EyeOff size={16} strokeWidth={2} /> : <Eye size={16} strokeWidth={2} />}
-              </button>
+      <section className="login-showcase" aria-hidden="true">
+        <div className="login-showcase__backdrop" />
+        <div className="login-showcase__content">
+          <div className="login-showcase__header">
+            <p className="eyebrow">Intellisys HRMS</p>
+            <h1>HRMS workspace</h1>
+          </div>
+          <img
+            className="login-showcase__illustration"
+            src="/assets/images/communication-flat-icon.png"
+            alt=""
+          />
+        </div>
+      </section>
+
+      <section className="login-panel">
+        <div className="login-card">
+          <div className="login-card__header">
+            <p className="eyebrow">HRMS Portal</p>
+            <h2>Welcome back</h2>
+            <p className="muted">Use your work credentials to continue.</p>
+          </div>
+
+          <form className="stack login-form" onSubmit={handleSubmit}>
+            <label>
+              Work email
+              <Input value={email} onChange={(event) => setEmail(event.target.value)} type="email" placeholder="name@company.com" required />
+            </label>
+            <label>
+              Password
+              <div className="password-input-wrap">
+                <Input
+                  value={password}
+                  onChange={(event) => setPassword(event.target.value)}
+                  type={showPassword ? "text" : "password"}
+                  placeholder="Enter your password"
+                  required
+                />
+                <button
+                  type="button"
+                  className="password-visibility-toggle"
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                  onClick={() => setShowPassword((current) => !current)}
+                >
+                  {showPassword ? <EyeOff size={16} strokeWidth={2} /> : <Eye size={16} strokeWidth={2} />}
+                </button>
+              </div>
+            </label>
+            {error ? <p className="error-text">{error}</p> : null}
+            <Button type="submit" disabled={submitting}>
+              {submitting ? "Signing in..." : "Sign in"}
+            </Button>
+          </form>
+
+          <div className="login-trust-row">
+            <div>
+              <span className="login-trust-row__label">Access</span>
+              <strong>Role-based workspace</strong>
             </div>
-          </label>
-          {error ? <p className="error-text">{error}</p> : null}
-          <Button type="submit" disabled={submitting}>
-            {submitting ? "Signing in..." : "Sign in"}
-          </Button>
-        </form>
+            <div>
+              <span className="login-trust-row__label">Users</span>
+              <strong>HR, managers, employees</strong>
+            </div>
+          </div>
+        </div>
       </section>
     </main>
   );

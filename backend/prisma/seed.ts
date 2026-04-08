@@ -1,4 +1,4 @@
-import { PrismaClient, RoleName } from "@prisma/client";
+import { LeaveAllocationMode, PrismaClient, RoleName } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
@@ -38,9 +38,84 @@ async function main() {
     });
   }
   for (const leaveType of [
-    { name: "Casual Leave", code: "CL", defaultDaysPerYear: 12 },
-    { name: "Sick Leave", code: "SL", defaultDaysPerYear: 10 },
-    { name: "Earned Leave", code: "EL", defaultDaysPerYear: 15 },
+    {
+      name: "Casual Leave",
+      code: "CL",
+      defaultDaysPerYear: 12,
+      allocationMode: LeaveAllocationMode.QUARTERLY,
+      quarterlyAllocationDays: 3,
+      carryForwardAllowed: false,
+      carryForwardCap: null,
+      requiresAttachmentAfterDays: null,
+      deductFullQuotaOnApproval: false,
+      maxUsagesPerYear: null,
+      policyEffectiveFromYear: 2026,
+    },
+    {
+      name: "Sick Leave",
+      code: "SL",
+      defaultDaysPerYear: 8,
+      allocationMode: LeaveAllocationMode.QUARTERLY,
+      quarterlyAllocationDays: 2,
+      carryForwardAllowed: true,
+      carryForwardCap: 15,
+      requiresAttachmentAfterDays: 2,
+      deductFullQuotaOnApproval: false,
+      maxUsagesPerYear: null,
+      policyEffectiveFromYear: 2026,
+    },
+    {
+      name: "Earned Leave",
+      code: "EL",
+      defaultDaysPerYear: 15,
+      allocationMode: LeaveAllocationMode.YEARLY,
+      quarterlyAllocationDays: null,
+      carryForwardAllowed: false,
+      carryForwardCap: null,
+      requiresAttachmentAfterDays: null,
+      deductFullQuotaOnApproval: false,
+      maxUsagesPerYear: null,
+      policyEffectiveFromYear: null,
+    },
+    {
+      name: "Maternity Leave",
+      code: "MAT",
+      defaultDaysPerYear: 90,
+      allocationMode: LeaveAllocationMode.YEARLY,
+      quarterlyAllocationDays: null,
+      carryForwardAllowed: false,
+      carryForwardCap: null,
+      requiresAttachmentAfterDays: null,
+      deductFullQuotaOnApproval: true,
+      maxUsagesPerYear: 1,
+      policyEffectiveFromYear: 2026,
+    },
+    {
+      name: "Paternity Leave",
+      code: "PAT",
+      defaultDaysPerYear: 10,
+      allocationMode: LeaveAllocationMode.YEARLY,
+      quarterlyAllocationDays: null,
+      carryForwardAllowed: false,
+      carryForwardCap: null,
+      requiresAttachmentAfterDays: null,
+      deductFullQuotaOnApproval: true,
+      maxUsagesPerYear: 1,
+      policyEffectiveFromYear: 2026,
+    },
+    {
+      name: "Bereavement Leave",
+      code: "BRV",
+      defaultDaysPerYear: 5,
+      allocationMode: LeaveAllocationMode.YEARLY,
+      quarterlyAllocationDays: null,
+      carryForwardAllowed: false,
+      carryForwardCap: null,
+      requiresAttachmentAfterDays: null,
+      deductFullQuotaOnApproval: true,
+      maxUsagesPerYear: 1,
+      policyEffectiveFromYear: 2026,
+    },
   ]) {
     await prisma.leaveType.upsert({
       where: { code: leaveType.code },

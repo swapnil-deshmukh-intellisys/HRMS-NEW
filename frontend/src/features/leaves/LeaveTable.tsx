@@ -57,6 +57,10 @@ export default function LeaveTable({
     return `leave-step leave-step--${status.toLowerCase()}`;
   }
 
+  function getProgressStepClass(status: LeaveRequest["managerApprovalStatus"]) {
+    return `leave-status-progress__step leave-status-progress__step--${status.toLowerCase()}`;
+  }
+
   function getReviewSummary(leave: LeaveRequest) {
     if (leave.status === "APPROVED") {
       if (leave.managerApprovedAt && leave.hrApprovedAt) {
@@ -158,45 +162,13 @@ export default function LeaveTable({
   }
 
   function renderStatusProgress(leave: LeaveRequest) {
-    const steps = [leave.managerApprovalStatus, leave.hrApprovalStatus];
-    const approvedCount = steps.filter((status) => status === "APPROVED").length;
-    const fullyApproved = approvedCount === 2 && leave.status === "APPROVED";
-    const hasRejected = steps.some((status) => status === "REJECTED") || leave.status === "REJECTED";
-    const isCancelled = leave.status === "CANCELLED";
-
     return (
       <div className="leave-status-progress" title={`Manager: ${leave.managerApprovalStatus}, HR: ${leave.hrApprovalStatus}`}>
         <div className="leave-status-progress__track" aria-hidden="true">
-          <span
-            className={`leave-status-progress__step ${
-              isCancelled
-                ? "leave-status-progress__step--cancelled"
-                : hasRejected
-                  ? leave.managerApprovalStatus === "REJECTED"
-                    ? "leave-status-progress__step--rejected"
-                    : "leave-status-progress__step--pending"
-                  : fullyApproved
-                    ? "leave-status-progress__step--approved"
-                    : "leave-status-progress__step--active"
-            }`}
-          />
-          <span
-            className={`leave-status-progress__step ${
-              isCancelled
-                ? "leave-status-progress__step--cancelled"
-                : hasRejected
-                  ? leave.hrApprovalStatus === "REJECTED"
-                    ? "leave-status-progress__step--rejected"
-                    : "leave-status-progress__step--pending"
-                  : fullyApproved
-                    ? "leave-status-progress__step--approved"
-                    : "leave-status-progress__step--active"
-            }`}
-          />
+          <span className={getProgressStepClass(leave.managerApprovalStatus)} />
+          <span className={getProgressStepClass(leave.hrApprovalStatus)} />
         </div>
-        <span className="leave-status-progress__meta">
-          {isCancelled ? "X" : hasRejected ? "!" : `${approvedCount}/2`}
-        </span>
+        <span className="leave-status-progress__meta">Mgr / HR</span>
       </div>
     );
   }

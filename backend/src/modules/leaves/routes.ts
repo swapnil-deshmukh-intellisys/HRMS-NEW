@@ -10,6 +10,7 @@ import { authenticate, requireRoles } from "../../middleware/auth.js";
 import { validate } from "../../middleware/validate.js";
 import { AppError, sendSuccess } from "../../utils/api.js";
 import { startOfDay } from "../../utils/dates.js";
+import { getEmployeeLeaveBalanceByType, getEmployeeLeaveBalances, isPolicyActiveForYear } from "../../utils/leave-balance.js";
 import { canTeamLeadAccessEmployee, getScopedEmployeeIdsForTeamLead, hasEmployeeCapability } from "../../utils/team-lead.js";
 import { buildApprovedLeaveAttendanceEntries, buildLeaveOverlapWhere, createLeaveRequestForEmployee, hasAttendanceConflict } from "./service.js";
 import { getCalendarDayStatus } from "../calendar/service.js";
@@ -125,15 +126,7 @@ router.get("/leave-balances/me", async (request, response, next) => {
     }
 
     const year = request.query.year ? Number(request.query.year) : new Date().getFullYear();
-    const balances = await prisma.leaveBalance.findMany({
-      where: {
-        employeeId,
-        year,
-      },
-      include: {
-        leaveType: true,
-      },
-    });
+    const balances = await getEmployeeLeaveBalances(prisma, employeeId, year, new Date());
 
     return sendSuccess(response, "Leave balances fetched successfully", balances);
   } catch (error) {
@@ -229,13 +222,38 @@ router.post("/leaves", upload.single("attachment"), validate(applyLeaveSchema), 
           prisma.leaveRequest.findFirst({
             where: buildLeaveOverlapWhere(employeeId, startDate, endDate),
           }),
-        findLeaveBalance: ({ employeeId, leaveTypeId, year }) =>
-          prisma.leaveBalance.findUnique({
+        findLeaveType: async ({ leaveTypeId }) =>
+          (await prisma.leaveType.findUnique({
+            where: { id: leaveTypeId },
+          })) as {
+            id: number;
+            code: string;
+            name: string;
+            defaultDaysPerYear: number;
+            allocationMode: "YEARLY" | "QUARTERLY";
+            quarterlyAllocationDays: number | null;
+            carryForwardAllowed: boolean;
+            carryForwardCap: number | null;
+            requiresAttachmentAfterDays: number | null;
+            deductFullQuotaOnApproval: boolean;
+            maxUsagesPerYear: number | null;
+            policyEffectiveFromYear: number | null;
+          } | null,
+        findLeaveBalance: async ({ employeeId, leaveTypeId, year }) =>
+          (await getEmployeeLeaveBalanceByType(prisma, employeeId, leaveTypeId, year, new Date())) as {
+            remainingDays: number;
+            visibleDays: number;
+            carryForwardDays: number;
+          } | null,
+        countExistingYearRequests: ({ employeeId, leaveTypeId, year }) =>
+          prisma.leaveRequest.count({
             where: {
-              employeeId_leaveTypeId_year: {
-                employeeId,
-                leaveTypeId,
-                year,
+              employeeId,
+              leaveTypeId,
+              status: { in: [LeaveStatus.PENDING, LeaveStatus.APPROVED] },
+              startDate: {
+                gte: new Date(Date.UTC(year, 0, 1)),
+                lt: new Date(Date.UTC(year + 1, 0, 1)),
               },
             },
           }),
@@ -288,12 +306,28 @@ router.post("/leaves", upload.single("attachment"), validate(applyLeaveSchema), 
 });
 
 async function getLeaveReviewContext(leaveId: number) {
-  const leaveRequest = await prisma.leaveRequest.findUnique({
+  const leaveRequest = (await prisma.leaveRequest.findUnique({
     where: { id: leaveId },
     include: {
       employee: true,
+      leaveType: true,
     },
-  });
+  })) as (Awaited<ReturnType<typeof prisma.leaveRequest.findUnique>> & {
+    employee: {
+      managerId: number | null;
+    };
+    leaveType: {
+      id: number;
+      code: string;
+      defaultDaysPerYear: number;
+      quarterlyAllocationDays: number | null;
+      carryForwardAllowed: boolean;
+      carryForwardCap: number | null;
+      deductFullQuotaOnApproval: boolean;
+      allocationMode: "YEARLY" | "QUARTERLY";
+      policyEffectiveFromYear: number | null;
+    };
+  }) | null;
 
   if (!leaveRequest) {
     throw new AppError("Leave request not found", 404);
@@ -342,6 +376,141 @@ function ensureHrApprovalAccess(
   }
 }
 
+async function finalizeApprovedLeave(
+  transaction: Omit<typeof prisma, "$connect" | "$disconnect" | "$on" | "$transaction" | "$use" | "$extends">,
+  leaveRequest: Awaited<ReturnType<typeof getLeaveReviewContext>>,
+  actor: NonNullable<Express.Request["user"]>,
+) {
+  const calendarExceptions = await transaction.calendarException.findMany({
+    where: {
+      date: {
+        gte: startOfDay(leaveRequest.startDate),
+        lte: startOfDay(leaveRequest.endDate),
+      },
+    },
+    orderBy: { date: "asc" },
+  });
+
+  const attendanceEntries = buildApprovedLeaveAttendanceEntries({
+    startDate: leaveRequest.startDate,
+    endDate: leaveRequest.endDate,
+    startDayDuration: leaveRequest.startDayDuration,
+    endDayDuration: leaveRequest.endDayDuration,
+    isWorkingDay: (date) => getCalendarDayStatus(date, calendarExceptions).isWorkingDay,
+  });
+
+  const existingAttendances = await transaction.attendance.findMany({
+    where: {
+      employeeId: leaveRequest.employeeId,
+      attendanceDate: {
+        in: attendanceEntries.map((entry) => entry.attendanceDate),
+      },
+    },
+  });
+
+  for (const entry of attendanceEntries) {
+    const existingAttendance = existingAttendances.find(
+      (attendance) => attendance.attendanceDate.getTime() === entry.attendanceDate.getTime(),
+    );
+
+    if (hasAttendanceConflict(existingAttendance)) {
+      throw new AppError("Attendance already exists with worked time for one or more leave dates");
+    }
+  }
+
+  const currentDate = new Date();
+  const refreshedBalance = await getEmployeeLeaveBalanceByType(
+    transaction,
+    leaveRequest.employeeId,
+    leaveRequest.leaveTypeId,
+    leaveRequest.startDate.getFullYear(),
+    currentDate,
+  );
+  const policyActive = isPolicyActiveForYear(leaveRequest.leaveType, leaveRequest.startDate.getFullYear());
+  const deductedDays = policyActive && leaveRequest.leaveType.deductFullQuotaOnApproval
+    ? leaveRequest.leaveType.defaultDaysPerYear
+    : leaveRequest.paidDays;
+  const approvalQuarter = Math.floor(leaveRequest.startDate.getMonth() / 3) + 1;
+  const currentQuarter = Math.floor(currentDate.getMonth() / 3) + 1;
+  const shouldAdjustVisibleDays =
+    policyActive &&
+    leaveRequest.leaveType.allocationMode === "QUARTERLY" &&
+    leaveRequest.startDate.getFullYear() === currentDate.getFullYear() &&
+    approvalQuarter === currentQuarter;
+
+  if (deductedDays > 0) {
+    if (!refreshedBalance || refreshedBalance.remainingDays < deductedDays) {
+      throw new AppError("Insufficient leave balance");
+    }
+
+    await transaction.leaveBalance.update({
+      where: { id: refreshedBalance.id },
+      data: {
+        usedDays: refreshedBalance.usedDays + deductedDays,
+        remainingDays: refreshedBalance.remainingDays - deductedDays,
+        visibleDays: shouldAdjustVisibleDays
+          ? Math.max(refreshedBalance.visibleDays - deductedDays, 0)
+          : refreshedBalance.visibleDays,
+      } as never,
+    });
+  }
+
+  for (const entry of attendanceEntries) {
+    const existingAttendance = existingAttendances.find(
+      (attendance) => attendance.attendanceDate.getTime() === entry.attendanceDate.getTime(),
+    );
+
+    if (existingAttendance) {
+      await transaction.attendance.update({
+        where: { id: existingAttendance.id },
+        data: {
+          status: entry.status,
+          checkInTime: null,
+          checkOutTime: null,
+          workedMinutes: 0,
+        },
+      });
+    } else {
+      await transaction.attendance.create({
+        data: {
+          employeeId: leaveRequest.employeeId,
+          attendanceDate: entry.attendanceDate,
+          status: entry.status,
+          workedMinutes: 0,
+        },
+      });
+    }
+  }
+
+  return transaction.leaveRequest.update({
+    where: { id: leaveRequest.id },
+    data: {
+      status: LeaveStatus.APPROVED,
+      managerApprovalStatus: ApprovalStepStatus.APPROVED,
+      hrApprovalStatus: ApprovalStepStatus.APPROVED,
+      deductedDays,
+      fullQuotaDeducted: policyActive && leaveRequest.leaveType.deductFullQuotaOnApproval,
+      ...(actor.role === "HR"
+        ? {
+            hrApprovedById: actor.employeeId,
+            hrApprovedAt: new Date(),
+            hrRejectionReason: null,
+          }
+        : {
+            managerApprovedById: actor.employeeId,
+            managerApprovedAt: new Date(),
+            managerRejectionReason: null,
+          }),
+    } as never,
+    include: {
+      employee: true,
+      leaveType: true,
+      managerApprovedBy: true,
+      hrApprovedBy: true,
+    },
+  });
+}
+
 async function managerApproveLeave(leaveId: number, actor: NonNullable<Express.Request["user"]>) {
   const leaveRequest = await getLeaveReviewContext(leaveId);
   ensurePendingLeave(leaveRequest);
@@ -352,6 +521,10 @@ async function managerApproveLeave(leaveId: number, actor: NonNullable<Express.R
     throw new AppError("Manager review is already completed");
   }
 
+  if (leaveRequest.hrApprovalStatus === ApprovalStepStatus.APPROVED) {
+    return prisma.$transaction((transaction) => finalizeApprovedLeave(transaction, leaveRequest, actor));
+  }
+
   return prisma.leaveRequest.update({
     where: { id: leaveRequest.id },
     data: {
@@ -359,10 +532,6 @@ async function managerApproveLeave(leaveId: number, actor: NonNullable<Express.R
       managerApprovedById: actor.employeeId,
       managerApprovedAt: new Date(),
       managerRejectionReason: null,
-      hrApprovalStatus: ApprovalStepStatus.PENDING,
-      hrApprovedById: null,
-      hrApprovedAt: null,
-      hrRejectionReason: null,
     },
     include: {
       employee: true,
@@ -415,118 +584,28 @@ async function hrApproveLeave(leaveId: number, actor: NonNullable<Express.Reques
   ensureNotSelfReview(leaveRequest, actor);
   ensureHrApprovalAccess(actor);
 
-  if (leaveRequest.managerApprovalStatus !== ApprovalStepStatus.APPROVED) {
-    throw new AppError("HR approval can only happen after manager approval");
-  }
-
   if (leaveRequest.hrApprovalStatus !== ApprovalStepStatus.PENDING) {
     throw new AppError("HR review is already completed");
   }
 
-  return prisma.$transaction(async (transaction) => {
-    const calendarExceptions = await transaction.calendarException.findMany({
-      where: {
-        date: {
-          gte: startOfDay(leaveRequest.startDate),
-          lte: startOfDay(leaveRequest.endDate),
-        },
-      },
-      orderBy: { date: "asc" },
-    });
-    const attendanceEntries = buildApprovedLeaveAttendanceEntries({
-      startDate: leaveRequest.startDate,
-      endDate: leaveRequest.endDate,
-      startDayDuration: leaveRequest.startDayDuration,
-      endDayDuration: leaveRequest.endDayDuration,
-      isWorkingDay: (date) => getCalendarDayStatus(date, calendarExceptions).isWorkingDay,
-    });
+  if (leaveRequest.managerApprovalStatus === ApprovalStepStatus.APPROVED) {
+    return prisma.$transaction((transaction) => finalizeApprovedLeave(transaction, leaveRequest, actor));
+  }
 
-    const existingAttendances = await transaction.attendance.findMany({
-      where: {
-        employeeId: leaveRequest.employeeId,
-        attendanceDate: {
-          in: attendanceEntries.map((entry) => entry.attendanceDate),
-        },
-      },
-    });
-
-    for (const entry of attendanceEntries) {
-      const existingAttendance = existingAttendances.find(
-        (attendance) => attendance.attendanceDate.getTime() === entry.attendanceDate.getTime(),
-      );
-
-      if (hasAttendanceConflict(existingAttendance)) {
-        throw new AppError("Attendance already exists with worked time for one or more leave dates");
-      }
-    }
-
-    const balance = await transaction.leaveBalance.findUnique({
-      where: {
-        employeeId_leaveTypeId_year: {
-          employeeId: leaveRequest.employeeId,
-          leaveTypeId: leaveRequest.leaveTypeId,
-          year: leaveRequest.startDate.getFullYear(),
-        },
-      },
-    });
-
-    if (leaveRequest.paidDays > 0) {
-      if (!balance || balance.remainingDays < leaveRequest.paidDays) {
-        throw new AppError("Insufficient leave balance");
-      }
-
-      await transaction.leaveBalance.update({
-        where: { id: balance.id },
-        data: {
-          usedDays: balance.usedDays + leaveRequest.paidDays,
-          remainingDays: balance.remainingDays - leaveRequest.paidDays,
-        },
-      });
-    }
-
-    for (const entry of attendanceEntries) {
-      const existingAttendance = existingAttendances.find(
-        (attendance) => attendance.attendanceDate.getTime() === entry.attendanceDate.getTime(),
-      );
-
-      if (existingAttendance) {
-        await transaction.attendance.update({
-          where: { id: existingAttendance.id },
-          data: {
-            status: entry.status,
-            checkInTime: null,
-            checkOutTime: null,
-            workedMinutes: 0,
-          },
-        });
-      } else {
-        await transaction.attendance.create({
-          data: {
-            employeeId: leaveRequest.employeeId,
-            attendanceDate: entry.attendanceDate,
-            status: entry.status,
-            workedMinutes: 0,
-          },
-        });
-      }
-    }
-
-    return transaction.leaveRequest.update({
-      where: { id: leaveRequest.id },
-      data: {
-        status: LeaveStatus.APPROVED,
-        hrApprovalStatus: ApprovalStepStatus.APPROVED,
-        hrApprovedById: actor.employeeId,
-        hrApprovedAt: new Date(),
-        hrRejectionReason: null,
-      },
-      include: {
-        employee: true,
-        leaveType: true,
-        managerApprovedBy: true,
-        hrApprovedBy: true,
-      },
-    });
+  return prisma.leaveRequest.update({
+    where: { id: leaveRequest.id },
+    data: {
+      hrApprovalStatus: ApprovalStepStatus.APPROVED,
+      hrApprovedById: actor.employeeId,
+      hrApprovedAt: new Date(),
+      hrRejectionReason: null,
+    },
+    include: {
+      employee: true,
+      leaveType: true,
+      managerApprovedBy: true,
+      hrApprovedBy: true,
+    },
   });
 }
 
@@ -539,10 +618,6 @@ async function hrRejectLeave(
   ensurePendingLeave(leaveRequest);
   ensureNotSelfReview(leaveRequest, actor);
   ensureHrApprovalAccess(actor);
-
-  if (leaveRequest.managerApprovalStatus !== ApprovalStepStatus.APPROVED) {
-    throw new AppError("HR rejection can only happen after manager approval");
-  }
 
   if (leaveRequest.hrApprovalStatus !== ApprovalStepStatus.PENDING) {
     throw new AppError("HR review is already completed");
@@ -579,8 +654,11 @@ async function cancelLeave(leaveId: number, actor: NonNullable<Express.Request["
     throw new AppError("Only pending leave requests can be cancelled");
   }
 
-  if (leaveRequest.managerApprovalStatus !== ApprovalStepStatus.PENDING) {
-    throw new AppError("Only leave requests awaiting manager review can be cancelled");
+  if (
+    leaveRequest.managerApprovalStatus !== ApprovalStepStatus.PENDING ||
+    leaveRequest.hrApprovalStatus !== ApprovalStepStatus.PENDING
+  ) {
+    throw new AppError("Only leave requests with no completed reviews can be cancelled");
   }
 
   if (leaveRequest.employeeId !== actor.employeeId && actor.role !== "HR" && actor.role !== "ADMIN") {
@@ -611,7 +689,11 @@ router.put("/leaves/:id/manager-approve", requireRoles("ADMIN", "MANAGER"), asyn
   try {
     const leaveId = Number(request.params.id);
     const reviewedLeave = await managerApproveLeave(leaveId, request.user!);
-    return sendSuccess(response, "Leave moved to HR review successfully", reviewedLeave);
+    return sendSuccess(
+      response,
+      reviewedLeave.status === LeaveStatus.APPROVED ? "Leave approved successfully" : "Manager approval recorded successfully",
+      reviewedLeave,
+    );
   } catch (error) {
     next(error);
   }

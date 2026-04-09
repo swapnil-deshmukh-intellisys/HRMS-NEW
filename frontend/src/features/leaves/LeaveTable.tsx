@@ -72,12 +72,14 @@ export default function LeaveTable({
 
     if (leave.status === "REJECTED") {
       if (leave.hrApprovalStatus === "REJECTED") {
-        return leave.hrRejectionReason || "Rejected by HR";
+        return leave.hrApprovedAt ? `HR ${formatDateTime(leave.hrApprovedAt)}` : "HR rejected";
       }
 
       if (leave.managerApprovalStatus === "REJECTED") {
-        return leave.managerRejectionReason || "Rejected by manager";
+        return leave.managerApprovedAt ? `Mgr ${formatDateTime(leave.managerApprovedAt)}` : "Manager rejected";
       }
+
+      return "Rejected";
     }
 
     if (leave.status === "CANCELLED") {
@@ -155,10 +157,10 @@ export default function LeaveTable({
     }
 
     if (role === "EMPLOYEE" && leave.employee.id !== currentEmployeeId && teamLeadScopeIds.includes(leave.employee.id)) {
-      return <span className="table-cell-secondary">View only</span>;
+      return <span className="leave-action-placeholder">-</span>;
     }
 
-    return <span>-</span>;
+    return <span className="leave-action-placeholder">-</span>;
   }
 
   function renderStatusProgress(leave: LeaveRequest) {
@@ -207,16 +209,10 @@ export default function LeaveTable({
                   <Fragment key={leave.id}>
                     <tr className={expanded ? "leave-request-row leave-request-row--expanded" : "leave-request-row"}>
                       <td>
-                        <div className="table-cell-stack">
-                          <span className="table-cell-primary">{`${leave.employee.firstName} ${leave.employee.lastName}`}</span>
-                          <span className="table-cell-secondary">{leave.employee.employeeCode}</span>
-                        </div>
+                        <span className="table-cell-primary">{`${leave.employee.firstName} ${leave.employee.lastName}`}</span>
                       </td>
                       <td>
-                        <div className="table-cell-stack">
-                          <span className="table-cell-primary">{leave.leaveType.name}</span>
-                          <span className="table-cell-secondary">{leave.leaveType.code}</span>
-                        </div>
+                        <span className="table-cell-primary">{leave.leaveType.code}</span>
                       </td>
                       <td>{formatLeaveRange(leave)}</td>
                       <td>
@@ -264,6 +260,14 @@ export default function LeaveTable({
                                 <p className="eyebrow">More info</p>
                                 <div className="leave-request-details__meta">
                                   <div className="leave-request-details__item">
+                                    <span className="leave-request-details__label">Leave type</span>
+                                    <span className="leave-request-details__value">{leave.leaveType.name}</span>
+                                  </div>
+                                  <div className="leave-request-details__item">
+                                    <span className="leave-request-details__label">Employee ID</span>
+                                    <span className="leave-request-details__value">{leave.employee.employeeCode}</span>
+                                  </div>
+                                  <div className="leave-request-details__item">
                                     <span className="leave-request-details__label">Paid / unpaid</span>
                                     <span className="leave-request-details__value">{`${formatLeaveDays(leave.paidDays)} / ${formatLeaveDays(leave.unpaidDays)}`}</span>
                                   </div>
@@ -271,6 +275,18 @@ export default function LeaveTable({
                                     <span className="leave-request-details__label">Reviewed on</span>
                                     <span className="leave-request-details__value">{getReviewSummary(leave)}</span>
                                   </div>
+                                  {leave.hrApprovalStatus === "REJECTED" && leave.hrRejectionReason ? (
+                                    <div className="leave-request-details__item">
+                                      <span className="leave-request-details__label">HR rejection reason</span>
+                                      <span className="leave-request-details__value">{leave.hrRejectionReason}</span>
+                                    </div>
+                                  ) : null}
+                                  {leave.managerApprovalStatus === "REJECTED" && leave.managerRejectionReason ? (
+                                    <div className="leave-request-details__item">
+                                      <span className="leave-request-details__label">Manager rejection reason</span>
+                                      <span className="leave-request-details__value">{leave.managerRejectionReason}</span>
+                                    </div>
+                                  ) : null}
                                   <div className="leave-request-details__item">
                                     <span className="leave-request-details__label">Attachment</span>
                                     {leave.attachmentPath ? (

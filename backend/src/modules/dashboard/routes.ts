@@ -4,6 +4,7 @@ import { prisma } from "../../config/prisma.js";
 import { authenticate, requireRoles } from "../../middleware/auth.js";
 import { sendSuccess } from "../../utils/api.js";
 import { endOfDay, startOfDay } from "../../utils/dates.js";
+import { getFinancialYearBounds, getFinancialYearForDate } from "../../utils/financial-year.js";
 import { getEmployeeLeaveBalances } from "../../utils/leave-balance.js";
 import { getScopedEmployeeIdsForTeamLead, hasEmployeeCapability } from "../../utils/team-lead.js";
 import { buildApprovedLeaveWhereForAttendanceDate, getApprovedLeaveAttendanceStatusForDate } from "../attendance/service.js";
@@ -121,8 +122,8 @@ async function getAttendanceTodayForEmployee(employeeId: number, today: Date) {
 }
 
 async function getEmployeeDashboardSharedData(employeeId: number, today: Date) {
-  const currentYear = today.getFullYear();
-  const yearStart = startOfDay(new Date(currentYear, 0, 1));
+  const currentYear = getFinancialYearForDate(today);
+  const yearStart = startOfDay(getFinancialYearBounds(currentYear).start);
   const isTeamLead = employeeId ? await hasEmployeeCapability(prisma, employeeId, "TEAM_LEAD") : false;
   const scopedEmployeeIds = isTeamLead && employeeId ? await getScopedEmployeeIdsForTeamLead(prisma, employeeId) : [];
 

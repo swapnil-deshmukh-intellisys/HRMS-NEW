@@ -1,4 +1,5 @@
 import { type Prisma, type PrismaClient } from "@prisma/client";
+import { getFinancialQuarterForDate, getFinancialYearForDate } from "./financial-year.js";
 
 type PrismaLike = PrismaClient | Prisma.TransactionClient;
 
@@ -26,10 +27,6 @@ type BalanceWithPolicy = {
   lastQuarterProcessed: number | null;
   leaveType: LeaveTypePolicy;
 };
-
-function getQuarterForDate(date: Date) {
-  return Math.floor(date.getMonth() / 3) + 1;
-}
 
 function getMaxCarryCap(leaveType: LeaveTypePolicy) {
   return leaveType.carryForwardCap ?? Number.POSITIVE_INFINITY;
@@ -66,7 +63,7 @@ async function normalizeLeaveBalance(
   balance: BalanceWithPolicy,
   asOfDate: Date,
 ) {
-  const currentQuarter = getQuarterForDate(asOfDate);
+  const currentQuarter = getFinancialQuarterForDate(asOfDate);
   const policyActive = isPolicyActiveForYear(balance.leaveType, balance.year);
   const quarterlyPolicy = shouldApplyQuarterlyPolicy(balance.leaveType, balance.year);
 
@@ -134,7 +131,7 @@ async function normalizeLeaveBalance(
 export async function ensureEmployeeLeaveBalances(
   prisma: PrismaLike,
   employeeId: number,
-  year = new Date().getFullYear(),
+  year = getFinancialYearForDate(new Date()),
   asOfDate = new Date(),
 ) {
   const leaveTypes = (await prisma.leaveType.findMany({
@@ -157,7 +154,7 @@ export async function ensureEmployeeLeaveBalances(
       : [];
 
   const previousBalanceMap = new Map(previousBalances.map((balance) => [balance.leaveTypeId, balance]));
-  const currentQuarter = getQuarterForDate(asOfDate);
+  const currentQuarter = getFinancialQuarterForDate(asOfDate);
 
   for (const leaveType of leaveTypes) {
     const policyActive = isPolicyActiveForYear(leaveType, year);
@@ -195,11 +192,9 @@ export async function ensureEmployeeLeaveBalances(
 export async function getEmployeeLeaveBalances(
   prisma: PrismaLike,
   employeeId: number,
-  year = new Date().getFullYear(),
+  year = getFinancialYearForDate(new Date()),
   asOfDate = new Date(),
 ) {
-  await ensureEmployeeLeaveBalances(prisma, employeeId, year, asOfDate);
-
   const balances = (await prisma.leaveBalance.findMany({
     where: {
       employeeId,
@@ -222,11 +217,9 @@ export async function getEmployeeLeaveBalanceByType(
   prisma: PrismaLike,
   employeeId: number,
   leaveTypeId: number,
-  year = new Date().getFullYear(),
+  year = getFinancialYearForDate(new Date()),
   asOfDate = new Date(),
 ) {
-  await ensureEmployeeLeaveBalances(prisma, employeeId, year, asOfDate);
-
   const balance = (await prisma.leaveBalance.findUnique({
     where: {
       employeeId_leaveTypeId_year: {

@@ -10,6 +10,7 @@ import { authenticate, requireRoles } from "../../middleware/auth.js";
 import { validate } from "../../middleware/validate.js";
 import { AppError, sendSuccess } from "../../utils/api.js";
 import { startOfDay } from "../../utils/dates.js";
+import { getFinancialQuarterForDate, getFinancialYearBounds, getFinancialYearForDate } from "../../utils/financial-year.js";
 import { getEmployeeLeaveBalanceByType, getEmployeeLeaveBalances, isPolicyActiveForYear } from "../../utils/leave-balance.js";
 import { canTeamLeadAccessEmployee, getScopedEmployeeIdsForTeamLead, hasEmployeeCapability } from "../../utils/team-lead.js";
 import { buildApprovedLeaveAttendanceEntries, buildLeaveOverlapWhere, createLeaveRequestForEmployee, hasAttendanceConflict } from "./service.js";
@@ -125,7 +126,7 @@ router.get("/leave-balances/me", async (request, response, next) => {
       employeeId = requestedEmployeeId;
     }
 
-    const year = request.query.year ? Number(request.query.year) : new Date().getFullYear();
+    const year = request.query.year ? Number(request.query.year) : getFinancialYearForDate(new Date());
     const balances = await getEmployeeLeaveBalances(prisma, employeeId, year, new Date());
 
     return sendSuccess(response, "Leave balances fetched successfully", balances);
@@ -245,18 +246,21 @@ router.post("/leaves", upload.single("attachment"), validate(applyLeaveSchema), 
             visibleDays: number;
             carryForwardDays: number;
           } | null,
-        countExistingYearRequests: ({ employeeId, leaveTypeId, year }) =>
-          prisma.leaveRequest.count({
+        countExistingYearRequests: ({ employeeId, leaveTypeId, year }) => {
+          const { start, endExclusive } = getFinancialYearBounds(year);
+
+          return prisma.leaveRequest.count({
             where: {
               employeeId,
               leaveTypeId,
               status: { in: [LeaveStatus.PENDING, LeaveStatus.APPROVED] },
               startDate: {
-                gte: new Date(Date.UTC(year, 0, 1)),
-                lt: new Date(Date.UTC(year + 1, 0, 1)),
+                gte: start,
+                lt: endExclusive,
               },
             },
-          }),
+          });
+        },
         isWorkingDay: async (date) => getCalendarDayStatus(date, calendarExceptions).isWorkingDay,
         createLeaveRequest: ({
           employeeId,
@@ -423,19 +427,19 @@ async function finalizeApprovedLeave(
     transaction,
     leaveRequest.employeeId,
     leaveRequest.leaveTypeId,
-    leaveRequest.startDate.getFullYear(),
+    getFinancialYearForDate(leaveRequest.startDate),
     currentDate,
   );
-  const policyActive = isPolicyActiveForYear(leaveRequest.leaveType, leaveRequest.startDate.getFullYear());
+  const policyActive = isPolicyActiveForYear(leaveRequest.leaveType, getFinancialYearForDate(leaveRequest.startDate));
   const deductedDays = policyActive && leaveRequest.leaveType.deductFullQuotaOnApproval
     ? leaveRequest.leaveType.defaultDaysPerYear
     : leaveRequest.paidDays;
-  const approvalQuarter = Math.floor(leaveRequest.startDate.getMonth() / 3) + 1;
-  const currentQuarter = Math.floor(currentDate.getMonth() / 3) + 1;
+  const approvalQuarter = getFinancialQuarterForDate(leaveRequest.startDate);
+  const currentQuarter = getFinancialQuarterForDate(currentDate);
   const shouldAdjustVisibleDays =
     policyActive &&
     leaveRequest.leaveType.allocationMode === "QUARTERLY" &&
-    leaveRequest.startDate.getFullYear() === currentDate.getFullYear() &&
+    getFinancialYearForDate(leaveRequest.startDate) === getFinancialYearForDate(currentDate) &&
     approvalQuarter === currentQuarter;
 
   if (deductedDays > 0) {

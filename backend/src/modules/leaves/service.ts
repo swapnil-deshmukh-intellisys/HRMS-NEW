@@ -1,6 +1,7 @@
 import { AttendanceStatus, LeaveStatus } from "@prisma/client";
 import { AppError } from "../../utils/api.js";
 import { calculateLeaveDays, endOfDay, startOfDay } from "../../utils/dates.js";
+import { getFinancialQuarterForDate, getFinancialYearForDate } from "../../utils/financial-year.js";
 
 type RequestUser = NonNullable<Express.Request["user"]>;
 type LeaveTypePolicy = {
@@ -52,10 +53,6 @@ type LeaveCreationDeps = {
     reason: string;
   }) => Promise<unknown>;
 };
-
-function getQuarterForDate(date: Date) {
-  return Math.floor(date.getMonth() / 3) + 1;
-}
 
 function isPolicyActiveForYear(leaveType: LeaveTypePolicy, year: number) {
   return leaveType.policyEffectiveFromYear !== null && year >= leaveType.policyEffectiveFromYear;
@@ -131,7 +128,7 @@ export async function createLeaveRequestForEmployee(
   const endDate = new Date(input.endDate);
 
   if (endDate < startDate) {
-    throw new AppError("End date cannot be before start date");
+    throw new AppError("Please choose an end date that is the same as or after the start date.");
   }
 
   const sameDay =
@@ -140,7 +137,7 @@ export async function createLeaveRequestForEmployee(
     startDate.getDate() === endDate.getDate();
 
   if (sameDay && input.startDayDuration !== input.endDayDuration) {
-    throw new AppError("For a single-date leave, start and end day duration must match");
+    throw new AppError("For a single-day leave request, please choose the same duration for both start and end.");
   }
 
   const totalDays = deps.isWorkingDay
@@ -160,7 +157,7 @@ export async function createLeaveRequestForEmployee(
   if (totalDays <= 0) {
     throw new AppError("Leave duration must include at least half a working day");
   }
-  const year = startDate.getFullYear();
+  const year = getFinancialYearForDate(startDate);
   const leaveType = await deps.findLeaveType({ leaveTypeId: input.leaveTypeId });
 
   if (!leaveType) {
@@ -168,7 +165,7 @@ export async function createLeaveRequestForEmployee(
   }
 
   const currentDate = new Date();
-  const currentYear = currentDate.getFullYear();
+  const currentYear = getFinancialYearForDate(currentDate);
 
   const overlap = await deps.findOverlap({
     employeeId: input.actor.employeeId,
@@ -177,7 +174,7 @@ export async function createLeaveRequestForEmployee(
   });
 
   if (overlap) {
-    throw new AppError("Overlapping leave request already exists");
+    throw new AppError("You already have a leave request for one or more of these dates.");
   }
 
   const leaveBalance = await deps.findLeaveBalance({
@@ -187,20 +184,21 @@ export async function createLeaveRequestForEmployee(
   });
 
   if (isQuarterlyLeaveType(leaveType, year)) {
-    const currentQuarter = getQuarterForDate(currentDate);
-    const startQuarter = getQuarterForDate(startDate);
-    const endQuarter = getQuarterForDate(endDate);
+    const currentQuarter = getFinancialQuarterForDate(currentDate);
+    const startQuarter = getFinancialQuarterForDate(startDate);
+    const endQuarter = getFinancialQuarterForDate(endDate);
+    const endYear = getFinancialYearForDate(endDate);
 
-    if (year !== endDate.getFullYear()) {
-      throw new AppError("Quarterly leave requests cannot span across years");
+    if (year !== endYear) {
+      throw new AppError("This leave type must stay within the current quarter, so the selected dates cannot cross into another year.");
     }
 
     if (startQuarter !== endQuarter) {
-      throw new AppError("Quarterly leave requests must stay within a single quarter");
+      throw new AppError("This leave type must stay within a single quarter. Please submit separate requests for different quarters.");
     }
 
     if (year !== currentYear || startQuarter !== currentQuarter) {
-      throw new AppError("Casual and sick leave can only be used within the current quarter");
+      throw new AppError("This leave type can only be applied within the current quarter.");
     }
   }
 
@@ -210,7 +208,7 @@ export async function createLeaveRequestForEmployee(
     getConsecutiveRequestedDays(startDate, endDate) >= leaveType.requiresAttachmentAfterDays &&
     !input.attachmentPath
   ) {
-    throw new AppError(`Attachment is required for ${leaveType.name.toLowerCase()} requests of 2 or more consecutive days`);
+    throw new AppError(`Please upload the required document for ${leaveType.name.toLowerCase()} of 2 or more consecutive days.`);
   }
 
   if (isPolicyActiveForYear(leaveType, year) && leaveType.maxUsagesPerYear !== null) {
@@ -221,7 +219,7 @@ export async function createLeaveRequestForEmployee(
     });
 
     if (existingYearRequests >= leaveType.maxUsagesPerYear) {
-      throw new AppError(`${leaveType.name} can only be used once per year`);
+      throw new AppError(`${leaveType.name} can only be used once in a year.`);
     }
   }
 
@@ -231,7 +229,7 @@ export async function createLeaveRequestForEmployee(
 
   if (isPolicyActiveForYear(leaveType, year) && leaveType.deductFullQuotaOnApproval) {
     if ((leaveBalance?.remainingDays ?? 0) < leaveType.defaultDaysPerYear) {
-      throw new AppError(`No yearly quota remaining for ${leaveType.name.toLowerCase()}`);
+      throw new AppError(`No balance is available for ${leaveType.name.toLowerCase()} right now.`);
     }
 
     return deps.createLeaveRequest({

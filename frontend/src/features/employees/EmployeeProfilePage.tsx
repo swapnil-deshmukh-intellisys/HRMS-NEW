@@ -75,6 +75,11 @@ export default function EmployeeProfilePage({ token, role, currentEmployeeId }: 
 
   const canManageEmployee = role === "ADMIN" || role === "HR";
   const canViewPayroll = role !== "EMPLOYEE" || currentEmployeeId === employeeId;
+  const canViewEmployeeDirectoryLink = role !== "EMPLOYEE";
+  const visiblePayroll = useMemo(
+    () => (role === "EMPLOYEE" ? payroll.filter((record) => record.status !== "DRAFT") : payroll),
+    [payroll, role],
+  );
 
   const reloadProfile = useCallback(async () => {
     if (!employeeId) {
@@ -142,7 +147,7 @@ export default function EmployeeProfilePage({ token, role, currentEmployeeId }: 
     }
   }, [searchParams]);
 
-  const latestPayroll = payroll[0];
+  const latestPayroll = visiblePayroll[0];
 
   const secondarySummaryCards = useMemo(
     () =>
@@ -353,9 +358,11 @@ export default function EmployeeProfilePage({ token, role, currentEmployeeId }: 
 
   return (
     <section className="stack employee-profile-page">
-      <Link to="/employees" className="employee-profile-back-link">
-        Back to employee directory
-      </Link>
+      {canViewEmployeeDirectoryLink ? (
+        <Link to="/employees" className="employee-profile-back-link">
+          Back to employee directory
+        </Link>
+      ) : null}
       {message ? <p className="success-text">{message}</p> : null}
       <EmployeeProfileHeader
         employee={employee}
@@ -371,7 +378,7 @@ export default function EmployeeProfilePage({ token, role, currentEmployeeId }: 
       {activeTab === "leaves" ? (
         <EmployeeLeavesTab balances={balances} leaves={leaves} role={role} viewerEmployeeId={currentEmployeeId} onReview={reviewLeave} />
       ) : null}
-      {canViewPayroll && activeTab === "payroll" ? <EmployeePayrollTab payroll={payroll} /> : null}
+      {canViewPayroll && activeTab === "payroll" ? <EmployeePayrollTab payroll={visiblePayroll} /> : null}
       <div className="grid cols-2 employee-profile-snapshot-row">
         <EmployeeAttendanceSnapshotCard attendance={attendance} />
         <EmployeeLeaveSnapshotCard balances={balances} leaves={leaves} />

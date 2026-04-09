@@ -3,8 +3,64 @@
   gap: var(--space-3);
 }
 
+.leave-table-surface .table {
+  min-width: 100%;
+}
+
+.leave-table-surface .table th:nth-child(1),
+.leave-table-surface .table td:nth-child(1) {
+  width: 18%;
+}
+
+.leave-table-surface .table th:nth-child(1),
+.leave-table-surface .table td:nth-child(1),
+.leave-table-surface .table th:nth-child(2),
+.leave-table-surface .table td:nth-child(2),
+.leave-table-surface .table th:nth-child(3),
+.leave-table-surface .table td:nth-child(3),
+.leave-table-surface .table th:nth-child(4),
+.leave-table-surface .table td:nth-child(4) {
+  white-space: normal;
+  word-break: break-word;
+}
+
+.leave-table-surface .table th:nth-child(2),
+.leave-table-surface .table td:nth-child(2) {
+  width: 7%;
+  text-align: center;
+  white-space: nowrap;
+  word-break: normal;
+}
+
+.leave-table-surface .table th:nth-child(3),
+.leave-table-surface .table td:nth-child(3) {
+  width: 20%;
+}
+
+.leave-table-surface .table th:nth-child(4),
+.leave-table-surface .table td:nth-child(4) {
+  width: 13%;
+}
+
+.leave-table-surface .table th:nth-child(5),
+.leave-table-surface .table td:nth-child(5),
+.leave-table-surface .table th:nth-child(6),
+.leave-table-surface .table td:nth-child(6),
+.leave-table-surface .table th:nth-child(7),
+.leave-table-surface .table td:nth-child(7) {
+  width: 1%;
+  white-space: nowrap;
+}
+
 .leave-request-row--expanded {
   background: color-mix(in srgb, var(--color-surface-page) 45%, white 55%);
+}
+
+.leave-action-placeholder {
+  display: inline-flex;
+  width: 100%;
+  justify-content: center;
+  color: var(--color-text-secondary);
 }
 
 .leave-expand-button {
@@ -50,16 +106,24 @@
 }
 
 .leave-request-details-row td {
-  padding: 0 !important;
+  padding: 0.5rem 0.75rem 0.9rem !important;
   border-top: none;
+  background: #f8fbff;
 }
 
 .leave-request-details {
   display: grid;
   gap: var(--space-4);
   padding: var(--space-4);
-  border-top: 1px solid var(--color-border-subtle);
-  background: color-mix(in srgb, var(--color-surface-page) 72%, white 28%);
+  border: 1px solid rgba(148, 163, 184, 0.24);
+  border-top: 1px solid rgba(148, 163, 184, 0.24);
+  border-radius: 1rem;
+  background:
+    linear-gradient(180deg, rgba(239, 246, 255, 0.96), rgba(248, 250, 252, 0.98)),
+    radial-gradient(circle at top left, rgba(59, 130, 246, 0.08), transparent 42%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    0 0.5rem 1.25rem rgba(15, 23, 42, 0.06);
 }
 
 .leave-request-details__grid {

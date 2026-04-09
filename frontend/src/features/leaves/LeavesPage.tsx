@@ -3,7 +3,6 @@ import { useCallback, useEffect, useState } from "react";
 import type { FormEvent } from "react";
 import MessageCard from "../../components/common/MessageCard";
 import Modal from "../../components/common/Modal";
-import Table from "../../components/common/Table";
 import { apiRequest } from "../../services/api";
 import type { Employee, LeaveBalance, LeaveRequest, LeaveType, Role } from "../../types";
 import { formatLeaveDays } from "../../utils/format";
@@ -19,12 +18,19 @@ type LeavesPageProps = {
 
 const initialLeaveForm = (): LeaveFormValues => ({
   leaveTypeId: "",
-  startDate: new Date().toISOString().slice(0, 10),
-  endDate: new Date().toISOString().slice(0, 10),
+  startDate: formatLocalIsoDate(new Date()),
+  endDate: formatLocalIsoDate(new Date()),
   startDayDuration: "FULL_DAY",
   endDayDuration: "FULL_DAY",
   reason: "",
 });
+
+function formatLocalIsoDate(date: Date) {
+  const year = date.getFullYear();
+  const month = `${date.getMonth() + 1}`.padStart(2, "0");
+  const day = `${date.getDate()}`.padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
 
 export default function LeavesPage({ token, role, currentEmployeeId, currentEmployee }: LeavesPageProps) {
   const [leaveTypes, setLeaveTypes] = useState<LeaveType[]>([]);
@@ -35,17 +41,24 @@ export default function LeavesPage({ token, role, currentEmployeeId, currentEmpl
   const [form, setForm] = useState<LeaveFormValues>(initialLeaveForm);
   const [attachmentFile, setAttachmentFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(true);
+  const [submittingLeave, setSubmittingLeave] = useState(false);
   const [reviewingLeaveId, setReviewingLeaveId] = useState<number | null>(null);
   const [reviewStage, setReviewStage] = useState<"manager" | "hr" | null>(null);
   const [rejectionReason, setRejectionReason] = useState("");
   const [leaveFormOpen, setLeaveFormOpen] = useState(false);
   const [leaveBalancesOpen, setLeaveBalancesOpen] = useState(false);
   const [confirmAction, setConfirmAction] = useState<{ type: "cancel"; leaveId: number } | null>(null);
-  const totalAllocated = balances.reduce((sum, balance) => sum + balance.allocatedDays, 0);
-  const totalUsed = balances.reduce((sum, balance) => sum + balance.usedDays, 0);
-  const totalRemaining = balances.reduce((sum, balance) => sum + balance.remainingDays, 0);
-  const totalUsableNow = balances.reduce((sum, balance) => sum + (balance.visibleDays ?? balance.remainingDays), 0);
+  const summaryBalances = balances.filter((balance) => !balance.leaveType.deductFullQuotaOnApproval);
   const teamLeadScopeIds = currentEmployee?.scopedTeamMembers?.map((item) => item.employee.id) ?? [];
+  const today = new Date();
+  const currentQuarterLabel =
+    today.getMonth() >= 3 && today.getMonth() <= 5
+      ? "Q1 · Apr to Jun"
+      : today.getMonth() >= 6 && today.getMonth() <= 8
+        ? "Q2 · Jul to Sep"
+        : today.getMonth() >= 9 && today.getMonth() <= 11
+          ? "Q3 · Oct to Dec"
+          : "Q4 · Jan to Mar";
 
   const loadLeaveTypes = useCallback(async () => {
     if (leaveTypes.length) {
@@ -56,9 +69,13 @@ export default function LeavesPage({ token, role, currentEmployeeId, currentEmpl
     setLeaveTypes(response.data);
   }, [leaveTypes.length, token]);
 
-  const reloadData = useCallback(async () => {
+  const reloadData = useCallback(async (options?: { showPageLoader?: boolean }) => {
+    const showPageLoader = options?.showPageLoader ?? true;
+
     try {
-      setLoading(true);
+      if (showPageLoader) {
+        setLoading(true);
+      }
       setError("");
       const [balancesResponse, leavesResponse] = await Promise.all([
         apiRequest<LeaveBalance[]>("/leave-balances/me", { token }),
@@ -70,12 +87,14 @@ export default function LeavesPage({ token, role, currentEmployeeId, currentEmpl
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : "Failed to load leave information.");
     } finally {
-      setLoading(false);
+      if (showPageLoader) {
+        setLoading(false);
+      }
     }
   }, [token]);
 
   useEffect(() => {
-    reloadData();
+    reloadData({ showPageLoader: true });
   }, [reloadData]);
 
   useEffect(() => {
@@ -87,8 +106,16 @@ export default function LeavesPage({ token, role, currentEmployeeId, currentEmpl
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     try {
+      setSubmittingLeave(true);
       setError("");
       setMessage("");
+      const todayIso = formatLocalIsoDate(new Date());
+
+      if (form.startDate < todayIso || form.endDate < todayIso) {
+        setError("Leave dates cannot be in the past.");
+        return;
+      }
+
       if (form.startDate === form.endDate && form.startDayDuration !== form.endDayDuration) {
         setError("For a single-date leave, duration must match on both start and end.");
         return;
@@ -114,9 +141,11 @@ export default function LeavesPage({ token, role, currentEmployeeId, currentEmpl
       setForm(initialLeaveForm());
       setAttachmentFile(null);
       setLeaveFormOpen(false);
-      await reloadData();
+      await reloadData({ showPageLoader: false });
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : "Failed to submit leave request.");
+    } finally {
+      setSubmittingLeave(false);
     }
   }
 
@@ -225,6 +254,7 @@ export default function LeavesPage({ token, role, currentEmployeeId, currentEmpl
             form={form}
             attachmentName={attachmentFile?.name}
             leaveTypes={leaveTypes}
+            isSubmitting={submittingLeave}
             onChange={setForm}
             onAttachmentChange={setAttachmentFile}
             onSubmit={handleSubmit}
@@ -240,44 +270,52 @@ export default function LeavesPage({ token, role, currentEmployeeId, currentEmpl
         </div>
       </Modal>
       <Modal open={leaveBalancesOpen} title="Leave balances" className="leave-modal-surface" onClose={() => setLeaveBalancesOpen(false)}>
-        <aside className="leave-policy-note">
-          <p className="eyebrow">Leave policy</p>
-          <ul className="leave-policy-note__list">
-            <li>Sandwich leave is not allowed.</li>
-            <li>Manager and HR approval are required.</li>
-            <li>Apply through HRMS or official email only.</li>
-          </ul>
-        </aside>
-        <div className="leave-balance-modal-summary">
-          <div className="leave-balance-modal-stat">
-            <span>Usable now</span>
-            <strong>{formatLeaveDays(totalUsableNow)}</strong>
-          </div>
-          <div className="leave-balance-modal-stat">
-            <span>Allocated</span>
-            <strong>{formatLeaveDays(totalAllocated)}</strong>
-          </div>
-          <div className="leave-balance-modal-stat">
-            <span>Used</span>
-            <strong>{formatLeaveDays(totalUsed)}</strong>
-          </div>
-          <div className="leave-balance-modal-stat">
-            <span>Remaining</span>
-            <strong>{formatLeaveDays(totalRemaining)}</strong>
-          </div>
-        </div>
-        <div className="card compact-table-card leave-balance-card leave-balance-modal-card">
-          <Table
-            compact
-            columns={["Type", "Usable now", "Carry forward", "Used", "Year total"]}
-            rows={balances.map((balance) => [
-              balance.leaveType.name,
-              formatLeaveDays(balance.visibleDays ?? balance.remainingDays),
-              formatLeaveDays(balance.carryForwardDays),
-              formatLeaveDays(balance.usedDays),
-              formatLeaveDays(balance.allocatedDays),
-            ])}
-          />
+        <div className="leave-balance-modal-layout">
+          <section className="leave-balance-hero">
+            <div className="leave-balance-hero__copy">
+              <p className="eyebrow">Leave wallet</p>
+              <h3>Your available time off</h3>
+              <p className="muted">
+                Live balance for the current financial year. Paid leave is shown here based on your latest approved requests.
+              </p>
+              <div className="leave-balance-quarter-indicator">
+                <span className="leave-balance-quarter-indicator__label">Current quarter</span>
+                <strong>{currentQuarterLabel}</strong>
+              </div>
+            </div>
+          </section>
+
+          <section className="leave-balance-list">
+            {summaryBalances.length ? (
+              summaryBalances.map((balance) => (
+                <article key={balance.id} className="leave-balance-list-item">
+                  <div className="leave-balance-list-item__meta">
+                    <p className="leave-balance-list-item__code">{balance.leaveType.code}</p>
+                    <h4>{balance.leaveType.name}</h4>
+                  </div>
+                  <div className="leave-balance-list-item__value">
+                    <strong>{formatLeaveDays(balance.visibleDays ?? balance.remainingDays)}</strong>
+                    <span>available now</span>
+                  </div>
+                </article>
+              ))
+            ) : (
+              <div className="leave-balance-empty">
+                <p className="eyebrow">No balances</p>
+                <h4>No leave balances available yet</h4>
+                <p className="muted">Balances will appear here once your leave policy is assigned.</p>
+              </div>
+            )}
+          </section>
+
+          <aside className="leave-policy-note leave-policy-note--premium">
+            <p className="eyebrow">Policy snapshot</p>
+            <ul className="leave-policy-note__list">
+              <li>Sandwich leave is not allowed.</li>
+              <li>Manager and HR approval are required.</li>
+              <li>Apply through HRMS or official email only.</li>
+            </ul>
+          </aside>
         </div>
       </Modal>
       <Modal

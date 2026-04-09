@@ -297,7 +297,7 @@ textarea {
   line-height: 1.6;
 }
 
-.compact-form button:not(.secondary):not(.icon-button) {
+.compact-form > button:not(.secondary):not(.icon-button) {
   justify-self: start;
   min-width: 180px;
 }

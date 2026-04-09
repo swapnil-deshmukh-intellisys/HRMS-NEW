@@ -14,22 +14,22 @@ type EmployeeLeavesTabProps = {
 };
 
 export default function EmployeeLeavesTab({ balances, leaves, role, viewerEmployeeId, onReview }: EmployeeLeavesTabProps) {
+  const visibleBalances = balances.filter((balance) => !balance.leaveType.deductFullQuotaOnApproval);
+
   return (
     <div className="stack">
       <div className="grid cols-2 employee-profile-chart-grid">
-        <EmployeeLeaveBalanceChart balances={balances} />
+        <EmployeeLeaveBalanceChart balances={visibleBalances} />
         <EmployeeLeaveSplitChart leaves={leaves} />
       </div>
       <div className="card employee-profile-section">
         <h3>Leave balances</h3>
         <Table
           compact
-          columns={["Type", "Allocated", "Used", "Remaining"]}
-          rows={balances.map((balance) => [
+          columns={["Type", "Available now"]}
+          rows={visibleBalances.map((balance) => [
             balance.leaveType.name,
-            formatLeaveDays(balance.allocatedDays),
-            formatLeaveDays(balance.usedDays),
-            formatLeaveDays(balance.remainingDays),
+            formatLeaveDays(balance.visibleDays ?? balance.remainingDays),
           ])}
         />
       </div>

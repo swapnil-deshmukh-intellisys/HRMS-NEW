@@ -323,6 +323,10 @@ export default function PayrollPage({ token, role }: PayrollPageProps) {
 
   const monthOptions = useMemo<PayrollSelectOption[]>(() => payrollMonthOptions.map((option) => ({ ...option })), []);
   const isPayrollFormValid = Boolean(form.employeeId && form.month && form.year && form.salary);
+  const visiblePayroll = useMemo(
+    () => (role === "EMPLOYEE" ? payroll.filter((record) => record.status !== "DRAFT") : payroll),
+    [payroll, role],
+  );
 
   return (
     <section className="stack">
@@ -452,8 +456,8 @@ export default function PayrollPage({ token, role }: PayrollPageProps) {
                 </tr>
               </thead>
               <tbody>
-                {payroll.length ? (
-                  payroll.map((record) => (
+                {visiblePayroll.length ? (
+                  visiblePayroll.map((record) => (
                     <tr key={record.id}>
                       <td>
                         {record.employee ? (

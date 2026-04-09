@@ -1,9 +1,18 @@
+import { resolve } from 'node:path'
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
 // https://vite.dev/config/
+const runtimeRoot = process.cwd()
+
 export default defineConfig({
+  root: runtimeRoot,
   plugins: [react()],
+  test: {
+    environment: "jsdom",
+    css: true,
+    globals: true,
+  },
   build: {
     rollupOptions: {
       output: {

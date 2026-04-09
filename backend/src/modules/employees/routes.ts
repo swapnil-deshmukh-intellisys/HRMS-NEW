@@ -6,6 +6,7 @@ import { authenticate, requireRoles } from "../../middleware/auth.js";
 import { validate } from "../../middleware/validate.js";
 import { AppError, parsePagination, sendSuccess } from "../../utils/api.js";
 import { hashPassword } from "../../utils/auth.js";
+import { getFinancialYearForDate } from "../../utils/financial-year.js";
 import { ensureEmployeeLeaveBalances } from "../../utils/leave-balance.js";
 import { canTeamLeadAccessEmployee } from "../../utils/team-lead.js";
 import { calculateCompensationFromLpa } from "../payroll/service.js";
@@ -174,7 +175,7 @@ router.post("/", requireRoles("ADMIN", "HR"), validate(employeeSchema), async (r
       });
     });
 
-    await ensureEmployeeLeaveBalances(prisma, createdEmployee.id, new Date(employeeData.joiningDate).getFullYear());
+    await ensureEmployeeLeaveBalances(prisma, createdEmployee.id, getFinancialYearForDate(new Date(employeeData.joiningDate)));
 
     return sendSuccess(response, "Employee created successfully", createdEmployee, 201);
   } catch (error) {

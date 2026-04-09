@@ -72,7 +72,7 @@ test("createLeaveRequestForEmployee rejects overlap", async () => {
           createLeaveRequest: async () => ({ id: 10 }),
         },
       ),
-    (error: unknown) => error instanceof AppError && error.message === "Overlapping leave request already exists",
+    (error: unknown) => error instanceof AppError && error.message === "You already have a leave request for one or more of these dates.",
   );
 });
 
@@ -190,7 +190,7 @@ test("createLeaveRequestForEmployee rejects mismatched single-date day durations
         },
         createLeaveDeps(),
       ),
-    (error: unknown) => error instanceof AppError && error.message === "For a single-date leave, start and end day duration must match",
+    (error: unknown) => error instanceof AppError && error.message === "For a single-day leave request, please choose the same duration for both start and end.",
   );
 });
 
@@ -318,7 +318,7 @@ test("createLeaveRequestForEmployee requires attachment for two-day sick leave",
           findLeaveBalance: async () => ({ remainingDays: 8, visibleDays: 2, carryForwardDays: 0 }),
         }),
       ),
-    (error: unknown) => error instanceof AppError && error.message.includes("Attachment is required"),
+    (error: unknown) => error instanceof AppError && error.message.includes("Please upload the required document"),
   );
 });
 
@@ -349,6 +349,6 @@ test("createLeaveRequestForEmployee blocks repeated one-time yearly leave", asyn
           countExistingYearRequests: async () => 1,
         }),
       ),
-    (error: unknown) => error instanceof AppError && error.message === "Bereavement Leave can only be used once per year",
+    (error: unknown) => error instanceof AppError && error.message === "Bereavement Leave can only be used once in a year.",
   );
 });

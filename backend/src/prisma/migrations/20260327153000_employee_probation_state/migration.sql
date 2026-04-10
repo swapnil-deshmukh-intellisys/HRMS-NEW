@@ -1,0 +1,3 @@
+ALTER TABLE "Employee"
+ADD COLUMN "isOnProbation" BOOLEAN NOT NULL DEFAULT false,
+ADD COLUMN "probationEndDate" TIMESTAMP(3);

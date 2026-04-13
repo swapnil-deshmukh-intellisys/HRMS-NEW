@@ -99,6 +99,12 @@ export function createLeaveRequest(overrides: Partial<LeaveRequest> = {}): Leave
     attachmentName: null,
     attachmentPath: null,
     attachmentMime: null,
+    medicalProofRequired: false,
+    medicalProofDueAt: null,
+    medicalProofSubmittedAt: null,
+    medicalProofStatus: "NOT_REQUIRED",
+    medicalProofReviewedAt: null,
+    medicalProofRejectionReason: null,
     reason: "Personal work",
     status: "PENDING",
     managerApprovalStatus: "PENDING",
@@ -111,6 +117,7 @@ export function createLeaveRequest(overrides: Partial<LeaveRequest> = {}): Leave
     leaveType: createLeaveType(),
     managerApprovedBy: null,
     hrApprovedBy: null,
+    medicalProofReviewedBy: null,
     ...overrides,
   };
 }

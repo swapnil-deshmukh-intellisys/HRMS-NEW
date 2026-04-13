@@ -9,6 +9,7 @@ import { endOfDay, startOfDay } from "../../utils/dates.js";
 import { canTeamLeadAccessEmployee, getScopedEmployeeIdsForTeamLead, hasEmployeeCapability } from "../../utils/team-lead.js";
 import { getCalendarDayStatus } from "../calendar/service.js";
 import {
+  buildAttendanceWhereForDate,
   buildApprovedLeaveWhereForAttendanceDate,
   calculateWorkedMinutes,
   combineAttendanceDateAndTime,
@@ -16,7 +17,13 @@ import {
   getApprovedLeaveAttendanceStatusForDate,
   getRegularizedAttendanceStatus,
   parseAttendanceDateInput,
+  finalizeAttendanceStatus,
 } from "./service.js";
+import {
+  calculateOvertimeDuration,
+  isOvertimeEligible,
+  getMonthlyOvertimeHours,
+} from "./overtime-service.js";
 
 const router = Router();
 
@@ -42,19 +49,6 @@ const attendanceRegularizationReviewSchema = z.object({
   status: z.enum(["APPROVED", "REJECTED"]),
   rejectionReason: z.string().trim().optional(),
 });
-
-function isMobileOrTabletUserAgent(userAgent: string) {
-  return /android|iphone|ipad|ipod|mobile|tablet|silk|kindle|playbook/i.test(userAgent);
-}
-
-function assertDesktopAttendanceRequest(request: { headers?: Record<string, string | string[] | undefined> }) {
-  const userAgentHeader = request.headers?.["user-agent"];
-  const userAgent = Array.isArray(userAgentHeader) ? userAgentHeader.join(" ") : userAgentHeader ?? "";
-
-  if (isMobileOrTabletUserAgent(userAgent)) {
-    throw new AppError("Attendance marking is available only on desktop or laptop devices.", 403);
-  }
-}
 
 async function enrichAttendanceWithLeaveContext(
   records: Array<{
@@ -119,13 +113,12 @@ async function enrichAttendanceWithLeaveContext(
 async function getAttendanceTodayForEmployee(employeeId: number) {
   const today = startOfDay(new Date());
   const [attendanceTodayRecord, approvedLeaveToday] = await Promise.all([
-    prisma.attendance.findUnique({
+    prisma.attendance.findFirst({
       where: {
-        employeeId_attendanceDate: {
-          employeeId,
-          attendanceDate: today,
-        },
+        employeeId,
+        attendanceDate: buildAttendanceWhereForDate(today),
       },
+      orderBy: { createdAt: "desc" },
     }),
     prisma.leaveRequest.findFirst({
       where: {
@@ -174,8 +167,25 @@ router.get("/today", requireRoles("EMPLOYEE", "MANAGER", "HR", "ADMIN"), async (
       throw new AppError("Employee context is required", 400);
     }
 
-    const attendanceToday = await getAttendanceTodayForEmployee(employeeId);
-    return sendSuccess(response, "Today's attendance fetched successfully", { attendanceToday });
+    const [attendanceToday, overtimeSession] = await Promise.all([
+      getAttendanceTodayForEmployee(employeeId),
+      prisma.overtimeSession.findUnique({
+        where: {
+          employeeId_date: {
+            employeeId,
+            date: startOfDay(new Date()),
+          },
+        },
+      }),
+    ]);
+
+    const isOvertimeEligible = attendanceToday?.checkOutTime ? true : false;
+
+    return sendSuccess(response, "Today's attendance fetched successfully", { 
+      attendanceToday, 
+      overtimeSession,
+      isOvertimeEligible 
+    });
   } catch (error) {
     next(error);
   }
@@ -183,7 +193,6 @@ router.get("/today", requireRoles("EMPLOYEE", "MANAGER", "HR", "ADMIN"), async (
 
 router.post("/check-in", validate(attendanceSchema), async (request, response, next) => {
   try {
-    assertDesktopAttendanceRequest(request);
     const employeeId = request.body.employeeId ?? request.user?.employeeId;
 
     if (!employeeId) {
@@ -197,13 +206,12 @@ router.post("/check-in", validate(attendanceSchema), async (request, response, n
     }
 
     const today = startOfDay(new Date());
-    const existing = await prisma.attendance.findUnique({
+    const existing = await prisma.attendance.findFirst({
       where: {
-        employeeId_attendanceDate: {
-          employeeId,
-          attendanceDate: today,
-        },
+        employeeId,
+        attendanceDate: buildAttendanceWhereForDate(today),
       },
+      orderBy: { createdAt: "desc" },
     });
 
     const approvedLeaveToday = await prisma.leaveRequest.findFirst({
@@ -265,7 +273,6 @@ router.post("/check-in", validate(attendanceSchema), async (request, response, n
 
 router.post("/check-out", validate(attendanceSchema), async (request, response, next) => {
   try {
-    assertDesktopAttendanceRequest(request);
     const employeeId = request.body.employeeId ?? request.user?.employeeId;
 
     if (!employeeId) {
@@ -279,13 +286,12 @@ router.post("/check-out", validate(attendanceSchema), async (request, response, 
     }
 
     const today = startOfDay(new Date());
-    const attendance = await prisma.attendance.findUnique({
+    const attendance = await prisma.attendance.findFirst({
       where: {
-        employeeId_attendanceDate: {
-          employeeId,
-          attendanceDate: today,
-        },
+        employeeId,
+        attendanceDate: buildAttendanceWhereForDate(today),
       },
+      orderBy: { createdAt: "desc" },
     });
 
     if (!attendance?.checkInTime) {
@@ -360,6 +366,36 @@ router.post(
             });
 
             return result.count;
+          },
+          updateAttendanceWithMissingCheckout: async (attendanceDate, cutoffHour) => {
+            const attendancesToUpdate = await prisma.attendance.findMany({
+              where: {
+                attendanceDate: {
+                  gte: startOfDay(attendanceDate),
+                  lte: endOfDay(attendanceDate),
+                },
+                checkInTime: { not: null },
+                status: AttendanceStatus.PRESENT,
+              },
+            });
+
+            let updatedCount = 0;
+            for (const attendance of attendancesToUpdate) {
+              const finalStatus = finalizeAttendanceStatus(
+                attendance.checkInTime,
+                attendance.checkOutTime
+              );
+
+              if (finalStatus !== attendance.status) {
+                await prisma.attendance.update({
+                  where: { id: attendance.id },
+                  data: { status: finalStatus },
+                });
+                updatedCount++;
+              }
+            }
+
+            return updatedCount;
           },
           isWorkingDay: async (attendanceDate) => {
             const exceptions = await prisma.calendarException.findMany({
@@ -749,5 +785,274 @@ router.get("/", requireRoles("ADMIN", "HR", "MANAGER", "EMPLOYEE"), async (reque
     next(error);
   }
 });
+
+// Overtime Routes
+router.get("/overtime/today", requireRoles("EMPLOYEE", "MANAGER", "HR", "ADMIN"), async (request, response, next) => {
+  try {
+    const employeeId = request.user?.employeeId;
+
+    if (!employeeId) {
+      throw new AppError("Employee context is required", 400);
+    }
+
+    const today = startOfDay(new Date());
+    const overtimeSession = await prisma.overtimeSession.findUnique({
+      where: {
+        employeeId_date: {
+          employeeId,
+          date: today,
+        },
+      },
+    });
+
+    return sendSuccess(response, "Today's overtime session fetched successfully", { overtimeSession });
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.post("/overtime/start", validate(attendanceSchema), async (request, response, next) => {
+  try {
+    const employeeId = request.body.employeeId ?? request.user?.employeeId;
+
+    if (!employeeId) {
+      throw new AppError("Employee context is required", 400);
+    }
+
+    const isPrivileged = ["ADMIN", "HR"].includes(request.user!.role);
+
+    if (!isPrivileged && request.user?.employeeId !== employeeId) {
+      throw new AppError("You are not authorized to start overtime for this employee", 403);
+    }
+
+    const today = startOfDay(new Date());
+    
+    // Check if regular attendance is completed
+    const attendance = await prisma.attendance.findFirst({
+      where: {
+        employeeId,
+        attendanceDate: buildAttendanceWhereForDate(today),
+      },
+      orderBy: { createdAt: "desc" },
+    });
+
+    if (!attendance?.checkOutTime) {
+      throw new AppError("Regular attendance checkout is required before starting overtime");
+    }
+
+    // Check if overtime session already exists
+    const existingOvertime = await prisma.overtimeSession.findUnique({
+      where: {
+        employeeId_date: {
+          employeeId,
+          date: today,
+        },
+      },
+    });
+
+    if (existingOvertime) {
+      if (existingOvertime.status === "ACTIVE") {
+        throw new AppError("Overtime session already in progress");
+      } else {
+        throw new AppError("Overtime session already completed for today");
+      }
+    }
+
+    const overtimeSession = await prisma.overtimeSession.create({
+      data: {
+        employeeId,
+        date: today,
+        startTime: new Date(),
+        status: "ACTIVE",
+      },
+    });
+
+    return sendSuccess(response, "Overtime started successfully", overtimeSession, 201);
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.post("/overtime/end", validate(attendanceSchema), async (request, response, next) => {
+  try {
+    const employeeId = request.body.employeeId ?? request.user?.employeeId;
+
+    if (!employeeId) {
+      throw new AppError("Employee context is required", 400);
+    }
+
+    const isPrivileged = ["ADMIN", "HR"].includes(request.user!.role);
+
+    if (!isPrivileged && request.user?.employeeId !== employeeId) {
+      throw new AppError("You are not authorized to end overtime for this employee", 403);
+    }
+
+    const today = startOfDay(new Date());
+    const overtimeSession = await prisma.overtimeSession.findUnique({
+      where: {
+        employeeId_date: {
+          employeeId,
+          date: today,
+        },
+      },
+    });
+
+    if (!overtimeSession) {
+      throw new AppError("No active overtime session found");
+    }
+
+    if (overtimeSession.status !== "ACTIVE") {
+      throw new AppError("Overtime session is not active");
+    }
+
+    const endTime = new Date();
+    const duration = calculateOvertimeDuration(overtimeSession.startTime, endTime);
+
+    const updatedSession = await prisma.overtimeSession.update({
+      where: { id: overtimeSession.id },
+      data: {
+        endTime,
+        duration,
+        status: "COMPLETED",
+      },
+    });
+
+    return sendSuccess(response, "Overtime ended successfully", updatedSession);
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.get("/overtime", requireRoles("ADMIN", "HR", "MANAGER", "EMPLOYEE"), async (request, response, next) => {
+  try {
+    const requestedEmployeeId = request.query.employeeId ? Number(request.query.employeeId) : undefined;
+    const requestedMonth = request.query.month ? Number(request.query.month) : undefined;
+    const requestedYear = request.query.year ? Number(request.query.year) : undefined;
+    
+    let where: Record<string, unknown> = {};
+
+    if (request.user?.role === "EMPLOYEE") {
+      if (!request.user.employeeId) {
+        throw new AppError("Employee context is required", 400);
+      }
+
+      if (requestedEmployeeId && requestedEmployeeId !== request.user.employeeId) {
+        const canAccess = await canTeamLeadAccessEmployee(prisma, request.user.employeeId, requestedEmployeeId);
+
+        if (!canAccess) {
+          throw new AppError("You are not authorized to view this overtime", 403);
+        }
+
+        where = { employeeId: requestedEmployeeId };
+      } else {
+        const isTeamLead = await hasEmployeeCapability(prisma, request.user.employeeId, "TEAM_LEAD");
+
+        where = isTeamLead
+          ? {
+              OR: [{ employeeId: request.user.employeeId }, { employeeId: { in: await getScopedEmployeeIdsForTeamLead(prisma, request.user.employeeId) } }],
+            }
+          : { employeeId: request.user.employeeId };
+      }
+    } else if (request.user?.role === "MANAGER" && request.user.employeeId) {
+      where = requestedEmployeeId
+        ? requestedEmployeeId === request.user.employeeId
+          ? { employeeId: requestedEmployeeId }
+          : { employeeId: requestedEmployeeId, employee: { managerId: request.user.employeeId } }
+        : { employee: { managerId: request.user.employeeId } };
+    } else if (requestedEmployeeId) {
+      where = { employeeId: requestedEmployeeId };
+    }
+
+    // Add month/year filter if provided
+    if (requestedMonth && requestedYear) {
+      const startDate = new Date(requestedYear, requestedMonth - 1, 1);
+      const endDate = new Date(requestedYear, requestedMonth, 0);
+      
+      where = {
+        ...where,
+        date: {
+          gte: startDate,
+          lte: endDate,
+        },
+      };
+    }
+
+    const overtimeSessions = await prisma.overtimeSession.findMany({
+      where,
+      include: {
+        employee: true,
+        verifier: true,
+      },
+      orderBy: [{ date: "desc" }, { createdAt: "desc" }],
+    });
+
+    return sendSuccess(response, "Overtime sessions fetched successfully", overtimeSessions);
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.post(
+  "/overtime/:id/verify",
+  requireRoles("ADMIN", "HR", "MANAGER"),
+  validate(z.object({
+    status: z.enum(["VERIFIED", "REJECTED"]),
+    rejectionReason: z.string().trim().optional(),
+  })),
+  async (request, response, next) => {
+    try {
+      const sessionId = Number(request.params.id);
+
+      if (!Number.isInteger(sessionId) || sessionId <= 0) {
+        throw new AppError("Invalid overtime session");
+      }
+
+      const overtimeSession = await prisma.overtimeSession.findUnique({
+        where: { id: sessionId },
+        include: {
+          employee: true,
+        },
+      });
+
+      if (!overtimeSession) {
+        throw new AppError("Overtime session not found", 404);
+      }
+
+      if (overtimeSession.status !== "COMPLETED") {
+        throw new AppError("Only completed overtime sessions can be verified");
+      }
+
+      if (
+        request.user?.role === "MANAGER" &&
+        (!request.user.employeeId ||
+          overtimeSession.employee.managerId !== request.user.employeeId)
+      ) {
+        throw new AppError("You are not authorized to verify this overtime session", 403);
+      }
+
+      if (request.body.status === "REJECTED" && !request.body.rejectionReason) {
+        throw new AppError("Rejection reason is required");
+      }
+
+      const updatedSession = await prisma.overtimeSession.update({
+        where: { id: sessionId },
+        data: {
+          status: request.body.status,
+          verifiedBy: request.user?.employeeId,
+          verifiedAt: new Date(),
+          rejectionReason: request.body.status === "REJECTED" ? request.body.rejectionReason : null,
+        },
+        include: {
+          employee: true,
+          verifier: true,
+        },
+      });
+
+      return sendSuccess(response, "Overtime session verified successfully", updatedSession);
+    } catch (error) {
+      next(error);
+    }
+  },
+);
 
 export default router;

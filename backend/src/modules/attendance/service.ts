@@ -11,6 +11,7 @@ type AttendanceFinalizationDeps = {
   findEmployeeIdsWithAttendance: (attendanceDate: Date) => Promise<number[]>;
   findEmployeeIdsWithApprovedLeave: (attendanceDate: Date) => Promise<number[]>;
   createAbsentAttendances: (entries: Array<{ employeeId: number; attendanceDate: Date; status: AttendanceStatus }>) => Promise<number>;
+  updateAttendanceWithMissingCheckout: (attendanceDate: Date, cutoffHour: number) => Promise<number>;
   isWorkingDay?: (attendanceDate: Date) => Promise<boolean>;
 };
 
@@ -62,6 +63,21 @@ export function getRegularizedAttendanceStatus(checkInTime?: Date | null, checkO
   return AttendanceStatus.HALF_DAY;
 }
 
+
+export function finalizeAttendanceStatus(
+  checkInTime?: Date | null, 
+  checkOutTime?: Date | null
+) {
+  if (!checkInTime) return AttendanceStatus.ABSENT;
+  
+  if (!checkOutTime) {
+    // Employee checked in but never checked out - mark as half day
+    return AttendanceStatus.HALF_DAY;
+  }
+  
+  return AttendanceStatus.PRESENT;
+}
+
 export async function finalizeAttendanceForDate(
   input: { date?: string },
   deps: AttendanceFinalizationDeps,
@@ -105,9 +121,13 @@ export async function finalizeAttendanceForDate(
     })),
   );
 
+  // Update existing attendance records with missing checkouts
+  const updatedCount = await deps.updateAttendanceWithMissingCheckout(attendanceDate, 20);
+
   return {
     attendanceDate,
     createdCount,
+    updatedCount,
   };
 }
 
@@ -116,6 +136,13 @@ export function buildApprovedLeaveWhereForAttendanceDate(attendanceDate: Date) {
     status: LeaveStatus.APPROVED,
     startDate: { lte: endOfDay(attendanceDate) },
     endDate: { gte: startOfDay(attendanceDate) },
+  };
+}
+
+export function buildAttendanceWhereForDate(attendanceDate: Date) {
+  return {
+    gte: startOfDay(attendanceDate),
+    lte: endOfDay(attendanceDate),
   };
 }
 

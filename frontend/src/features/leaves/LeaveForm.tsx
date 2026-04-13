@@ -3,6 +3,7 @@ import { Check, ChevronDown } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import type { LeaveType } from "../../types";
 import DateRangePicker from "./DateRangePicker";
+import { countWords, LEAVE_REASON_MAX_WORDS, LEAVE_REASON_MIN_WORDS } from "./reasonValidation";
 
 export type LeaveFormValues = {
   leaveTypeId: string;
@@ -25,6 +26,7 @@ type LeaveFormProps = {
 
 export default function LeaveForm({ form, attachmentName, leaveTypes, isSubmitting = false, onChange, onAttachmentChange, onSubmit }: LeaveFormProps) {
   const isSingleDay = form.startDate && form.endDate && form.startDate === form.endDate;
+  const reasonWordCount = useMemo(() => countWords(form.reason), [form.reason]);
   const [leaveTypeMenuOpen, setLeaveTypeMenuOpen] = useState(false);
   const [showAllLeaveTypes, setShowAllLeaveTypes] = useState(false);
   const leaveTypeMenuRef = useRef<HTMLDivElement | null>(null);
@@ -231,6 +233,9 @@ export default function LeaveForm({ form, attachmentName, leaveTypes, isSubmitti
       <label>
         Reason
         <textarea value={form.reason} onChange={(event) => onChange({ ...form, reason: event.target.value })} rows={4} required disabled={isSubmitting} />
+        <span className="muted">
+          {reasonWordCount} words. Keep it between {LEAVE_REASON_MIN_WORDS} and {LEAVE_REASON_MAX_WORDS} words.
+        </span>
       </label>
       <label>
         Attachment (optional)

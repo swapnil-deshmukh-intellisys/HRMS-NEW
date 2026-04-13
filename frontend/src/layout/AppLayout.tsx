@@ -34,6 +34,7 @@ export default function AppLayout({ token, sessionUser, onLogout }: AppLayoutPro
           onToggleNav={() => setNavOpen((current) => !current)}
           token={token}
           currentEmployeeId={sessionUser.employee?.id ?? null}
+          role={sessionUser.role}
         />
         <div className="content-body">
           <Outlet />

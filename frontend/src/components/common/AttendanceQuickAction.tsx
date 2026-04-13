@@ -1,5 +1,5 @@
 import "./AttendanceQuickAction.css";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Modal from "./Modal";
 import { apiRequest } from "../../services/api";
 import type { Attendance } from "../../types";
@@ -28,25 +28,42 @@ export default function AttendanceQuickAction({
   const [attendanceToday, setAttendanceToday] = useState<Attendance | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [actionError, setActionError] = useState("");
   const [now, setNow] = useState(() => Date.now());
+  const latestLoadRequestRef = useRef(0);
+  const attendanceVersionRef = useRef(0);
+
+  const syncAttendanceState = useCallback(
+    (nextAttendance: Attendance | null) => {
+      setAttendanceToday(nextAttendance);
+      onStateChange?.(nextAttendance);
+    },
+    [onStateChange],
+  );
 
   const loadAttendance = useCallback(async () => {
     if (!currentEmployeeId) {
-      setAttendanceToday(null);
-      onStateChange?.(null);
+      syncAttendanceState(null);
       return;
     }
 
+    const requestId = ++latestLoadRequestRef.current;
+    const versionAtStart = attendanceVersionRef.current;
+
     try {
       const response = await apiRequest<SelfDashboardData>("/attendance/today", { token });
+      if (requestId !== latestLoadRequestRef.current || versionAtStart !== attendanceVersionRef.current) {
+        return;
+      }
+
       const nextAttendance = response.data.attendanceToday ?? null;
-      setAttendanceToday(nextAttendance);
-      onStateChange?.(nextAttendance);
+      syncAttendanceState(nextAttendance);
     } catch {
-      setAttendanceToday(null);
-      onStateChange?.(null);
+      if (requestId !== latestLoadRequestRef.current || versionAtStart !== attendanceVersionRef.current) {
+        return;
+      }
     }
-  }, [currentEmployeeId, onStateChange, token]);
+  }, [currentEmployeeId, syncAttendanceState, token]);
 
   useEffect(() => {
     void loadAttendance();
@@ -57,8 +74,8 @@ export default function AttendanceQuickAction({
       const detail = getAttendanceUpdatedDetail(event);
 
       if (detail) {
-        setAttendanceToday(detail.attendanceToday);
-        onStateChange?.(detail.attendanceToday);
+        attendanceVersionRef.current += 1;
+        syncAttendanceState(detail.attendanceToday);
         return;
       }
 
@@ -67,7 +84,7 @@ export default function AttendanceQuickAction({
 
     window.addEventListener(ATTENDANCE_EVENT, handleAttendanceUpdated);
     return () => window.removeEventListener(ATTENDANCE_EVENT, handleAttendanceUpdated);
-  }, [loadAttendance, onStateChange]);
+  }, [loadAttendance, syncAttendanceState]);
 
   useEffect(() => {
     if (!attendanceToday?.checkInTime || attendanceToday.checkOutTime) {
@@ -123,15 +140,20 @@ export default function AttendanceQuickAction({
 
     try {
       setSubmitting(true);
+      setActionError("");
+      attendanceVersionRef.current += 1;
       const response = await apiRequest<Attendance>(actionState.actionPath, {
         method: "POST",
         token,
         body: {},
       });
       const nextAttendance = response.data;
-      setAttendanceToday(nextAttendance);
-      onStateChange?.(nextAttendance);
+      syncAttendanceState(nextAttendance);
       dispatchAttendanceUpdated(nextAttendance);
+      void loadAttendance();
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : "Failed to update attendance.");
+      await loadAttendance();
     } finally {
       setSubmitting(false);
     }
@@ -160,6 +182,11 @@ export default function AttendanceQuickAction({
         >
           {submitting ? "Updating..." : actionState.label}
         </button>
+        {actionError ? (
+          <p className="attendance-quick-action-error" role="alert">
+            {actionError}
+          </p>
+        ) : null}
       </div>
       <Modal open={confirmOpen} title="Confirm check out" onClose={() => setConfirmOpen(false)}>
         <div className="stack attendance-quick-action-confirm">

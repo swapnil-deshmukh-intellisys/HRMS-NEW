@@ -47,6 +47,15 @@ enum ApprovalStepStatus {
   REJECTED
 }
 
+enum MedicalProofStatus {
+  NOT_REQUIRED
+  PENDING_UPLOAD
+  PENDING_HR_REVIEW
+  APPROVED
+  REJECTED
+  EXPIRED
+}
+
 enum LeaveDurationType {
   FULL_DAY
   HALF_DAY
@@ -64,6 +73,14 @@ enum PayrollStatus {
 
 enum EmployeeCapabilityType {
   TEAM_LEAD
+}
+
+enum OvertimeStatus {
+  ACTIVE
+  COMPLETED
+  PENDING_VERIFICATION
+  VERIFIED
+  REJECTED
 }
 
 enum CalendarExceptionType {
@@ -138,7 +155,10 @@ model Employee {
   leaveRequests         LeaveRequest[] @relation("LeaveRequester")
   managerReviewedLeaves LeaveRequest[] @relation("LeaveManagerApprover")
   hrReviewedLeaves      LeaveRequest[] @relation("LeaveHrApprover")
+  medicalProofReviewedLeaves LeaveRequest[] @relation("LeaveMedicalProofReviewer")
   payrollRecords        PayrollRecord[]
+  overtimeSessions      OvertimeSession[]
+  verifiedOvertimeSessions OvertimeSession[] @relation("OvertimeVerifier")
 
   @@index([departmentId])
   @@index([managerId])
@@ -260,6 +280,13 @@ model LeaveRequest {
   attachmentName   String?
   attachmentPath   String?
   attachmentMime   String?
+  medicalProofRequired Boolean @default(false)
+  medicalProofDueAt DateTime?
+  medicalProofSubmittedAt DateTime?
+  medicalProofStatus MedicalProofStatus @default(NOT_REQUIRED)
+  medicalProofReviewedAt DateTime?
+  medicalProofReviewedById Int?
+  medicalProofRejectionReason String?
   reason           String
   status           LeaveStatus        @default(PENDING)
   managerApprovalStatus ApprovalStepStatus @default(PENDING)
@@ -277,9 +304,11 @@ model LeaveRequest {
   leaveType         LeaveType @relation(fields: [leaveTypeId], references: [id])
   managerApprovedBy Employee? @relation("LeaveManagerApprover", fields: [managerApprovedById], references: [id])
   hrApprovedBy      Employee? @relation("LeaveHrApprover", fields: [hrApprovedById], references: [id])
+  medicalProofReviewedBy Employee? @relation("LeaveMedicalProofReviewer", fields: [medicalProofReviewedById], references: [id])
 
   @@index([employeeId])
   @@index([status])
+  @@index([medicalProofStatus])
 }
 
 model PayrollRecord {
@@ -295,6 +324,30 @@ model PayrollRecord {
 
   @@unique([employeeId, month, year])
   @@index([employeeId])
+}
+
+model OvertimeSession {
+  id         Int            @id @default(autoincrement())
+  employeeId Int
+  date       DateTime
+  startTime  DateTime
+  endTime    DateTime?
+  duration   Int?           // minutes
+  reason     String?
+  status     OvertimeStatus @default(ACTIVE)
+  verifiedBy Int?
+  verifiedAt DateTime?
+  rejectionReason String?
+  createdAt  DateTime       @default(now())
+  updatedAt  DateTime       @updatedAt
+
+  employee Employee @relation(fields: [employeeId], references: [id])
+  verifier Employee? @relation("OvertimeVerifier", fields: [verifiedBy], references: [id])
+
+  @@unique([employeeId, date])
+  @@index([employeeId])
+  @@index([status])
+  @@index([date])
 }
 
 model CalendarException {

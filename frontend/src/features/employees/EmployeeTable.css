@@ -35,6 +35,7 @@
 
 .employee-directory-table .table {
   min-width: 100%;
+  table-layout: fixed;
 }
 
 .employee-directory-table .table th {
@@ -66,6 +67,46 @@
 
 .employee-directory-table .table td:last-child {
   padding-right: 18px;
+}
+
+.employee-directory-col--name {
+  width: 34%;
+}
+
+.employee-directory-col--code {
+  width: 14%;
+}
+
+.employee-directory-col--department {
+  width: 22%;
+}
+
+.employee-directory-col--role {
+  width: 14%;
+}
+
+.employee-directory-col--status {
+  width: 16%;
+}
+
+.employee-directory-table .table td {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.employee-directory-table .table td:first-child {
+  white-space: normal;
+}
+
+.employee-directory-table .table td:first-child .table-cell-stack {
+  min-width: 0;
+}
+
+.employee-directory-table .table td:first-child .table-cell-primary,
+.employee-directory-table .table td:first-child .table-cell-secondary {
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .employee-directory-mobile-list {

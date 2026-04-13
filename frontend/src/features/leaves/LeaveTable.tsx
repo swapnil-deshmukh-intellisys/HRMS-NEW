@@ -11,6 +11,8 @@ type LeaveTableProps = {
   teamLeadScopeIds?: number[];
   onReview: (id: number, action: "approve" | "reject", stage: "manager" | "hr") => void | Promise<void>;
   onCancel: (id: number) => void | Promise<void>;
+  onUploadMedicalProof?: (id: number, file: File) => void | Promise<void>;
+  onReviewMedicalProof?: (id: number, action: "approve" | "reject") => void | Promise<void>;
 };
 
 export default function LeaveTable({
@@ -20,8 +22,11 @@ export default function LeaveTable({
   teamLeadScopeIds = [],
   onReview,
   onCancel,
+  onUploadMedicalProof,
+  onReviewMedicalProof,
 }: LeaveTableProps) {
   const [expandedLeaveIds, setExpandedLeaveIds] = useState<number[]>([]);
+  const [medicalProofFiles, setMedicalProofFiles] = useState<Record<number, File | null>>({});
 
   function getDurationLabel(leave: LeaveRequest) {
     const sameDay = formatDateLabel(leave.startDate) === formatDateLabel(leave.endDate);
@@ -175,6 +180,41 @@ export default function LeaveTable({
     );
   }
 
+  function getMedicalProofStatusLabel(leave: LeaveRequest) {
+    switch (leave.medicalProofStatus) {
+      case "PENDING_UPLOAD":
+        return "Proof upload pending";
+      case "PENDING_HR_REVIEW":
+        return "Waiting for HR proof review";
+      case "APPROVED":
+        return "Proof approved";
+      case "REJECTED":
+        return "Proof rejected";
+      case "EXPIRED":
+        return "Proof deadline missed";
+      default:
+        return "Not required";
+    }
+  }
+
+  function canUploadMedicalProof(leave: LeaveRequest) {
+    return (
+      leave.employee.id === currentEmployeeId &&
+      leave.status === "APPROVED" &&
+      leave.medicalProofRequired &&
+      leave.medicalProofStatus === "PENDING_UPLOAD"
+    );
+  }
+
+  function canHrReviewMedicalProof(leave: LeaveRequest) {
+    return (
+      (role === "HR" || role === "ADMIN") &&
+      leave.status === "APPROVED" &&
+      leave.medicalProofRequired &&
+      leave.medicalProofStatus === "PENDING_HR_REVIEW"
+    );
+  }
+
   function isExpanded(leaveId: number) {
     return expandedLeaveIds.includes(leaveId);
   }
@@ -302,9 +342,97 @@ export default function LeaveTable({
                                       <span className="leave-request-details__value">No attachment</span>
                                     )}
                                   </div>
+                                  {leave.medicalProofRequired ? (
+                                    <>
+                                      <div className="leave-request-details__item">
+                                        <span className="leave-request-details__label">Medical proof</span>
+                                        <span className="leave-request-details__value">{getMedicalProofStatusLabel(leave)}</span>
+                                      </div>
+                                      <div className="leave-request-details__item">
+                                        <span className="leave-request-details__label">Proof due</span>
+                                        <span className="leave-request-details__value">
+                                          {leave.medicalProofDueAt ? formatDateTime(leave.medicalProofDueAt) : "-"}
+                                        </span>
+                                      </div>
+                                      {leave.medicalProofReviewedAt ? (
+                                        <div className="leave-request-details__item">
+                                          <span className="leave-request-details__label">Proof reviewed on</span>
+                                          <span className="leave-request-details__value">{formatDateTime(leave.medicalProofReviewedAt)}</span>
+                                        </div>
+                                      ) : null}
+                                      {leave.medicalProofRejectionReason ? (
+                                        <div className="leave-request-details__item">
+                                          <span className="leave-request-details__label">Proof review note</span>
+                                          <span className="leave-request-details__value">{leave.medicalProofRejectionReason}</span>
+                                        </div>
+                                      ) : null}
+                                    </>
+                                  ) : null}
                                 </div>
                               </div>
                             </div>
+                            {canUploadMedicalProof(leave) ? (
+                              <div className="leave-request-details__reason-block">
+                                <p className="eyebrow">Medical proof upload</p>
+                                <div className="button-row row-actions leave-table-actions">
+                                  <input
+                                    type="file"
+                                    accept=".pdf,application/pdf"
+                                    onChange={(event) =>
+                                      setMedicalProofFiles((current) => ({
+                                        ...current,
+                                        [leave.id]: event.target.files?.[0] ?? null,
+                                      }))
+                                    }
+                                  />
+                                  <button
+                                    type="button"
+                                    className="leave-action-button"
+                                    disabled={!medicalProofFiles[leave.id]}
+                                    onClick={() => {
+                                      const file = medicalProofFiles[leave.id];
+
+                                      if (!file || !onUploadMedicalProof) {
+                                        return;
+                                      }
+
+                                      void onUploadMedicalProof(leave.id, file);
+                                    }}
+                                  >
+                                    Upload proof
+                                  </button>
+                                </div>
+                              </div>
+                            ) : null}
+                            {canHrReviewMedicalProof(leave) ? (
+                              <div className="leave-request-details__reason-block">
+                                <p className="eyebrow">Medical proof review</p>
+                                <div className="button-row row-actions leave-table-actions">
+                                  <button
+                                    type="button"
+                                    className="leave-action-button"
+                                    onClick={() => {
+                                      if (onReviewMedicalProof) {
+                                        void onReviewMedicalProof(leave.id, "approve");
+                                      }
+                                    }}
+                                  >
+                                    Verify proof
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className="secondary leave-action-button"
+                                    onClick={() => {
+                                      if (onReviewMedicalProof) {
+                                        void onReviewMedicalProof(leave.id, "reject");
+                                      }
+                                    }}
+                                  >
+                                    Reject proof
+                                  </button>
+                                </div>
+                              </div>
+                            ) : null}
                             <div className="leave-request-details__reason-block">
                               <p className="eyebrow">Reason</p>
                               <p className="leave-request-details__reason">{leave.reason}</p>

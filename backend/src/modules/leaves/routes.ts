@@ -13,14 +13,52 @@ import { startOfDay } from "../../utils/dates.js";
 import { getFinancialQuarterForDate, getFinancialYearBounds, getFinancialYearForDate } from "../../utils/financial-year.js";
 import { getEmployeeLeaveBalanceByType, getEmployeeLeaveBalances, isPolicyActiveForYear } from "../../utils/leave-balance.js";
 import { canTeamLeadAccessEmployee, getScopedEmployeeIdsForTeamLead, hasEmployeeCapability } from "../../utils/team-lead.js";
-import { buildApprovedLeaveAttendanceEntries, buildLeaveOverlapWhere, createLeaveRequestForEmployee, hasAttendanceConflict } from "./service.js";
+import {
+  buildApprovedLeaveAttendanceEntries,
+  buildLeaveOverlapWhere,
+  createLeaveRequestForEmployee,
+  MEDICAL_PROOF_STATUS,
+  type MedicalProofStatus,
+  hasAttendanceConflict,
+  MEDICAL_PROOF_WINDOW_DAYS,
+  SICK_LEAVE_CODE,
+} from "./service.js";
 import { getCalendarDayStatus } from "../calendar/service.js";
 
 const router = Router();
+const LEAVE_REASON_MIN_WORDS = 25;
+const LEAVE_REASON_MAX_WORDS = 300;
+
+function countWords(value: string) {
+  return value
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean).length;
+}
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const uploadsDir = path.resolve(__dirname, "../../../uploads/leaves");
 fs.mkdirSync(uploadsDir, { recursive: true });
+
+function buildFilename(file: Express.Multer.File) {
+  const extension = path.extname(file.originalname);
+  const baseName = path.basename(file.originalname, extension).replace(/[^a-zA-Z0-9-_]/g, "_");
+  return `${Date.now()}-${baseName}${extension}`;
+}
+
+const uploadStorage = multer.diskStorage({
+  destination: (
+    _request: Express.Request,
+    _file: Express.Multer.File,
+    callback: (error: Error | null, destination: string) => void,
+  ) => callback(null, uploadsDir),
+  filename: (
+    _request: Express.Request,
+    file: Express.Multer.File,
+    callback: (error: Error | null, filename: string) => void,
+  ) => callback(null, buildFilename(file)),
+}) satisfies StorageEngine;
 
 const upload = multer({
   storage: multer.diskStorage({
@@ -33,11 +71,7 @@ const upload = multer({
       _request: Express.Request,
       file: Express.Multer.File,
       callback: (error: Error | null, filename: string) => void,
-    ) => {
-      const extension = path.extname(file.originalname);
-      const baseName = path.basename(file.originalname, extension).replace(/[^a-zA-Z0-9-_]/g, "_");
-      callback(null, `${Date.now()}-${baseName}${extension}`);
-    },
+    ) => callback(null, buildFilename(file)),
   }) satisfies StorageEngine,
   limits: {
     fileSize: 5 * 1024 * 1024,
@@ -53,13 +87,39 @@ const upload = multer({
   },
 });
 
+const medicalProofUpload = multer({
+  storage: uploadStorage,
+  limits: {
+    fileSize: 5 * 1024 * 1024,
+  },
+  fileFilter: (_request: Express.Request, file: Express.Multer.File, callback: FileFilterCallback) => {
+    if (file.mimetype !== "application/pdf") {
+      callback(new AppError("Only PDF medical proof is allowed", 400));
+      return;
+    }
+
+    callback(null, true);
+  },
+});
+
 const applyLeaveSchema = z.object({
   leaveTypeId: z.coerce.number().int().positive(),
   startDate: z.string().min(1),
   endDate: z.string().min(1),
   startDayDuration: z.nativeEnum(LeaveDurationType).default(LeaveDurationType.FULL_DAY),
   endDayDuration: z.nativeEnum(LeaveDurationType).default(LeaveDurationType.FULL_DAY),
-  reason: z.string().min(3),
+  reason: z
+    .string()
+    .trim()
+    .refine(
+      (value) => {
+        const wordCount = countWords(value);
+        return wordCount >= LEAVE_REASON_MIN_WORDS && wordCount <= LEAVE_REASON_MAX_WORDS;
+      },
+      {
+        message: `Reason must be between ${LEAVE_REASON_MIN_WORDS} and ${LEAVE_REASON_MAX_WORDS} words`,
+      },
+    ),
 });
 
 const reviewLeaveSchema = z.object({
@@ -95,6 +155,8 @@ router.get("/leave-types", async (_request, response, next) => {
 
 router.get("/leave-balances/me", async (request, response, next) => {
   try {
+    await processOverdueMedicalProofs();
+
     if (!request.user?.employeeId) {
       throw new AppError("Employee profile not found", 400);
     }
@@ -137,6 +199,8 @@ router.get("/leave-balances/me", async (request, response, next) => {
 
 router.get("/leaves", async (request, response, next) => {
   try {
+    await processOverdueMedicalProofs();
+
     const requestedEmployeeId = request.query.employeeId ? Number(request.query.employeeId) : undefined;
     let where = {};
 
@@ -189,6 +253,7 @@ router.get("/leaves", async (request, response, next) => {
         leaveType: true,
         managerApprovedBy: true,
         hrApprovedBy: true,
+        medicalProofReviewedBy: true,
       },
       orderBy: { createdAt: "desc" },
     });
@@ -276,6 +341,13 @@ router.post("/leaves", upload.single("attachment"), validate(applyLeaveSchema), 
           attachmentName,
           attachmentPath,
           attachmentMime,
+          medicalProofRequired,
+          medicalProofDueAt,
+          medicalProofSubmittedAt,
+          medicalProofStatus,
+          medicalProofReviewedAt,
+          medicalProofReviewedById,
+          medicalProofRejectionReason,
           reason,
         }) =>
           prisma.leaveRequest.create({
@@ -293,11 +365,21 @@ router.post("/leaves", upload.single("attachment"), validate(applyLeaveSchema), 
               attachmentName,
               attachmentPath,
               attachmentMime,
+              medicalProofRequired,
+              medicalProofDueAt,
+              medicalProofSubmittedAt,
+              medicalProofStatus,
+              medicalProofReviewedAt,
+              medicalProofReviewedById,
+              medicalProofRejectionReason,
               reason,
             },
             include: {
               employee: true,
               leaveType: true,
+              managerApprovedBy: true,
+              hrApprovedBy: true,
+              medicalProofReviewedBy: true,
             },
           }),
       },
@@ -315,8 +397,18 @@ async function getLeaveReviewContext(leaveId: number) {
     include: {
       employee: true,
       leaveType: true,
+      managerApprovedBy: true,
+      hrApprovedBy: true,
+      medicalProofReviewedBy: true,
     },
   })) as (Awaited<ReturnType<typeof prisma.leaveRequest.findUnique>> & {
+    medicalProofRequired: boolean;
+    medicalProofDueAt: Date | null;
+    medicalProofSubmittedAt: Date | null;
+    medicalProofStatus: MedicalProofStatus;
+    medicalProofReviewedAt: Date | null;
+    medicalProofReviewedById: number | null;
+    medicalProofRejectionReason: string | null;
     employee: {
       managerId: number | null;
     };
@@ -377,6 +469,22 @@ function ensureHrApprovalAccess(
 ) {
   if (actor.role !== "HR" && actor.role !== "ADMIN") {
     throw new AppError("Only HR can perform the final approval step", 403);
+  }
+}
+
+function ensureMedicalProofEligible(leaveRequest: LeaveReviewContext) {
+  if (!leaveRequest.medicalProofRequired || !isSickLeave(leaveRequest.leaveType.code)) {
+    throw new AppError("Medical proof is not required for this leave request", 400);
+  }
+
+  if (leaveRequest.status !== LeaveStatus.APPROVED) {
+    throw new AppError("Medical proof can only be managed after leave approval", 400);
+  }
+}
+
+function ensureMedicalProofWindowOpen(leaveRequest: LeaveReviewContext, now = new Date()) {
+  if (!leaveRequest.medicalProofDueAt || leaveRequest.medicalProofDueAt < now) {
+    throw new AppError(`Medical proof must be uploaded within ${MEDICAL_PROOF_WINDOW_DAYS} days`, 400);
   }
 }
 
@@ -494,6 +602,7 @@ async function finalizeApprovedLeave(
       hrApprovalStatus: ApprovalStepStatus.APPROVED,
       deductedDays,
       fullQuotaDeducted: policyActive && leaveRequest.leaveType.deductFullQuotaOnApproval,
+      medicalProofStatus: leaveRequest.medicalProofRequired ? leaveRequest.medicalProofStatus : MEDICAL_PROOF_STATUS.NOT_REQUIRED,
       ...(actor.role === "HR"
         ? {
             hrApprovedById: actor.employeeId,
@@ -511,8 +620,118 @@ async function finalizeApprovedLeave(
       leaveType: true,
       managerApprovedBy: true,
       hrApprovedBy: true,
+      medicalProofReviewedBy: true,
     },
   });
+}
+
+type PrismaTransaction = Omit<typeof prisma, "$connect" | "$disconnect" | "$on" | "$transaction" | "$use" | "$extends">;
+
+type LeaveReviewContext = Awaited<ReturnType<typeof getLeaveReviewContext>>;
+
+function isSickLeave(leaveCode: string) {
+  return leaveCode.trim().toUpperCase() === SICK_LEAVE_CODE;
+}
+
+async function restoreLeaveBalanceForUnpaidConversion(
+  transaction: PrismaTransaction,
+  leaveRequest: LeaveReviewContext,
+) {
+  const deductedDays = leaveRequest.deductedDays ?? 0;
+
+  if (deductedDays <= 0) {
+    return;
+  }
+
+  const currentDate = new Date();
+  const balance = await getEmployeeLeaveBalanceByType(
+    transaction,
+    leaveRequest.employeeId,
+    leaveRequest.leaveTypeId,
+    getFinancialYearForDate(leaveRequest.startDate),
+    currentDate,
+  );
+
+  if (!balance) {
+    return;
+  }
+
+  const approvalQuarter = getFinancialQuarterForDate(leaveRequest.startDate);
+  const currentQuarter = getFinancialQuarterForDate(currentDate);
+  const shouldAdjustVisibleDays =
+    isPolicyActiveForYear(leaveRequest.leaveType, getFinancialYearForDate(leaveRequest.startDate)) &&
+    leaveRequest.leaveType.allocationMode === "QUARTERLY" &&
+    getFinancialYearForDate(leaveRequest.startDate) === getFinancialYearForDate(currentDate) &&
+    approvalQuarter === currentQuarter;
+
+  await transaction.leaveBalance.update({
+    where: { id: balance.id },
+    data: {
+      usedDays: Math.max(balance.usedDays - deductedDays, 0),
+      remainingDays: balance.remainingDays + deductedDays,
+      visibleDays: shouldAdjustVisibleDays ? balance.visibleDays + deductedDays : balance.visibleDays,
+    } as never,
+  });
+}
+
+async function convertLeaveToUnpaid(
+  transaction: PrismaTransaction,
+  leaveRequest: LeaveReviewContext,
+  proofStatus: typeof MEDICAL_PROOF_STATUS.REJECTED | typeof MEDICAL_PROOF_STATUS.EXPIRED,
+  proofReview: { reviewedById?: number | null; rejectionReason?: string | null } = {},
+) {
+  await restoreLeaveBalanceForUnpaidConversion(transaction, leaveRequest);
+
+  return transaction.leaveRequest.update({
+    where: { id: leaveRequest.id },
+    data: {
+      paidDays: 0,
+      unpaidDays: leaveRequest.totalDays,
+      isUnpaid: true,
+      deductedDays: 0,
+      fullQuotaDeducted: false,
+      medicalProofStatus: proofStatus,
+      medicalProofReviewedAt: proofStatus === MEDICAL_PROOF_STATUS.EXPIRED ? null : new Date(),
+      medicalProofReviewedById:
+        proofStatus === MEDICAL_PROOF_STATUS.EXPIRED ? null : (proofReview.reviewedById ?? null),
+      medicalProofRejectionReason:
+        proofStatus === MEDICAL_PROOF_STATUS.REJECTED ? (proofReview.rejectionReason ?? "Medical proof rejected by HR") : null,
+    } as never,
+    include: {
+      employee: true,
+      leaveType: true,
+      managerApprovedBy: true,
+      hrApprovedBy: true,
+      medicalProofReviewedBy: true,
+    },
+  });
+}
+
+async function processOverdueMedicalProofs(referenceTime = new Date()) {
+  const overdueRequests = await prisma.leaveRequest.findMany({
+    where: {
+      status: LeaveStatus.APPROVED,
+      medicalProofRequired: true,
+      medicalProofStatus: MEDICAL_PROOF_STATUS.PENDING_UPLOAD,
+      medicalProofDueAt: { lt: referenceTime },
+      leaveType: { code: SICK_LEAVE_CODE },
+    },
+    include: {
+      employee: true,
+      leaveType: true,
+      managerApprovedBy: true,
+      hrApprovedBy: true,
+      medicalProofReviewedBy: true,
+    },
+  });
+
+  for (const leaveRequest of overdueRequests) {
+    await prisma.$transaction((transaction) =>
+      convertLeaveToUnpaid(transaction, leaveRequest, MEDICAL_PROOF_STATUS.EXPIRED),
+    );
+  }
+
+  return overdueRequests.length;
 }
 
 async function managerApproveLeave(leaveId: number, actor: NonNullable<Express.Request["user"]>) {
@@ -542,6 +761,7 @@ async function managerApproveLeave(leaveId: number, actor: NonNullable<Express.R
       leaveType: true,
       managerApprovedBy: true,
       hrApprovedBy: true,
+      medicalProofReviewedBy: true,
     },
   });
 }
@@ -609,6 +829,7 @@ async function hrApproveLeave(leaveId: number, actor: NonNullable<Express.Reques
       leaveType: true,
       managerApprovedBy: true,
       hrApprovedBy: true,
+      medicalProofReviewedBy: true,
     },
   });
 }
@@ -641,6 +862,7 @@ async function hrRejectLeave(
       leaveType: true,
       managerApprovedBy: true,
       hrApprovedBy: true,
+      medicalProofReviewedBy: true,
     },
   });
 }
@@ -685,8 +907,92 @@ async function cancelLeave(leaveId: number, actor: NonNullable<Express.Request["
       leaveType: true,
       managerApprovedBy: true,
       hrApprovedBy: true,
+      medicalProofReviewedBy: true,
     },
   });
+}
+
+async function uploadMedicalProof(
+  leaveId: number,
+  actor: NonNullable<Express.Request["user"]>,
+  file?: Express.Multer.File,
+) {
+  const leaveRequest = await getLeaveReviewContext(leaveId);
+
+  if (leaveRequest.employeeId !== actor.employeeId) {
+    throw new AppError("You can only upload medical proof for your own leave request", 403);
+  }
+
+  ensureMedicalProofEligible(leaveRequest);
+  ensureMedicalProofWindowOpen(leaveRequest);
+
+  if (!file) {
+    throw new AppError("Medical proof PDF is required", 400);
+  }
+
+  return prisma.leaveRequest.update({
+    where: { id: leaveRequest.id },
+    data: {
+      attachmentName: file.originalname,
+      attachmentPath: `/uploads/leaves/${file.filename}`,
+      attachmentMime: file.mimetype,
+      medicalProofSubmittedAt: new Date(),
+      medicalProofStatus: MEDICAL_PROOF_STATUS.PENDING_HR_REVIEW,
+      medicalProofReviewedAt: null,
+      medicalProofReviewedById: null,
+      medicalProofRejectionReason: null,
+    },
+    include: {
+      employee: true,
+      leaveType: true,
+      managerApprovedBy: true,
+      hrApprovedBy: true,
+      medicalProofReviewedBy: true,
+    },
+  });
+}
+
+async function approveMedicalProof(leaveId: number, actor: NonNullable<Express.Request["user"]>) {
+  const leaveRequest = await getLeaveReviewContext(leaveId);
+  ensureHrApprovalAccess(actor);
+  ensureMedicalProofEligible(leaveRequest);
+
+  if (leaveRequest.medicalProofStatus !== MEDICAL_PROOF_STATUS.PENDING_HR_REVIEW) {
+    throw new AppError("Medical proof is not waiting for HR review", 400);
+  }
+
+  return prisma.leaveRequest.update({
+    where: { id: leaveRequest.id },
+    data: {
+      medicalProofStatus: MEDICAL_PROOF_STATUS.APPROVED,
+      medicalProofReviewedAt: new Date(),
+      medicalProofReviewedById: actor.employeeId,
+      medicalProofRejectionReason: null,
+    },
+    include: {
+      employee: true,
+      leaveType: true,
+      managerApprovedBy: true,
+      hrApprovedBy: true,
+      medicalProofReviewedBy: true,
+    },
+  });
+}
+
+async function rejectMedicalProof(leaveId: number, actor: NonNullable<Express.Request["user"]>) {
+  const leaveRequest = await getLeaveReviewContext(leaveId);
+  ensureHrApprovalAccess(actor);
+  ensureMedicalProofEligible(leaveRequest);
+
+  if (leaveRequest.medicalProofStatus !== MEDICAL_PROOF_STATUS.PENDING_HR_REVIEW) {
+    throw new AppError("Medical proof is not waiting for HR review", 400);
+  }
+
+  return prisma.$transaction((transaction) =>
+    convertLeaveToUnpaid(transaction, leaveRequest, MEDICAL_PROOF_STATUS.REJECTED, {
+      reviewedById: actor.employeeId,
+    }),
+  );
 }
 
 router.put("/leaves/:id/manager-approve", requireRoles("ADMIN", "MANAGER"), async (request, response, next) => {
@@ -748,6 +1054,53 @@ router.put("/leaves/:id/cancel", requireRoles("ADMIN", "HR", "MANAGER", "EMPLOYE
     const leaveId = Number(request.params.id);
     const cancelledLeave = await cancelLeave(leaveId, request.user!);
     return sendSuccess(response, "Leave cancelled successfully", cancelledLeave);
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.post(
+  "/leaves/:id/medical-proof",
+  requireRoles("EMPLOYEE", "MANAGER", "HR", "ADMIN"),
+  medicalProofUpload.single("medicalProof"),
+  async (request, response, next) => {
+    try {
+      await processOverdueMedicalProofs();
+      const leaveId = Number(request.params.id);
+      const updatedLeave = await uploadMedicalProof(leaveId, request.user!, request.file ?? undefined);
+      return sendSuccess(response, "Medical proof uploaded successfully", updatedLeave);
+    } catch (error) {
+      next(error);
+    }
+  },
+);
+
+router.put("/leaves/:id/medical-proof/approve", requireRoles("HR", "ADMIN"), async (request, response, next) => {
+  try {
+    await processOverdueMedicalProofs();
+    const leaveId = Number(request.params.id);
+    const updatedLeave = await approveMedicalProof(leaveId, request.user!);
+    return sendSuccess(response, "Medical proof approved successfully", updatedLeave);
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.put("/leaves/:id/medical-proof/reject", requireRoles("HR", "ADMIN"), async (request, response, next) => {
+  try {
+    await processOverdueMedicalProofs();
+    const leaveId = Number(request.params.id);
+    const updatedLeave = await rejectMedicalProof(leaveId, request.user!);
+    return sendSuccess(response, "Medical proof rejected successfully", updatedLeave);
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.post("/leaves/process-overdue-medical-proof", requireRoles("HR", "ADMIN"), async (_request, response, next) => {
+  try {
+    const updatedCount = await processOverdueMedicalProofs();
+    return sendSuccess(response, "Overdue medical proof processed successfully", { updatedCount });
   } catch (error) {
     next(error);
   }

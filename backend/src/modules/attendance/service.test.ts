@@ -3,6 +3,7 @@ import test from "node:test";
 import { AttendanceStatus } from "@prisma/client";
 import {
   buildApprovedLeaveWhereForAttendanceDate,
+  buildAttendanceWhereForDate,
   calculateWorkedMinutes,
   combineAttendanceDateAndTime,
   finalizeAttendanceForDate,
@@ -26,6 +27,16 @@ test("buildApprovedLeaveWhereForAttendanceDate uses approved leave overlap", () 
   assert.equal(where.status, "APPROVED");
   assert.deepEqual(where.startDate, { lte: new Date(2026, 2, 25, 23, 59, 59, 999) });
   assert.deepEqual(where.endDate, { gte: new Date(2026, 2, 25, 0, 0, 0, 0) });
+});
+
+test("buildAttendanceWhereForDate covers the full local day", () => {
+  const attendanceDate = new Date(2026, 2, 25, 14, 45);
+  const where = buildAttendanceWhereForDate(attendanceDate);
+
+  assert.deepEqual(where, {
+    gte: new Date(2026, 2, 25, 0, 0, 0, 0),
+    lte: new Date(2026, 2, 25, 23, 59, 59, 999),
+  });
 });
 
 test("combineAttendanceDateAndTime merges date and time", () => {

@@ -114,6 +114,12 @@ export type LeaveRequest = {
   attachmentName?: string | null;
   attachmentPath?: string | null;
   attachmentMime?: string | null;
+  medicalProofRequired?: boolean;
+  medicalProofDueAt?: string | null;
+  medicalProofSubmittedAt?: string | null;
+  medicalProofStatus?: "NOT_REQUIRED" | "PENDING_UPLOAD" | "PENDING_HR_REVIEW" | "APPROVED" | "REJECTED" | "EXPIRED";
+  medicalProofReviewedAt?: string | null;
+  medicalProofRejectionReason?: string | null;
   reason: string;
   status: "PENDING" | "APPROVED" | "REJECTED" | "CANCELLED";
   managerApprovalStatus: "PENDING" | "APPROVED" | "REJECTED";
@@ -126,6 +132,7 @@ export type LeaveRequest = {
   leaveType: LeaveType;
   managerApprovedBy?: Employee | null;
   hrApprovedBy?: Employee | null;
+  medicalProofReviewedBy?: Employee | null;
 };
 
 export type Attendance = {

@@ -1,18 +1,31 @@
 import "./Navbar.css";
 import { Bell, Search, UserRound } from "lucide-react";
+import { useState } from "react";
+import type { FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import AttendanceQuickAction from "../components/common/AttendanceQuickAction";
 import Button from "../components/common/Button";
+import type { Role } from "../types";
 type NavbarProps = {
   title: string;
   navOpen: boolean;
   onToggleNav: () => void;
   token: string | null;
   currentEmployeeId: number | null;
+  role: Role;
 };
 
-export default function Navbar({ title, navOpen, onToggleNav, token, currentEmployeeId }: NavbarProps) {
+export default function Navbar({ title, navOpen, onToggleNav, token, currentEmployeeId, role }: NavbarProps) {
   const navigate = useNavigate();
+  const [searchTerm, setSearchTerm] = useState("");
+  const canSearchEmployees = role !== "EMPLOYEE";
+
+  function handleEmployeeSearchSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const trimmedSearchTerm = searchTerm.trim();
+
+    navigate(trimmedSearchTerm ? `/employees?search=${encodeURIComponent(trimmedSearchTerm)}` : "/employees");
+  }
 
   return (
     <div className="topbar">
@@ -26,10 +39,18 @@ export default function Navbar({ title, navOpen, onToggleNav, token, currentEmpl
         <div className="topbar-attendance-action">
           <AttendanceQuickAction token={token} currentEmployeeId={currentEmployeeId} size="compact" />
         </div>
-        <label className="topbar-search-wrap" aria-label="Search workspace">
-          <Search className="topbar-search-icon" size={16} strokeWidth={2} />
-          <input className="topbar-search" type="search" placeholder="Search..." />
-        </label>
+        {canSearchEmployees ? (
+          <form className="topbar-search-wrap" aria-label="Search employees by name" onSubmit={handleEmployeeSearchSubmit}>
+            <Search className="topbar-search-icon" size={16} strokeWidth={2} />
+            <input
+              className="topbar-search"
+              type="search"
+              value={searchTerm}
+              onChange={(event) => setSearchTerm(event.target.value)}
+              placeholder="Search employees by name"
+            />
+          </form>
+        ) : null}
         <Button type="button" className="topbar-icon-button" variant="secondary" aria-label="Notifications">
           <Bell size={18} strokeWidth={2} />
         </Button>

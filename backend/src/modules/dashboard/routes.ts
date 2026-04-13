@@ -7,7 +7,11 @@ import { endOfDay, startOfDay } from "../../utils/dates.js";
 import { getFinancialYearBounds, getFinancialYearForDate } from "../../utils/financial-year.js";
 import { getEmployeeLeaveBalances } from "../../utils/leave-balance.js";
 import { getScopedEmployeeIdsForTeamLead, hasEmployeeCapability } from "../../utils/team-lead.js";
-import { buildApprovedLeaveWhereForAttendanceDate, getApprovedLeaveAttendanceStatusForDate } from "../attendance/service.js";
+import {
+  buildApprovedLeaveWhereForAttendanceDate,
+  buildAttendanceWhereForDate,
+  getApprovedLeaveAttendanceStatusForDate,
+} from "../attendance/service.js";
 import { buildMonthCalendarDays } from "../calendar/service.js";
 
 const router = Router();
@@ -76,13 +80,12 @@ async function enrichAttendanceWithLeaveContext(
 
 async function getAttendanceTodayForEmployee(employeeId: number, today: Date) {
   const [attendanceTodayRecord, approvedLeaveToday] = await Promise.all([
-    prisma.attendance.findUnique({
+    prisma.attendance.findFirst({
       where: {
-        employeeId_attendanceDate: {
-          employeeId,
-          attendanceDate: today,
-        },
+        employeeId,
+        attendanceDate: buildAttendanceWhereForDate(today),
       },
+      orderBy: { createdAt: "desc" },
     }),
     prisma.leaveRequest.findFirst({
       where: {

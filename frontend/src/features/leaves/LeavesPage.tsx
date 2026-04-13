@@ -8,6 +8,7 @@ import type { Employee, LeaveBalance, LeaveRequest, LeaveType, Role } from "../.
 import { formatLeaveDays } from "../../utils/format";
 import LeaveForm, { type LeaveFormValues } from "./LeaveForm";
 import LeaveTable from "./LeaveTable";
+import { countWords, LEAVE_REASON_MAX_WORDS, LEAVE_REASON_MIN_WORDS } from "./reasonValidation";
 
 type LeavesPageProps = {
   token: string | null;
@@ -120,6 +121,14 @@ export default function LeavesPage({ token, role, currentEmployeeId, currentEmpl
         setError("For a single-date leave, duration must match on both start and end.");
         return;
       }
+
+      const reasonWordCount = countWords(form.reason);
+
+      if (reasonWordCount < LEAVE_REASON_MIN_WORDS || reasonWordCount > LEAVE_REASON_MAX_WORDS) {
+        setError(`Leave reason must be between ${LEAVE_REASON_MIN_WORDS} and ${LEAVE_REASON_MAX_WORDS} words.`);
+        return;
+      }
+
       const formData = new FormData();
       formData.append("leaveTypeId", String(Number(form.leaveTypeId)));
       formData.append("startDate", form.startDate);
@@ -212,6 +221,41 @@ export default function LeavesPage({ token, role, currentEmployeeId, currentEmpl
     }
   }
 
+  async function uploadMedicalProof(id: number, file: File) {
+    try {
+      setError("");
+      setMessage("");
+      const formData = new FormData();
+      formData.append("medicalProof", file);
+      await apiRequest(`/leaves/${id}/medical-proof`, {
+        method: "POST",
+        token,
+        body: formData,
+      });
+
+      setMessage("Medical proof uploaded.");
+      await reloadData();
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : "Failed to upload medical proof.");
+    }
+  }
+
+  async function reviewMedicalProof(id: number, action: "approve" | "reject") {
+    try {
+      setError("");
+      setMessage("");
+      await apiRequest(`/leaves/${id}/medical-proof/${action}`, {
+        method: "PUT",
+        token,
+      });
+
+      setMessage(action === "approve" ? "Medical proof verified." : "Medical proof rejected and leave converted to unpaid.");
+      await reloadData();
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : "Failed to review medical proof.");
+    }
+  }
+
   return (
     <section className="stack">
       {error ? <MessageCard title="Leave issue" tone="error" message={error} /> : null}
@@ -245,6 +289,8 @@ export default function LeavesPage({ token, role, currentEmployeeId, currentEmpl
             teamLeadScopeIds={teamLeadScopeIds}
             onReview={reviewLeave}
             onCancel={(id) => setConfirmAction({ type: "cancel", leaveId: id })}
+            onUploadMedicalProof={uploadMedicalProof}
+            onReviewMedicalProof={reviewMedicalProof}
           />
         </div>
       )}

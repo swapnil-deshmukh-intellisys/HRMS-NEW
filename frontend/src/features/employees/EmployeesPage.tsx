@@ -1,7 +1,7 @@
 import "./EmployeesPage.css";
 import { useCallback, useEffect, useState } from "react";
 import type { FormEvent } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import MessageCard from "../../components/common/MessageCard";
 import Modal from "../../components/common/Modal";
 import { apiRequest } from "../../services/api";
@@ -17,6 +17,7 @@ type EmployeesPageProps = {
 
 export default function EmployeesPage({ token, role }: EmployeesPageProps) {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
   const [error, setError] = useState("");
@@ -26,6 +27,7 @@ export default function EmployeesPage({ token, role }: EmployeesPageProps) {
   const [form, setForm] = useState<EmployeeFormValues>(createInitialEmployeeForm);
   const [loading, setLoading] = useState(role !== "EMPLOYEE");
   const [submitting, setSubmitting] = useState(false);
+  const initialSearchTerm = searchParams.get("search") ?? "";
 
   function createEmployeeFormWithDefaults() {
     const defaultDepartment = departments.find((department) => department.name === "Software Development");
@@ -152,6 +154,7 @@ export default function EmployeesPage({ token, role }: EmployeesPageProps) {
           employees={employees}
           onAdd={startCreate}
           onSelect={(employee) => navigate(`/employees/${employee.id}`)}
+          initialSearchTerm={initialSearchTerm}
         />
       )}
       <Modal

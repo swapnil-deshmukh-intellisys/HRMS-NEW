@@ -2,7 +2,14 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { AttendanceStatus } from "@prisma/client";
 import { AppError } from "../../utils/api.js";
-import { buildApprovedLeaveAttendanceEntries, buildLeaveOverlapWhere, createLeaveRequestForEmployee, hasAttendanceConflict } from "./service.js";
+import {
+  buildApprovedLeaveAttendanceEntries,
+  buildLeaveOverlapWhere,
+  createLeaveRequestForEmployee,
+  getMedicalProofDueAt,
+  hasAttendanceConflict,
+  requiresMedicalProof,
+} from "./service.js";
 
 function createTestLeaveType(overrides: Partial<{
   code: string;
@@ -49,6 +56,17 @@ test("buildLeaveOverlapWhere includes pending and approved statuses", () => {
   const where = buildLeaveOverlapWhere(1, new Date("2026-03-20"), new Date("2026-03-22"));
   assert.deepEqual(where.status, { in: ["PENDING", "APPROVED"] });
   assert.equal(where.employeeId, 1);
+});
+
+test("requiresMedicalProof only applies to sick leave above two days", () => {
+  assert.equal(requiresMedicalProof("SL", 3), true);
+  assert.equal(requiresMedicalProof("sl", 2), false);
+  assert.equal(requiresMedicalProof("CL", 4), false);
+});
+
+test("getMedicalProofDueAt adds two days", () => {
+  const dueAt = getMedicalProofDueAt(new Date("2026-04-10T09:00:00.000Z"));
+  assert.equal(dueAt.toISOString(), "2026-04-12T09:00:00.000Z");
 });
 
 test("createLeaveRequestForEmployee rejects overlap", async () => {
@@ -289,37 +307,69 @@ test("createLeaveRequestForEmployee limits quarterly leave to visible balance", 
   assert.equal((created as { unpaidDays: number }).unpaidDays, 2);
 });
 
-test("createLeaveRequestForEmployee requires attachment for two-day sick leave", async () => {
-  await assert.rejects(
-    () =>
-      createLeaveRequestForEmployee(
-        {
-          actor: { id: 1, role: "EMPLOYEE", employeeId: 99, email: "user@test.com" },
-          leaveTypeId: 1,
-          startDate: "2026-04-10",
-          endDate: "2026-04-11",
-          startDayDuration: "FULL_DAY",
-          endDayDuration: "FULL_DAY",
-          reason: "Medical rest",
-        },
-        createLeaveDeps({
-          findLeaveType: async () =>
-            createTestLeaveType({
-              code: "SL",
-              name: "Sick Leave",
-              defaultDaysPerYear: 8,
-              allocationMode: "QUARTERLY",
-              quarterlyAllocationDays: 2,
-              carryForwardAllowed: true,
-              carryForwardCap: 15,
-              requiresAttachmentAfterDays: 2,
-              policyEffectiveFromYear: 2026,
-            }),
-          findLeaveBalance: async () => ({ remainingDays: 8, visibleDays: 2, carryForwardDays: 0 }),
+test("createLeaveRequestForEmployee marks long sick leave as medical-proof required", async () => {
+  const created = await createLeaveRequestForEmployee(
+    {
+      actor: { id: 1, role: "EMPLOYEE", employeeId: 99, email: "user@test.com" },
+      leaveTypeId: 1,
+      startDate: "2026-04-10",
+      endDate: "2026-04-12",
+      startDayDuration: "FULL_DAY",
+      endDayDuration: "FULL_DAY",
+      reason: "Medical rest",
+    },
+    createLeaveDeps({
+      findLeaveType: async () =>
+        createTestLeaveType({
+          code: "SL",
+          name: "Sick Leave",
+          defaultDaysPerYear: 8,
+          allocationMode: "QUARTERLY",
+          quarterlyAllocationDays: 2,
+          carryForwardAllowed: true,
+          carryForwardCap: 15,
+          requiresAttachmentAfterDays: 2,
+          policyEffectiveFromYear: 2026,
         }),
-      ),
-    (error: unknown) => error instanceof AppError && error.message.includes("Please upload the required document"),
+      findLeaveBalance: async () => ({ remainingDays: 8, visibleDays: 8, carryForwardDays: 0 }),
+    }),
   );
+
+  assert.equal((created as { medicalProofRequired: boolean }).medicalProofRequired, true);
+  assert.equal((created as { medicalProofStatus: string }).medicalProofStatus, "PENDING_UPLOAD");
+  assert.ok((created as { medicalProofDueAt: Date | null }).medicalProofDueAt instanceof Date);
+});
+
+test("createLeaveRequestForEmployee does not require proof for two-day sick leave", async () => {
+  const created = await createLeaveRequestForEmployee(
+    {
+      actor: { id: 1, role: "EMPLOYEE", employeeId: 99, email: "user@test.com" },
+      leaveTypeId: 1,
+      startDate: "2026-04-10",
+      endDate: "2026-04-11",
+      startDayDuration: "FULL_DAY",
+      endDayDuration: "FULL_DAY",
+      reason: "Medical rest",
+    },
+    createLeaveDeps({
+      findLeaveType: async () =>
+        createTestLeaveType({
+          code: "SL",
+          name: "Sick Leave",
+          defaultDaysPerYear: 8,
+          allocationMode: "QUARTERLY",
+          quarterlyAllocationDays: 2,
+          carryForwardAllowed: true,
+          carryForwardCap: 15,
+          requiresAttachmentAfterDays: 2,
+          policyEffectiveFromYear: 2026,
+        }),
+      findLeaveBalance: async () => ({ remainingDays: 8, visibleDays: 8, carryForwardDays: 0 }),
+    }),
+  );
+
+  assert.equal((created as { medicalProofRequired: boolean }).medicalProofRequired, false);
+  assert.equal((created as { medicalProofStatus: string }).medicalProofStatus, "NOT_REQUIRED");
 });
 
 test("createLeaveRequestForEmployee blocks repeated one-time yearly leave", async () => {

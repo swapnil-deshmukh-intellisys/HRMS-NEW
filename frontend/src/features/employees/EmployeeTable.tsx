@@ -1,15 +1,20 @@
 import "./EmployeeTable.css";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { Employee } from "../../types";
 
 type EmployeeTableProps = {
   employees: Employee[];
   onAdd: () => void;
   onSelect: (employee: Employee) => void;
+  initialSearchTerm?: string;
 };
 
-export default function EmployeeTable({ employees, onAdd, onSelect }: EmployeeTableProps) {
-  const [searchTerm, setSearchTerm] = useState("");
+export default function EmployeeTable({ employees, onAdd, onSelect, initialSearchTerm = "" }: EmployeeTableProps) {
+  const [searchTerm, setSearchTerm] = useState(initialSearchTerm);
+
+  useEffect(() => {
+    setSearchTerm(initialSearchTerm);
+  }, [initialSearchTerm]);
 
   function getStatusLabel(employee: Employee) {
     return employee.isActive ? employee.employmentStatus : "INACTIVE";
@@ -59,7 +64,7 @@ export default function EmployeeTable({ employees, onAdd, onSelect }: EmployeeTa
     return (
       <>
         {designationBadgeClass ? <span className={designationBadgeClass}>{employee.jobTitle}</span> : employee.jobTitle}
-        {isTeamLead(employee) ? " · TL" : ""}
+        {isTeamLead(employee) ? " | TL" : ""}
       </>
     );
   }
@@ -117,6 +122,13 @@ export default function EmployeeTable({ employees, onAdd, onSelect }: EmployeeTa
 
       <div className="table-wrap employee-directory-table">
         <table className="table table--dense">
+          <colgroup>
+            <col className="employee-directory-col employee-directory-col--name" />
+            <col className="employee-directory-col employee-directory-col--code" />
+            <col className="employee-directory-col employee-directory-col--department" />
+            <col className="employee-directory-col employee-directory-col--role" />
+            <col className="employee-directory-col employee-directory-col--status" />
+          </colgroup>
           <thead>
             <tr>
               <th>Name</th>
@@ -127,35 +139,46 @@ export default function EmployeeTable({ employees, onAdd, onSelect }: EmployeeTa
             </tr>
           </thead>
           <tbody>
-            {filteredEmployees.map((employee) => (
-              <tr
-                key={employee.id}
-                className="employee-row"
-                onClick={() => onSelect(employee)}
-                onKeyDown={(event) => {
-                  if (event.key === "Enter" || event.key === " ") {
-                    event.preventDefault();
-                    onSelect(employee);
-                  }
-                }}
-                tabIndex={0}
-              >
-                <td>
-                  <div className="table-cell-stack">
-                    <span className="table-cell-primary">{`${employee.firstName} ${employee.lastName}`}</span>
-                    <span className="table-cell-secondary">{renderJobTitle(employee)}</span>
+            {filteredEmployees.length ? (
+              filteredEmployees.map((employee) => (
+                <tr
+                  key={employee.id}
+                  className="employee-row"
+                  onClick={() => onSelect(employee)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" || event.key === " ") {
+                      event.preventDefault();
+                      onSelect(employee);
+                    }
+                  }}
+                  tabIndex={0}
+                >
+                  <td>
+                    <div className="table-cell-stack">
+                      <span className="table-cell-primary">{`${employee.firstName} ${employee.lastName}`}</span>
+                      <span className="table-cell-secondary">{renderJobTitle(employee)}</span>
+                    </div>
+                  </td>
+                  <td>
+                    <span className="mono">{employee.employeeCode}</span>
+                  </td>
+                  <td>{employee.department?.name ?? "-"}</td>
+                  <td>{employee.user?.role.name ?? "-"}</td>
+                  <td>
+                    <span className={getStatusClass(getStatusLabel(employee))}>{getStatusLabel(employee)}</span>
+                  </td>
+                </tr>
+              ))
+            ) : (
+              <tr>
+                <td colSpan={5}>
+                  <div className="table-empty-state">
+                    <strong>No employees found.</strong>
+                    <span>Try a different employee name or clear the search.</span>
                   </div>
                 </td>
-                <td>
-                  <span className="mono">{employee.employeeCode}</span>
-                </td>
-                <td>{employee.department?.name ?? "-"}</td>
-                <td>{employee.user?.role.name ?? "-"}</td>
-                <td>
-                  <span className={getStatusClass(getStatusLabel(employee))}>{getStatusLabel(employee)}</span>
-                </td>
               </tr>
-            ))}
+            )}
           </tbody>
         </table>
       </div>
@@ -185,7 +208,6 @@ export default function EmployeeTable({ employees, onAdd, onSelect }: EmployeeTa
                 <span className="table-cell-primary">{employee.user?.role.name ?? "-"}</span>
               </div>
             </div>
-
           </article>
         ))}
       </div>

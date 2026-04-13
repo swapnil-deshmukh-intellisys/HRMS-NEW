@@ -50,9 +50,29 @@ type LeaveCreationDeps = {
     attachmentName?: string;
     attachmentPath?: string;
     attachmentMime?: string;
+    medicalProofRequired: boolean;
+    medicalProofDueAt: Date | null;
+    medicalProofSubmittedAt: Date | null;
+    medicalProofStatus: MedicalProofStatus;
+    medicalProofReviewedAt: Date | null;
+    medicalProofReviewedById: number | null;
+    medicalProofRejectionReason: string | null;
     reason: string;
   }) => Promise<unknown>;
 };
+
+export const SICK_LEAVE_CODE = "SL";
+export const MEDICAL_PROOF_THRESHOLD_DAYS = 2;
+export const MEDICAL_PROOF_WINDOW_DAYS = 2;
+export const MEDICAL_PROOF_STATUS = {
+  NOT_REQUIRED: "NOT_REQUIRED",
+  PENDING_UPLOAD: "PENDING_UPLOAD",
+  PENDING_HR_REVIEW: "PENDING_HR_REVIEW",
+  APPROVED: "APPROVED",
+  REJECTED: "REJECTED",
+  EXPIRED: "EXPIRED",
+} as const;
+export type MedicalProofStatus = (typeof MEDICAL_PROOF_STATUS)[keyof typeof MEDICAL_PROOF_STATUS];
 
 function isPolicyActiveForYear(leaveType: LeaveTypePolicy, year: number) {
   return leaveType.policyEffectiveFromYear !== null && year >= leaveType.policyEffectiveFromYear;
@@ -64,6 +84,20 @@ function isQuarterlyLeaveType(leaveType: LeaveTypePolicy, year: number) {
 
 function getConsecutiveRequestedDays(startDate: Date, endDate: Date) {
   return Math.floor((startOfDay(endDate).getTime() - startOfDay(startDate).getTime()) / 86400000) + 1;
+}
+
+export function addDays(value: Date, days: number) {
+  const date = new Date(value);
+  date.setDate(date.getDate() + days);
+  return date;
+}
+
+export function requiresMedicalProof(leaveTypeCode: string, totalDays: number) {
+  return leaveTypeCode.trim().toUpperCase() === SICK_LEAVE_CODE && totalDays > MEDICAL_PROOF_THRESHOLD_DAYS;
+}
+
+export function getMedicalProofDueAt(createdAt: Date) {
+  return addDays(createdAt, MEDICAL_PROOF_WINDOW_DAYS);
 }
 
 async function calculateCalendarAwareLeaveDays(input: {
@@ -205,11 +239,16 @@ export async function createLeaveRequestForEmployee(
   if (
     isPolicyActiveForYear(leaveType, year) &&
     leaveType.requiresAttachmentAfterDays !== null &&
+    leaveType.code.trim().toUpperCase() !== SICK_LEAVE_CODE &&
     getConsecutiveRequestedDays(startDate, endDate) >= leaveType.requiresAttachmentAfterDays &&
     !input.attachmentPath
   ) {
     throw new AppError(`Please upload the required document for ${leaveType.name.toLowerCase()} of 2 or more consecutive days.`);
   }
+
+  const medicalProofRequired = requiresMedicalProof(leaveType.code, totalDays);
+  const medicalProofDueAt = medicalProofRequired ? getMedicalProofDueAt(new Date()) : null;
+  const medicalProofStatus = medicalProofRequired ? MEDICAL_PROOF_STATUS.PENDING_UPLOAD : MEDICAL_PROOF_STATUS.NOT_REQUIRED;
 
   if (isPolicyActiveForYear(leaveType, year) && leaveType.maxUsagesPerYear !== null) {
     const existingYearRequests = await deps.countExistingYearRequests({
@@ -246,6 +285,13 @@ export async function createLeaveRequestForEmployee(
       attachmentName: input.attachmentName,
       attachmentPath: input.attachmentPath,
       attachmentMime: input.attachmentMime,
+      medicalProofRequired,
+      medicalProofDueAt,
+      medicalProofSubmittedAt: null,
+      medicalProofStatus,
+      medicalProofReviewedAt: null,
+      medicalProofReviewedById: null,
+      medicalProofRejectionReason: null,
       reason: input.reason,
     });
   }
@@ -267,6 +313,13 @@ export async function createLeaveRequestForEmployee(
     attachmentName: input.attachmentName,
     attachmentPath: input.attachmentPath,
     attachmentMime: input.attachmentMime,
+    medicalProofRequired,
+    medicalProofDueAt,
+    medicalProofSubmittedAt: null,
+    medicalProofStatus,
+    medicalProofReviewedAt: null,
+    medicalProofReviewedById: null,
+    medicalProofRejectionReason: null,
     reason: input.reason,
   });
 }

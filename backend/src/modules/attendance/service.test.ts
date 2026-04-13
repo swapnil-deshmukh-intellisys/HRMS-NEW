@@ -76,6 +76,7 @@ test("finalizeAttendanceForDate creates absent records only for eligible employe
         createdEntries.push(...entries);
         return entries.length;
       },
+      updateAttendanceWithMissingCheckout: async () => 0,
     },
   );
 
@@ -98,6 +99,7 @@ test("finalizeAttendanceForDate skips non-working days", async () => {
         createdCount += entries.length;
         return entries.length;
       },
+      updateAttendanceWithMissingCheckout: async () => 0,
       isWorkingDay: async () => false,
     },
   );

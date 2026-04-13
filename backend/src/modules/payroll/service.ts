@@ -1,5 +1,6 @@
 import { PayrollStatus } from "@prisma/client";
 import { AppError } from "../../utils/api.js";
+import { calculateTotalPayrollWithIncentives } from "./incentive-service.js";
 
 export function assertPayrollEditable(status: PayrollStatus) {
   if (status === PayrollStatus.FINALIZED) {

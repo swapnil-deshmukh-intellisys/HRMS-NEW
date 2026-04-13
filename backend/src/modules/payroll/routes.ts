@@ -295,4 +295,9 @@ router.put("/:id", requireRoles("ADMIN", "HR"), validate(payrollSchema.partial()
   }
 });
 
+import incentiveRoutes from "./incentive-routes.js";
+
+// Mount incentive routes
+router.use("/", incentiveRoutes);
+
 export default router;

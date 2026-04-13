@@ -83,6 +83,22 @@ enum OvertimeStatus {
   REJECTED
 }
 
+enum IncentiveType {
+  PERFORMANCE_BONUS
+  PROJECT_BONUS
+  REFERRAL_BONUS
+  ATTENDANCE_BONUS
+  SPECIAL_ACHIEVEMENT
+  OTHER
+}
+
+enum IncentiveStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  PAID
+}
+
 enum CalendarExceptionType {
   HOLIDAY
   WORKING_SATURDAY
@@ -159,6 +175,8 @@ model Employee {
   payrollRecords        PayrollRecord[]
   overtimeSessions      OvertimeSession[]
   verifiedOvertimeSessions OvertimeSession[] @relation("OvertimeVerifier")
+  incentives           Incentive[]
+  approvedIncentives   Incentive[] @relation("IncentiveApprover")
 
   @@index([departmentId])
   @@index([managerId])
@@ -348,6 +366,31 @@ model OvertimeSession {
   @@index([employeeId])
   @@index([status])
   @@index([date])
+}
+
+model Incentive {
+  id          Int             @id @default(autoincrement())
+  employeeId  Int
+  type        IncentiveType
+  amount      Decimal         @db.Decimal(10, 2)
+  reason      String
+  description String?
+  month       Int
+  year        Int
+  status      IncentiveStatus @default(PENDING)
+  approvedBy  Int?
+  approvedAt  DateTime?
+  rejectionReason String?
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  employee   Employee @relation(fields: [employeeId], references: [id])
+  approver   Employee? @relation("IncentiveApprover", fields: [approvedBy], references: [id])
+
+  @@index([employeeId])
+  @@index([status])
+  @@index([month, year])
+  @@index([type])
 }
 
 model CalendarException {

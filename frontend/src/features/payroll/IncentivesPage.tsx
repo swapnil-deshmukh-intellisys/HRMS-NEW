@@ -93,7 +93,11 @@ function IncentivesPage({ token, role }: IncentivesPageProps) {
     try {
       const response = await apiRequest("/employees", { token });
       if (response.success) {
-        setEmployees(response.data as Employee[]);
+        // Handle different response structures
+        const employeesData = Array.isArray(response.data) 
+          ? response.data 
+          : (response.data as any)?.items || [];
+        setEmployees(employeesData as Employee[]);
       }
     } catch (err) {
       console.error("Failed to fetch employees:", err);
@@ -113,7 +117,11 @@ function IncentivesPage({ token, role }: IncentivesPageProps) {
 
       const response = await apiRequest(`/payroll/incentives?${queryParams}`, { token });
       if (response.success) {
-        setIncentives(response.data as Incentive[]);
+        // Ensure incentives is always an array
+        const incentivesData = Array.isArray(response.data) 
+          ? response.data 
+          : [];
+        setIncentives(incentivesData as Incentive[]);
       }
     } catch (err: any) {
       setError(err.message || "Failed to fetch incentives");
@@ -225,6 +233,7 @@ function IncentivesPage({ token, role }: IncentivesPageProps) {
   }, [fetchEmployees, fetchIncentives, fetchIncentiveSummary, role]);
 
   const employeeOptions = useMemo(() => {
+    if (!Array.isArray(employees)) return [];
     return employees.map((emp) => ({
       value: emp.id.toString(),
       label: `${emp.firstName} ${emp.lastName}`,
@@ -317,7 +326,7 @@ function IncentivesPage({ token, role }: IncentivesPageProps) {
 
           {loading ? (
             <div className="loading">Loading incentives...</div>
-          ) : incentives.length === 0 ? (
+          ) : !Array.isArray(incentives) || incentives.length === 0 ? (
             <div className="empty-state">No incentives found</div>
           ) : (
             <div className="incentives-table">
@@ -335,7 +344,7 @@ function IncentivesPage({ token, role }: IncentivesPageProps) {
                   </tr>
                 </thead>
                 <tbody>
-                  {incentives.map((incentive) => (
+                  {Array.isArray(incentives) && incentives.map((incentive) => (
                     <tr key={incentive.id}>
                       <td>
                         {incentive.employee

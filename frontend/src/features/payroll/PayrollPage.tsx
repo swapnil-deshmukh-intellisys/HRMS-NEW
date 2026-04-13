@@ -411,11 +411,63 @@ export default function PayrollPage({ token, role }: PayrollPageProps) {
                 <span className="table-cell-secondary">Final salary</span>
                 <span className="table-cell-primary">{preview.finalSalary}</span>
               </div>
+              {(preview as any).grossSalary && (preview as any).grossSalary !== preview.finalSalary ? (
+                <>
+                  <div className="table-cell-stack payroll-preview-stat">
+                    <span className="table-cell-secondary">Base salary</span>
+                    <span className="table-cell-primary">{(preview as any).baseSalary}</span>
+                  </div>
+                  <div className="table-cell-stack payroll-preview-stat">
+                    <span className="table-cell-secondary">Total incentives</span>
+                    <span className="table-cell-primary">{(preview as any).totalIncentives}</span>
+                  </div>
+                  <div className="table-cell-stack payroll-preview-stat payroll-preview-stat--highlight">
+                    <span className="table-cell-secondary">Gross salary (with incentives)</span>
+                    <span className="table-cell-primary">{(preview as any).grossSalary}</span>
+                  </div>
+                </>
+              ) : null}
             </div>
           ) : null}
           {preview?.employee.isOnProbation ? <p className="muted payroll-note">Probation rule is active, so only 50% of the final salary is payable for this payroll cycle.</p> : null}
           {preview && editingPayrollId ? <p className="muted payroll-note">Preview is shown for reference only. The saved salary will stay unchanged unless you edit it.</p> : null}
           {previewLoading ? <p className="muted payroll-note">Refreshing payroll preview...</p> : null}
+          
+          {/* Incentive Breakdown */}
+          {(preview as any)?.incentives && (preview as any).incentives.length > 0 ? (
+            <div className="card" style={{ marginTop: '2rem' }}>
+              <div className="card__header">
+                <h4>Incentive Breakdown</h4>
+                <span className="eyebrow">{(preview as any).incentives.length} incentive(s) included</span>
+              </div>
+              <div className="table-wrap">
+                <table className="table table--dense">
+                  <thead>
+                    <tr>
+                      <th>Type</th>
+                      <th>Amount</th>
+                      <th>Reason</th>
+                      <th>Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(preview as any).incentives.map((incentive: any) => (
+                      <tr key={incentive.id}>
+                        <td>{incentive.type.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, (l: string) => l.toUpperCase())}</td>
+                        <td className="amount">Rs {incentive.amount.toLocaleString()}</td>
+                        <td>{incentive.reason}</td>
+                        <td>
+                          <span className={`status-badge status-${incentive.status.toLowerCase()}`}>
+                            {incentive.status}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          ) : null}
           <div className="button-row payroll-form-actions">
             <button type="submit" className="payroll-action-button payroll-action-button--primary" disabled={!isPayrollFormValid}>
               {editingPayrollId ? "Update payroll" : "Create payroll"}

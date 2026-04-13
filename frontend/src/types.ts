@@ -235,3 +235,33 @@ export type IncentiveSummary = {
   approvedIncentives: number;
   pendingIncentives: number;
 };
+
+export type PayrollPreview = {
+  employee: Pick<Employee, "id" | "firstName" | "lastName" | "annualPackageLpa" | "grossMonthlySalary" | "basicMonthlySalary" | "isOnProbation" | "probationEndDate">;
+  month: number;
+  year: number;
+  pf: number;
+  gratuity: number;
+  pt: number;
+  netSalary: number;
+  perDaySalary: number;
+  perHourSalary: number;
+  absentDeductionDays: number;
+  halfDayDeductionDays: number;
+  deductibleDays: number;
+  deductionAmount: number;
+  finalSalaryBeforeProbation: number;
+  probationMultiplier: number;
+  probationAdjustedSalary: number;
+  finalSalary: number;
+  grossSalary: number;
+  totalIncentives: number;
+  baseSalary: number;
+  incentives: Array<{
+    id: number;
+    type: string;
+    amount: number;
+    reason: string;
+    status: string;
+  }>;
+};

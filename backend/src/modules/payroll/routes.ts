@@ -8,6 +8,23 @@ import { AppError, sendSuccess } from "../../utils/api.js";
 import { endOfDay, startOfDay } from "../../utils/dates.js";
 import { getCalendarDayStatus } from "../calendar/service.js";
 import { assertPayrollEditable, calculatePayrollPreview } from "./service.js";
+import { calculateTotalPayrollWithIncentives } from "./incentive-service.js";
+
+type PayrollPreviewWithIncentives = ReturnType<typeof calculatePayrollPreview> & {
+  employee: any;
+  month: number;
+  year: number;
+  grossSalary: number;
+  totalIncentives: number;
+  baseSalary: number;
+  incentives: Array<{
+    id: number;
+    type: string;
+    amount: number;
+    reason: string;
+    status: string;
+  }>;
+};
 
 const router = Router();
 
@@ -58,7 +75,7 @@ async function assertPayrollAccess(requestedEmployeeId: number, requestUser: Non
   }
 }
 
-async function buildPayrollPreview(employeeId: number, month: number, year: number) {
+async function buildPayrollPreview(employeeId: number, month: number, year: number): Promise<PayrollPreviewWithIncentives> {
   const employee = await prisma.employee.findUnique({
     where: { id: employeeId },
     select: {
@@ -97,10 +114,14 @@ async function buildPayrollPreview(employeeId: number, month: number, year: numb
     });
 
     return {
+      ...preview,
       employee,
       month,
       year,
-      ...preview,
+      grossSalary: preview.finalSalary,
+      totalIncentives: 0,
+      baseSalary: preview.finalSalary,
+      incentives: [],
     };
   }
 
@@ -186,11 +207,37 @@ async function buildPayrollPreview(employeeId: number, month: number, year: numb
     isOnProbation: employee.isOnProbation,
   });
 
+  // Fetch approved incentives for the month
+  const incentives = await prisma.incentive.findMany({
+    where: {
+      employeeId,
+      month,
+      year,
+      status: { in: ["APPROVED", "PAID"] },
+    },
+  });
+
+  // Calculate total compensation with incentives
+  const payrollWithIncentives = calculateTotalPayrollWithIncentives(
+    preview.finalSalary,
+    incentives.map(i => ({ ...i, amount: Number(i.amount) }))
+  );
+
   return {
+    ...preview,
     employee,
     month,
     year,
-    ...preview,
+    grossSalary: payrollWithIncentives.grossSalary,
+    totalIncentives: payrollWithIncentives.totalIncentives,
+    baseSalary: payrollWithIncentives.baseSalary,
+    incentives: incentives.map(incentive => ({
+      id: incentive.id,
+      type: incentive.type,
+      amount: Number(incentive.amount),
+      reason: incentive.reason,
+      status: incentive.status,
+    })),
   };
 }
 
@@ -250,7 +297,7 @@ router.post("/", requireRoles("ADMIN", "HR"), validate(payrollSchema), async (re
     const payrollRecord = await prisma.payrollRecord.create({
       data: {
         ...request.body,
-        salary: request.body.salary ?? generatedPreview!.finalSalary,
+        salary: request.body.salary ?? generatedPreview!.grossSalary,
       },
       include: {
         employee: true,
@@ -282,7 +329,7 @@ router.put("/:id", requireRoles("ADMIN", "HR"), validate(payrollSchema.partial()
       where: { id },
       data: {
         ...request.body,
-        ...(request.body.salary ? {} : { salary: generatedPreview!.finalSalary }),
+        ...(request.body.salary ? {} : { salary: generatedPreview!.grossSalary }),
       },
       include: {
         employee: true,

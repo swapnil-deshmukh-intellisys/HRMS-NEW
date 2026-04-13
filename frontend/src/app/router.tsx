@@ -12,6 +12,7 @@ const EmployeeProfilePage = lazy(() => import("../features/employees/EmployeePro
 const EmployeesPage = lazy(() => import("../features/employees/EmployeesPage"));
 const LeavesPage = lazy(() => import("../features/leaves/LeavesPage"));
 const PayrollPage = lazy(() => import("../features/payroll/PayrollPage"));
+const IncentivesPage = lazy(() => import("../features/payroll/IncentivesPage"));
 const AppLayout = lazy(() => import("../layout/AppLayout"));
 
 function RouteLoadingFallback() {
@@ -76,6 +77,7 @@ function AppRoutes() {
             }
           />
           <Route path="/payroll" element={<PayrollPage token={token} role={sessionUser?.role ?? "EMPLOYEE"} />} />
+          <Route path="/incentives" element={<IncentivesPage token={token} role={sessionUser?.role ?? "EMPLOYEE"} />} />
         </Route>
       </Routes>
     </Suspense>

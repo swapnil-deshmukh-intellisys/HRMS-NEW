@@ -198,3 +198,40 @@ export type PayrollRecord = {
   status: "DRAFT" | "FINALIZED";
   employee?: Employee;
 };
+
+export type IncentiveType = "PERFORMANCE_BONUS" | "PROJECT_BONUS" | "REFERRAL_BONUS" | "ATTENDANCE_BONUS" | "SPECIAL_ACHIEVEMENT" | "OTHER";
+
+export type IncentiveStatus = "PENDING" | "APPROVED" | "REJECTED" | "PAID";
+
+export type Incentive = {
+  id: number;
+  employeeId: number;
+  type: IncentiveType;
+  amount: string;
+  reason: string;
+  description?: string | null;
+  month: number;
+  year: number;
+  status: IncentiveStatus;
+  approvedBy?: number | null;
+  approvedAt?: string | null;
+  rejectionReason?: string | null;
+  createdAt: string;
+  updatedAt: string;
+  employee?: Employee;
+  approver?: Employee | null;
+  typeDisplay?: string;
+  statusDisplay?: string;
+};
+
+export type IncentiveSummary = {
+  employeeId: number;
+  month: number;
+  year: number;
+  totalIncentives: number;
+  baseSalary: number;
+  grossSalary: number;
+  incentiveCount: number;
+  approvedIncentives: number;
+  pendingIncentives: number;
+};

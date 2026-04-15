@@ -5,6 +5,7 @@ import { apiRequest } from "../../services/api";
 import type { Attendance } from "../../types";
 import { ATTENDANCE_EVENT, dispatchAttendanceUpdated, getAttendanceUpdatedDetail, getSelfAttendanceActionState } from "./attendanceQuickActionUtils";
 import { formatAttendanceTime } from "../../utils/format";
+import { useAuth } from "../../hooks/useAuth";
 
 type AttendanceQuickActionProps = {
   token: string | null;
@@ -32,6 +33,7 @@ export default function AttendanceQuickAction({
   const [now, setNow] = useState(() => Date.now());
   const latestLoadRequestRef = useRef(0);
   const attendanceVersionRef = useRef(0);
+  const { refreshSession, updateLastActivity } = useAuth();
 
   const syncAttendanceState = useCallback(
     (nextAttendance: Attendance | null) => {
@@ -142,6 +144,10 @@ export default function AttendanceQuickAction({
       setSubmitting(true);
       setActionError("");
       attendanceVersionRef.current += 1;
+      
+      // Update last activity before making the request
+      updateLastActivity();
+      
       const response = await apiRequest<Attendance>(actionState.actionPath, {
         method: "POST",
         token,
@@ -152,7 +158,22 @@ export default function AttendanceQuickAction({
       dispatchAttendanceUpdated(nextAttendance);
       void loadAttendance();
     } catch (error) {
-      setActionError(error instanceof Error ? error.message : "Failed to update attendance.");
+      const errorMessage = error instanceof Error ? error.message : "Failed to update attendance.";
+      
+      // Check if it's a session-related error
+      if (errorMessage.includes('500') || errorMessage.includes('Internal server error') || 
+          errorMessage.includes('401') || errorMessage.includes('Unauthorized')) {
+        setActionError("Session expired or server error. Please refresh the page and try again.");
+        // Try to refresh session
+        try {
+          await refreshSession();
+        } catch (sessionError) {
+          console.error('Session refresh failed:', sessionError);
+        }
+      } else {
+        setActionError(errorMessage);
+      }
+      
       await loadAttendance();
     } finally {
       setSubmitting(false);

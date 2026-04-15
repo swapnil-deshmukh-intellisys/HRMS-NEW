@@ -5,6 +5,7 @@ import type { SessionUser } from "../types";
 import { getPageTitle } from "../utils/routes";
 import Navbar from "./Navbar";
 import Sidebar from "./Sidebar";
+import SessionWarning from "../components/SessionWarning";
 
 type AppLayoutProps = {
   token: string | null;
@@ -40,6 +41,7 @@ export default function AppLayout({ token, sessionUser, onLogout }: AppLayoutPro
           <Outlet />
         </div>
       </main>
+      <SessionWarning />
     </div>
   );
 }

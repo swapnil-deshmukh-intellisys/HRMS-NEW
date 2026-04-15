@@ -1,22 +1,19 @@
 import { useEffect } from "react";
-import { useAuth } from "../hooks/useAuth";
 import "./SessionWarning.css";
 
 interface SessionWarningProps {
-  onRefresh?: () => void;
+  sessionWarning: boolean;
+  onRefreshSession: () => void | Promise<void>;
+  onLogout: () => void | Promise<void>;
+  onUserActivity?: () => void;
 }
 
-export default function SessionWarning({ onRefresh }: SessionWarningProps) {
-  const { sessionWarning, refreshSession, logout } = useAuth();
-
+export default function SessionWarning({ sessionWarning, onRefreshSession, onLogout, onUserActivity }: SessionWarningProps) {
   useEffect(() => {
-    // Update last activity on user interaction
     const handleUserActivity = () => {
-      const { updateLastActivity } = useAuth();
-      updateLastActivity();
+      onUserActivity?.();
     };
 
-    // Track user activity
     const events = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart', 'click'];
     events.forEach(event => {
       document.addEventListener(event, handleUserActivity, true);
@@ -27,7 +24,7 @@ export default function SessionWarning({ onRefresh }: SessionWarningProps) {
         document.removeEventListener(event, handleUserActivity, true);
       });
     };
-  }, []);
+  }, [onUserActivity]);
 
   if (!sessionWarning) return null;
 
@@ -46,15 +43,16 @@ export default function SessionWarning({ onRefresh }: SessionWarningProps) {
           <button 
             className="btn btn-primary" 
             onClick={() => {
-              refreshSession();
-              if (onRefresh) onRefresh();
+              void onRefreshSession();
             }}
           >
             Refresh Session
           </button>
           <button 
             className="btn btn-secondary" 
-            onClick={logout}
+            onClick={() => {
+              void onLogout();
+            }}
           >
             Logout Now
           </button>

@@ -17,7 +17,9 @@ type NavItem = {
   icon: LucideIcon;
 };
 
-function getNavItems(role: Role): NavItem[] {
+function getNavItems(sessionUser: SessionUser): NavItem[] {
+  const role = sessionUser.role;
+  const isTeamLead = Boolean(sessionUser.employee?.capabilities?.some((capability) => capability.capability === "TEAM_LEAD"));
   const items: NavItem[] = [{ to: "/", label: "Dashboard", icon: Home }];
   items.push({ to: "/analytics", label: "Analytics", icon: BarChart3 });
 
@@ -29,6 +31,9 @@ function getNavItems(role: Role): NavItem[] {
   items.push({ to: "/calendar", label: "Calendar", icon: Calendar });
   items.push({ to: "/attendance", label: "Attendance", icon: Clock3 });
   items.push({ to: "/leaves", label: "Leaves", icon: CalendarDays });
+  if (isTeamLead) {
+    items.push({ to: "/team", label: "Team", icon: Users });
+  }
   items.push({ to: "/payroll", label: "Payroll", icon: Wallet });
   items.push({ to: "/incentives", label: "Incentives", icon: Gift });
   return items;
@@ -36,7 +41,7 @@ function getNavItems(role: Role): NavItem[] {
 
 export default function Sidebar({ sessionUser, navOpen, onNavigate, onLogout }: SidebarProps) {
   const location = useLocation();
-  const navItems = getNavItems(sessionUser.role);
+  const navItems = getNavItems(sessionUser);
 
   function isActivePath(path: string) {
     if (path === "/") {

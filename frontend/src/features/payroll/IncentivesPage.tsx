@@ -1,5 +1,5 @@
-import "./PayrollPage.css";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import "./IncentivesPage.css";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import { apiRequest } from "../../services/api";
 import type { Employee, Incentive, IncentiveType, IncentiveStatus, Role } from "../../types";
@@ -24,6 +24,12 @@ type IncentiveReviewValues = {
   rejectionReason: string;
 };
 
+type EmployeeSelectOption = {
+  value: string;
+  label: string;
+  hint?: string;
+};
+
 const initialIncentiveForm = (): IncentiveFormValues => ({
   employeeId: "",
   type: "PERFORMANCE_BONUS",
@@ -43,13 +49,6 @@ const incentiveTypeOptions: Array<{ value: IncentiveType; label: string; descrip
   { value: "OTHER", label: "Other", description: "Other types of incentives" },
 ];
 
-const incentiveStatusColors: Record<IncentiveStatus, string> = {
-  PENDING: "rgb(234, 179, 8)",
-  APPROVED: "rgb(34, 197, 94)",
-  REJECTED: "rgb(239, 68, 68)",
-  PAID: "rgb(59, 130, 246)",
-};
-
 const payrollMonthOptions = [
   { value: "1", label: "January" },
   { value: "2", label: "February" },
@@ -65,7 +64,130 @@ const payrollMonthOptions = [
   { value: "12", label: "December" },
 ] as const;
 
+type SearchableEmployeeSelectProps = {
+  id: string;
+  value: string;
+  options: EmployeeSelectOption[];
+  onChange: (value: string) => void;
+  placeholder: string;
+  searchPlaceholder?: string;
+  emptyMessage?: string;
+  required?: boolean;
+};
+
+function SearchableEmployeeSelect({
+  id,
+  value,
+  options,
+  onChange,
+  placeholder,
+  searchPlaceholder = "Search employee",
+  emptyMessage = "No matching employees",
+  required = false,
+}: SearchableEmployeeSelectProps) {
+  const [open, setOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const triggerId = `${id}-trigger`;
+  const listboxId = `${id}-listbox`;
+  const selectedOption = options.find((option) => option.value === value) ?? null;
+  const filteredOptions = options.filter((option) => {
+    if (!searchTerm.trim()) return true;
+    const haystack = `${option.label} ${option.hint ?? ""}`.toLowerCase();
+    return haystack.includes(searchTerm.trim().toLowerCase());
+  });
+
+  useEffect(() => {
+    if (!open) return undefined;
+
+    function handlePointerDown(event: MouseEvent) {
+      if (!containerRef.current?.contains(event.target as Node)) {
+        setOpen(false);
+      }
+    }
+
+    function handleEscape(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setOpen(false);
+      }
+    }
+
+    document.addEventListener("mousedown", handlePointerDown);
+    document.addEventListener("keydown", handleEscape);
+
+    return () => {
+      document.removeEventListener("mousedown", handlePointerDown);
+      document.removeEventListener("keydown", handleEscape);
+    };
+  }, [open]);
+
+  useEffect(() => {
+    if (!open && searchTerm) {
+      setSearchTerm("");
+    }
+  }, [open, searchTerm]);
+
+  return (
+    <div className={`incentive-employee-select ${open ? "incentive-employee-select--open" : ""}`} ref={containerRef}>
+      <button
+        type="button"
+        id={triggerId}
+        className="incentive-employee-select__trigger"
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        aria-controls={listboxId}
+        aria-required={required}
+        onClick={() => setOpen((current) => !current)}
+      >
+        <span className={`incentive-employee-select__value ${selectedOption ? "" : "incentive-employee-select__value--placeholder"}`.trim()}>
+          {selectedOption?.label ?? placeholder}
+        </span>
+        <span className="incentive-employee-select__icon" aria-hidden="true">
+          <svg viewBox="0 0 16 16" focusable="false">
+            <path d="M4 6.5 8 10l4-3.5" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </span>
+      </button>
+      {required ? <input type="hidden" value={value} required /> : null}
+      {open ? (
+        <div className="incentive-employee-select__menu" role="listbox" id={listboxId} aria-labelledby={triggerId}>
+          <div className="incentive-employee-select__search">
+            <input
+              type="search"
+              value={searchTerm}
+              onChange={(event) => setSearchTerm(event.target.value)}
+              placeholder={searchPlaceholder}
+            />
+          </div>
+          {filteredOptions.length ? filteredOptions.map((option) => {
+            const selected = option.value === value;
+            return (
+              <button
+                key={option.value}
+                type="button"
+                className={`incentive-employee-select__option ${selected ? "incentive-employee-select__option--selected" : ""}`.trim()}
+                role="option"
+                aria-selected={selected}
+                onClick={() => {
+                  onChange(option.value);
+                  setOpen(false);
+                }}
+              >
+                <span className="incentive-employee-select__option-label">{option.label}</span>
+                {option.hint ? <span className="incentive-employee-select__option-hint">{option.hint}</span> : null}
+              </button>
+            );
+          }) : (
+            <div className="incentive-employee-select__empty">{emptyMessage}</div>
+          )}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 function IncentivesPage({ token, role }: IncentivesPageProps) {
+  const isEmployeeView = role === "EMPLOYEE";
   const [activeTab, setActiveTab] = useState<"list" | "create">("list");
   const [incentives, setIncentives] = useState<Incentive[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
@@ -86,23 +208,28 @@ function IncentivesPage({ token, role }: IncentivesPageProps) {
 
   const canCreateIncentive = role === "ADMIN" || role === "HR";
   const canReviewIncentive = role === "ADMIN" || role === "HR" || role === "MANAGER";
+  const currentYear = new Date().getFullYear();
+  const yearOptions = [currentYear - 1, currentYear, currentYear + 1, currentYear + 2];
 
   // Fetch employees (for dropdown)
   const fetchEmployees = useCallback(async () => {
-    if (!token) return;
+    if (!token || isEmployeeView) return;
     try {
-      const response = await apiRequest("/employees", { token });
+      const response = await apiRequest("/employees?limit=1000", { token });
       if (response.success) {
         // Handle different response structures
         const employeesData = Array.isArray(response.data) 
           ? response.data 
           : (response.data as any)?.items || [];
-        setEmployees(employeesData as Employee[]);
+        const sortedEmployees = [...(employeesData as Employee[])].sort((a, b) =>
+          `${a.firstName} ${a.lastName}`.localeCompare(`${b.firstName} ${b.lastName}`)
+        );
+        setEmployees(sortedEmployees);
       }
     } catch (err) {
       console.error("Failed to fetch employees:", err);
     }
-  }, [token]);
+  }, [token, isEmployeeView]);
 
   // Fetch incentives
   const fetchIncentives = useCallback(async () => {
@@ -232,7 +359,7 @@ function IncentivesPage({ token, role }: IncentivesPageProps) {
     }
   }, [fetchEmployees, fetchIncentives, fetchIncentiveSummary, role]);
 
-  const employeeOptions = useMemo(() => {
+  const employeeOptions = useMemo<EmployeeSelectOption[]>(() => {
     if (!Array.isArray(employees)) return [];
     return employees.map((emp) => ({
       value: emp.id.toString(),
@@ -241,39 +368,63 @@ function IncentivesPage({ token, role }: IncentivesPageProps) {
     }));
   }, [employees]);
 
+  const getStatusClass = (status: IncentiveStatus) => {
+    if (status === "PAID") return "status-pill status-pill--finalized";
+    return `status-pill status-pill--${status.toLowerCase()}`;
+  };
+
+  const groupedMonthlyIncentives = useMemo(() => {
+    const groups = incentives.reduce<Record<string, { month: number; year: number; total: number; items: Incentive[] }>>((acc, item) => {
+      const key = `${item.year}-${item.month}`;
+      if (!acc[key]) {
+        acc[key] = { month: item.month, year: item.year, total: 0, items: [] };
+      }
+      acc[key].items.push(item);
+      acc[key].total += Number(item.amount);
+      return acc;
+    }, {});
+
+    return Object.values(groups).sort((a, b) => {
+      const aKey = a.year * 100 + a.month;
+      const bKey = b.year * 100 + b.month;
+      return bKey - aKey;
+    });
+  }, [incentives]);
+
   return (
-    <div className="payroll-page">
-      <div className="page-header">
-        <h1>Incentives Management</h1>
+    <section className="stack incentives-page">
+      <div className="action-row incentives-page__header">
+        <div>
+          <p className="eyebrow">Payroll</p>
+          <h1>{isEmployeeView ? "My Incentives" : "Incentives Management"}</h1>
+        </div>
         {incentiveSummary && (
-          <div className="incentive-summary">
-            <div className="summary-card">
-              <h3>This Month's Incentives</h3>
-              <div className="summary-amount">Rs {incentiveSummary.totalIncentives.toLocaleString()}</div>
-              <div className="summary-details">
-                <span>{incentiveSummary.approvedIncentives} approved</span>
+          <div className="incentive-summary-card">
+            <p className="eyebrow">This Month</p>
+            <strong>Rs {incentiveSummary.totalIncentives.toLocaleString()}</strong>
+            <div className="incentive-summary-card__meta">
+              <span>{incentiveSummary.approvedIncentives} approved</span>
                 {incentiveSummary.pendingIncentives > 0 && (
                   <span>{incentiveSummary.pendingIncentives} pending</span>
                 )}
               </div>
             </div>
-          </div>
         )}
       </div>
 
       {error && <div className="error-message">{error}</div>}
       {success && <div className="success-message">{success}</div>}
 
-      <div className="tab-navigation">
+      <div className="incentives-tabs">
         <button
-          className={`tab-button ${activeTab === "list" ? "active" : ""}`}
+          className={`incentives-tab ${activeTab === "list" ? "active" : ""}`}
           onClick={() => setActiveTab("list")}
         >
-          Incentives List
+          {isEmployeeView ? "Month-wise Incentives" : "Incentives List"}
         </button>
         {canCreateIncentive && (
           <button
-            className={`tab-button ${activeTab === "create" ? "active" : ""}`}
+            className={`incentives-tab ${activeTab === "create" ? "active" : ""}`}
             onClick={() => setActiveTab("create")}
           >
             Create Incentive
@@ -282,55 +433,98 @@ function IncentivesPage({ token, role }: IncentivesPageProps) {
       </div>
 
       {activeTab === "list" && (
-        <div className="incentives-list-section">
-          <div className="filters-section">
-            <div className="filter-row">
-              <div className="filter-field">
-                <label>Employee</label>
-                <select value={filterEmployeeId} onChange={(e) => setFilterEmployeeId(e.target.value)}>
-                  <option value="">All Employees</option>
-                  {employeeOptions.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="filter-field">
-                <label>Month</label>
-                <select value={filterMonth} onChange={(e) => setFilterMonth(e.target.value)}>
-                  <option value="">All Months</option>
-                  {payrollMonthOptions.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="filter-field">
-                <label>Year</label>
-                <select value={filterYear} onChange={(e) => setFilterYear(e.target.value)}>
-                  <option value="">All Years</option>
-                  {[2024, 2025, 2026, 2027].map((year) => (
-                    <option key={year} value={year}>
-                      {year}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <button className="filter-button" onClick={fetchIncentives}>
-                Apply Filters
-              </button>
+        <div className="card incentives-card">
+          <div className="incentives-card__header">
+            <div>
+              <p className="eyebrow">{isEmployeeView ? "My Earnings" : "Overview"}</p>
+              <h3>{isEmployeeView ? "Monthly Incentive Panels" : "Incentives List"}</h3>
             </div>
           </div>
+          {!isEmployeeView ? (
+            <div className="incentives-filters">
+              <div className="filter-row">
+                <div className="filter-field">
+                  <label>Team Member</label>
+                  <SearchableEmployeeSelect
+                    id="incentive-filter-employee"
+                    value={filterEmployeeId}
+                    options={employeeOptions}
+                    onChange={setFilterEmployeeId}
+                    placeholder="Any team member"
+                    searchPlaceholder="Search team member"
+                    emptyMessage="No matching team members"
+                  />
+                </div>
+                <div className="filter-field">
+                  <label>Incentive Month</label>
+                  <select value={filterMonth} onChange={(e) => setFilterMonth(e.target.value)}>
+                    <option value="">Any month</option>
+                    {payrollMonthOptions.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="filter-field">
+                  <label>Incentive Year</label>
+                  <select value={filterYear} onChange={(e) => setFilterYear(e.target.value)}>
+                    <option value="">Any year</option>
+                    {yearOptions.map((year) => (
+                      <option key={year} value={year}>
+                        {year}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <button className="filter-button" onClick={fetchIncentives}>
+                  Apply Filters
+                </button>
+              </div>
+            </div>
+          ) : null}
 
           {loading ? (
             <div className="loading">Loading incentives...</div>
           ) : !Array.isArray(incentives) || incentives.length === 0 ? (
-            <div className="empty-state">No incentives found</div>
+            <div className="table-empty-state">
+              <strong>No incentives found</strong>
+              <span>{isEmployeeView ? "No incentives are recorded for your account yet." : "Try changing the selected filters."}</span>
+            </div>
+          ) : isEmployeeView ? (
+            <div className="incentive-month-panels">
+              {groupedMonthlyIncentives.map((group) => (
+                <article key={`${group.year}-${group.month}`} className="incentive-month-panel">
+                  <header className="incentive-month-panel__header">
+                    <div>
+                      <p className="eyebrow">Month</p>
+                      <h4>{payrollMonthOptions.find((m) => m.value === String(group.month))?.label} {group.year}</h4>
+                    </div>
+                    <div className="incentive-month-panel__total">
+                      <span>Total</span>
+                      <strong>Rs {group.total.toLocaleString()}</strong>
+                    </div>
+                  </header>
+                  <div className="incentive-month-panel__items">
+                    {group.items.map((incentive) => (
+                      <div key={incentive.id} className="incentive-month-panel__item">
+                        <div className="table-cell-stack">
+                          <span className="table-cell-primary">{incentive.typeDisplay || incentive.type}</span>
+                          <span className="table-cell-secondary">{incentive.reason}</span>
+                        </div>
+                        <div className="incentive-month-panel__meta">
+                          <strong className="amount">Rs {Number(incentive.amount).toLocaleString()}</strong>
+                          <span className={getStatusClass(incentive.status)}>{incentive.statusDisplay || incentive.status}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </article>
+              ))}
+            </div>
           ) : (
-            <div className="incentives-table">
-              <table>
+            <div className="table-wrap incentives-table-wrap">
+              <table className="table table--dense">
                 <thead>
                   <tr>
                     <th>Employee</th>
@@ -348,7 +542,12 @@ function IncentivesPage({ token, role }: IncentivesPageProps) {
                     <tr key={incentive.id}>
                       <td>
                         {incentive.employee
-                          ? `${incentive.employee.firstName} ${incentive.employee.lastName}`
+                          ? (
+                            <div className="table-cell-stack">
+                              <span className="table-cell-primary">{`${incentive.employee.firstName} ${incentive.employee.lastName}`}</span>
+                              <span className="table-cell-secondary">{incentive.employee.employeeCode ?? `#${incentive.employeeId}`}</span>
+                            </div>
+                          )
                           : `Employee #${incentive.employeeId}`}
                       </td>
                       <td>
@@ -360,27 +559,28 @@ function IncentivesPage({ token, role }: IncentivesPageProps) {
                         {payrollMonthOptions.find(m => m.value === incentive.month.toString())?.label} {incentive.year}
                       </td>
                       <td>
-                        <span
-                          className="status-badge"
-                          style={{ backgroundColor: incentiveStatusColors[incentive.status] }}
-                        >
+                        <span className={getStatusClass(incentive.status)}>
                           {incentive.statusDisplay || incentive.status}
                         </span>
                       </td>
                       <td>{new Date(incentive.createdAt).toLocaleDateString()}</td>
-                      {canReviewIncentive && incentive.status === "PENDING" && (
+                      {canReviewIncentive ? (
                         <td>
-                          <button
-                            className="action-button"
-                            onClick={() => {
-                              setSelectedIncentive(incentive);
-                              setShowReviewModal(true);
-                            }}
-                          >
-                            Review
-                          </button>
+                          {incentive.status === "PENDING" ? (
+                            <button
+                              className="incentives-action-button"
+                              onClick={() => {
+                                setSelectedIncentive(incentive);
+                                setShowReviewModal(true);
+                              }}
+                            >
+                              Review
+                            </button>
+                          ) : (
+                            <span className="table-cell-secondary">No action</span>
+                          )}
                         </td>
-                      )}
+                      ) : null}
                     </tr>
                   ))}
                 </tbody>
@@ -391,23 +591,25 @@ function IncentivesPage({ token, role }: IncentivesPageProps) {
       )}
 
       {activeTab === "create" && canCreateIncentive && (
-        <div className="create-incentive-section">
+        <div className="card incentives-card">
+          <div className="incentives-card__header">
+            <div>
+              <p className="eyebrow">New Entry</p>
+              <h3>Create Incentive</h3>
+            </div>
+          </div>
           <form onSubmit={handleCreateIncentive} className="incentive-form">
             <div className="form-row">
               <div className="form-field">
                 <label>Employee *</label>
-                <select
+                <SearchableEmployeeSelect
+                  id="incentive-form-employee"
                   value={formValues.employeeId}
-                  onChange={(e) => setFormValues({ ...formValues, employeeId: e.target.value })}
+                  options={employeeOptions}
+                  onChange={(value) => setFormValues({ ...formValues, employeeId: value })}
+                  placeholder="Select employee"
                   required
-                >
-                  <option value="">Select Employee</option>
-                  {employeeOptions.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label} {option.hint && `(${option.hint})`}
-                    </option>
-                  ))}
-                </select>
+                />
               </div>
               <div className="form-field">
                 <label>Incentive Type *</label>
@@ -456,7 +658,7 @@ function IncentivesPage({ token, role }: IncentivesPageProps) {
                     onChange={(e) => setFormValues({ ...formValues, year: e.target.value })}
                     required
                   >
-                    {[2024, 2025, 2026, 2027].map((year) => (
+                    {yearOptions.map((year) => (
                       <option key={year} value={year}>
                         {year}
                       </option>
@@ -494,7 +696,7 @@ function IncentivesPage({ token, role }: IncentivesPageProps) {
               </button>
               <button
                 type="button"
-                className="cancel-button"
+                className="cancel-button secondary"
                 onClick={() => {
                   setFormValues(initialIncentiveForm());
                   setActiveTab("list");
@@ -550,7 +752,7 @@ function IncentivesPage({ token, role }: IncentivesPageProps) {
                 </button>
                 <button
                   type="button"
-                  className="cancel-button"
+                  className="cancel-button secondary"
                   onClick={() => {
                     setShowReviewModal(false);
                     setSelectedIncentive(null);
@@ -564,7 +766,7 @@ function IncentivesPage({ token, role }: IncentivesPageProps) {
           </div>
         </div>
       )}
-    </div>
+    </section>
   );
 }
 

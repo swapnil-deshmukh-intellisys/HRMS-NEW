@@ -11,6 +11,7 @@ const DepartmentsPage = lazy(() => import("../features/departments/DepartmentsPa
 const EmployeeProfilePage = lazy(() => import("../features/employees/EmployeeProfilePage"));
 const EmployeesPage = lazy(() => import("../features/employees/EmployeesPage"));
 const LeavesPage = lazy(() => import("../features/leaves/LeavesPage"));
+const TeamPage = lazy(() => import("../features/team/TeamPage"));
 const PayrollPage = lazy(() => import("../features/payroll/PayrollPage"));
 const IncentivesPage = lazy(() => import("../features/payroll/IncentivesPage"));
 const AppLayout = lazy(() => import("../layout/AppLayout"));
@@ -20,7 +21,7 @@ function RouteLoadingFallback() {
 }
 
 function AppRoutes() {
-  const { token, sessionUser, loadingSession, login, logout } = useAuth();
+  const { token, sessionUser, loadingSession, login, logout, sessionWarning, refreshSession, updateLastActivity } = useAuth();
 
   if (loadingSession) {
     return <div className="center-message">Loading HRMS workspace...</div>;
@@ -31,7 +32,20 @@ function AppRoutes() {
       <Routes>
         <Route path="/login" element={sessionUser ? <Navigate to="/" replace /> : <LoginPage onLogin={login} />} />
         <Route
-          element={sessionUser ? <AppLayout token={token} sessionUser={sessionUser} onLogout={logout} /> : <Navigate to="/login" replace />}
+          element={
+            sessionUser ? (
+              <AppLayout
+                token={token}
+                sessionUser={sessionUser}
+                onLogout={logout}
+                sessionWarning={sessionWarning}
+                onRefreshSession={refreshSession}
+                onUserActivity={updateLastActivity}
+              />
+            ) : (
+              <Navigate to="/login" replace />
+            )
+          }
         >
           <Route
             index
@@ -69,6 +83,17 @@ function AppRoutes() {
             path="/leaves"
             element={
               <LeavesPage
+                token={token}
+                role={sessionUser?.role ?? "EMPLOYEE"}
+                currentEmployeeId={sessionUser?.employee?.id ?? null}
+                currentEmployee={sessionUser?.employee ?? null}
+              />
+            }
+          />
+          <Route
+            path="/team"
+            element={
+              <TeamPage
                 token={token}
                 role={sessionUser?.role ?? "EMPLOYEE"}
                 currentEmployeeId={sessionUser?.employee?.id ?? null}

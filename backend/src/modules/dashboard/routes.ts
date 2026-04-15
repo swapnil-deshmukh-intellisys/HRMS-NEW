@@ -1,4 +1,4 @@
-import { AttendanceStatus, LeaveStatus } from "@prisma/client";
+import { ApprovalStepStatus, AttendanceRegularizationStatus, AttendanceStatus, IncentiveStatus, LeaveStatus } from "@prisma/client";
 import { Router } from "express";
 import { prisma } from "../../config/prisma.js";
 import { authenticate, requireRoles } from "../../middleware/auth.js";
@@ -259,9 +259,67 @@ router.get("/employee-summary", requireRoles("EMPLOYEE", "MANAGER", "HR", "ADMIN
   try {
     const employeeId = request.user?.employeeId ?? 0;
     const today = startOfDay(new Date());
-    const summary = await getEmployeeDashboardSharedData(employeeId, today);
+    const role = request.user?.role;
 
-    return sendSuccess(response, "Employee dashboard summary fetched successfully", summary);
+    if (role === "HR" || role === "ADMIN") {
+      const [pendingLeaves, payrollCount, pendingCorrectionRequests, pendingIncentiveApprovals] = await Promise.all([
+        prisma.leaveRequest.count({
+          where:
+            role === "HR"
+              ? {
+                  status: LeaveStatus.PENDING,
+                  hrApprovalStatus: ApprovalStepStatus.PENDING,
+                }
+              : {
+                  status: LeaveStatus.PENDING,
+                },
+        }),
+        prisma.payrollRecord.count(),
+        prisma.attendanceRegularizationRequest.count({
+          where: { status: AttendanceRegularizationStatus.PENDING },
+        }),
+        prisma.incentive.count({
+          where: { status: IncentiveStatus.PENDING },
+        }),
+      ]);
+
+      return sendSuccess(response, "Employee dashboard summary fetched successfully", {
+        pendingLeaves,
+        pendingTeamLeaves: 0,
+        payrollCount,
+        scopedTeamCount: 0,
+        isTeamLead: false,
+        pendingCorrectionRequests,
+        pendingIncentiveApprovals,
+      });
+    }
+
+    const summary = await getEmployeeDashboardSharedData(employeeId, today);
+    const pendingCorrectionRequests =
+      role === "MANAGER" && employeeId
+        ? await prisma.attendanceRegularizationRequest.count({
+            where: {
+              status: AttendanceRegularizationStatus.PENDING,
+              employee: {
+                managerId: employeeId,
+              },
+              NOT: {
+                employeeId,
+              },
+            },
+          })
+        : await prisma.attendanceRegularizationRequest.count({
+            where: {
+              status: AttendanceRegularizationStatus.PENDING,
+              employeeId,
+            },
+          });
+
+    return sendSuccess(response, "Employee dashboard summary fetched successfully", {
+      ...summary,
+      pendingCorrectionRequests,
+      pendingIncentiveApprovals: 0,
+    });
   } catch (error) {
     next(error);
   }

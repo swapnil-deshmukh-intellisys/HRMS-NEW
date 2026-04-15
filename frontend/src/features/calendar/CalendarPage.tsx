@@ -30,6 +30,13 @@ function toDateInputValue(year: number, month: number, day: number) {
 
 const weekdayLabels = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
+function getDayStatusLabel(status: CalendarDay["status"]) {
+  if (status === "WORKING_SATURDAY") {
+    return "WORKING SATURDAY";
+  }
+  return status.replace(/_/g, " ");
+}
+
 export default function CalendarPage({ token, role }: CalendarPageProps) {
   const [visibleMonth, setVisibleMonth] = useState(() => {
     const now = new Date();
@@ -214,37 +221,39 @@ export default function CalendarPage({ token, role }: CalendarPageProps) {
           </div>
         ) : (
           <>
-            <div className="calendar-grid calendar-grid--labels">
-              {weekdayLabels.map((label) => (
-                <span key={label} className="calendar-grid__label">
-                  {label}
-                </span>
-              ))}
-            </div>
-            <div className="calendar-grid calendar-grid--days">
-              {weeks.flatMap((week, weekIndex) =>
-                Array.from({ length: 7 }).map((_, dayIndex) => {
-                  const day = week[dayIndex] ?? null;
-                  if (!day) {
-                    return <div key={`blank-${weekIndex}-${dayIndex}`} className="calendar-day-card calendar-day-card--blank" />;
-                  }
+            <div className="calendar-board">
+              <div className="calendar-grid calendar-grid--labels">
+                {weekdayLabels.map((label) => (
+                  <span key={label} className="calendar-grid__label">
+                    {label}
+                  </span>
+                ))}
+              </div>
+              <div className="calendar-grid calendar-grid--days">
+                {weeks.flatMap((week, weekIndex) =>
+                  Array.from({ length: 7 }).map((_, dayIndex) => {
+                    const day = week[dayIndex] ?? null;
+                    if (!day) {
+                      return <div key={`blank-${weekIndex}-${dayIndex}`} className="calendar-day-card calendar-day-card--blank" />;
+                    }
 
-                  return (
-                    <div key={day.date} className={getDayClassName(day)}>
-                      <div className="calendar-day-card__header">
-                        <strong>{day.dayNumber}</strong>
-                        <span>{day.status.replace(/_/g, " ")}</span>
+                    return (
+                      <div key={day.date} className={getDayClassName(day)}>
+                        <div className="calendar-day-card__header">
+                          <strong>{day.dayNumber}</strong>
+                          <span>{getDayStatusLabel(day.status)}</span>
+                        </div>
+                        {day.exception?.name && day.status !== "WORKING_SATURDAY" ? <p className="calendar-day-card__name">{day.exception.name}</p> : null}
+                        {canManageCalendar && day.exception?.type === "HOLIDAY" ? (
+                          <button type="button" className="secondary calendar-day-card__remove calendar-action-button" onClick={() => handleRemoveException(day.exception!.id)}>
+                            Remove
+                          </button>
+                        ) : null}
                       </div>
-                      {day.exception?.name ? <p className="calendar-day-card__name">{day.exception.name}</p> : null}
-                      {canManageCalendar && day.exception ? (
-                        <button type="button" className="secondary calendar-day-card__remove calendar-action-button" onClick={() => handleRemoveException(day.exception!.id)}>
-                          Remove
-                        </button>
-                      ) : null}
-                    </div>
-                  );
-                }),
-              )}
+                    );
+                  }),
+                )}
+              </div>
             </div>
           </>
         )}

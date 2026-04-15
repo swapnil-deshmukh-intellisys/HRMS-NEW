@@ -42,20 +42,22 @@ export default function EmployeePayrollTab({ payroll }: EmployeePayrollTabProps)
       </div>
       <div className="card employee-profile-section">
         <h3>Payroll history</h3>
-        <Table
-          compact
-          columns={["Period", "Salary", "Status"]}
-          rows={payroll.map((record) => [
-            <div className="table-cell-stack" key={`period-${record.id}`}>
-              <span className="table-cell-primary">{formatMonthYear(record.month, record.year)}</span>
-              <span className="table-cell-secondary">{`${record.month}/${record.year}`}</span>
-            </div>,
-            record.salary,
-            <span key={`status-${record.id}`} className={getStatusClass(record.status)}>
-              {record.status}
-            </span>,
-          ])}
-        />
+        <div className="employee-profile-payroll-table">
+          <Table
+            compact
+            columns={["Period", "Salary", "Status"]}
+            rows={payroll.map((record) => [
+              <div className="table-cell-stack" key={`period-${record.id}`}>
+                <span className="table-cell-primary">{formatMonthYear(record.month, record.year)}</span>
+                <span className="table-cell-secondary">{`${record.month}/${record.year}`}</span>
+              </div>,
+              record.salary,
+              <span key={`status-${record.id}`} className={getStatusClass(record.status)}>
+                {record.status}
+              </span>,
+            ])}
+          />
+        </div>
       </div>
     </div>
   );

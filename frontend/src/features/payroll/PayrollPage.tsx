@@ -1,4 +1,5 @@
 import "./PayrollPage.css";
+import "../../components/common/Table.css";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import { apiRequest } from "../../services/api";
@@ -35,6 +36,16 @@ type PayrollPreview = {
   probationMultiplier: number;
   probationAdjustedSalary: number;
   finalSalary: number;
+  grossSalary: number;
+  totalIncentives: number;
+  baseSalary: number;
+  incentives: Array<{
+    id: number;
+    type: string;
+    amount: number;
+    reason: string;
+    status: string;
+  }>;
 };
 
 type PayrollSelectOption = {
@@ -261,7 +272,13 @@ export default function PayrollPage({ token, role }: PayrollPageProps) {
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    if (!form.employeeId || !form.month || !form.year || !form.salary) {
+    if (!form.employeeId || !form.month) {
+      return;
+    }
+
+    const effectiveYear = Number(form.year) || new Date().getFullYear();
+    const effectiveSalary = Number(form.salary || preview?.grossSalary || preview?.finalSalary || 0);
+    if (!effectiveSalary) {
       return;
     }
 
@@ -273,8 +290,8 @@ export default function PayrollPage({ token, role }: PayrollPageProps) {
       body: {
         employeeId: Number(form.employeeId),
         month: Number(form.month),
-        year: Number(form.year),
-        ...(form.salary ? { salary: Number(form.salary) } : {}),
+        year: effectiveYear,
+        salary: effectiveSalary,
         status: form.status,
       },
     });
@@ -322,11 +339,13 @@ export default function PayrollPage({ token, role }: PayrollPageProps) {
   );
 
   const monthOptions = useMemo<PayrollSelectOption[]>(() => payrollMonthOptions.map((option) => ({ ...option })), []);
-  const isPayrollFormValid = Boolean(form.employeeId && form.month && form.year && form.salary);
+  const isPayrollFormValid = Boolean(form.employeeId && form.month && form.status);
   const visiblePayroll = useMemo(
     () => (role === "EMPLOYEE" ? payroll.filter((record) => record.status !== "DRAFT") : payroll),
     [payroll, role],
   );
+  const previewGrossSalary = preview ? Number(preview.grossSalary ?? preview.finalSalary) : 0;
+  const previewBaseSalary = preview ? Number(preview.baseSalary ?? preview.finalSalaryBeforeProbation) : 0;
 
   return (
     <section className="stack">
@@ -339,7 +358,7 @@ export default function PayrollPage({ token, role }: PayrollPageProps) {
               <h3>{editingPayrollId ? "Update payroll record" : "Create payroll record"}</h3>
             </div>
           </div>
-          <div className="grid cols-4 payroll-form-grid">
+          <div className="grid payroll-form-grid payroll-form-grid--compact">
             <PayrollSelectField
               label="Employee"
               value={form.employeeId}
@@ -355,20 +374,6 @@ export default function PayrollPage({ token, role }: PayrollPageProps) {
               required
               onChange={(value) => setForm({ ...form, month: value })}
             />
-            <label className="payroll-field">
-              Year
-              <input value={form.year} onChange={(event) => setForm({ ...form, year: event.target.value })} type="number" required />
-            </label>
-            <label className="payroll-field">
-              Salary
-              <input
-                value={form.salary}
-                onChange={(event) => setForm({ ...form, salary: event.target.value })}
-                type="number"
-                required
-                readOnly={Boolean(preview) && !editingPayrollId}
-              />
-            </label>
             <PayrollSelectField
               label="Status"
               value={form.status}
@@ -378,44 +383,110 @@ export default function PayrollPage({ token, role }: PayrollPageProps) {
             />
           </div>
           {preview ? (
-            <div className="grid cols-4 payroll-preview-grid">
-              <div className="table-cell-stack payroll-preview-stat">
-                <span className="table-cell-secondary">Net salary</span>
-                <span className="table-cell-primary">{preview.netSalary}</span>
+            <div className="payroll-preview-panel">
+              <div className="payroll-preview-panel__top">
+                <div className="payroll-preview-panel__headline">
+                  <span className="table-cell-secondary">Final salary</span>
+                  <strong className="payroll-preview-panel__final">{preview.finalSalary}</strong>
+                </div>
+                <div className="payroll-preview-panel__chip">
+                  <span className="table-cell-secondary">Net salary</span>
+                  <strong>{preview.netSalary}</strong>
+                </div>
+                {preview.employee.isOnProbation ? (
+                  <span className="payroll-preview-tag">Probation</span>
+                ) : null}
               </div>
-              <div className="table-cell-stack payroll-preview-stat">
-                <span className="table-cell-secondary">Absent days</span>
-                <span className="table-cell-primary">{preview.absentDeductionDays}</span>
+
+              <dl className="payroll-preview-panel__metrics">
+                <div className="payroll-preview-panel__metric">
+                  <dt>Gross salary</dt>
+                  <dd>{previewGrossSalary}</dd>
+                </div>
+                <div className="payroll-preview-panel__metric">
+                  <dt>Base salary</dt>
+                  <dd>{previewBaseSalary}</dd>
+                </div>
+                <div className="payroll-preview-panel__metric">
+                  <dt>Absent days</dt>
+                  <dd>{preview.absentDeductionDays}</dd>
+                </div>
+                <div className="payroll-preview-panel__metric">
+                  <dt>Half days</dt>
+                  <dd>{preview.halfDayDeductionDays}</dd>
+                </div>
+                <div className="payroll-preview-panel__metric">
+                  <dt>Deductible days</dt>
+                  <dd>{preview.deductibleDays}</dd>
+                </div>
+                <div className="payroll-preview-panel__metric">
+                  <dt>Deduction amount</dt>
+                  <dd>{preview.deductionAmount}</dd>
+                </div>
+                <div className="payroll-preview-panel__metric">
+                  <dt>PF deduction</dt>
+                  <dd>{preview.pf}</dd>
+                </div>
+                <div className="payroll-preview-panel__metric">
+                  <dt>Gratuity deduction</dt>
+                  <dd>{preview.gratuity}</dd>
+                </div>
+                <div className="payroll-preview-panel__metric">
+                  <dt>PT deduction</dt>
+                  <dd>{preview.pt}</dd>
+                </div>
+                {preview.employee.isOnProbation ? (
+                  <div className="payroll-preview-panel__metric">
+                    <dt>Before probation</dt>
+                    <dd>{preview.finalSalaryBeforeProbation}</dd>
+                  </div>
+                ) : null}
+                <div className="payroll-preview-panel__metric">
+                  <dt>Total incentives</dt>
+                  <dd>{Number(preview.totalIncentives ?? 0)}</dd>
+                </div>
+              </dl>
+
+            </div>
+          ) : null}
+          {preview && editingPayrollId ? <p className="muted payroll-note">Preview is shown for reference only. The saved salary will stay unchanged unless you edit it.</p> : null}
+          {previewLoading ? <p className="muted payroll-note">Refreshing payroll preview...</p> : null}
+          
+          {/* Incentive Breakdown */}
+          {preview?.incentives && preview.incentives.length > 0 ? (
+            <div className="card" style={{ marginTop: '2rem' }}>
+              <div className="card__header">
+                <h4>Incentive Breakdown</h4>
+                <span className="eyebrow">{preview.incentives.length} incentive(s) included</span>
               </div>
-              <div className="table-cell-stack payroll-preview-stat">
-                <span className="table-cell-secondary">Half days</span>
-                <span className="table-cell-primary">{preview.halfDayDeductionDays}</span>
-              </div>
-              <div className="table-cell-stack payroll-preview-stat">
-                <span className="table-cell-secondary">Deductible days</span>
-                <span className="table-cell-primary">{preview.deductibleDays}</span>
-              </div>
-              <div className="table-cell-stack payroll-preview-stat">
-                <span className="table-cell-secondary">Deduction amount</span>
-                <span className="table-cell-primary">{preview.deductionAmount}</span>
-              </div>
-              <div className="table-cell-stack payroll-preview-stat">
-                <span className="table-cell-secondary">Before probation</span>
-                <span className="table-cell-primary">{preview.finalSalaryBeforeProbation}</span>
-              </div>
-              <div className="table-cell-stack payroll-preview-stat">
-                <span className="table-cell-secondary">Probation pay</span>
-                <span className="table-cell-primary">{preview.probationMultiplier === 0.5 ? "50%" : "100%"}</span>
-              </div>
-              <div className="table-cell-stack payroll-preview-stat payroll-preview-stat--highlight">
-                <span className="table-cell-secondary">Final salary</span>
-                <span className="table-cell-primary">{preview.finalSalary}</span>
+              <div className="table-wrap">
+                <table className="table table--dense">
+                  <thead>
+                    <tr>
+                      <th>Type</th>
+                      <th>Amount</th>
+                      <th>Reason</th>
+                      <th>Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {preview.incentives.map((incentive) => (
+                      <tr key={incentive.id}>
+                        <td>{incentive.type.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, (l: string) => l.toUpperCase())}</td>
+                        <td className="amount">Rs {incentive.amount.toLocaleString()}</td>
+                        <td>{incentive.reason}</td>
+                        <td>
+                          <span className={`status-badge status-${incentive.status.toLowerCase()}`}>
+                            {incentive.status}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             </div>
           ) : null}
-          {preview?.employee.isOnProbation ? <p className="muted payroll-note">Probation rule is active, so only 50% of the final salary is payable for this payroll cycle.</p> : null}
-          {preview && editingPayrollId ? <p className="muted payroll-note">Preview is shown for reference only. The saved salary will stay unchanged unless you edit it.</p> : null}
-          {previewLoading ? <p className="muted payroll-note">Refreshing payroll preview...</p> : null}
           <div className="button-row payroll-form-actions">
             <button type="submit" className="payroll-action-button payroll-action-button--primary" disabled={!isPayrollFormValid}>
               {editingPayrollId ? "Update payroll" : "Create payroll"}

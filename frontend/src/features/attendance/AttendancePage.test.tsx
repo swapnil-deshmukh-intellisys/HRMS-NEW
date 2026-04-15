@@ -73,4 +73,32 @@ describe("AttendancePage", () => {
     expect(await screen.findByRole("button", { name: /approve/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /reject/i })).toBeInTheDocument();
   });
+
+  test("shows Daily View and Monthly Summary tabs for team leads", async () => {
+    const selfEmployee = createEmployee({
+      id: 5,
+      capabilities: [{ capability: "TEAM_LEAD" }],
+      scopedTeamMembers: [{ employee: createEmployee({ id: 9, firstName: "Jordan", lastName: "Mills", employeeCode: "EMP-009" }) }],
+    });
+
+    mockApiRoutes([
+      {
+        path: "/attendance/regularizations",
+        data: [],
+      },
+      {
+        path: /\/attendance(\?date=.*)?$/,
+        data: [createAttendance({ employeeId: 5, employee: selfEmployee })],
+      },
+    ]);
+
+    render(
+      <MemoryRouter>
+        <AttendancePage token="token" role="EMPLOYEE" currentEmployeeId={5} currentEmployee={selfEmployee} />
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByRole("tab", { name: "Daily View" })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Monthly Summary" })).toBeInTheDocument();
+  });
 });

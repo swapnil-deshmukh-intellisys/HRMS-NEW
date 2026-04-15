@@ -17,11 +17,26 @@ type DashboardPageProps = {
   currentEmployeeId: number | null;
 };
 
+function getIndiaTimeGreeting() {
+  const formatter = new Intl.DateTimeFormat("en-IN", {
+    hour: "numeric",
+    hour12: false,
+    timeZone: "Asia/Kolkata",
+  });
+  const hourPart = formatter.formatToParts(new Date()).find((part) => part.type === "hour");
+  const hour = Number(hourPart?.value ?? "12");
+
+  if (hour >= 5 && hour < 12) return "Good morning";
+  if (hour >= 12 && hour < 17) return "Good afternoon";
+  if (hour >= 17 && hour < 21) return "Good evening";
+  return "Good night";
+}
+
 function getDashboardContent(role: Role) {
   if (role === "EMPLOYEE") {
     return {
-      eyebrow: "Today at a glance",
-      title: "Good morning",
+      eyebrow: "",
+      title: getIndiaTimeGreeting(),
       description: "Use this dashboard for quick actions and essential workday updates.",
     };
   }
@@ -138,7 +153,6 @@ export default function DashboardPage({ token, role }: DashboardPageProps) {
 
   const attendanceToday = employeeDashboard?.attendanceToday ?? null;
   const todayLabel = new Date().toLocaleDateString(undefined, { day: "numeric", month: "long" });
-  const isTeamLead = Boolean(employeeDashboard?.isTeamLead);
   const currentEmployee = employeeDashboard?.currentEmployee ?? null;
   const attendanceStatusNote = getAttendanceStatusNote(attendanceToday);
 
@@ -166,7 +180,7 @@ export default function DashboardPage({ token, role }: DashboardPageProps) {
         <>
           <article className="card dashboard-hero">
             <div className="dashboard-hero-copy">
-              <p className="eyebrow">{bannerContent.eyebrow}</p>
+              {bannerContent.eyebrow ? <p className="eyebrow">{bannerContent.eyebrow}</p> : null}
               <h3>{bannerContent.title}</h3>
               <p className="muted">{bannerContent.description}</p>
               {role === "EMPLOYEE" ? (
@@ -225,25 +239,6 @@ export default function DashboardPage({ token, role }: DashboardPageProps) {
                       ? `Reporting to ${currentEmployee.manager.firstName} ${currentEmployee.manager.lastName}`
                       : "Manager not assigned yet"}
                   </p>
-                  <div className="dashboard-inline-row">
-                    <span>Analytics</span>
-                    <button className="secondary" onClick={() => navigate("/analytics")}>
-                      View insights
-                    </button>
-                  </div>
-                </article>
-              </div>
-
-              {isTeamLead ? (
-                <article className="card dashboard-team-lead-card">
-                  <div className="dashboard-actions-header">
-                    <div>
-                      <p className="eyebrow">Team leader desk</p>
-                      <h3>Keep your team flow moving</h3>
-                    </div>
-                    <span className="dashboard-project-badge">TL</span>
-                  </div>
-                  <p className="muted">Use analytics for charts and keep this space focused on quick team counters.</p>
                   <div className="dashboard-project-meta">
                     <div className="table-cell-stack">
                       <span className="table-cell-secondary">Scoped team members</span>
@@ -263,7 +258,7 @@ export default function DashboardPage({ token, role }: DashboardPageProps) {
                     </button>
                   </div>
                 </article>
-              ) : null}
+              </div>
             </>
           ) : (
             <>

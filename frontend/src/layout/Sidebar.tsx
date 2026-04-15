@@ -1,8 +1,8 @@
 import "./Sidebar.css";
-import { BarChart3, Building2, Calendar, CalendarDays, Clock3, Home, LogOut, Users, Wallet, type LucideIcon } from "lucide-react";
+import { BarChart3, Building2, Calendar, CalendarDays, Clock3, Gift, Home, LogOut, Users, Wallet, type LucideIcon } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import Button from "../components/common/Button";
-import type { Role, SessionUser } from "../types";
+import type { SessionUser } from "../types";
 
 type SidebarProps = {
   sessionUser: SessionUser;
@@ -17,7 +17,9 @@ type NavItem = {
   icon: LucideIcon;
 };
 
-function getNavItems(role: Role): NavItem[] {
+function getNavItems(sessionUser: SessionUser): NavItem[] {
+  const role = sessionUser.role;
+  const isTeamLead = Boolean(sessionUser.employee?.capabilities?.some((capability) => capability.capability === "TEAM_LEAD"));
   const items: NavItem[] = [{ to: "/", label: "Dashboard", icon: Home }];
   items.push({ to: "/analytics", label: "Analytics", icon: BarChart3 });
 
@@ -29,13 +31,17 @@ function getNavItems(role: Role): NavItem[] {
   items.push({ to: "/calendar", label: "Calendar", icon: Calendar });
   items.push({ to: "/attendance", label: "Attendance", icon: Clock3 });
   items.push({ to: "/leaves", label: "Leaves", icon: CalendarDays });
+  if (isTeamLead) {
+    items.push({ to: "/team", label: "Team", icon: Users });
+  }
   items.push({ to: "/payroll", label: "Payroll", icon: Wallet });
+  items.push({ to: "/incentives", label: "Incentives", icon: Gift });
   return items;
 }
 
 export default function Sidebar({ sessionUser, navOpen, onNavigate, onLogout }: SidebarProps) {
   const location = useLocation();
-  const navItems = getNavItems(sessionUser.role);
+  const navItems = getNavItems(sessionUser);
 
   function isActivePath(path: string) {
     if (path === "/") {

@@ -50,6 +50,22 @@
   gap: var(--space-4);
 }
 
+.employee-profile-payroll-table .table {
+  width: 100%;
+  min-width: 100%;
+  table-layout: fixed;
+}
+
+.employee-profile-payroll-table .table th,
+.employee-profile-payroll-table .table td {
+  width: 33.33%;
+}
+
+.employee-profile-payroll-table .table td:nth-child(2),
+.employee-profile-payroll-table .table td:nth-child(3) {
+  text-align: center;
+}
+
 .employee-profile-chart-grid {
   align-items: stretch;
 }

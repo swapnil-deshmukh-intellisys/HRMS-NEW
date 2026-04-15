@@ -5,14 +5,18 @@ import type { SessionUser } from "../types";
 import { getPageTitle } from "../utils/routes";
 import Navbar from "./Navbar";
 import Sidebar from "./Sidebar";
+import SessionWarning from "../components/SessionWarning";
 
 type AppLayoutProps = {
   token: string | null;
   sessionUser: SessionUser;
   onLogout: () => Promise<void>;
+  sessionWarning: boolean;
+  onRefreshSession: () => void | Promise<void>;
+  onUserActivity: () => void;
 };
 
-export default function AppLayout({ token, sessionUser, onLogout }: AppLayoutProps) {
+export default function AppLayout({ token, sessionUser, onLogout, sessionWarning, onRefreshSession, onUserActivity }: AppLayoutProps) {
   const location = useLocation();
   const navigate = useNavigate();
   const [navOpen, setNavOpen] = useState(false);
@@ -40,6 +44,12 @@ export default function AppLayout({ token, sessionUser, onLogout }: AppLayoutPro
           <Outlet />
         </div>
       </main>
+      <SessionWarning
+        sessionWarning={sessionWarning}
+        onRefreshSession={onRefreshSession}
+        onLogout={handleLogout}
+        onUserActivity={onUserActivity}
+      />
     </div>
   );
 }

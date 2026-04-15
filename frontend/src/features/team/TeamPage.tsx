@@ -57,7 +57,7 @@ function getCalendarDays({ month, year }: VisibleMonth) {
   });
 }
 
-export default function TeamPage({ token, role, currentEmployeeId, currentEmployee }: TeamPageProps) {
+export default function TeamPage({ token, role, currentEmployee }: TeamPageProps) {
   const today = toLocalDateString(new Date());
   const [primaryTab, setPrimaryTab] = useState<TeamPrimaryTab>("PROJECTS");
   const [teamTab, setTeamTab] = useState<TeamTab>("ATTENDANCE");

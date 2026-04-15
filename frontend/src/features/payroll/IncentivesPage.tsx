@@ -186,6 +186,7 @@ function SearchableEmployeeSelect({
   );
 }
 
+
 function IncentivesPage({ token, role }: IncentivesPageProps) {
   const isEmployeeView = role === "EMPLOYEE";
   const [activeTab, setActiveTab] = useState<"list" | "create">("list");

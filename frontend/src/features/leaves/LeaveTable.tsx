@@ -63,45 +63,6 @@ export default function LeaveTable({
     return `leave-status-progress__step leave-status-progress__step--${status.toLowerCase()}`;
   }
 
-  function getReviewSummary(leave: LeaveRequest) {
-    if (leave.status === "APPROVED") {
-      if (leave.managerApprovedAt && leave.hrApprovedAt) {
-        return `Mgr ${formatDateTime(leave.managerApprovedAt)} / HR ${formatDateTime(leave.hrApprovedAt)}`;
-      }
-
-      return leave.hrApprovedAt ? formatDateTime(leave.hrApprovedAt) : leave.managerApprovedAt ? formatDateTime(leave.managerApprovedAt) : "Approved";
-    }
-
-    if (leave.status === "REJECTED") {
-      if (leave.hrApprovalStatus === "REJECTED") {
-        return leave.hrApprovedAt ? `HR ${formatDateTime(leave.hrApprovedAt)}` : "HR rejected";
-      }
-
-      if (leave.managerApprovalStatus === "REJECTED") {
-        return leave.managerApprovedAt ? `Mgr ${formatDateTime(leave.managerApprovedAt)}` : "Manager rejected";
-      }
-
-      return "Rejected";
-    }
-
-    if (leave.status === "CANCELLED") {
-      return "Cancelled";
-    }
-
-    if (leave.managerApprovalStatus === "APPROVED" && leave.hrApprovalStatus === "APPROVED") {
-      return "Fully approved";
-    }
-
-    if (leave.managerApprovalStatus === "APPROVED") {
-      return leave.managerApprovedAt ? `Mgr ${formatDateTime(leave.managerApprovedAt)}` : "Manager approved";
-    }
-
-    if (leave.hrApprovalStatus === "APPROVED") {
-      return leave.hrApprovedAt ? `HR ${formatDateTime(leave.hrApprovedAt)}` : "HR approved";
-    }
-
-    return "-";
-  }
 
   function renderActions(leave: LeaveRequest) {
     // For personal leaves, only allow cancellation of pending requests

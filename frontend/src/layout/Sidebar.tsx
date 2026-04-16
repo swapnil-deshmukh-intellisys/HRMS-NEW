@@ -1,7 +1,6 @@
 import "./Sidebar.css";
 import { BarChart3, Building2, Calendar, CalendarDays, Clock3, Gift, Home, Users, Wallet, UserRound, type LucideIcon } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
-import Button from "../components/common/Button";
 import type { SessionUser } from "../types";
 
 type SidebarProps = {

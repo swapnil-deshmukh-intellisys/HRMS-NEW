@@ -195,3 +195,55 @@
     flex-direction: column;
   }
 }
+
+@keyframes pulseSelectingNode {
+  0% {
+    box-shadow: 0 0 0 0 rgba(11, 116, 255, 0.4);
+  }
+  70% {
+    box-shadow: 0 0 0 6px rgba(11, 116, 255, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(11, 116, 255, 0);
+  }
+}
+
+.date-range-picker__day--selecting {
+  animation: pulseSelectingNode 1.5s infinite;
+  background: var(--color-accent-strong);
+  color: #fff;
+  transform: scale(1.05);
+  font-weight: var(--fw-bold);
+  z-index: 2;
+  position: relative;
+  transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.date-range-picker__day--in-range {
+  background: rgba(11, 116, 255, 0.12);
+  color: var(--color-accent-strong);
+  border-radius: 4px;
+}
+
+@keyframes flashHint {
+  0% { color: var(--color-accent); font-weight: var(--fw-semibold); }
+  50% { color: var(--color-text-secondary); font-weight: var(--fw-normal); }
+  100% { color: var(--color-accent); font-weight: var(--fw-semibold); }
+}
+
+.date-range-picker__hint {
+  margin-top: 12px;
+  color: var(--color-text-secondary);
+  font-size: var(--text-xs);
+  line-height: 1.5;
+  text-align: center;
+  padding: 8px;
+  border-radius: 8px;
+  background: var(--color-surface-hover);
+  transition: all 0.3s ease;
+}
+
+.date-range-picker__hint--pulse {
+  animation: flashHint 2s infinite;
+  background: rgba(11, 116, 255, 0.08); /* slight blue tint to draw attention */
+}

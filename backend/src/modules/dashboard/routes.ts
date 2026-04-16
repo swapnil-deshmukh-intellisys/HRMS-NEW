@@ -405,11 +405,22 @@ router.get("/manager", requireRoles("MANAGER", "HR", "ADMIN"), async (request, r
   }
 });
 
-router.get("/hr", requireRoles("HR", "ADMIN"), async (_request, response, next) => {
+router.get("/hr", requireRoles("HR", "ADMIN"), async (request, response, next) => {
   try {
+    const role = request.user?.role;
     const [employees, pendingLeaves, payrollCount, departments] = await Promise.all([
       prisma.employee.count({ where: { isActive: true } }),
-      prisma.leaveRequest.count({ where: { status: LeaveStatus.PENDING } }),
+      prisma.leaveRequest.count({
+        where:
+          role === "HR"
+            ? {
+                status: LeaveStatus.PENDING,
+                hrApprovalStatus: ApprovalStepStatus.PENDING,
+              }
+            : {
+                status: LeaveStatus.PENDING,
+              },
+      }),
       prisma.payrollRecord.count(),
       prisma.department.count({ where: { isActive: true } }),
     ]);

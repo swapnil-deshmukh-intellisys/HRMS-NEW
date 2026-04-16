@@ -45,8 +45,45 @@ export default function LeavesPage({ token, role, currentEmployeeId }: LeavesPag
     const [leaveFormOpen, setLeaveFormOpen] = useState(false);
   const [leaveBalancesOpen, setLeaveBalancesOpen] = useState(false);
   const [confirmAction, setConfirmAction] = useState<{ type: "cancel"; leaveId: number } | null>(null);
+  const [activeTab, setActiveTab] = useState<"pending" | "all">("pending");
   const summaryBalances = balances.filter((balance) => !balance.leaveType.deductFullQuotaOnApproval);
-    const today = new Date();
+  
+  // Filter leaves based on active tab
+  const getFilteredLeaves = () => {
+    if (activeTab === "pending") {
+      // For HR/ADMIN: show leaves pending HR approval
+      // For MANAGER: show leaves pending manager approval
+      // For EMPLOYEE: show their pending leaves
+      return leaves.filter(leave => {
+        if (role === "HR" || role === "ADMIN") {
+          return leave.status === "PENDING" && leave.hrApprovalStatus === "PENDING";
+        } else if (role === "MANAGER") {
+          return leave.status === "PENDING" && leave.managerApprovalStatus === "PENDING";
+        } else {
+          return leave.status === "PENDING" && leave.employee.id === currentEmployeeId;
+        }
+      });
+    }
+    return leaves; // "all" tab shows all leaves
+  };
+
+  const filteredLeaves = getFilteredLeaves();
+  
+  // Get pending leaves count for badge (independent of active tab)
+  const getPendingLeavesCount = () => {
+    return leaves.filter(leave => {
+      if (role === "HR" || role === "ADMIN") {
+        return leave.status === "PENDING" && leave.hrApprovalStatus === "PENDING";
+      } else if (role === "MANAGER") {
+        return leave.status === "PENDING" && leave.managerApprovalStatus === "PENDING";
+      } else {
+        return leave.status === "PENDING" && leave.employee.id === currentEmployeeId;
+      }
+    }).length;
+  };
+
+  const pendingCount = getPendingLeavesCount();
+  const today = new Date();
   const currentQuarterLabel =
     today.getMonth() >= 3 && today.getMonth() <= 5
       ? "Q1 · Apr to Jun"
@@ -231,8 +268,46 @@ export default function LeavesPage({ token, role, currentEmployeeId }: LeavesPag
               </button>
             </div>
           </div>
+          <div className="leaves-page-tabs" role="tablist" aria-label="Leave requests filter">
+            {pendingCount > 0 ? (
+              <button
+                type="button"
+                className={activeTab === "pending" ? "leaves-page-tab active leaves-page-tab--with-count" : "leaves-page-tab leaves-page-tab--with-count"}
+                onClick={() => setActiveTab("pending")}
+              >
+                <span>Pending</span>
+                <span className="leaves-page-tab__count">{pendingCount}</span>
+              </button>
+            ) : (
+              <button
+                type="button"
+                className={activeTab === "pending" ? "leaves-page-tab active" : "leaves-page-tab"}
+                onClick={() => setActiveTab("pending")}
+              >
+                Pending
+              </button>
+            )}
+            {leaves.length > 0 ? (
+              <button
+                type="button"
+                className={activeTab === "all" ? "leaves-page-tab active leaves-page-tab--with-count" : "leaves-page-tab leaves-page-tab--with-count"}
+                onClick={() => setActiveTab("all")}
+              >
+                <span>All</span>
+                <span className="leaves-page-tab__count">{leaves.length}</span>
+              </button>
+            ) : (
+              <button
+                type="button"
+                className={activeTab === "all" ? "leaves-page-tab active" : "leaves-page-tab"}
+                onClick={() => setActiveTab("all")}
+              >
+                All
+              </button>
+            )}
+          </div>
           <LeaveTable
-            leaves={leaves}
+            leaves={filteredLeaves}
             role={role}
             currentEmployeeId={currentEmployeeId}
             onCancel={(id) => setConfirmAction({ type: "cancel", leaveId: id })}
@@ -247,6 +322,7 @@ export default function LeavesPage({ token, role, currentEmployeeId }: LeavesPag
             form={form}
             attachmentName={attachmentFile?.name}
             leaveTypes={leaveTypes}
+            balances={balances}
             isSubmitting={submittingLeave}
             onChange={setForm}
             onAttachmentChange={setAttachmentFile}

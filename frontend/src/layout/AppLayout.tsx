@@ -30,7 +30,7 @@ export default function AppLayout({ token, sessionUser, onLogout, sessionWarning
   return (
     <div className="app-shell">
       {navOpen ? <button className="mobile-overlay" aria-label="Close navigation" onClick={() => setNavOpen(false)} /> : null}
-      <Sidebar sessionUser={sessionUser} navOpen={navOpen} onNavigate={() => setNavOpen(false)} onLogout={handleLogout} />
+      <Sidebar sessionUser={sessionUser} navOpen={navOpen} onNavigate={() => setNavOpen(false)} />
       <main className="content">
         <Navbar
           title={currentPageTitle}
@@ -39,6 +39,7 @@ export default function AppLayout({ token, sessionUser, onLogout, sessionWarning
           token={token}
           currentEmployeeId={sessionUser.employee?.id ?? null}
           role={sessionUser.role}
+          onLogout={handleLogout}
         />
         <div className="content-body">
           <Outlet />

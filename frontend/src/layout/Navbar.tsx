@@ -1,5 +1,5 @@
 import "./Navbar.css";
-import { Bell, Search, UserRound } from "lucide-react";
+import { Bell, LogOut, Search, UserRound } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
@@ -15,9 +15,10 @@ type NavbarProps = {
   token: string | null;
   currentEmployeeId: number | null;
   role: Role;
+  onLogout: () => void | Promise<void>;
 };
 
-export default function Navbar({ title, navOpen, onToggleNav, token, currentEmployeeId, role }: NavbarProps) {
+export default function Navbar({ title, navOpen, onToggleNav, token, currentEmployeeId, role, onLogout }: NavbarProps) {
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState("");
   const [notificationsOpen, setNotificationsOpen] = useState(false);
@@ -281,6 +282,15 @@ export default function Navbar({ title, navOpen, onToggleNav, token, currentEmpl
           disabled={!currentEmployeeId}
         >
           <UserRound size={18} strokeWidth={2} />
+        </Button>
+        <Button
+          type="button"
+          className="topbar-icon-button topbar-logout-button"
+          variant="secondary"
+          aria-label="Logout"
+          onClick={onLogout}
+        >
+          <LogOut size={18} strokeWidth={2} />
         </Button>
       </div>
     </div>

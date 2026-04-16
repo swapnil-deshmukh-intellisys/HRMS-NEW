@@ -261,17 +261,41 @@ export default function DashboardPage({ token, role }: DashboardPageProps) {
           ) : (
             <>
               <div className="grid cols-2 dashboard-grid">
-                {Object.entries(data).map(([key, value]) => (
-                  <article key={key} className={`card metric-card metric-card--${typeof value === "object" ? "status" : "numeric"}`}>
-                    <p className="eyebrow">
-                      {key === "teamCount" ? "Team members" : key === "pendingApprovals" ? "Pending approvals" : key === "pendingLeaves" ? "Pending leaves" : key === "employees" ? "Employees" : key === "departments" ? "Departments" : key === "payrollCount" ? "Payroll records" : key}
-                    </p>
-                    <strong>{String(value ?? "-")}</strong>
-                    <p className="muted">
-                      {key === "pendingApprovals" ? "Action needed soon" : key === "pendingLeaves" ? "Currently awaiting action" : "Live summary"}
-                    </p>
-                  </article>
-                ))}
+                {Object.entries(data).map(([key, value]) => {
+                  const getNavigationPath = () => {
+                    switch (key) {
+                      case "employees":
+                        return "/employees";
+                      case "pendingLeaves":
+                        return "/leaves";
+                      case "payrollCount":
+                        return "/payroll";
+                      case "departments":
+                        return "/departments";
+                      default:
+                        return null;
+                    }
+                  };
+
+                  const navigationPath = getNavigationPath();
+                  
+                  return (
+                    <article 
+                      key={key} 
+                      className={`card metric-card metric-card--${typeof value === "object" ? "status" : "numeric"}${navigationPath ? " metric-card--clickable" : ""}`}
+                      onClick={navigationPath ? () => navigate(navigationPath) : undefined}
+                      style={navigationPath ? { cursor: "pointer" } : undefined}
+                    >
+                      <p className="eyebrow">
+                        {key === "teamCount" ? "Team members" : key === "pendingApprovals" ? "Pending approvals" : key === "pendingLeaves" ? "Pending leaves" : key === "employees" ? "Employees" : key === "departments" ? "Departments" : key === "payrollCount" ? "Payroll records" : key}
+                      </p>
+                      <strong>{String(value ?? "-")}</strong>
+                      <p className="muted">
+                        {key === "pendingApprovals" ? "Action needed soon" : key === "pendingLeaves" ? "Currently awaiting action" : "Live summary"}
+                      </p>
+                    </article>
+                  );
+                })}
               </div>
 
                             </>

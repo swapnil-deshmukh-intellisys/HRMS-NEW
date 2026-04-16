@@ -1,4 +1,5 @@
 import "./LeaveTable.css";
+import { Calendar, ChevronDown } from "lucide-react";
 import { Fragment, useState } from "react";
 import { getFileUrl } from "../../services/api";
 import type { LeaveRequest, Role } from "../../types";
@@ -221,7 +222,7 @@ export default function LeaveTable({
                 <th>Days</th>
                 <th>Status</th>
                 <th>Actions</th>
-                <th>Details</th>
+                <th style={{ width: "40px" }}></th>
               </tr>
             </thead>
             <tbody>
@@ -230,7 +231,10 @@ export default function LeaveTable({
                   <tr className="leave-month-header">
                     <td colSpan={7}>
                       <div className="leave-month-header__content">
-                        <h3 className="leave-month-header__title">{monthGroup.monthLabel}</h3>
+                        <h3 className="leave-month-header__title">
+                          <Calendar size={16} strokeWidth={2.5} style={{ opacity: 0.6 }} />
+                          {monthGroup.monthLabel}
+                        </h3>
                         <span className="leave-month-header__count">{monthGroup.leaves.length} leave{monthGroup.leaves.length !== 1 ? 's' : ''}</span>
                       </div>
                     </td>
@@ -240,7 +244,14 @@ export default function LeaveTable({
 
                     return (
                       <Fragment key={leave.id}>
-                    <tr className={expanded ? "leave-request-row leave-request-row--expanded" : "leave-request-row"}>
+                    <tr 
+                      className={`expandable-row-trigger leave-request-row ${expanded ? "expanded-row-trigger leave-request-row--expanded" : ""}`}
+                      onClick={(e) => {
+                        const target = e.target as HTMLElement;
+                        if (target.closest("button")) return;
+                        toggleExpanded(leave.id);
+                      }}
+                    >
                       <td>
                         <span className="table-cell-primary">{`${leave.employee.firstName} ${leave.employee.lastName}`}</span>
                       </td>
@@ -261,24 +272,23 @@ export default function LeaveTable({
                         <div className="button-row row-actions leave-table-actions">{renderActions(leave)}</div>
                       </td>
                       <td>
-                        <button
-                          type="button"
-                          className="secondary leave-expand-button"
-                          onClick={() => toggleExpanded(leave.id)}
-                          aria-expanded={expanded}
-                        >
-                          {expanded ? "Hide" : "View"}
-                        </button>
+                        <ChevronDown className={`expandable-row-icon ${expanded ? "expanded" : ""}`} />
                       </td>
                     </tr>
                     {expanded ? (
-                      <tr className="leave-request-details-row">
+                      <tr className="expanded-row-content">
                         <td colSpan={7}>
-                          <div className="leave-request-details">
-                            <div className="leave-request-details__grid">
-                              <div className="leave-request-details__section">
-                                <p className="eyebrow">Approval progress</p>
-                                <div className="leave-progress">
+                          <div className="expanded-details-container">
+                            <div className="expanded-details-grid">
+                              
+                              <div className="detail-block" style={{ gridColumn: "span 2" }}>
+                                <span className="table-cell-secondary">Reason</span>
+                                <span className="table-cell-primary" style={{ whiteSpace: "pre-wrap" }}>{leave.reason || "No reason provided"}</span>
+                              </div>
+
+                              <div className="detail-block">
+                                <span className="table-cell-secondary">Approval Progress</span>
+                                <div className="leave-progress" style={{ marginTop: '4px' }}>
                                   <div className={getStepClass(leave.managerApprovalStatus)}>
                                     <span className="leave-step__label">Manager</span>
                                     <span className="leave-step__value">{leave.managerApprovalStatus}</span>
@@ -289,146 +299,107 @@ export default function LeaveTable({
                                   </div>
                                 </div>
                               </div>
-                              <div className="leave-request-details__section">
-                                <p className="eyebrow">More info</p>
-                                <div className="leave-request-details__meta">
-                                  <div className="leave-request-details__item">
-                                    <span className="leave-request-details__label">Leave type</span>
-                                    <span className="leave-request-details__value">{leave.leaveType.name}</span>
-                                  </div>
-                                  <div className="leave-request-details__item">
-                                    <span className="leave-request-details__label">Employee ID</span>
-                                    <span className="leave-request-details__value">{leave.employee.employeeCode}</span>
-                                  </div>
-                                  <div className="leave-request-details__item">
-                                    <span className="leave-request-details__label">Paid / unpaid</span>
-                                    <span className="leave-request-details__value">{`${formatLeaveDays(leave.paidDays)} / ${formatLeaveDays(leave.unpaidDays)}`}</span>
-                                  </div>
-                                  <div className="leave-request-details__item">
-                                    <span className="leave-request-details__label">Reviewed on</span>
-                                    <span className="leave-request-details__value">{getReviewSummary(leave)}</span>
-                                  </div>
-                                  {leave.hrApprovalStatus === "REJECTED" && leave.hrRejectionReason ? (
-                                    <div className="leave-request-details__item">
-                                      <span className="leave-request-details__label">HR rejection reason</span>
-                                      <span className="leave-request-details__value">{leave.hrRejectionReason}</span>
-                                    </div>
+
+                              <div className="detail-block">
+                                <span className="table-cell-secondary">Leave specifics</span>
+                                <span className="table-cell-primary">{leave.leaveType.name}</span>
+                                <span className="table-cell-primary" style={{ fontSize: '13px', marginTop: '2px' }}>
+                                  {formatLeaveRange(leave)}
+                                </span>
+                                <span className="table-cell-secondary" style={{ fontSize: '12px' }}>
+                                  {`${formatLeaveDays(leave.paidDays)} Paid / ${formatLeaveDays(leave.unpaidDays)} Unpaid`}
+                                </span>
+                              </div>
+
+                              {leave.attachmentPath ? (
+                                <div className="detail-block">
+                                  <span className="table-cell-secondary">Attachment</span>
+                                  <a
+                                    className="table-cell-primary leave-request-details__link"
+                                    href={getFileUrl(leave.attachmentPath) ?? "#"}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    style={{ color: "var(--color-accent)", textDecoration: "underline" }}
+                                  >
+                                    {leave.attachmentName ?? "View attachment"}
+                                  </a>
+                                </div>
+                              ) : null}
+
+                              {(leave.hrApprovalStatus === "REJECTED" && leave.hrRejectionReason) || 
+                               (leave.managerApprovalStatus === "REJECTED" && leave.managerRejectionReason) ? (
+                                <div className="detail-block" style={{ gridColumn: "span 2" }}>
+                                  <span className="table-cell-secondary error-text">Rejection Remarks</span>
+                                  {leave.managerApprovalStatus === "REJECTED" ? (
+                                    <span className="attendance-warning-text">Manager: {leave.managerRejectionReason}</span>
                                   ) : null}
-                                  {leave.managerApprovalStatus === "REJECTED" && leave.managerRejectionReason ? (
-                                    <div className="leave-request-details__item">
-                                      <span className="leave-request-details__label">Manager rejection reason</span>
-                                      <span className="leave-request-details__value">{leave.managerRejectionReason}</span>
-                                    </div>
+                                  {leave.hrApprovalStatus === "REJECTED" ? (
+                                    <span className="attendance-warning-text">HR: {leave.hrRejectionReason}</span>
                                   ) : null}
-                                  <div className="leave-request-details__item">
-                                    <span className="leave-request-details__label">Attachment</span>
-                                    {leave.attachmentPath ? (
-                                      <a
-                                        className="leave-request-details__link"
-                                        href={getFileUrl(leave.attachmentPath) ?? "#"}
-                                        target="_blank"
-                                        rel="noreferrer"
+                                </div>
+                              ) : null}
+
+                              {leave.medicalProofRequired ? (
+                                <div className="detail-block" style={{ gridColumn: "span 3" }}>
+                                  <span className="table-cell-secondary">Medical Proof Requirement</span>
+                                  <div style={{ display: "flex", gap: "16px", alignItems: "center", marginTop: "4px" }}>
+                                    <span className="table-cell-primary">{getMedicalProofStatusLabel(leave)}</span>
+                                    {leave.medicalProofDueAt ? (
+                                      <span className="table-cell-secondary" style={{ fontSize: '12px' }}>Due: {formatDateTime(leave.medicalProofDueAt)}</span>
+                                    ) : null}
+                                  </div>
+                                  
+                                  {leave.medicalProofRejectionReason ? (
+                                    <span className="attendance-warning-text" style={{ marginTop: "4px" }}>{leave.medicalProofRejectionReason}</span>
+                                  ) : null}
+
+                                  {canUploadMedicalProof(leave) ? (
+                                    <div className="button-row row-actions" style={{ marginTop: "8px" }}>
+                                      <input
+                                        type="file"
+                                        accept=".pdf,application/pdf"
+                                        style={{ maxWidth: "200px" }}
+                                        onChange={(event) =>
+                                          setMedicalProofFiles((current) => ({
+                                            ...current,
+                                            [leave.id]: event.target.files?.[0] ?? null,
+                                          }))
+                                        }
+                                      />
+                                      <button
+                                        type="button"
+                                        disabled={!medicalProofFiles[leave.id]}
+                                        onClick={() => {
+                                          const file = medicalProofFiles[leave.id];
+                                          if (!file || !onUploadMedicalProof) return;
+                                          void onUploadMedicalProof(leave.id, file);
+                                        }}
                                       >
-                                        {leave.attachmentName ?? "View attachment"}
-                                      </a>
-                                    ) : (
-                                      <span className="leave-request-details__value">No attachment</span>
-                                    )}
-                                  </div>
-                                  {leave.medicalProofRequired ? (
-                                    <>
-                                      <div className="leave-request-details__item">
-                                        <span className="leave-request-details__label">Medical proof</span>
-                                        <span className="leave-request-details__value">{getMedicalProofStatusLabel(leave)}</span>
-                                      </div>
-                                      <div className="leave-request-details__item">
-                                        <span className="leave-request-details__label">Proof due</span>
-                                        <span className="leave-request-details__value">
-                                          {leave.medicalProofDueAt ? formatDateTime(leave.medicalProofDueAt) : "-"}
-                                        </span>
-                                      </div>
-                                      {leave.medicalProofReviewedAt ? (
-                                        <div className="leave-request-details__item">
-                                          <span className="leave-request-details__label">Proof reviewed on</span>
-                                          <span className="leave-request-details__value">{formatDateTime(leave.medicalProofReviewedAt)}</span>
-                                        </div>
-                                      ) : null}
-                                      {leave.medicalProofRejectionReason ? (
-                                        <div className="leave-request-details__item">
-                                          <span className="leave-request-details__label">Proof review note</span>
-                                          <span className="leave-request-details__value">{leave.medicalProofRejectionReason}</span>
-                                        </div>
-                                      ) : null}
-                                    </>
+                                        Upload proof
+                                      </button>
+                                    </div>
+                                  ) : null}
+
+                                  {canHrReviewMedicalProof(leave) ? (
+                                    <div className="button-row row-actions" style={{ marginTop: "8px" }}>
+                                      <button
+                                        type="button"
+                                        onClick={() => onReviewMedicalProof?.(leave.id, "approve")}
+                                      >
+                                        Verify proof
+                                      </button>
+                                      <button
+                                        type="button"
+                                        className="secondary"
+                                        onClick={() => onReviewMedicalProof?.(leave.id, "reject")}
+                                      >
+                                        Reject proof
+                                      </button>
+                                    </div>
                                   ) : null}
                                 </div>
-                              </div>
-                            </div>
-                            {canUploadMedicalProof(leave) ? (
-                              <div className="leave-request-details__reason-block">
-                                <p className="eyebrow">Medical proof upload</p>
-                                <div className="button-row row-actions leave-table-actions">
-                                  <input
-                                    type="file"
-                                    accept=".pdf,application/pdf"
-                                    onChange={(event) =>
-                                      setMedicalProofFiles((current) => ({
-                                        ...current,
-                                        [leave.id]: event.target.files?.[0] ?? null,
-                                      }))
-                                    }
-                                  />
-                                  <button
-                                    type="button"
-                                    className="leave-action-button"
-                                    disabled={!medicalProofFiles[leave.id]}
-                                    onClick={() => {
-                                      const file = medicalProofFiles[leave.id];
+                              ) : null}
 
-                                      if (!file || !onUploadMedicalProof) {
-                                        return;
-                                      }
-
-                                      void onUploadMedicalProof(leave.id, file);
-                                    }}
-                                  >
-                                    Upload proof
-                                  </button>
-                                </div>
-                              </div>
-                            ) : null}
-                            {canHrReviewMedicalProof(leave) ? (
-                              <div className="leave-request-details__reason-block">
-                                <p className="eyebrow">Medical proof review</p>
-                                <div className="button-row row-actions leave-table-actions">
-                                  <button
-                                    type="button"
-                                    className="leave-action-button"
-                                    onClick={() => {
-                                      if (onReviewMedicalProof) {
-                                        void onReviewMedicalProof(leave.id, "approve");
-                                      }
-                                    }}
-                                  >
-                                    Verify proof
-                                  </button>
-                                  <button
-                                    type="button"
-                                    className="secondary leave-action-button"
-                                    onClick={() => {
-                                      if (onReviewMedicalProof) {
-                                        void onReviewMedicalProof(leave.id, "reject");
-                                      }
-                                    }}
-                                  >
-                                    Reject proof
-                                  </button>
-                                </div>
-                              </div>
-                            ) : null}
-                            <div className="leave-request-details__reason-block">
-                              <p className="eyebrow">Reason</p>
-                              <p className="leave-request-details__reason">{leave.reason}</p>
                             </div>
                           </div>
                         </td>

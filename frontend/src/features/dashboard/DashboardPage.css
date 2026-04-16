@@ -109,6 +109,22 @@
   letter-spacing: -0.02em;
 }
 
+.metric-card--clickable {
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.metric-card--clickable:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(15, 23, 42, 0.12);
+  border-color: var(--color-accent-primary);
+}
+
+.metric-card--clickable:active {
+  transform: translateY(0);
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08);
+}
+
 .metric-card--attendance-widget {
   gap: var(--space-3);
 }

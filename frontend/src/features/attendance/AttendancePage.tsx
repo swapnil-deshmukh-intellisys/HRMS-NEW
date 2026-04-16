@@ -1,5 +1,6 @@
 import "./AttendancePage.css";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { ChevronDown } from "lucide-react";
+import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import MessageCard from "../../components/common/MessageCard";
 import Modal from "../../components/common/Modal";
@@ -76,6 +77,7 @@ export default function AttendancePage({ token, role, currentEmployeeId, current
   const [datePickerOpen, setDatePickerOpen] = useState(false);
   const [visibleMonth, setVisibleMonth] = useState<VisibleMonth>(() => getVisibleMonthFromDate(today));
   const [regularizationOpen, setRegularizationOpen] = useState(false);
+  const [expandedCorrections, setExpandedCorrections] = useState<Set<number>>(new Set());
   const [finalizeConfirmOpen, setFinalizeConfirmOpen] = useState(false);
   const [reviewModalOpen, setReviewModalOpen] = useState(false);
   const [reviewTarget, setReviewTarget] = useState<AttendanceRegularizationRequest | null>(null);

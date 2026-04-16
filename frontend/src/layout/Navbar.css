@@ -9,7 +9,7 @@
   width: 100%;
   min-height: 72px;
   padding: var(--space-3) var(--space-6);
-  background: rgba(254, 254, 254, 0.94);
+  background: var(--color-surface-page);
   backdrop-filter: blur(14px);
 }
 
@@ -212,6 +212,26 @@
   .topbar-attendance-action {
     display: none;
   }
+}
+
+.topbar-logout-button {
+  color: var(--color-danger) !important;
+  background: rgba(225, 29, 72, 0.05);
+  border-color: rgba(225, 29, 72, 0.1);
+}
+
+.topbar-logout-button svg {
+  color: var(--color-danger) !important;
+}
+
+.topbar-logout-button:hover:not(:disabled) {
+  background: var(--color-danger);
+  border-color: var(--color-danger);
+  box-shadow: 0 8px 16px rgba(225, 29, 72, 0.2);
+}
+
+.topbar-logout-button:hover:not(:disabled) svg {
+  color: #fff !important;
 }
 
 @media (max-width: 1100px) {

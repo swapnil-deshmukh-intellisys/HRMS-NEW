@@ -78,6 +78,7 @@ export default function DateRangePicker({ startDate, endDate, onChange }: DateRa
   const [open, setOpen] = useState(false);
   const [draftStartDate, setDraftStartDate] = useState(startDate);
   const [selectingEnd, setSelectingEnd] = useState(false);
+  const [hoverIso, setHoverIso] = useState<string | null>(null);
   const [visibleMonth, setVisibleMonth] = useState(() => parseDate(startDate || todayIso));
   const pickerRef = useRef<HTMLDivElement | null>(null);
 
@@ -85,6 +86,7 @@ export default function DateRangePicker({ startDate, endDate, onChange }: DateRa
     if (!open) {
       setDraftStartDate(startDate);
       setSelectingEnd(false);
+      setHoverIso(null);
       setVisibleMonth(parseDate(startDate || todayIso));
     }
   }, [open, startDate, todayIso]);
@@ -143,10 +145,18 @@ export default function DateRangePicker({ startDate, endDate, onChange }: DateRa
   }
 
   function isInRange(dayIso: string) {
-    return Boolean(startDate && endDate && dayIso >= startDate && dayIso <= endDate);
+    if (selectingEnd && hoverIso && draftStartDate && hoverIso >= draftStartDate) {
+      if (dayIso > draftStartDate && dayIso <= hoverIso) {
+        return true;
+      }
+    }
+    return Boolean(startDate && endDate && dayIso > startDate && dayIso < endDate);
   }
 
   function isRangeEdge(dayIso: string) {
+    if (selectingEnd && hoverIso && hoverIso >= draftStartDate && dayIso === hoverIso) {
+      return true;
+    }
     return dayIso === startDate || dayIso === endDate;
   }
 
@@ -205,7 +215,7 @@ export default function DateRangePicker({ startDate, endDate, onChange }: DateRa
               const isPastDate = day.iso < todayIso;
               const selected = isRangeEdge(day.iso);
               const inRange = isInRange(day.iso);
-              const isDraftStart = selectingEnd && draftStartDate === day.iso && startDate === endDate;
+              const isDraftStart = selectingEnd && draftStartDate === day.iso;
               return (
                 <button
                   key={day.iso}
@@ -215,12 +225,19 @@ export default function DateRangePicker({ startDate, endDate, onChange }: DateRa
                     day.inCurrentMonth ? "" : "date-range-picker__day--muted",
                     isPastDate ? "date-range-picker__day--disabled" : "",
                     inRange ? "date-range-picker__day--in-range" : "",
-                    selected || isDraftStart ? "date-range-picker__day--selected" : "",
+                    selected ? "date-range-picker__day--selected" : "",
+                    isDraftStart ? "date-range-picker__day--selecting" : "",
                   ]
                     .filter(Boolean)
                     .join(" ")}
                   onClick={() => handleDaySelect(day.iso)}
-                  aria-pressed={inRange}
+                  onMouseEnter={() => {
+                    if (selectingEnd && day.iso >= (draftStartDate || todayIso)) {
+                      setHoverIso(day.iso);
+                    }
+                  }}
+                  onMouseLeave={() => setHoverIso(null)}
+                  aria-pressed={inRange || selected || isDraftStart}
                   disabled={isPastDate}
                 >
                   {day.dayNumber}
@@ -229,9 +246,11 @@ export default function DateRangePicker({ startDate, endDate, onChange }: DateRa
             })}
           </div>
 
-          <p className="date-range-picker__hint">
-            Pick today or a future start date, then click the end date in the same calendar.
-          </p>
+          <div className={`date-range-picker__hint ${selectingEnd ? "date-range-picker__hint--pulse" : ""}`}>
+            {selectingEnd 
+              ? "Now select the end date..." 
+              : "Pick today or a future start date"}
+          </div>
         </div>
       ) : null}
     </div>

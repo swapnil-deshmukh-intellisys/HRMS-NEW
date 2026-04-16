@@ -113,6 +113,18 @@ export default function Navbar({ title, navOpen, onToggleNav, token, currentEmpl
     return items.sort((a, b) => (priorityOrder[a.id] ?? 99) - (priorityOrder[b.id] ?? 99));
   }, [navigate, role, summary]);
 
+  const totalPendingCount = useMemo(() => {
+    if (!summary) return 0;
+    
+    // Only sum indicators that represent actual "pending actions"
+    return (
+      (summary.pendingLeaves ?? 0) +
+      (summary.pendingTeamLeaves ?? 0) +
+      (summary.pendingCorrectionRequests ?? 0) +
+      (summary.pendingIncentiveApprovals ?? 0)
+    );
+  }, [summary]);
+
   useEffect(() => {
     if (!notificationsOpen) return;
 
@@ -232,7 +244,11 @@ export default function Navbar({ title, navOpen, onToggleNav, token, currentEmpl
             }}
           >
             <Bell size={18} strokeWidth={2} />
-            {notifications.length > 0 ? <span className="topbar-notification-badge" aria-hidden="true">{notifications.length}</span> : null}
+            {totalPendingCount > 0 ? (
+              <span className="topbar-notification-badge" aria-hidden="true">
+                {totalPendingCount > 99 ? "99+" : totalPendingCount}
+              </span>
+            ) : null}
           </Button>
           {notificationsOpen ? (
             <div className="topbar-notification-popover">

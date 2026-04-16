@@ -368,7 +368,7 @@ export default function DashboardPage({ token, role, currentEmployeeId }: Dashbo
         <>
       {role === "EMPLOYEE" ? (
         <>
-          <div className="grid cols-3 dashboard-grid">
+          <div className="grid cols-2 dashboard-grid analytics-top-grid">
             {currentEmployeeId ? (
               <Suspense fallback={<DashboardChartCardSkeleton eyebrow="Attendance today" />}>
                 <EmployeeAttendanceWidgetCard

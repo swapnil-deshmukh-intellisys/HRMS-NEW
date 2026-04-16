@@ -4,7 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, test } from "vitest";
 import LeavesPage from "./LeavesPage";
 import { mockApiRoutes } from "../../test/api";
-import { createEmployee, createLeaveBalance, createLeaveRequest, createLeaveType } from "../../test/fixtures";
+import { createLeaveBalance, createLeaveRequest, createLeaveType } from "../../test/fixtures";
 
 const validLeaveReason =
   "I need planned leave to attend important family responsibilities, complete travel arrangements, support a medical appointment, manage documentation tasks, and return with work fully handed over to the team in advance.";
@@ -19,7 +19,7 @@ describe("LeavesPage", () => {
 
     mockApiRoutes([
       { path: "/leave-balances/me", data: [createLeaveBalance()] },
-      { path: "/leaves", data: [leave] },
+      { path: "/leaves/me", data: [leave] },
       { path: "/leave-types", data: [createLeaveType()] },
     ]);
 
@@ -28,7 +28,6 @@ describe("LeavesPage", () => {
         token="token"
         role="EMPLOYEE"
         currentEmployeeId={1}
-        currentEmployee={createEmployee()}
       />,
     );
 
@@ -44,7 +43,7 @@ describe("LeavesPage", () => {
 
     mockApiRoutes([
       { path: "/leave-balances/me", data: [createLeaveBalance()] },
-      { path: "/leaves", data: [] },
+      { path: "/leaves/me", data: [] },
       { path: "/leave-types", data: [createLeaveType()] },
       {
         path: "/leaves",
@@ -59,7 +58,6 @@ describe("LeavesPage", () => {
         token="token"
         role="EMPLOYEE"
         currentEmployeeId={1}
-        currentEmployee={createEmployee()}
       />,
     );
 
@@ -84,7 +82,7 @@ describe("LeavesPage", () => {
 
     mockApiRoutes([
       { path: "/leave-balances/me", data: [createLeaveBalance()] },
-      { path: "/leaves", data: [leave] },
+      { path: "/leaves/me", data: [leave] },
       { path: "/leave-types", data: [createLeaveType()] },
     ]);
 
@@ -93,7 +91,6 @@ describe("LeavesPage", () => {
         token="token"
         role="EMPLOYEE"
         currentEmployeeId={1}
-        currentEmployee={createEmployee()}
       />,
     );
 

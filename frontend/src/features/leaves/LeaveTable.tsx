@@ -8,8 +8,6 @@ type LeaveTableProps = {
   leaves: LeaveRequest[];
   role: Role;
   currentEmployeeId: number | null;
-  teamLeadScopeIds?: number[];
-  onReview: (id: number, action: "approve" | "reject", stage: "manager" | "hr") => void | Promise<void>;
   onCancel: (id: number) => void | Promise<void>;
   onUploadMedicalProof?: (id: number, file: File) => void | Promise<void>;
   onReviewMedicalProof?: (id: number, action: "approve" | "reject") => void | Promise<void>;
@@ -19,8 +17,6 @@ export default function LeaveTable({
   leaves,
   role,
   currentEmployeeId,
-  teamLeadScopeIds = [],
-  onReview,
   onCancel,
   onUploadMedicalProof,
   onReviewMedicalProof,
@@ -106,63 +102,14 @@ export default function LeaveTable({
     return "-";
   }
 
-  function canManagerReview(leave: LeaveRequest) {
-    if (leave.status !== "PENDING" || leave.managerApprovalStatus !== "PENDING") {
-      return false;
-    }
-
-    if (role === "ADMIN") {
-      return true;
-    }
-
-    return role === "MANAGER" && leave.employee.managerId === currentEmployeeId && leave.employee.id !== currentEmployeeId;
-  }
-
-  function canHrReview(leave: LeaveRequest) {
-    if (leave.status !== "PENDING" || leave.hrApprovalStatus !== "PENDING") {
-      return false;
-    }
-
-    return role === "ADMIN" || role === "HR";
-  }
-
   function renderActions(leave: LeaveRequest) {
-    if (canManagerReview(leave)) {
-      return (
-        <>
-          <button className="leave-action-button" onClick={() => onReview(leave.id, "approve", "manager")}>
-            Manager approve
-          </button>
-          <button className="secondary leave-action-button" onClick={() => onReview(leave.id, "reject", "manager")}>
-            Reject
-          </button>
-        </>
-      );
-    }
-
-    if (canHrReview(leave)) {
-      return (
-        <>
-          <button className="leave-action-button" onClick={() => onReview(leave.id, "approve", "hr")}>
-            HR approve
-          </button>
-          <button className="secondary leave-action-button" onClick={() => onReview(leave.id, "reject", "hr")}>
-            Reject
-          </button>
-        </>
-      );
-    }
-
+    // For personal leaves, only allow cancellation of pending requests
     if (leave.status === "PENDING" && leave.managerApprovalStatus === "PENDING" && leave.employee.id === currentEmployeeId) {
       return (
         <button className="secondary leave-action-button" onClick={() => onCancel(leave.id)}>
           Cancel
         </button>
       );
-    }
-
-    if (role === "EMPLOYEE" && leave.employee.id !== currentEmployeeId && teamLeadScopeIds.includes(leave.employee.id)) {
-      return <span className="leave-action-placeholder">-</span>;
     }
 
     return <span className="leave-action-placeholder">-</span>;
@@ -225,6 +172,42 @@ export default function LeaveTable({
     );
   }
 
+  // Group leaves by month
+  function groupLeavesByMonth(leaves: LeaveRequest[]) {
+    const grouped: Record<string, LeaveRequest[]> = {};
+    
+    leaves.forEach(leave => {
+      const startDate = new Date(leave.startDate);
+      const monthKey = `${startDate.getFullYear()}-${String(startDate.getMonth() + 1).padStart(2, '0')}`;
+      
+      if (!grouped[monthKey]) {
+        grouped[monthKey] = [];
+      }
+      grouped[monthKey].push(leave);
+    });
+    
+    // Sort months in descending order (most recent first)
+    const sortedMonths = Object.keys(grouped).sort((a, b) => {
+      const [yearA, monthA] = a.split('-').map(Number);
+      const [yearB, monthB] = b.split('-').map(Number);
+      return yearB - yearA || monthB - monthA;
+    });
+    
+    return sortedMonths.map(monthKey => ({
+      monthKey,
+      monthLabel: formatMonthLabel(monthKey),
+      leaves: grouped[monthKey].sort((a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime())
+    }));
+  }
+
+  function formatMonthLabel(monthKey: string) {
+    const [year, month] = monthKey.split('-');
+    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    return `${monthNames[parseInt(month) - 1]} ${year}`;
+  }
+
+  const monthGroups = groupLeavesByMonth(leaves);
+
   return (
     <div className="leave-table-surface">
       {leaves.length ? (
@@ -242,11 +225,21 @@ export default function LeaveTable({
               </tr>
             </thead>
             <tbody>
-              {leaves.map((leave) => {
-                const expanded = isExpanded(leave.id);
+              {monthGroups.map((monthGroup) => (
+                <Fragment key={monthGroup.monthKey}>
+                  <tr className="leave-month-header">
+                    <td colSpan={7}>
+                      <div className="leave-month-header__content">
+                        <h3 className="leave-month-header__title">{monthGroup.monthLabel}</h3>
+                        <span className="leave-month-header__count">{monthGroup.leaves.length} leave{monthGroup.leaves.length !== 1 ? 's' : ''}</span>
+                      </div>
+                    </td>
+                  </tr>
+                  {monthGroup.leaves.map((leave) => {
+                    const expanded = isExpanded(leave.id);
 
-                return (
-                  <Fragment key={leave.id}>
+                    return (
+                      <Fragment key={leave.id}>
                     <tr className={expanded ? "leave-request-row leave-request-row--expanded" : "leave-request-row"}>
                       <td>
                         <span className="table-cell-primary">{`${leave.employee.firstName} ${leave.employee.lastName}`}</span>
@@ -444,6 +437,8 @@ export default function LeaveTable({
                   </Fragment>
                 );
               })}
+                </Fragment>
+              ))}
             </tbody>
           </table>
         </div>

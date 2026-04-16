@@ -183,13 +183,11 @@ export default function DashboardPage({ token, role }: DashboardPageProps) {
               {bannerContent.eyebrow ? <p className="eyebrow">{bannerContent.eyebrow}</p> : null}
               <h3>{bannerContent.title}</h3>
               <p className="muted">{bannerContent.description}</p>
-              {role === "EMPLOYEE" ? (
-                <div className="dashboard-hero-timezone-group">
-                  <TimeCard timezone="Asia/Kolkata" />
-                  <TimeCard timezone="Europe/London" />
-                  <TimeCard timezone="America/New_York" />
-                </div>
-              ) : null}
+              <div className="dashboard-hero-timezone-group">
+                <TimeCard timezone="Asia/Kolkata" />
+                <TimeCard timezone="Europe/London" />
+                <TimeCard timezone="America/New_York" />
+              </div>
             </div>
           </article>
 

@@ -181,7 +181,14 @@ export default function DashboardPage({ token, role }: DashboardPageProps) {
           <article className="card dashboard-hero">
             <div className="dashboard-hero-copy">
               {bannerContent.eyebrow ? <p className="eyebrow">{bannerContent.eyebrow}</p> : null}
-              <h3>{bannerContent.title}</h3>
+              <h3>
+                {bannerContent.title}
+                {role === "EMPLOYEE" && currentEmployee?.firstName ? (
+                  <>
+                    , <span className="greeting-name">{currentEmployee.firstName}</span>
+                  </>
+                ) : null}
+              </h3>
               <p className="muted">{bannerContent.description}</p>
               <div className="dashboard-hero-timezone-group">
                 <TimeCard timezone="Asia/Kolkata" />
@@ -193,7 +200,7 @@ export default function DashboardPage({ token, role }: DashboardPageProps) {
 
           {role === "EMPLOYEE" ? (
             <>
-              <div className="grid dashboard-grid">
+              <div className="grid cols-2 dashboard-grid">
                 <article className="card metric-card metric-card--status">
                   <p className="eyebrow">Attendance today</p>
                   <strong>{getAttendanceWidgetTitle(attendanceToday)}</strong>
@@ -222,9 +229,7 @@ export default function DashboardPage({ token, role }: DashboardPageProps) {
                     </button>
                   </div>
                 </article>
-              </div>
 
-              <div className="grid dashboard-support-grid">
                 <article className="card metric-card metric-card--project">
                   <div className="metric-card-header">
                     <div>
@@ -247,13 +252,15 @@ export default function DashboardPage({ token, role }: DashboardPageProps) {
                       <span className="table-cell-primary">{String(data.pendingTeamLeaves ?? 0)}</span>
                     </div>
                   </div>
-                  <div className="dashboard-quick-actions dashboard-quick-actions--compact">
-                    <button className="secondary" onClick={() => navigate("/attendance")}>
-                      Review team attendance
-                    </button>
-                    <button className="secondary" onClick={() => navigate("/analytics")}>
-                      Open analytics
-                    </button>
+                  <div className="dashboard-inline-row" style={{ justifyContent: "flex-end" }}>
+                    <div className="dashboard-card-actions">
+                      <button className="secondary" onClick={() => navigate("/attendance")}>
+                        Review team attendance
+                      </button>
+                      <button className="secondary" onClick={() => navigate("/analytics")}>
+                        Open analytics
+                      </button>
+                    </div>
                   </div>
                 </article>
               </div>

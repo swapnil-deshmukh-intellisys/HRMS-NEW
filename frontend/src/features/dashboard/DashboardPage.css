@@ -51,6 +51,11 @@
   font-size: var(--text-xl);
 }
 
+.greeting-name {
+  color: #f97316; /* Vibrant Orange */
+  text-shadow: 0 0 20px rgba(249, 115, 22, 0.2);
+}
+
 .dashboard-hero-timezone-group {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));

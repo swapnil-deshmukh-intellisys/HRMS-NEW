@@ -75,7 +75,7 @@ export default function LeavesPage({ token, role, currentEmployeeId }: LeavesPag
       setError("");
       const [balancesResponse, leavesResponse] = await Promise.all([
         apiRequest<LeaveBalance[]>("/leave-balances/me", { token }),
-        apiRequest<LeaveRequest[]>("/leaves/me", { token }),
+        apiRequest<LeaveRequest[]>("/leaves", { token }),
       ]);
 
       setBalances(balancesResponse.data);

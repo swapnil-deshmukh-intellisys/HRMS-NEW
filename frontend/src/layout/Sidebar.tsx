@@ -21,6 +21,7 @@ function getNavItems(sessionUser: SessionUser): NavItem[] {
   const role = sessionUser.role;
   const isTeamLead = Boolean(sessionUser.employee?.capabilities?.some((capability) => capability.capability === "TEAM_LEAD"));
   const items: NavItem[] = [{ to: "/", label: "Dashboard", icon: Home }];
+  
   items.push({ to: "/analytics", label: "Analytics", icon: BarChart3 });
 
   if (role !== "EMPLOYEE") {

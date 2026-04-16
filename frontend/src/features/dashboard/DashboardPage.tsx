@@ -276,26 +276,7 @@ export default function DashboardPage({ token, role }: DashboardPageProps) {
                 ))}
               </div>
 
-                <article className="card metric-card">
-                  <div className="metric-card-header">
-                    <div>
-                      <p className="eyebrow">Analytics workspace</p>
-                      <strong>Open detailed analytics</strong>
-                    </div>
-                  </div>
-                  <p className="muted">
-                    Open the new Analytics section to review attendance distributions, leave activity, and other chart-based insights.
-                  </p>
-                <div className="dashboard-quick-actions dashboard-quick-actions--compact">
-                  <button className="secondary" onClick={() => navigate("/analytics")}>
-                    Open analytics
-                  </button>
-                  <button className="secondary" onClick={() => navigate("/leaves")}>
-                    Review leaves
-                  </button>
-                </div>
-              </article>
-            </>
+                            </>
           )}
         </>
       ) : null}

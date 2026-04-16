@@ -10,10 +10,9 @@ type EmployeeLeavesTabProps = {
   leaves: LeaveRequest[];
   role: Role;
   viewerEmployeeId: number | null;
-  onReview: (id: number, action: "approve" | "reject", stage: "manager" | "hr") => void | Promise<void>;
 };
 
-export default function EmployeeLeavesTab({ balances, leaves, role, viewerEmployeeId, onReview }: EmployeeLeavesTabProps) {
+export default function EmployeeLeavesTab({ balances, leaves, role, viewerEmployeeId }: EmployeeLeavesTabProps) {
   const visibleBalances = balances.filter((balance) => !balance.leaveType.deductFullQuotaOnApproval);
 
   return (
@@ -33,7 +32,7 @@ export default function EmployeeLeavesTab({ balances, leaves, role, viewerEmploy
           ])}
         />
       </div>
-      <LeaveTable leaves={leaves} role={role} currentEmployeeId={viewerEmployeeId} onReview={onReview} onCancel={() => undefined} />
+      <LeaveTable leaves={leaves} role={role} currentEmployeeId={viewerEmployeeId} onCancel={() => undefined} />
     </div>
   );
 }

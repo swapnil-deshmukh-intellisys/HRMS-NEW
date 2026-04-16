@@ -4,7 +4,7 @@ import type { FormEvent } from "react";
 import MessageCard from "../../components/common/MessageCard";
 import Modal from "../../components/common/Modal";
 import { apiRequest } from "../../services/api";
-import type { Employee, LeaveBalance, LeaveRequest, LeaveType, Role } from "../../types";
+import type { LeaveBalance, LeaveRequest, LeaveType, Role } from "../../types";
 import { formatLeaveDays } from "../../utils/format";
 import LeaveForm, { type LeaveFormValues } from "./LeaveForm";
 import LeaveTable from "./LeaveTable";
@@ -14,7 +14,6 @@ type LeavesPageProps = {
   token: string | null;
   role: Role;
   currentEmployeeId: number | null;
-  currentEmployee: Employee | null;
 };
 
 const initialLeaveForm = (): LeaveFormValues => ({
@@ -33,7 +32,7 @@ function formatLocalIsoDate(date: Date) {
   return `${year}-${month}-${day}`;
 }
 
-export default function LeavesPage({ token, role, currentEmployeeId, currentEmployee }: LeavesPageProps) {
+export default function LeavesPage({ token, role, currentEmployeeId }: LeavesPageProps) {
   const [leaveTypes, setLeaveTypes] = useState<LeaveType[]>([]);
   const [balances, setBalances] = useState<LeaveBalance[]>([]);
   const [leaves, setLeaves] = useState<LeaveRequest[]>([]);
@@ -43,15 +42,11 @@ export default function LeavesPage({ token, role, currentEmployeeId, currentEmpl
   const [attachmentFile, setAttachmentFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(true);
   const [submittingLeave, setSubmittingLeave] = useState(false);
-  const [reviewingLeaveId, setReviewingLeaveId] = useState<number | null>(null);
-  const [reviewStage, setReviewStage] = useState<"manager" | "hr" | null>(null);
-  const [rejectionReason, setRejectionReason] = useState("");
-  const [leaveFormOpen, setLeaveFormOpen] = useState(false);
+    const [leaveFormOpen, setLeaveFormOpen] = useState(false);
   const [leaveBalancesOpen, setLeaveBalancesOpen] = useState(false);
   const [confirmAction, setConfirmAction] = useState<{ type: "cancel"; leaveId: number } | null>(null);
   const summaryBalances = balances.filter((balance) => !balance.leaveType.deductFullQuotaOnApproval);
-  const teamLeadScopeIds = currentEmployee?.scopedTeamMembers?.map((item) => item.employee.id) ?? [];
-  const today = new Date();
+    const today = new Date();
   const currentQuarterLabel =
     today.getMonth() >= 3 && today.getMonth() <= 5
       ? "Q1 · Apr to Jun"
@@ -80,7 +75,7 @@ export default function LeavesPage({ token, role, currentEmployeeId, currentEmpl
       setError("");
       const [balancesResponse, leavesResponse] = await Promise.all([
         apiRequest<LeaveBalance[]>("/leave-balances/me", { token }),
-        apiRequest<LeaveRequest[]>("/leaves", { token }),
+        apiRequest<LeaveRequest[]>("/leaves/me", { token }),
       ]);
 
       setBalances(balancesResponse.data);
@@ -158,53 +153,7 @@ export default function LeavesPage({ token, role, currentEmployeeId, currentEmpl
     }
   }
 
-  async function reviewLeave(id: number, action: "approve" | "reject", stage: "manager" | "hr") {
-    if (action === "reject") {
-      setReviewingLeaveId(id);
-      setReviewStage(stage);
-      setRejectionReason("");
-      return;
-    }
-
-    try {
-      setError("");
-      setMessage("");
-      await apiRequest(`/leaves/${id}/${stage}-${action}`, {
-        method: "PUT",
-        token,
-      });
-
-      setMessage(stage === "manager" ? "Manager approval recorded." : "HR approval recorded.");
-      await reloadData();
-    } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : "Failed to review leave request.");
-    }
-  }
-
-  async function submitRejection() {
-    if (!reviewingLeaveId || !reviewStage) {
-      return;
-    }
-
-    try {
-      setError("");
-      setMessage("");
-      await apiRequest(`/leaves/${reviewingLeaveId}/${reviewStage}-reject`, {
-        method: "PUT",
-        token,
-        body: { rejectionReason },
-      });
-
-      setMessage(reviewStage === "manager" ? "Leave rejected at manager review." : "Leave rejected at HR review.");
-      setReviewingLeaveId(null);
-      setReviewStage(null);
-      setRejectionReason("");
-      await reloadData();
-    } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : "Failed to reject leave request.");
-    }
-  }
-
+  
   async function cancelLeave(id: number) {
     try {
       setError("");
@@ -286,8 +235,6 @@ export default function LeavesPage({ token, role, currentEmployeeId, currentEmpl
             leaves={leaves}
             role={role}
             currentEmployeeId={currentEmployeeId}
-            teamLeadScopeIds={teamLeadScopeIds}
-            onReview={reviewLeave}
             onCancel={(id) => setConfirmAction({ type: "cancel", leaveId: id })}
             onUploadMedicalProof={uploadMedicalProof}
             onReviewMedicalProof={reviewMedicalProof}
@@ -362,37 +309,6 @@ export default function LeavesPage({ token, role, currentEmployeeId, currentEmpl
               <li>Apply through HRMS or official email only.</li>
             </ul>
           </aside>
-        </div>
-      </Modal>
-      <Modal
-        open={reviewingLeaveId !== null}
-        title={reviewStage === "hr" ? "Reject at HR review" : "Reject at manager review"}
-        onClose={() => {
-          setReviewingLeaveId(null);
-          setReviewStage(null);
-        }}
-      >
-        <div className="stack leave-review-modal">
-          <p className="muted">Add a clear reason so the employee understands why this request was rejected.</p>
-          <label>
-            Rejection reason
-            <textarea value={rejectionReason} onChange={(event) => setRejectionReason(event.target.value)} rows={4} minLength={3} />
-          </label>
-          <div className="button-row">
-            <button
-              type="button"
-              className="secondary"
-              onClick={() => {
-                setReviewingLeaveId(null);
-                setReviewStage(null);
-              }}
-            >
-              Close
-            </button>
-            <button type="button" onClick={submitRejection} disabled={rejectionReason.trim().length < 3}>
-              Reject leave
-            </button>
-          </div>
         </div>
       </Modal>
       <Modal

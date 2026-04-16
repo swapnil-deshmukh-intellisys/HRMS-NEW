@@ -86,7 +86,6 @@ function AppRoutes() {
                 token={token}
                 role={sessionUser?.role ?? "EMPLOYEE"}
                 currentEmployeeId={sessionUser?.employee?.id ?? null}
-                currentEmployee={sessionUser?.employee ?? null}
               />
             }
           />

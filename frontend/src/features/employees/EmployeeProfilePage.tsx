@@ -68,10 +68,7 @@ export default function EmployeeProfilePage({ token, role, currentEmployeeId }: 
   const [employeeModalOpen, setEmployeeModalOpen] = useState(false);
   const [statusConfirmOpen, setStatusConfirmOpen] = useState(false);
   const [form, setForm] = useState<EmployeeFormValues>(createInitialEmployeeForm);
-  const [reviewingLeaveId, setReviewingLeaveId] = useState<number | null>(null);
-  const [reviewStage, setReviewStage] = useState<"manager" | "hr" | null>(null);
-  const [rejectionReason, setRejectionReason] = useState("");
-  const [submitting, setSubmitting] = useState(false);
+    const [submitting, setSubmitting] = useState(false);
 
   const canManageEmployee = role === "ADMIN" || role === "HR";
   const canViewPayroll = role !== "EMPLOYEE" || currentEmployeeId === employeeId;
@@ -279,41 +276,7 @@ export default function EmployeeProfilePage({ token, role, currentEmployeeId }: 
     await reloadProfile();
   }
 
-  async function reviewLeave(id: number, action: "approve" | "reject", stage: "manager" | "hr") {
-    if (action === "reject") {
-      setReviewingLeaveId(id);
-      setReviewStage(stage);
-      setRejectionReason("");
-      return;
-    }
-
-    await apiRequest(`/leaves/${id}/${stage}-approve`, {
-      method: "PUT",
-      token,
-    });
-
-    setMessage(stage === "manager" ? "Manager approval recorded." : "HR approval recorded.");
-    await reloadProfile();
-  }
-
-  async function submitRejection() {
-    if (!reviewingLeaveId || !reviewStage) {
-      return;
-    }
-
-    await apiRequest(`/leaves/${reviewingLeaveId}/${reviewStage}-reject`, {
-      method: "PUT",
-      token,
-      body: { rejectionReason },
-    });
-
-    setMessage(reviewStage === "manager" ? "Leave rejected at manager review." : "Leave rejected at HR review.");
-    setReviewingLeaveId(null);
-    setReviewStage(null);
-    setRejectionReason("");
-    await reloadProfile();
-  }
-
+  
   if (loading) {
     return (
       <section className="stack employee-profile-page">
@@ -376,7 +339,7 @@ export default function EmployeeProfilePage({ token, role, currentEmployeeId }: 
       {activeTab === "overview" ? <EmployeeOverviewTab employee={employee} /> : null}
       {activeTab === "attendance" ? <EmployeeAttendanceTab attendance={attendance} /> : null}
       {activeTab === "leaves" ? (
-        <EmployeeLeavesTab balances={balances} leaves={leaves} role={role} viewerEmployeeId={currentEmployeeId} onReview={reviewLeave} />
+        <EmployeeLeavesTab balances={balances} leaves={leaves} role={role} viewerEmployeeId={currentEmployeeId} />
       ) : null}
       {canViewPayroll && activeTab === "payroll" ? <EmployeePayrollTab payroll={visiblePayroll} /> : null}
       <div className="grid cols-2 employee-profile-snapshot-row">
@@ -435,37 +398,6 @@ export default function EmployeeProfilePage({ token, role, currentEmployeeId }: 
           </div>
         </div>
       </Modal>
-      <Modal
-        open={reviewingLeaveId !== null}
-        title={reviewStage === "hr" ? "Reject at HR review" : "Reject at manager review"}
-        onClose={() => {
-          setReviewingLeaveId(null);
-          setReviewStage(null);
-        }}
-      >
-        <div className="stack leave-review-modal">
-          <p className="muted">Add a clear reason so the employee understands why this request was rejected.</p>
-          <label>
-            Rejection reason
-            <textarea value={rejectionReason} onChange={(event) => setRejectionReason(event.target.value)} rows={4} minLength={3} />
-          </label>
-          <div className="button-row">
-            <button
-              type="button"
-              className="secondary"
-              onClick={() => {
-                setReviewingLeaveId(null);
-                setReviewStage(null);
-              }}
-            >
-              Close
-            </button>
-            <button type="button" onClick={submitRejection} disabled={rejectionReason.trim().length < 3}>
-              Reject leave
-            </button>
-          </div>
-        </div>
-      </Modal>
-    </section>
+          </section>
   );
 }

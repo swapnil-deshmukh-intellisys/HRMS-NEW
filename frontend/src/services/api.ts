@@ -41,7 +41,21 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}, 
       throw new Error("Network error - no response received");
     }
 
-    const payload = (await response.json()) as ApiResponse<T>;
+    let payload: ApiResponse<T>;
+    
+    try {
+      payload = (await response.json()) as ApiResponse<T>;
+    } catch (jsonError) {
+      // Handle cases where response is not valid JSON (e.g., HTML error pages)
+      const text = await response.text();
+      console.error(`Non-JSON response from ${path}:`, text.substring(0, 200));
+      
+      if (response.status === 429) {
+        throw new Error("Too many requests - please wait a moment and try again");
+      }
+      
+      throw new Error(`Server error: ${response.status} - ${text.substring(0, 100)}`);
+    }
 
     if (!response.ok) {
       // Handle 500 errors with retry logic
@@ -49,6 +63,17 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}, 
         console.warn(`Server error on ${path}, retrying... (${retryCount + 1}/${maxRetries})`);
         await new Promise(resolve => setTimeout(resolve, 1000 * (retryCount + 1))); // Exponential backoff
         return apiRequest<T>(path, options, retryCount + 1);
+      }
+      
+      // Handle 429 rate limiting with retry
+      if (response.status === 429 && retryCount < maxRetries) {
+        console.warn(`Rate limited on ${path}, retrying... (${retryCount + 1}/${maxRetries})`);
+        await new Promise(resolve => setTimeout(resolve, 2000 * (retryCount + 1))); // Longer backoff for rate limiting
+        return apiRequest<T>(path, options, retryCount + 1);
+      }
+      
+      if (response.status === 429) {
+        throw new Error("Too many requests - please wait a moment and try again");
       }
       
       throw new Error(payload.message ?? `Request failed with status ${response.status}`);
@@ -64,6 +89,13 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}, 
         return apiRequest<T>(path, options, retryCount + 1);
       }
       throw new Error("Network error - please check your connection");
+    }
+    
+    // Handle rate limiting errors that bubble up
+    if (error instanceof Error && error.message.includes('Too many requests') && retryCount < maxRetries) {
+      console.warn(`Rate limiting on ${path}, retrying... (${retryCount + 1}/${maxRetries})`);
+      await new Promise(resolve => setTimeout(resolve, 3000 * (retryCount + 1)));
+      return apiRequest<T>(path, options, retryCount + 1);
     }
     
     throw error;

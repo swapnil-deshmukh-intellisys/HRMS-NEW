@@ -76,6 +76,7 @@ export default function AttendancePage({ token, role, currentEmployeeId, current
   const [datePickerOpen, setDatePickerOpen] = useState(false);
   const [visibleMonth, setVisibleMonth] = useState<VisibleMonth>(() => getVisibleMonthFromDate(today));
   const [regularizationOpen, setRegularizationOpen] = useState(false);
+
   const [finalizeConfirmOpen, setFinalizeConfirmOpen] = useState(false);
   const [reviewModalOpen, setReviewModalOpen] = useState(false);
   const [reviewTarget, setReviewTarget] = useState<AttendanceRegularizationRequest | null>(null);

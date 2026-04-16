@@ -530,7 +530,7 @@ export default function DashboardPage({ token, role, currentEmployeeId }: Dashbo
             />
           </Suspense>
         ) : null}
-        {currentEmployeeId && role !== "ADMIN" ? (
+        {currentEmployeeId && role !== "ADMIN" && role !== "HR" ? (
               <article className="card metric-card metric-card--attendance-widget">
                 <div className="metric-card-header">
                   <div>

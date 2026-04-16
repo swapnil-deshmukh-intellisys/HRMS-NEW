@@ -64,34 +64,49 @@ textarea {
 
 button {
   min-height: 40px;
-  padding: 10px 14px;
-  border: none;
+  padding: 10px 18px;
+  border: 1px solid transparent;
   border-radius: var(--radius-sm);
-  background: var(--color-accent);
+  background: var(--color-accent-gradient);
   color: #fff;
   cursor: pointer;
   font-size: var(--text-sm);
   font-weight: var(--fw-semibold);
   line-height: 1.2;
+  box-shadow: var(--shadow-sm);
   transition:
-    transform var(--transition-fast),
-    box-shadow var(--transition-fast),
-    background var(--transition-fast),
-    border-color var(--transition-fast);
+    transform var(--transition-bounce),
+    box-shadow var(--transition-normal),
+    background var(--transition-normal),
+    border-color var(--transition-normal);
 }
 
 button.secondary {
   background: var(--color-surface-secondary);
   color: var(--color-accent-strong);
+  border: 1px solid var(--color-border-subtle);
+  box-shadow: none;
 }
 
 button:hover:not(:disabled) {
-  transform: translateY(-1px);
+  transform: translateY(-2px) scale(1.02);
+  box-shadow: var(--shadow-md), var(--shadow-glow);
+}
+
+button.secondary:hover:not(:disabled) {
+  background: var(--color-surface-hover);
+  border-color: var(--color-border-default);
+  box-shadow: var(--shadow-sm);
+}
+
+button:active:not(:disabled) {
+  transform: translateY(0) scale(0.98);
 }
 
 button:disabled {
   cursor: not-allowed;
-  opacity: 0.7;
+  opacity: 0.6;
+  filter: grayscale(100%);
 }
 
 label {
@@ -152,7 +167,7 @@ input:focus,
 select:focus,
 textarea:focus {
   border-color: var(--color-accent);
-  box-shadow: 0 0 0 3px rgba(11, 116, 255, 0.12);
+  box-shadow: 0 0 0 4px var(--color-accent-soft), var(--shadow-sm);
   outline: none;
 }
 
@@ -308,17 +323,27 @@ textarea {
 }
 
 .card {
-  padding: var(--space-4);
+  padding: var(--space-5);
   border: 1px solid var(--color-border-card);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-xl);
   background: var(--color-surface-panel);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  box-shadow: var(--shadow-md);
+  transition: box-shadow var(--transition-normal), transform var(--transition-normal);
+}
+
+.card:hover {
+  box-shadow: var(--shadow-lg);
+  transform: translateY(-2px);
 }
 
 .card h3 {
-  margin-bottom: var(--space-2);
+  margin-bottom: var(--space-3);
   color: var(--color-text-strong);
-  font-size: var(--text-md);
+  font-size: var(--text-lg);
   font-weight: var(--fw-semibold);
+  letter-spacing: -0.01em;
 }
 
 .dense-table-card .table-wrap {

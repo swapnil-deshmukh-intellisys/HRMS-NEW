@@ -1,14 +1,12 @@
 import "./Sidebar.css";
-import { BarChart3, Building2, Calendar, CalendarDays, Clock3, Gift, Home, LogOut, Users, Wallet, type LucideIcon } from "lucide-react";
+import { BarChart3, Building2, Calendar, CalendarDays, Clock3, Gift, Home, Users, Wallet, UserRound, type LucideIcon } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
-import Button from "../components/common/Button";
 import type { SessionUser } from "../types";
 
 type SidebarProps = {
   sessionUser: SessionUser;
   navOpen: boolean;
   onNavigate: () => void;
-  onLogout: () => void | Promise<void>;
 };
 
 type NavItem = {
@@ -21,6 +19,7 @@ function getNavItems(sessionUser: SessionUser): NavItem[] {
   const role = sessionUser.role;
   const isTeamLead = Boolean(sessionUser.employee?.capabilities?.some((capability) => capability.capability === "TEAM_LEAD"));
   const items: NavItem[] = [{ to: "/", label: "Dashboard", icon: Home }];
+  
   items.push({ to: "/analytics", label: "Analytics", icon: BarChart3 });
 
   if (role !== "EMPLOYEE") {
@@ -39,7 +38,7 @@ function getNavItems(sessionUser: SessionUser): NavItem[] {
   return items;
 }
 
-export default function Sidebar({ sessionUser, navOpen, onNavigate, onLogout }: SidebarProps) {
+export default function Sidebar({ sessionUser, navOpen, onNavigate }: SidebarProps) {
   const location = useLocation();
   const navItems = getNavItems(sessionUser);
 
@@ -55,11 +54,18 @@ export default function Sidebar({ sessionUser, navOpen, onNavigate, onLogout }: 
     <aside className={`sidebar ${navOpen ? "open" : ""}`}>
       <div className="stack">
         <div className="sidebar-intro">
-          <p className="eyebrow">HRMS Portal</p>
           <div className="sidebar-brand">
-            <h2>{sessionUser.role}</h2>
+            <img src="/assets/images/Logo.png" alt="HRMS" className="sidebar-logo" />
           </div>
-          <p className="muted">{sessionUser.employee ? `${sessionUser.employee.firstName} ${sessionUser.employee.lastName}` : "Workspace access"}</p>
+          <div className="sidebar-user-box">
+            <div className="sidebar-user-avatar">
+              <UserRound size={20} strokeWidth={2.5} />
+            </div>
+            <div className="sidebar-user-info">
+              <div className="sidebar-role-badge">{sessionUser.role}</div>
+              <p className="muted">{sessionUser.employee ? `${sessionUser.employee.firstName} ${sessionUser.employee.lastName}` : "Workspace access"}</p>
+            </div>
+          </div>
         </div>
         <nav className="nav-stack">
           {navItems.map((item) => (
@@ -75,10 +81,6 @@ export default function Sidebar({ sessionUser, navOpen, onNavigate, onLogout }: 
           ))}
         </nav>
       </div>
-      <Button className="sidebar-logout" variant="secondary" onClick={onLogout}>
-        <LogOut size={18} strokeWidth={2} />
-        Logout
-      </Button>
     </aside>
   );
 }

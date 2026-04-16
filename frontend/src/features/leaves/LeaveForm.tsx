@@ -1,9 +1,10 @@
 import "./LeaveForm.css";
 import { Check, ChevronDown } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
-import type { LeaveType } from "../../types";
+import type { LeaveBalance, LeaveType } from "../../types";
 import DateRangePicker from "./DateRangePicker";
 import { countWords, LEAVE_REASON_MAX_WORDS, LEAVE_REASON_MIN_WORDS } from "./reasonValidation";
+import { formatLeaveDays } from "../../utils/format";
 
 export type LeaveFormValues = {
   leaveTypeId: string;
@@ -18,13 +19,14 @@ type LeaveFormProps = {
   form: LeaveFormValues;
   attachmentName?: string;
   leaveTypes: LeaveType[];
+  balances?: LeaveBalance[];
   isSubmitting?: boolean;
   onChange: (nextForm: LeaveFormValues) => void;
   onAttachmentChange: (file: File | null) => void;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
 };
 
-export default function LeaveForm({ form, attachmentName, leaveTypes, isSubmitting = false, onChange, onAttachmentChange, onSubmit }: LeaveFormProps) {
+export default function LeaveForm({ form, attachmentName, leaveTypes, balances, isSubmitting = false, onChange, onAttachmentChange, onSubmit }: LeaveFormProps) {
   const isSingleDay = form.startDate && form.endDate && form.startDate === form.endDate;
   const reasonWordCount = useMemo(() => countWords(form.reason), [form.reason]);
   const [leaveTypeMenuOpen, setLeaveTypeMenuOpen] = useState(false);
@@ -95,11 +97,24 @@ export default function LeaveForm({ form, attachmentName, leaveTypes, isSubmitti
   }, []);
 
   return (
-    <form className="card stack compact-form leave-form-card" onSubmit={onSubmit}>
-      <h3>Apply leave</h3>
-      <p className="muted">If your paid balance is not enough, the remaining days will be submitted as unpaid leave.</p>
-      <p className="muted">For multi-day leave, you can mark the start day and end day as half day if needed.</p>
-      <p className="muted">For sick leave of 2 or more consecutive days, upload the medical certificate with the request.</p>
+    <form className="stack leave-form-content" style={{ gap: "20px" }} onSubmit={onSubmit}>
+      <div className="leave-info-alert" style={{
+        background: "var(--color-surface-hover)",
+        padding: "16px",
+        borderRadius: "var(--radius-md)",
+        fontSize: "13px",
+        color: "var(--color-text-secondary)",
+        lineHeight: "1.5"
+      }}>
+        <ul style={{ margin: 0, paddingLeft: "16px", display: "flex", flexDirection: "column", gap: "4px" }}>
+          <li>Paid balance shortage converts seamlessly to unpaid leave.</li>
+          <li>For multi-day requests, specify half-day start/end dates if needed.</li>
+          <li>Sick leaves exceeding 2 days require a medical proof attachment.</li>
+        </ul>
+      </div>
+
+
+
       <div className="leave-form-card__field" ref={leaveTypeMenuRef}>
         <span className="leave-form-card__field-label">Leave type</span>
         <input type="hidden" name="leaveTypeId" value={form.leaveTypeId} required />
@@ -137,6 +152,13 @@ export default function LeaveForm({ form, attachmentName, leaveTypes, isSubmitti
           <div className="leave-form-card__select-popover" role="listbox" aria-label="Leave type options">
             {visibleLeaveTypes.map((leaveType) => {
               const isSelected = String(leaveType.id) === form.leaveTypeId;
+              let quotaText = "";
+              if (balances && (leaveType.code === "SL" || leaveType.code === "CL")) {
+                const balance = balances.find((b) => b.leaveType.id === leaveType.id);
+                if (balance) {
+                  quotaText = ` – ${formatLeaveDays(balance.visibleDays ?? balance.remainingDays)} left`;
+                }
+              }
 
               return (
                 <button
@@ -158,7 +180,7 @@ export default function LeaveForm({ form, attachmentName, leaveTypes, isSubmitti
                 >
                   <span className="leave-form-card__select-option-copy">
                     <span className="leave-form-card__select-option-title">{leaveType.name}</span>
-                    <span className="leave-form-card__select-option-meta">{leaveType.code}</span>
+                    <span className="leave-form-card__select-option-meta">{leaveType.code}{quotaText}</span>
                   </span>
                   {isSelected ? <Check size={16} strokeWidth={2.2} /> : null}
                 </button>
@@ -192,7 +214,7 @@ export default function LeaveForm({ form, attachmentName, leaveTypes, isSubmitti
       {isSingleDay ? (
         <label>
           Duration
-          <select
+          <select className="leave-form-card__select"
             value={form.startDayDuration}
             disabled={isSubmitting}
             onChange={(event) => {
@@ -208,7 +230,7 @@ export default function LeaveForm({ form, attachmentName, leaveTypes, isSubmitti
         <div className="grid cols-2">
           <label>
             Start day
-            <select
+            <select className="leave-form-card__select"
               value={form.startDayDuration}
               disabled={isSubmitting}
               onChange={(event) => onChange({ ...form, startDayDuration: event.target.value as LeaveFormValues["startDayDuration"] })}
@@ -219,7 +241,7 @@ export default function LeaveForm({ form, attachmentName, leaveTypes, isSubmitti
           </label>
           <label>
             End day
-            <select
+            <select className="leave-form-card__select"
               value={form.endDayDuration}
               disabled={isSubmitting}
               onChange={(event) => onChange({ ...form, endDayDuration: event.target.value as LeaveFormValues["endDayDuration"] })}

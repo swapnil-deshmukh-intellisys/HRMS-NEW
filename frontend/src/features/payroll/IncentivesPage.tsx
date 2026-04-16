@@ -445,13 +445,13 @@ function IncentivesPage({ token, role }: IncentivesPageProps) {
             <div className="incentives-filters">
               <div className="filter-row">
                 <div className="filter-field">
-                  <label>Team Member</label>
+                  <label>Employee</label>
                   <SearchableEmployeeSelect
                     id="incentive-filter-employee"
                     value={filterEmployeeId}
                     options={employeeOptions}
                     onChange={setFilterEmployeeId}
-                    placeholder="Any team member"
+                    placeholder="Any employee"
                     searchPlaceholder="Search team member"
                     emptyMessage="No matching team members"
                   />

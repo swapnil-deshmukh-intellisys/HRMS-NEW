@@ -51,6 +51,11 @@
   font-size: var(--text-xl);
 }
 
+.greeting-name {
+  color: #f97316; /* Vibrant Orange */
+  text-shadow: 0 0 20px rgba(249, 115, 22, 0.2);
+}
+
 .dashboard-hero-timezone-group {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -107,6 +112,22 @@
 
 .metric-card--numeric strong {
   letter-spacing: -0.02em;
+}
+
+.metric-card--clickable {
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.metric-card--clickable:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(15, 23, 42, 0.12);
+  border-color: var(--color-accent-primary);
+}
+
+.metric-card--clickable:active {
+  transform: translateY(0);
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08);
 }
 
 .metric-card--attendance-widget {

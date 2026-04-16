@@ -181,21 +181,26 @@ export default function DashboardPage({ token, role }: DashboardPageProps) {
           <article className="card dashboard-hero">
             <div className="dashboard-hero-copy">
               {bannerContent.eyebrow ? <p className="eyebrow">{bannerContent.eyebrow}</p> : null}
-              <h3>{bannerContent.title}</h3>
+              <h3>
+                {bannerContent.title}
+                {role === "EMPLOYEE" && currentEmployee?.firstName ? (
+                  <>
+                    , <span className="greeting-name">{currentEmployee.firstName}</span>
+                  </>
+                ) : null}
+              </h3>
               <p className="muted">{bannerContent.description}</p>
-              {role === "EMPLOYEE" ? (
-                <div className="dashboard-hero-timezone-group">
-                  <TimeCard timezone="Asia/Kolkata" />
-                  <TimeCard timezone="Europe/London" />
-                  <TimeCard timezone="America/New_York" />
-                </div>
-              ) : null}
+              <div className="dashboard-hero-timezone-group">
+                <TimeCard timezone="Asia/Kolkata" />
+                <TimeCard timezone="Europe/London" />
+                <TimeCard timezone="America/New_York" />
+              </div>
             </div>
           </article>
 
           {role === "EMPLOYEE" ? (
             <>
-              <div className="grid dashboard-grid">
+              <div className="grid cols-2 dashboard-grid">
                 <article className="card metric-card metric-card--status">
                   <p className="eyebrow">Attendance today</p>
                   <strong>{getAttendanceWidgetTitle(attendanceToday)}</strong>
@@ -224,9 +229,7 @@ export default function DashboardPage({ token, role }: DashboardPageProps) {
                     </button>
                   </div>
                 </article>
-              </div>
 
-              <div className="grid dashboard-support-grid">
                 <article className="card metric-card metric-card--project">
                   <div className="metric-card-header">
                     <div>
@@ -249,13 +252,15 @@ export default function DashboardPage({ token, role }: DashboardPageProps) {
                       <span className="table-cell-primary">{String(data.pendingTeamLeaves ?? 0)}</span>
                     </div>
                   </div>
-                  <div className="dashboard-quick-actions dashboard-quick-actions--compact">
-                    <button className="secondary" onClick={() => navigate("/attendance")}>
-                      Review team attendance
-                    </button>
-                    <button className="secondary" onClick={() => navigate("/analytics")}>
-                      Open analytics
-                    </button>
+                  <div className="dashboard-inline-row" style={{ justifyContent: "flex-end" }}>
+                    <div className="dashboard-card-actions">
+                      <button className="secondary" onClick={() => navigate("/attendance")}>
+                        Review team attendance
+                      </button>
+                      <button className="secondary" onClick={() => navigate("/analytics")}>
+                        Open analytics
+                      </button>
+                    </div>
                   </div>
                 </article>
               </div>
@@ -263,39 +268,44 @@ export default function DashboardPage({ token, role }: DashboardPageProps) {
           ) : (
             <>
               <div className="grid cols-2 dashboard-grid">
-                {Object.entries(data).map(([key, value]) => (
-                  <article key={key} className={`card metric-card metric-card--${typeof value === "object" ? "status" : "numeric"}`}>
-                    <p className="eyebrow">
-                      {key === "teamCount" ? "Team members" : key === "pendingApprovals" ? "Pending approvals" : key === "pendingLeaves" ? "Pending leaves" : key === "employees" ? "Employees" : key === "departments" ? "Departments" : key === "payrollCount" ? "Payroll records" : key}
-                    </p>
-                    <strong>{String(value ?? "-")}</strong>
-                    <p className="muted">
-                      {key === "pendingApprovals" ? "Action needed soon" : key === "pendingLeaves" ? "Currently awaiting action" : "Live summary"}
-                    </p>
-                  </article>
-                ))}
+                {Object.entries(data).map(([key, value]) => {
+                  const getNavigationPath = () => {
+                    switch (key) {
+                      case "employees":
+                        return "/employees";
+                      case "pendingLeaves":
+                        return "/leaves";
+                      case "payrollCount":
+                        return "/payroll";
+                      case "departments":
+                        return "/departments";
+                      default:
+                        return null;
+                    }
+                  };
+
+                  const navigationPath = getNavigationPath();
+                  
+                  return (
+                    <article 
+                      key={key} 
+                      className={`card metric-card metric-card--${typeof value === "object" ? "status" : "numeric"}${navigationPath ? " metric-card--clickable" : ""}`}
+                      onClick={navigationPath ? () => navigate(navigationPath) : undefined}
+                      style={navigationPath ? { cursor: "pointer" } : undefined}
+                    >
+                      <p className="eyebrow">
+                        {key === "teamCount" ? "Team members" : key === "pendingApprovals" ? "Pending approvals" : key === "pendingLeaves" ? "Pending leaves" : key === "employees" ? "Employees" : key === "departments" ? "Departments" : key === "payrollCount" ? "Payroll records" : key}
+                      </p>
+                      <strong>{String(value ?? "-")}</strong>
+                      <p className="muted">
+                        {key === "pendingApprovals" ? "Action needed soon" : key === "pendingLeaves" ? "Currently awaiting action" : "Live summary"}
+                      </p>
+                    </article>
+                  );
+                })}
               </div>
 
-                <article className="card metric-card">
-                  <div className="metric-card-header">
-                    <div>
-                      <p className="eyebrow">Analytics workspace</p>
-                      <strong>Open detailed analytics</strong>
-                    </div>
-                  </div>
-                  <p className="muted">
-                    Open the new Analytics section to review attendance distributions, leave activity, and other chart-based insights.
-                  </p>
-                <div className="dashboard-quick-actions dashboard-quick-actions--compact">
-                  <button className="secondary" onClick={() => navigate("/analytics")}>
-                    Open analytics
-                  </button>
-                  <button className="secondary" onClick={() => navigate("/leaves")}>
-                    Review leaves
-                  </button>
-                </div>
-              </article>
-            </>
+                            </>
           )}
         </>
       ) : null}

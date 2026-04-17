@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useState, useCallback, useMemo } from "react";
 import type { ReactNode } from "react";
 import { apiRequest } from "../services/api";
-import type { Role, Attendance, CalendarDay } from "../types";
+import type { Role, Attendance, CalendarDay, LeaveRequest } from "../types";
 import { ATTENDANCE_EVENT, getAttendanceUpdatedDetail } from "../components/common/attendanceQuickActionUtils";
 
 export type DashboardSummary = {
@@ -24,6 +24,7 @@ export type DashboardSummary = {
     department?: { name: string };
     manager?: { firstName: string; lastName: string };
   };
+  leaveRequests?: LeaveRequest[];
 };
 
 export type AnalyticsData = {

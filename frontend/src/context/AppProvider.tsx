@@ -1,48 +1,9 @@
-import { createContext, useContext, useEffect, useState, useCallback, useMemo } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import type { ReactNode } from "react";
 import { apiRequest } from "../services/api";
-import type { Role, Attendance, CalendarDay, LeaveRequest } from "../types";
+import type { Role } from "../types";
 import { ATTENDANCE_EVENT, getAttendanceUpdatedDetail } from "../components/common/attendanceQuickActionUtils";
-
-export type DashboardSummary = {
-  pendingLeaves: number;
-  pendingTeamLeaves: number;
-  payrollCount: number;
-  scopedTeamCount: number;
-  isTeamLead: boolean;
-  pendingCorrectionRequests: number;
-  pendingIncentiveApprovals: number;
-  attendanceToday: Attendance | null;
-  employees?: number;
-  teamCount?: number;
-  departments?: number;
-  pendingApprovals?: number;
-  currentEmployee?: {
-    id: number;
-    firstName: string;
-    lastName: string;
-    department?: { name: string };
-    manager?: { firstName: string; lastName: string };
-  };
-  leaveRequests?: LeaveRequest[];
-};
-
-export type AnalyticsData = {
-  attendanceRecords: Attendance[];
-  calendarDays: CalendarDay[];
-  lastFetched?: number;
-};
-
-type AppContextType = {
-  summary: DashboardSummary | null;
-  loading: boolean;
-  error: string;
-  refreshSummary: () => Promise<void>;
-  analyticsData: AnalyticsData | null;
-  fetchAnalyticsData: (force?: boolean) => Promise<void>;
-};
-
-const AppContext = createContext<AppContextType | undefined>(undefined);
+import { AppContext, type DashboardSummary, type AnalyticsData } from "./useApp";
 
 export function AppProvider({ children, token, role }: { children: ReactNode; token: string | null; role: Role }) {
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
@@ -144,12 +105,4 @@ export function AppProvider({ children, token, role }: { children: ReactNode; to
   }), [summary, loading, error, refreshSummary, analyticsData, fetchAnalyticsData]);
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
-}
-
-export function useApp() {
-  const context = useContext(AppContext);
-  if (context === undefined) {
-    throw new Error("useApp must be used within an AppProvider");
-  }
-  return context;
 }

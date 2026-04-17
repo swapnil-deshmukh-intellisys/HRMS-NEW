@@ -45,7 +45,7 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}, 
     
     try {
       payload = (await response.json()) as ApiResponse<T>;
-    } catch (jsonError) {
+    } catch {
       // Handle cases where response is not valid JSON (e.g., HTML error pages)
       const text = await response.text();
       console.error(`Non-JSON response from ${path}:`, text.substring(0, 200));

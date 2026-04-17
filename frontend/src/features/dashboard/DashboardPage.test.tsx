@@ -5,6 +5,7 @@ import { describe, expect, test } from "vitest";
 import DashboardPage from "./DashboardPage";
 import { mockApiRoutes } from "../../test/api";
 import { createAttendance, createEmployee } from "../../test/fixtures";
+import { AppProvider } from "../../context/AppContext";
 
 describe("DashboardPage", () => {
   test("renders the employee dashboard summary and timezone widgets", async () => {
@@ -27,7 +28,9 @@ describe("DashboardPage", () => {
 
     render(
       <MemoryRouter>
-        <DashboardPage token="token" role="EMPLOYEE" currentEmployeeId={1} />
+        <AppProvider token="token" role="EMPLOYEE">
+          <DashboardPage token="token" role="EMPLOYEE" />
+        </AppProvider>
       </MemoryRouter>,
     );
 
@@ -51,7 +54,9 @@ describe("DashboardPage", () => {
 
     render(
       <MemoryRouter>
-        <DashboardPage token="token" role="ADMIN" currentEmployeeId={1} />
+        <AppProvider token="token" role="ADMIN">
+          <DashboardPage token="token" role="ADMIN" />
+        </AppProvider>
       </MemoryRouter>,
     );
 

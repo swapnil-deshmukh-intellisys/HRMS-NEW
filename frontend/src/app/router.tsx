@@ -15,6 +15,7 @@ const TeamPage = lazy(() => import("../features/team/TeamPage"));
 const PayrollPage = lazy(() => import("../features/payroll/PayrollPage"));
 const IncentivesPage = lazy(() => import("../features/payroll/IncentivesPage"));
 const AppLayout = lazy(() => import("../layout/AppLayout"));
+import { AppProvider } from "../context/AppContext";
 
 function RouteLoadingFallback() {
   return <div className="center-message">Loading HRMS workspace...</div>;
@@ -34,14 +35,16 @@ function AppRoutes() {
         <Route
           element={
             sessionUser ? (
-              <AppLayout
-                token={token}
-                sessionUser={sessionUser}
-                onLogout={logout}
-                sessionWarning={sessionWarning}
-                onRefreshSession={refreshSession}
-                onUserActivity={updateLastActivity}
-              />
+              <AppProvider token={token} role={sessionUser.role}>
+                <AppLayout
+                  token={token}
+                  sessionUser={sessionUser}
+                  onLogout={logout}
+                  sessionWarning={sessionWarning}
+                  onRefreshSession={refreshSession}
+                  onUserActivity={updateLastActivity}
+                />
+              </AppProvider>
             ) : (
               <Navigate to="/login" replace />
             )
@@ -49,7 +52,7 @@ function AppRoutes() {
         >
           <Route
             index
-            element={<DashboardPage token={token} role={sessionUser?.role ?? "EMPLOYEE"} currentEmployeeId={sessionUser?.employee?.id ?? null} />}
+            element={<DashboardPage token={token} role={sessionUser?.role ?? "EMPLOYEE"} />}
           />
           <Route
             path="/analytics"

@@ -1,0 +1,19 @@
+ have completed a detailed performance and network audit of the HRMS application. I have identified several critical areas where API redundancy and data over-fetching are impacting both server load and user experience.
+
+Audit Highlights
+1.Redundant Global Summaries: 
+The Navbar and the Dashboard both hit the /dashboard/employee-summary endpoint independently. This causes a double-fetch of the exact same metrics (pending leaves, team counts, etc.) every time the page loads.
+
+2.Object Over-fetching:
+As you noted, the app is fetching massive Employee and Manager objects just to display a simple name string. For example, the "Workspace" section downloads thousands of bytes of metadata just to show the text "Rahul Jadhav."
+
+3.Navigation UX Lag:
+Because there is no client-side caching, navigating between pages (e.g., from Analytics back to Dashboard) triggers a full-page loading skeleton every time, even if the data hasn't changed.
+I have compiled the full technical findings and a multi-stage optimization plan in the document below:
+
+performance_audit_report.md
+
+Proposed Next Steps
+Step 1: Lift the "Summary" data to a global context so the Navbar and Dashboard share a single API call.
+Step 2: Implement selective field fetching for the Manager and Team member sections.
+Step 3: Introduce React Query for instant navigation without repetitive skeletons.

@@ -30,7 +30,7 @@
   --radius-md: 16px;
   --radius-lg: 20px;
   --radius-xl: 24px;
-  
+
   --control-height: 48px;
   --control-padding-x: 16px;
   --control-padding-y: 12px;
@@ -53,14 +53,14 @@
   --color-border-default: rgba(203, 213, 225, 0.6);
   --color-border-subtle: rgba(226, 232, 240, 0.4);
   --color-border-card: rgba(255, 255, 255, 0.8);
-  --color-border-accent: rgba(37, 99, 235, 0.14);
+  --color-border-accent: rgba(22, 50, 112, 0.14);
 
   /* Vibrant Accents */
-  --color-accent: #2563eb;
-  --color-accent-gradient: linear-gradient(135deg, #2563eb 0%, #3b82f6 100%);
-  --color-accent-strong: #1d4ed8;
-  --color-accent-soft: rgba(37, 99, 235, 0.08);
-  --color-accent-glow: rgba(37, 99, 235, 0.3);
+  --color-accent: #163270;
+  --color-accent-gradient: linear-gradient(135deg, #163270 0%, #25408a 100%);
+  --color-accent-strong: #0f214a;
+  --color-accent-soft: #16327014;
+  --color-accent-glow: rgba(22, 50, 112, 0.3);
 
   --color-success: #059669;
   --color-danger: #e11d48;

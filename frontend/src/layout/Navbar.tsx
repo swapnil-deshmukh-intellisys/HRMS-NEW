@@ -5,8 +5,8 @@ import type { FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import AttendanceQuickAction from "../components/common/AttendanceQuickAction";
 import Button from "../components/common/Button";
-import { apiRequest } from "../services/api";
 import type { Role } from "../types";
+import { useApp } from "../context/AppContext";
 
 type NavbarProps = {
   title: string;
@@ -20,20 +20,9 @@ type NavbarProps = {
 
 export default function Navbar({ title, navOpen, onToggleNav, token, currentEmployeeId, role, onLogout }: NavbarProps) {
   const navigate = useNavigate();
+  const { summary, loading: notificationsLoading, error: notificationsError, refreshSummary } = useApp();
   const [searchTerm, setSearchTerm] = useState("");
   const [notificationsOpen, setNotificationsOpen] = useState(false);
-  const [notificationsLoading, setNotificationsLoading] = useState(false);
-  const [notificationsError, setNotificationsError] = useState("");
-  const [summary, setSummary] = useState<{
-    pendingLeaves?: number;
-    pendingTeamLeaves?: number;
-    payrollCount?: number;
-    scopedTeamCount?: number;
-    isTeamLead?: boolean;
-    pendingCorrectionRequests?: number;
-    pendingIncentiveApprovals?: number;
-  } | null>(null);
-  const notificationsLoadedRef = useRef(false);
   const notificationsRef = useRef<HTMLDivElement | null>(null);
   const canSearchEmployees = role !== "EMPLOYEE";
 
@@ -113,6 +102,18 @@ export default function Navbar({ title, navOpen, onToggleNav, token, currentEmpl
     return items.sort((a, b) => (priorityOrder[a.id] ?? 99) - (priorityOrder[b.id] ?? 99));
   }, [navigate, role, summary]);
 
+  const totalPendingCount = useMemo(() => {
+    if (!summary) return 0;
+    
+    // Only sum indicators that represent actual "pending actions"
+    return (
+      (summary.pendingLeaves ?? 0) +
+      (summary.pendingTeamLeaves ?? 0) +
+      (summary.pendingCorrectionRequests ?? 0) +
+      (summary.pendingIncentiveApprovals ?? 0)
+    );
+  }, [summary]);
+
   useEffect(() => {
     if (!notificationsOpen) return;
 
@@ -127,12 +128,8 @@ export default function Navbar({ title, navOpen, onToggleNav, token, currentEmpl
   }, [notificationsOpen]);
 
   useEffect(() => {
-    if (!token || notificationsLoadedRef.current || notificationsLoading) {
-      return;
-    }
-
-    void loadNotifications();
-  }, [token, notificationsLoading]);
+    if (!token) return;
+  }, [token]);
 
   function handleEmployeeSearchSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -141,59 +138,12 @@ export default function Navbar({ title, navOpen, onToggleNav, token, currentEmpl
     navigate(trimmedSearchTerm ? `/employees?search=${encodeURIComponent(trimmedSearchTerm)}` : "/employees");
   }
 
-  async function loadNotifications() {
-    if (!token) return;
-
-    try {
-      setNotificationsLoading(true);
-      setNotificationsError("");
-      const response = await apiRequest<{
-        pendingLeaves: number;
-        pendingTeamLeaves: number;
-        payrollCount: number;
-        scopedTeamCount: number;
-        isTeamLead: boolean;
-        pendingCorrectionRequests?: number;
-        pendingIncentiveApprovals?: number;
-      }>("/dashboard/employee-summary", { token });
-
-      const nextSummary = { ...response.data };
-
-      // Backward-compatible fallback: if backend summary does not yet include these fields,
-      // fetch once from dedicated endpoints for HR/Admin only.
-      if ((role === "HR" || role === "ADMIN") && typeof nextSummary.pendingCorrectionRequests !== "number") {
-        try {
-          const regularizationResponse = await apiRequest<Array<{ status: string }>>("/attendance/regularizations", { token });
-          nextSummary.pendingCorrectionRequests = regularizationResponse.data.filter((item) => item.status === "PENDING").length;
-        } catch {
-          nextSummary.pendingCorrectionRequests = 0;
-        }
-      }
-
-      if ((role === "HR" || role === "ADMIN") && typeof nextSummary.pendingIncentiveApprovals !== "number") {
-        try {
-          const incentivesResponse = await apiRequest<Array<{ status: string }>>("/payroll/incentives", { token });
-          nextSummary.pendingIncentiveApprovals = incentivesResponse.data.filter((item) => item.status === "PENDING").length;
-        } catch {
-          nextSummary.pendingIncentiveApprovals = 0;
-        }
-      }
-
-      setSummary(nextSummary);
-      notificationsLoadedRef.current = true;
-    } catch (requestError) {
-      setNotificationsError(requestError instanceof Error ? requestError.message : "Failed to load notifications.");
-    } finally {
-      setNotificationsLoading(false);
-    }
-  }
-
   async function handleBellClick() {
     const nextOpen = !notificationsOpen;
     setNotificationsOpen(nextOpen);
 
-    if (nextOpen && !notificationsLoadedRef.current && !notificationsLoading) {
-      await loadNotifications();
+    if (nextOpen) {
+      void refreshSummary();
     }
   }
 
@@ -232,13 +182,17 @@ export default function Navbar({ title, navOpen, onToggleNav, token, currentEmpl
             }}
           >
             <Bell size={18} strokeWidth={2} />
-            {notifications.length > 0 ? <span className="topbar-notification-badge" aria-hidden="true">{notifications.length}</span> : null}
+            {totalPendingCount > 0 ? (
+              <span className="topbar-notification-badge" aria-hidden="true">
+                {totalPendingCount > 99 ? "99+" : totalPendingCount}
+              </span>
+            ) : null}
           </Button>
           {notificationsOpen ? (
             <div className="topbar-notification-popover">
               <div className="topbar-notification-popover__header">
                 <strong>Notifications</strong>
-                <button type="button" className="secondary" onClick={() => void loadNotifications()} disabled={notificationsLoading}>
+                <button type="button" className="secondary" onClick={() => void refreshSummary()} disabled={notificationsLoading}>
                   Refresh
                 </button>
               </div>

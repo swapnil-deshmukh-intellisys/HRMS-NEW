@@ -39,8 +39,9 @@
   top: 0;
   z-index: 10;
   padding: 16px 18px;
-  background: #1e293b; /* Dark Slate Standard Header */
-  color: #ffffff;
+  background: var(--color-accent-soft);
+  /* Dark Slate Standard Header */
+  color: #353333;
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.12em;
@@ -98,7 +99,7 @@
   padding: 16px 24px;
   background: var(--color-surface-page);
   border-left: 2px solid var(--color-accent);
-  box-shadow: inset 0 2px 4px rgba(0,0,0,0.02);
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.02);
 }
 
 .expanded-details-grid {
@@ -119,12 +120,14 @@
 }
 
 .table-cell-primary {
-  color: #334155; /* Sober Slate 700 */
+  color: #334155;
+  /* Sober Slate 700 */
   font-weight: 600;
 }
 
 .table-cell-secondary {
-  color: #64748b; /* Muted Slate 500 */
+  color: #64748b;
+  /* Muted Slate 500 */
   font-size: 11px;
   font-weight: 500;
   line-height: 1.5;

@@ -52,7 +52,8 @@
 }
 
 .greeting-name {
-  color: #f97316; /* Vibrant Orange */
+  color: #f97316;
+  /* Vibrant Orange */
   text-shadow: 0 0 20px rgba(249, 115, 22, 0.2);
 }
 
@@ -78,12 +79,17 @@
 }
 
 .metric-card {
-  display: grid;
-  align-content: start;
+  display: flex;
+  flex-direction: column;
   gap: var(--space-2);
   min-height: 120px;
   padding: var(--space-4);
   background: rgba(254, 254, 254, 0.98);
+}
+
+.metric-card .dashboard-inline-row {
+  margin-top: auto;
+  padding-top: var(--space-2);
 }
 
 .metric-card .eyebrow {
@@ -101,8 +107,8 @@
 }
 
 .metric-card--status {
-  background: #fbfcff;
-  border-color: rgba(37, 99, 235, 0.16);
+  background: #fefefe;
+  border-left: 4px solid #cbd5e1;
 }
 
 .metric-card--status strong {
@@ -132,6 +138,15 @@
 
 .metric-card--attendance-widget {
   gap: var(--space-3);
+  border-left: 4px solid #cbd5e1;
+  background: linear-gradient(135deg, #ffffff 0%, #f9faff 100%);
+  box-shadow: var(--shadow-md), 0 10px 30px -10px rgba(22, 50, 112, 0.1);
+  transition: transform var(--transition-normal), box-shadow var(--transition-normal);
+}
+
+.metric-card--attendance-widget:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lg), 0 15px 40px -10px rgba(22, 50, 112, 0.15);
 }
 
 .metric-card--attendance-overview {
@@ -144,6 +159,25 @@
 
 .metric-card--project {
   gap: var(--space-3);
+  border-left: 4px solid #cbd5e1;
+  background: linear-gradient(135deg, #ffffff 0%, #f9faff 100%);
+  box-shadow: var(--shadow-md), 0 10px 30px -10px rgba(22, 50, 112, 0.1);
+  transition: transform var(--transition-normal), box-shadow var(--transition-normal);
+}
+
+.metric-card--project:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lg), 0 15px 40px -10px rgba(22, 50, 112, 0.15);
+}
+
+.analytics-top-grid {
+  grid-template-columns: 0.4fr 0.6fr;
+}
+
+@media (max-width: 1024px) {
+  .analytics-top-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 .dashboard-chart-card-skeleton {
@@ -743,6 +777,7 @@
   .dashboard-hero-timezone-group {
     grid-template-columns: 1fr;
   }
+
   .dashboard-project-meta {
     grid-template-columns: 1fr;
   }
@@ -799,7 +834,7 @@
     justify-content: stretch;
   }
 
-  .dashboard-card-actions > * {
+  .dashboard-card-actions>* {
     width: 100%;
   }
 

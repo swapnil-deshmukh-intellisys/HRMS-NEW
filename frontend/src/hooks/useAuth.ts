@@ -1,9 +1,10 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { apiRequest } from "../services/api";
 import type { SessionUser } from "../types";
 
 const TOKEN_KEY = "hrms_token";
 const SESSION_TIMEOUT_KEY = "hrms_session_timeout";
+const LAST_ACTIVITY_KEY = "hrms_last_activity";
 const WARNING_THRESHOLD = 5 * 60 * 1000; // 5 minutes before expiry
 const SESSION_DURATION = 10 * 60 * 60 * 1000; // 10 hours
 
@@ -11,181 +12,150 @@ export function useAuth() {
   const [token, setToken] = useState<string | null>(() => localStorage.getItem(TOKEN_KEY));
   const [sessionUser, setSessionUser] = useState<SessionUser | null>(null);
   const [loadingSession, setLoadingSession] = useState(Boolean(token));
-  const [skipSessionFetch, setSkipSessionFetch] = useState(false);
   const [sessionWarning, setSessionWarning] = useState(false);
-  const [lastActivity, setLastActivity] = useState<number>(() => Date.now());
+  const [lastActivity, setLastActivity] = useState<number>(() => {
+    const saved = localStorage.getItem(LAST_ACTIVITY_KEY);
+    return saved ? parseInt(saved) : Date.now();
+  });
 
-  // Update last activity on user interaction
+  // Reference for retry count to avoid messy nested timeouts
+  const retryCount = useRef(0);
+
+  // Sync token to localStorage when it changes
+  useEffect(() => {
+    if (token) {
+      localStorage.setItem(TOKEN_KEY, token);
+    } else {
+      localStorage.removeItem(TOKEN_KEY);
+      localStorage.removeItem(SESSION_TIMEOUT_KEY);
+      localStorage.removeItem(LAST_ACTIVITY_KEY);
+    }
+  }, [token]);
+
+  // Update last activity with throttling to protect localStorage performance
   const updateLastActivity = useCallback(() => {
-    setLastActivity(Date.now());
-    localStorage.setItem('hrms_last_activity', Date.now().toString());
+    const now = Date.now();
+    setLastActivity(now);
+    // Only write to localStorage at most once every 2 seconds
+    const lastSaved = localStorage.getItem(LAST_ACTIVITY_KEY);
+    if (!lastSaved || now - parseInt(lastSaved) > 2000) {
+      localStorage.setItem(LAST_ACTIVITY_KEY, now.toString());
+    }
   }, []);
 
-  // Check if session is expired
-  const isSessionExpired = useCallback(() => {
-    const sessionTimeout = localStorage.getItem(SESSION_TIMEOUT_KEY);
-    if (!sessionTimeout) return false;
+  // Global listeners for user activity
+  useEffect(() => {
+    if (!token) return;
+
+    const events = ['mousedown', 'keydown', 'scroll', 'touchstart'];
+    const handler = () => updateLastActivity();
     
-    const expiryTime = parseInt(sessionTimeout);
-    return Date.now() >= expiryTime;
-  }, []);
+    events.forEach(event => window.addEventListener(event, handler));
+    return () => events.forEach(event => window.removeEventListener(event, handler));
+  }, [token, updateLastActivity]);
 
-  // Set session timeout
+  // Set session timeout expiry marker
   const setSessionTimeout = useCallback(() => {
     const expiryTime = Date.now() + SESSION_DURATION;
     localStorage.setItem(SESSION_TIMEOUT_KEY, expiryTime.toString());
-    setLastActivity(Date.now());
   }, []);
 
-  // Manual logout function
+  // Logout clears state IMMEDIATELY for responsiveness
   const logout = useCallback(async () => {
-    if (token) {
-      try {
-        await apiRequest("/auth/logout", { method: "POST", token });
-      } catch {
-        // Keep logout resilient for stateless auth.
-      }
-    }
-
+    const currentToken = token;
+    
+    // Clear local state first
     setToken(null);
     setSessionUser(null);
     setSessionWarning(false);
+    localStorage.removeItem(TOKEN_KEY);
     localStorage.removeItem(SESSION_TIMEOUT_KEY);
-    localStorage.removeItem('hrms_last_activity');
+    localStorage.removeItem(LAST_ACTIVITY_KEY);
+
+    // Call API in background if we had a token
+    if (currentToken) {
+      try {
+        await apiRequest("/auth/logout", { method: "POST", token: currentToken });
+      } catch (err) {
+        console.warn("Logout API failed, but local session cleared", err);
+      }
+    }
   }, [token]);
 
-  // Handle session expiry
-  const handleSessionExpiry = useCallback(() => {
-    console.log('Session expired, logging out...');
-    logout();
-    // Clear all session-related data
-    localStorage.removeItem(SESSION_TIMEOUT_KEY);
-    localStorage.removeItem('hrms_last_activity');
-  }, [logout]);
-
-  // Check session status periodically
-  useEffect(() => {
-    if (!token) return;
-
-    const checkSession = () => {
-      if (isSessionExpired()) {
-        handleSessionExpiry();
-        return;
-      }
-
-      // Check for inactivity timeout
-      const inactivityDuration = Date.now() - lastActivity;
-      if (inactivityDuration >= SESSION_DURATION) {
-        handleSessionExpiry();
-        return;
-      }
-
-      // Show warning 5 minutes before expiry
-      const sessionTimeout = localStorage.getItem(SESSION_TIMEOUT_KEY);
-      if (sessionTimeout) {
-        const expiryTime = parseInt(sessionTimeout);
-        const timeUntilExpiry = expiryTime - Date.now();
-        
-        if (timeUntilExpiry <= WARNING_THRESHOLD && timeUntilExpiry > 0) {
-          setSessionWarning(true);
-        } else {
-          setSessionWarning(false);
-        }
-      }
-    };
-
-    const interval = setInterval(checkSession, 30000); // Check every 30 seconds
-    return () => clearInterval(interval);
-  }, [token, lastActivity, isSessionExpired, handleSessionExpiry]);
-
-  useEffect(() => {
-    if (!token) {
-      setSessionUser(null);
-      setLoadingSession(false);
-      setSkipSessionFetch(false);
-      localStorage.removeItem(TOKEN_KEY);
-      localStorage.removeItem(SESSION_TIMEOUT_KEY);
-      localStorage.removeItem('hrms_last_activity');
-      return;
-    }
-
-    localStorage.setItem(TOKEN_KEY, token);
-
-    if (skipSessionFetch) {
-      setSkipSessionFetch(false);
-      setLoadingSession(false);
-      setSessionTimeout();
-      return;
-    }
-
-    setLoadingSession(true);
-
-    apiRequest<SessionUser>("/auth/me", { token })
-      .then((response) => {
-        setSessionUser(response.data);
-        setSessionTimeout();
-      })
-      .catch((error) => {
-        console.error('Auth check failed:', error);
-        // Check if it's a 500 error (server issue) vs auth error
-        if (error.message?.includes('500') || error.message?.includes('Internal server error')) {
-          // Server error - don't logout immediately, retry after delay
-          setTimeout(() => {
-            if (token) {
-              apiRequest<SessionUser>("/auth/me", { token })
-                .then((response) => {
-                  setSessionUser(response.data);
-                  setSessionTimeout();
-                })
-                .catch(() => {
-                  // Second failure, logout
-                  setToken(null);
-                  setSessionUser(null);
-                  localStorage.removeItem(SESSION_TIMEOUT_KEY);
-                  localStorage.removeItem('hrms_last_activity');
-                })
-                .finally(() => setLoadingSession(false));
-            }
-          }, 5000); // Retry after 5 seconds
-        } else {
-          // Auth error - logout immediately
-          setToken(null);
-          setSessionUser(null);
-          localStorage.removeItem(SESSION_TIMEOUT_KEY);
-          localStorage.removeItem('hrms_last_activity');
-        }
-      })
-      .finally(() => setLoadingSession(false));
-  }, [skipSessionFetch, token, setSessionTimeout]);
-
-  function login(nextToken: string, nextUser?: SessionUser | null) {
-    if (nextUser !== undefined) {
-      setSkipSessionFetch(true);
-    }
-    setToken(nextToken);
-    if (nextUser !== undefined) {
-      setSessionUser(nextUser);
-      setLoadingSession(false);
-      setSessionTimeout();
-    }
-  }
-
-
-
-  // Manual session refresh
-  const refreshSession = useCallback(async () => {
+  // Re-fetch user session data
+  const fetchSession = useCallback(async (isRetry = false) => {
     if (!token) return;
 
     try {
+      setLoadingSession(true);
       const response = await apiRequest<SessionUser>("/auth/me", { token });
       setSessionUser(response.data);
       setSessionTimeout();
-      setSessionWarning(false);
-    } catch (error) {
-      console.error('Session refresh failed:', error);
-      handleSessionExpiry();
+      retryCount.current = 0; // Reset on success
+    } catch (error: any) {
+      const isServerError = error.message?.includes('500') || error.status === 500;
+      
+      if (isServerError && retryCount.current < 2) {
+        retryCount.current++;
+        console.warn(`Server error during auth check, retry #${retryCount.current}/2...`);
+        setTimeout(() => fetchSession(true), 5000);
+      } else {
+        console.error("Session verification failed, logging out:", error.message);
+        logout();
+      }
+    } finally {
+      if (!isRetry) setLoadingSession(false);
     }
-  }, [token, setSessionTimeout, handleSessionExpiry]);
+  }, [token, logout, setSessionTimeout]);
+
+  // Periodic session checker
+  useEffect(() => {
+    if (!token) return;
+
+    const checkInterval = setInterval(() => {
+      const now = Date.now();
+      
+      // 1. Check absolute session timeout
+      const sessionTimeout = localStorage.getItem(SESSION_TIMEOUT_KEY);
+      if (sessionTimeout) {
+        const expiryTime = parseInt(sessionTimeout);
+        const timeUntilExpiry = expiryTime - now;
+
+        if (timeUntilExpiry <= 0) {
+          console.log("Absolute session duration exceeded");
+          logout();
+          return;
+        }
+
+        // Show warning 5 minutes before
+        setSessionWarning(timeUntilExpiry <= WARNING_THRESHOLD);
+      }
+
+      // 2. Check inactivity timeout
+      if (now - lastActivity >= SESSION_DURATION) {
+        console.log("Inactivity timeout exceeded");
+        logout();
+      }
+    }, 15000); // Check every 15 seconds for responsiveness
+
+    return () => clearInterval(checkInterval);
+  }, [token, lastActivity, logout]);
+
+  // Initial load
+  useEffect(() => {
+    if (token && !sessionUser && !loadingSession) {
+      fetchSession();
+    }
+  }, [token, sessionUser, loadingSession, fetchSession]);
+
+  const login = useCallback((nextToken: string, user?: SessionUser | null) => {
+    setToken(nextToken);
+    if (user) setSessionUser(user);
+    setSessionTimeout();
+    updateLastActivity();
+  }, [setSessionTimeout, updateLastActivity]);
+
+  const refreshSession = useCallback(() => fetchSession(), [fetchSession]);
 
   return {
     token,

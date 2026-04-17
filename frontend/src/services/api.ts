@@ -17,7 +17,19 @@ export type ApiResponse<T> = {
   }>;
 };
 
-export async function apiRequest<T>(path: string, options: RequestOptions = {}, retryCount = 0) {
+export class ApiError extends Error {
+  status?: number;
+  errors?: any[];
+  
+  constructor(message: string, status?: number, errors?: any[]) {
+    super(message);
+    this.name = "ApiError";
+    this.status = status;
+    this.errors = errors;
+  }
+}
+
+export async function apiRequest<T>(path: string, options: RequestOptions = {}, retryCount = 0): Promise<ApiResponse<T>> {
   const maxRetries = 2;
   const isFormData = options.body instanceof FormData;
   const requestBody: BodyInit | undefined = options.body
@@ -36,80 +48,71 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}, 
       body: requestBody,
     });
 
-    // Handle network errors
-    if (!response) {
-      throw new Error("Network error - no response received");
-    }
+    const contentType = response.headers.get("content-type");
+    let payload: any;
 
-    let payload: ApiResponse<T>;
-    
-    try {
-      payload = (await response.json()) as ApiResponse<T>;
-    } catch {
-      // Handle cases where response is not valid JSON (e.g., HTML error pages)
+    if (contentType?.includes("application/json")) {
+      payload = await response.json();
+    } else {
       const text = await response.text();
-      console.error(`Non-JSON response from ${path}:`, text.substring(0, 200));
-      
-      if (response.status === 429) {
-        throw new Error("Too many requests - please wait a moment and try again");
+      // If we expected JSON but got something else, it's usually a platform error (500/502/503)
+      if (!response.ok) {
+        throw new ApiError(
+          `Server Error: ${response.status} ${response.statusText}`, 
+          response.status
+        );
       }
-      
-      throw new Error(`Server error: ${response.status} - ${text.substring(0, 100)}`);
+      payload = { success: true, data: text };
     }
 
     if (!response.ok) {
-      // Handle 500 errors with retry logic
-      if (response.status === 500 && retryCount < maxRetries) {
-        console.warn(`Server error on ${path}, retrying... (${retryCount + 1}/${maxRetries})`);
-        await new Promise(resolve => setTimeout(resolve, 1000 * (retryCount + 1))); // Exponential backoff
+      // 1. Retry logic for recoverable server errors
+      const isRecoverable = [500, 502, 503, 504].includes(response.status);
+      const isRateLimited = response.status === 429;
+
+      if ((isRecoverable || isRateLimited) && retryCount < maxRetries) {
+        const delay = isRateLimited ? 2000 : 1000;
+        console.warn(`Recoverable error ${response.status} on ${path}, retrying... (${retryCount + 1}/${maxRetries})`);
+        await new Promise(r => setTimeout(r, delay * (retryCount + 1)));
         return apiRequest<T>(path, options, retryCount + 1);
       }
-      
-      // Handle 429 rate limiting with retry
-      if (response.status === 429 && retryCount < maxRetries) {
-        console.warn(`Rate limited on ${path}, retrying... (${retryCount + 1}/${maxRetries})`);
-        await new Promise(resolve => setTimeout(resolve, 2000 * (retryCount + 1))); // Longer backoff for rate limiting
-        return apiRequest<T>(path, options, retryCount + 1);
+
+      // 2. Specific error messages
+      if (response.status === 401) {
+        throw new ApiError("Session expired. Please login again.", 401);
       }
       
-      if (response.status === 429) {
-        throw new Error("Too many requests - please wait a moment and try again");
+      if (response.status === 403) {
+        throw new ApiError("You don't have permission to perform this action.", 403);
       }
-      
-      throw new Error(payload.message ?? `Request failed with status ${response.status}`);
+
+      throw new ApiError(
+        payload?.message || `Request failed with status ${response.status}`,
+        response.status,
+        payload?.errors
+      );
     }
 
-    return payload;
-  } catch (error) {
-    // Handle fetch errors (network issues, CORS, etc.)
-    if (error instanceof TypeError && error.message.includes('fetch')) {
-      if (retryCount < maxRetries) {
-        console.warn(`Network error on ${path}, retrying... (${retryCount + 1}/${maxRetries})`);
-        await new Promise(resolve => setTimeout(resolve, 1000 * (retryCount + 1)));
-        return apiRequest<T>(path, options, retryCount + 1);
-      }
-      throw new Error("Network error - please check your connection");
+    return payload as ApiResponse<T>;
+  } catch (error: any) {
+    if (error instanceof ApiError) throw error;
+
+    // Handle Network Level aborts/failures
+    if (error.name === 'TypeError' || error.name === 'AbortError') {
+       if (retryCount < maxRetries) {
+          console.warn(`Network error on ${path}, retrying...`);
+          await new Promise(r => setTimeout(r, 1000 * (retryCount + 1)));
+          return apiRequest<T>(path, options, retryCount + 1);
+       }
+       throw new ApiError("Network error. Please check your connection.", 0);
     }
-    
-    // Handle rate limiting errors that bubble up
-    if (error instanceof Error && error.message.includes('Too many requests') && retryCount < maxRetries) {
-      console.warn(`Rate limiting on ${path}, retrying... (${retryCount + 1}/${maxRetries})`);
-      await new Promise(resolve => setTimeout(resolve, 3000 * (retryCount + 1)));
-      return apiRequest<T>(path, options, retryCount + 1);
-    }
-    
+
     throw error;
   }
 }
 
 export function getFileUrl(path?: string | null) {
-  if (!path) {
-    return null;
-  }
-
-  if (/^https?:\/\//i.test(path)) {
-    return path;
-  }
-
+  if (!path) return null;
+  if (/^https?:\/\//i.test(path)) return path;
   return `${FILE_BASE_URL}${path}`;
 }

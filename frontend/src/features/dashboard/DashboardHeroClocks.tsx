@@ -140,15 +140,19 @@ export default function DashboardHeroClocks() {
   return (
     <div className="dashboard-hero-clocks">
       {CLOCKS.map((clock) => (
-        <div key={clock.id} className="dashboard-hero-clock-wrapper">
+        <TimeCard 
+          key={clock.id}
+          timezone={timezones[clock.id]} 
+          now={now} 
+          variant={clock.variant}
+        >
           {!clock.fixed && (
             <TimezoneDropdown 
               value={timezones[clock.id]} 
               onChange={(tz) => handleTzChange(clock.id, tz)} 
             />
           )}
-          <TimeCard timezone={timezones[clock.id]} now={now} variant={clock.variant} />
-        </div>
+        </TimeCard>
       ))}
     </div>
   );

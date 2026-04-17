@@ -5,6 +5,7 @@ type TimeCardProps = {
   timezone: string;
   now?: Date;
   variant?: "default" | "minimal";
+  children?: React.ReactNode;
 };
 
 type ZonedParts = {
@@ -85,7 +86,7 @@ function getReadableLocationLabel(timezone: string) {
   const city = segments[segments.length - 1]?.replace(/_/g, " ") ?? timezone;
   const region = segments.length > 1 ? segments[0].replace(/_/g, " ") : "";
 
-  return region ? `${city}, ${region}` : city;
+  return { city, region };
 }
 
 function formatOffsetLabel(now: Date, timezone: string) {
@@ -143,7 +144,7 @@ function AnalogClock({ timezone, now }: AnalogClockProps) {
 
 const MemoizedAnalogClock = memo(AnalogClock);
 
-export default function TimeCard({ timezone, now: externalNow, variant = "default" }: TimeCardProps) {
+export default function TimeCard({ timezone, now: externalNow, variant = "default", children }: TimeCardProps) {
   const [internalNow, setInternalNow] = useState(() => new Date());
 
   useEffect(() => {
@@ -163,10 +164,19 @@ export default function TimeCard({ timezone, now: externalNow, variant = "defaul
 
   return (
     <article className={`time-card ${variant === "minimal" ? "time-card--minimal" : ""}`}>
+      {children}
       <div className="time-card__content">
         <div className="time-card__details">
           <strong className="time-card__time">{timeLabel}</strong>
-          <span className="time-card__location">{locationLabel}</span>
+          <span className="time-card__location">
+            {locationLabel.city}
+            {locationLabel.region && (
+              <>
+                {", "}
+                <span className="time-card__region">{locationLabel.region}</span>
+              </>
+            )}
+          </span>
           <span className="time-card__offset">{offsetLabel}</span>
         </div>
         {variant !== "minimal" && <MemoizedAnalogClock timezone={timezone} now={now} />}

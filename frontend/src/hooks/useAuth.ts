@@ -5,7 +5,7 @@ import type { SessionUser } from "../types";
 const TOKEN_KEY = "hrms_token";
 const SESSION_TIMEOUT_KEY = "hrms_session_timeout";
 const WARNING_THRESHOLD = 5 * 60 * 1000; // 5 minutes before expiry
-const SESSION_DURATION = 8 * 60 * 60 * 1000; // 8 hours
+const SESSION_DURATION = 10 * 60 * 60 * 1000; // 10 hours
 
 export function useAuth() {
   const [token, setToken] = useState<string | null>(() => localStorage.getItem(TOKEN_KEY));

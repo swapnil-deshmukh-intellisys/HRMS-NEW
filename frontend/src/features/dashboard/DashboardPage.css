@@ -10,7 +10,8 @@
   gap: var(--space-4);
   grid-template-columns: minmax(0, 1fr);
   min-height: 180px;
-  overflow: hidden;
+  overflow: visible;
+  z-index: 10;
   background:
     radial-gradient(circle at 14% 18%, rgba(125, 211, 252, 0.18), transparent 18%),
     radial-gradient(circle at 84% 20%, rgba(251, 191, 36, 0.14), transparent 16%),

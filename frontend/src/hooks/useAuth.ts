@@ -21,7 +21,10 @@ export function useAuth() {
   // Reference for retry count to avoid messy nested timeouts
   const retryCount = useRef(0);
 
-  // Sync token to localStorage when it changes
+  // Track if we have initiated the initial session check
+  const hasFetched = useRef(false);
+
+  // Sync token to localStorage and reset fetch state when token is cleared
   useEffect(() => {
     if (token) {
       localStorage.setItem(TOKEN_KEY, token);
@@ -29,6 +32,7 @@ export function useAuth() {
       localStorage.removeItem(TOKEN_KEY);
       localStorage.removeItem(SESSION_TIMEOUT_KEY);
       localStorage.removeItem(LAST_ACTIVITY_KEY);
+      hasFetched.current = false; // Reset for next login
     }
   }, [token]);
 
@@ -104,7 +108,12 @@ export function useAuth() {
         logout();
       }
     } finally {
-      if (!isRetry) setLoadingSession(false);
+      const willRetry = retryCount.current > 0 && retryCount.current <= 2;
+      if (!isRetry && !willRetry) {
+        setLoadingSession(false);
+      } else if (isRetry) {
+        setLoadingSession(false);
+      }
     }
   }, [token, logout, setSessionTimeout]);
 
@@ -143,10 +152,11 @@ export function useAuth() {
 
   // Initial load
   useEffect(() => {
-    if (token && !sessionUser && !loadingSession) {
+    if (token && !sessionUser && !hasFetched.current) {
+      hasFetched.current = true;
       fetchSession();
     }
-  }, [token, sessionUser, loadingSession, fetchSession]);
+  }, [token, sessionUser, fetchSession]);
 
   const login = useCallback((nextToken: string, user?: SessionUser | null) => {
     setToken(nextToken);

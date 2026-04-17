@@ -3,6 +3,7 @@ import "./TimeCard.css";
 
 type TimeCardProps = {
   timezone: string;
+  now?: Date;
 };
 
 type ZonedParts = {
@@ -141,16 +142,19 @@ function AnalogClock({ timezone, now }: AnalogClockProps) {
 
 const MemoizedAnalogClock = memo(AnalogClock);
 
-export default function TimeCard({ timezone }: TimeCardProps) {
-  const [now, setNow] = useState(() => new Date());
+export default function TimeCard({ timezone, now: externalNow }: TimeCardProps) {
+  const [internalNow, setInternalNow] = useState(() => new Date());
 
   useEffect(() => {
+    if (externalNow) return;
     const intervalId = window.setInterval(() => {
-      setNow(new Date());
+      setInternalNow(new Date());
     }, 1000);
 
     return () => window.clearInterval(intervalId);
-  }, []);
+  }, [externalNow]);
+
+  const now = externalNow || internalNow;
 
   const locationLabel = useMemo(() => getReadableLocationLabel(timezone), [timezone]);
   const timeLabel = useMemo(() => getDisplayFormatter(timezone).format(now), [now, timezone]);

@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { apiRequest } from "../../services/api";
 import type { Role } from "../../types";
-import TimeCard from "../../components/common/TimeCard";
+import DashboardHeroClocks from "./DashboardHeroClocks";
 
 type DashboardData = Record<string, number | string | boolean | null | undefined | object>;
 
@@ -67,11 +67,7 @@ export default function ManagementDashboard({ token, role }: { token: string | n
           {bannerContent.eyebrow ? <p className="eyebrow">{bannerContent.eyebrow}</p> : null}
           <h3>{bannerContent.title}</h3>
           <p className="muted">{bannerContent.description}</p>
-          <div className="dashboard-hero-timezone-group">
-            <TimeCard timezone="Asia/Kolkata" />
-            <TimeCard timezone="Europe/London" />
-            <TimeCard timezone="America/New_York" />
-          </div>
+          <DashboardHeroClocks />
         </div>
       </article>
 

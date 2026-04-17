@@ -1,7 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import { useApp } from "../../context/AppContext";
 import { formatAttendanceTime } from "../../utils/format";
-import TimeCard from "../../components/common/TimeCard";
+import DashboardHeroClocks from "./DashboardHeroClocks";
 import { formatWorkedDuration, getAttendanceWidgetTitle } from "./dashboardUtils";
 import type { Attendance } from "../../types";
 
@@ -54,11 +54,7 @@ export default function EmployeeDashboard() {
             ) : null}
           </h3>
           <p className="muted">Use this dashboard for quick actions and essential workday updates.</p>
-          <div className="dashboard-hero-timezone-group">
-            <TimeCard timezone="Asia/Kolkata" />
-            <TimeCard timezone="Europe/London" />
-            <TimeCard timezone="America/New_York" />
-          </div>
+          <DashboardHeroClocks />
         </div>
       </article>
 

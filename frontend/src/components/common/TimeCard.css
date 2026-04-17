@@ -8,6 +8,24 @@
   box-shadow: 0 12px 30px rgba(0, 0, 0, 0.18);
 }
 
+.time-card--minimal {
+  padding: 12px 16px;
+  box-shadow: none;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.time-card--minimal .time-card__time {
+  font-size: 24px;
+}
+
+.time-card--minimal .time-card__location {
+  font-size: 13px;
+}
+
+.time-card--minimal .time-card__offset {
+  font-size: 11px;
+}
+
 .time-card__content {
   display: flex;
   align-items: center;

@@ -4,6 +4,7 @@ import "./TimeCard.css";
 type TimeCardProps = {
   timezone: string;
   now?: Date;
+  variant?: "default" | "minimal";
 };
 
 type ZonedParts = {
@@ -142,7 +143,7 @@ function AnalogClock({ timezone, now }: AnalogClockProps) {
 
 const MemoizedAnalogClock = memo(AnalogClock);
 
-export default function TimeCard({ timezone, now: externalNow }: TimeCardProps) {
+export default function TimeCard({ timezone, now: externalNow, variant = "default" }: TimeCardProps) {
   const [internalNow, setInternalNow] = useState(() => new Date());
 
   useEffect(() => {
@@ -161,14 +162,14 @@ export default function TimeCard({ timezone, now: externalNow }: TimeCardProps) 
   const offsetLabel = useMemo(() => formatOffsetLabel(now, timezone), [now, timezone]);
 
   return (
-    <article className="time-card">
+    <article className={`time-card ${variant === "minimal" ? "time-card--minimal" : ""}`}>
       <div className="time-card__content">
         <div className="time-card__details">
           <strong className="time-card__time">{timeLabel}</strong>
           <span className="time-card__location">{locationLabel}</span>
           <span className="time-card__offset">{offsetLabel}</span>
         </div>
-        <MemoizedAnalogClock timezone={timezone} now={now} />
+        {variant !== "minimal" && <MemoizedAnalogClock timezone={timezone} now={now} />}
       </div>
     </article>
   );

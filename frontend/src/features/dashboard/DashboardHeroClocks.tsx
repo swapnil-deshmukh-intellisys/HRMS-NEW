@@ -16,17 +16,20 @@ const availableTimezones = (() => {
   }
 })();
 
+const CLOCKS: ClockConfig[] = [
+  { id: "left-far", defaultTz: "America/Los_Angeles", variant: "minimal" },
+  { id: "left-near", defaultTz: "America/New_York", variant: "minimal" },
+  { id: "center", defaultTz: IST_TIMEZONE, fixed: true, variant: "default" },
+  { id: "right-near", defaultTz: "Europe/London", variant: "minimal" },
+  { id: "right-far", defaultTz: "Asia/Dubai", variant: "minimal" },
+];
+
 type ClockConfig = {
   id: string;
   defaultTz: string;
   fixed?: boolean;
+  variant: "default" | "minimal";
 };
-
-const CLOCKS: ClockConfig[] = [
-  { id: "left", defaultTz: "America/New_York" },
-  { id: "center", defaultTz: IST_TIMEZONE, fixed: true },
-  { id: "right", defaultTz: "Europe/London" },
-];
 
 function TimezoneDropdown({ 
   value, 
@@ -144,7 +147,7 @@ export default function DashboardHeroClocks() {
               onChange={(tz) => handleTzChange(clock.id, tz)} 
             />
           )}
-          <TimeCard timezone={timezones[clock.id]} now={now} />
+          <TimeCard timezone={timezones[clock.id]} now={now} variant={clock.variant} />
         </div>
       ))}
     </div>

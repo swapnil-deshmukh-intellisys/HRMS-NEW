@@ -2,7 +2,7 @@ import "./IncentivesPage.css";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import { apiRequest } from "../../services/api";
-import type { Employee, Incentive, IncentiveType, IncentiveStatus, Role } from "../../types";
+import type { Employee, Incentive, IncentiveType, IncentiveStatus, IncentiveSummary, Role } from "../../types";
 
 type IncentivesPageProps = {
   token: string | null;
@@ -205,7 +205,7 @@ function IncentivesPage({ token, role }: IncentivesPageProps) {
   const [filterEmployeeId, setFilterEmployeeId] = useState<string>("");
   const [filterMonth, setFilterMonth] = useState<string>("");
   const [filterYear, setFilterYear] = useState<string>("");
-  const [incentiveSummary, setIncentiveSummary] = useState<any>(null);
+  const [incentiveSummary, setIncentiveSummary] = useState<IncentiveSummary | null>(null);
 
   const canCreateIncentive = role === "ADMIN" || role === "HR";
   const canReviewIncentive = role === "ADMIN" || role === "HR" || role === "MANAGER";
@@ -221,7 +221,7 @@ function IncentivesPage({ token, role }: IncentivesPageProps) {
         // Handle different response structures
         const employeesData = Array.isArray(response.data) 
           ? response.data 
-          : (response.data as any)?.items || [];
+          : (response.data as { items?: Employee[] })?.items || [];
         const sortedEmployees = [...(employeesData as Employee[])].sort((a, b) =>
           `${a.firstName} ${a.lastName}`.localeCompare(`${b.firstName} ${b.lastName}`)
         );
@@ -251,8 +251,8 @@ function IncentivesPage({ token, role }: IncentivesPageProps) {
           : [];
         setIncentives(incentivesData as Incentive[]);
       }
-    } catch (err: any) {
-      setError(err.message || "Failed to fetch incentives");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to fetch incentives");
     } finally {
       setLoading(false);
     }
@@ -268,14 +268,14 @@ function IncentivesPage({ token, role }: IncentivesPageProps) {
       // Get current employee ID if role is EMPLOYEE
       let employeeId = "";
       if (role === "EMPLOYEE") {
-        const userResponse = await apiRequest("/auth/me", { token });
-        if (userResponse.success && (userResponse.data as any).employeeId) {
-          employeeId = (userResponse.data as any).employeeId.toString();
+        const userResponse = await apiRequest<{ employeeId: number }>("/auth/me", { token });
+        if (userResponse.success && userResponse.data.employeeId) {
+          employeeId = userResponse.data.employeeId.toString();
         }
       }
 
       if (employeeId) {
-        const response = await apiRequest(
+        const response = await apiRequest<IncentiveSummary>(
           `/payroll/incentives/summary/${employeeId}/${currentMonth}/${currentYear}`,
           { token }
         );
@@ -315,8 +315,8 @@ function IncentivesPage({ token, role }: IncentivesPageProps) {
         setActiveTab("list");
         fetchIncentives();
       }
-    } catch (err: any) {
-      setError(err.message || "Failed to create incentive");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to create incentive");
     } finally {
       setLoading(false);
     }
@@ -345,8 +345,8 @@ function IncentivesPage({ token, role }: IncentivesPageProps) {
         setReviewFormValues({ status: "APPROVED", rejectionReason: "" });
         fetchIncentives();
       }
-    } catch (err: any) {
-      setError(err.message || "Failed to review incentive");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to review incentive");
     } finally {
       setLoading(false);
     }

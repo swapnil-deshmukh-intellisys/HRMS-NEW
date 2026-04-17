@@ -54,6 +54,7 @@ export default function ManagementAnalytics({ token, role }: { token: string | n
   const [attendanceRecords, setAttendanceRecords] = useState<Attendance[]>([]);
   const [calendarDays, setCalendarDays] = useState<CalendarDay[]>([]);
   const [leaveRequests, setLeaveRequests] = useState<LeaveRequest[]>([]);
+  const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
 
   useEffect(() => {
     const endpoint = role === "MANAGER" ? "/dashboard/manager" : "/dashboard/hr";
@@ -67,7 +68,8 @@ export default function ManagementAnalytics({ token, role }: { token: string | n
       apiRequest<CalendarResponse>(calendarEndpoint, { token }),
       apiRequest<LeaveRequest[]>("/leaves", { token }),
     ])
-      .then(([, attendanceResponse, calendarResponse, leaveResponse]) => {
+      .then(([dashboardResponse, attendanceResponse, calendarResponse, leaveResponse]) => {
+        setDashboardData(dashboardResponse.data);
         setAttendanceRecords(attendanceResponse.data);
         setCalendarDays(calendarResponse.data.days);
         setLeaveRequests(leaveResponse.data);
@@ -156,8 +158,9 @@ export default function ManagementAnalytics({ token, role }: { token: string | n
     return String(value ?? "-");
   }
 
-  const metricEntries = Object.entries(globalSummary || {}).filter(([key]) => key !== "attendanceToday" && key !== "currentEmployee");
-  const workforceCount = role === "MANAGER" ? Number(globalSummary?.teamCount ?? 0) : Number(globalSummary?.employees ?? 0);
+  const effectiveSummary = (dashboardData || globalSummary || {}) as DashboardData;
+  const metricEntries = Object.entries(effectiveSummary).filter(([key]) => key !== "attendanceToday" && key !== "currentEmployee" && typeof effectiveSummary[key] !== "object");
+  const workforceCount = role === "MANAGER" ? Number(effectiveSummary.teamCount ?? 0) : Number(effectiveSummary.employees ?? 0);
   const todayAttendanceRecords = attendanceRecords.filter((attendance) => {
     const attendanceDate = new Date(attendance.attendanceDate);
     return (

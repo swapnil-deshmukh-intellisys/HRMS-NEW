@@ -13,7 +13,7 @@ export function useAuth() {
   const [loadingSession, setLoadingSession] = useState(Boolean(token));
   const [skipSessionFetch, setSkipSessionFetch] = useState(false);
   const [sessionWarning, setSessionWarning] = useState(false);
-  const [lastActivity, setLastActivity] = useState<number>(Date.now());
+  const [lastActivity, setLastActivity] = useState<number>(() => Date.now());
 
   // Update last activity on user interaction
   const updateLastActivity = useCallback(() => {
@@ -37,6 +37,23 @@ export function useAuth() {
     setLastActivity(Date.now());
   }, []);
 
+  // Manual logout function
+  const logout = useCallback(async () => {
+    if (token) {
+      try {
+        await apiRequest("/auth/logout", { method: "POST", token });
+      } catch {
+        // Keep logout resilient for stateless auth.
+      }
+    }
+
+    setToken(null);
+    setSessionUser(null);
+    setSessionWarning(false);
+    localStorage.removeItem(SESSION_TIMEOUT_KEY);
+    localStorage.removeItem('hrms_last_activity');
+  }, [token]);
+
   // Handle session expiry
   const handleSessionExpiry = useCallback(() => {
     console.log('Session expired, logging out...');
@@ -44,7 +61,7 @@ export function useAuth() {
     // Clear all session-related data
     localStorage.removeItem(SESSION_TIMEOUT_KEY);
     localStorage.removeItem('hrms_last_activity');
-  }, []);
+  }, [logout]);
 
   // Check session status periodically
   useEffect(() => {
@@ -153,21 +170,7 @@ export function useAuth() {
     }
   }
 
-  async function logout() {
-    if (token) {
-      try {
-        await apiRequest("/auth/logout", { method: "POST", token });
-      } catch {
-        // Keep logout resilient for stateless auth.
-      }
-    }
 
-    setToken(null);
-    setSessionUser(null);
-    setSessionWarning(false);
-    localStorage.removeItem(SESSION_TIMEOUT_KEY);
-    localStorage.removeItem('hrms_last_activity');
-  }
 
   // Manual session refresh
   const refreshSession = useCallback(async () => {

@@ -163,28 +163,28 @@ async function getEmployeeDashboardSharedData(employeeId: number, today: Date) {
             where: {
               id: employeeId,
             },
-            include: {
-              department: true,
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              department: {
+                select: {
+                  name: true,
+                },
+              },
               manager: {
                 select: {
-                  id: true,
                   firstName: true,
                   lastName: true,
                 },
               },
               user: {
                 select: {
-                  email: true,
                   role: {
                     select: {
                       name: true,
                     },
                   },
-                },
-              },
-              capabilities: {
-                select: {
-                  capability: true,
                 },
               },
             },
@@ -198,38 +198,37 @@ async function getEmployeeDashboardSharedData(employeeId: number, today: Date) {
         },
         include: {
           employee: {
-            include: {
-              department: true,
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              department: {
+                select: {
+                  name: true,
+                },
+              },
               manager: {
                 select: {
-                  id: true,
                   firstName: true,
                   lastName: true,
                 },
               },
-              user: {
-                select: {
-                  email: true,
-                  role: {
-                    select: {
-                      name: true,
-                    },
-                  },
-                },
-              },
             },
           },
-          leaveType: true,
+          leaveType: {
+            select: {
+              code: true,
+              name: true,
+            },
+          },
           managerApprovedBy: {
             select: {
-              id: true,
               firstName: true,
               lastName: true,
             },
           },
           hrApprovedBy: {
             select: {
-              id: true,
               firstName: true,
               lastName: true,
             },
@@ -333,8 +332,9 @@ router.get("/employee", requireRoles("EMPLOYEE", "MANAGER", "HR", "ADMIN"), asyn
     const currentMonth = today.getMonth() + 1;
     const monthStart = startOfDay(new Date(currentYear, today.getMonth(), 1));
     const monthEnd = endOfDay(new Date(currentYear, today.getMonth() + 1, 0));
+    const isMinimal = request.query.minimal === "true";
     const [sharedData, attendanceRecords, calendarExceptions] = await Promise.all([
-      getEmployeeDashboardSharedData(employeeId, today),
+      isMinimal ? Promise.resolve(null) : getEmployeeDashboardSharedData(employeeId, today),
       prisma.attendance.findMany({
         where: {
           employeeId,
@@ -369,7 +369,7 @@ router.get("/employee", requireRoles("EMPLOYEE", "MANAGER", "HR", "ADMIN"), asyn
     });
 
     return sendSuccess(response, "Employee dashboard fetched successfully", {
-      ...sharedData,
+      ...(sharedData || {}),
       attendanceRecords: enrichedAttendanceRecords,
       calendarDays,
     });

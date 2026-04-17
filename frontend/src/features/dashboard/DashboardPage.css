@@ -52,7 +52,8 @@
 }
 
 .greeting-name {
-  color: #f97316; /* Vibrant Orange */
+  color: #f97316;
+  /* Vibrant Orange */
   text-shadow: 0 0 20px rgba(249, 115, 22, 0.2);
 }
 
@@ -106,7 +107,7 @@
 }
 
 .metric-card--status {
-  background: #fbfcff;
+  background: #fefefe;
   border-left: 4px solid #cbd5e1;
 }
 
@@ -776,6 +777,7 @@
   .dashboard-hero-timezone-group {
     grid-template-columns: 1fr;
   }
+
   .dashboard-project-meta {
     grid-template-columns: 1fr;
   }
@@ -832,7 +834,7 @@
     justify-content: stretch;
   }
 
-  .dashboard-card-actions > * {
+  .dashboard-card-actions>* {
     width: 100%;
   }
 

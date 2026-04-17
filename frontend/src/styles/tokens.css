@@ -59,7 +59,7 @@
   --color-accent: #163270;
   --color-accent-gradient: linear-gradient(135deg, #163270 0%, #25408a 100%);
   --color-accent-strong: #0f214a;
-  --color-accent-soft: rgba(22, 50, 112, 0.08);
+  --color-accent-soft: #16327014;
   --color-accent-glow: rgba(22, 50, 112, 0.3);
 
   --color-success: #059669;

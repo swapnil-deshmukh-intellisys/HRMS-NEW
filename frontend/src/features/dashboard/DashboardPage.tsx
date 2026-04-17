@@ -1,20 +1,19 @@
 import "./DashboardPage.css";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ATTENDANCE_EVENT, getAttendanceUpdatedDetail } from "../../components/common/attendanceQuickActionUtils";
-import MessageCard from "../../components/common/MessageCard";
+import type { Attendance, Role } from "../../types";
 import { apiRequest } from "../../services/api";
-import type { EmployeeDashboardSummaryData, Role } from "../../types";
 import { formatAttendanceTime } from "../../utils/format";
 import TimeCard from "../../components/common/TimeCard";
 import { formatWorkedDuration, getAttendanceWidgetTitle } from "./dashboardUtils";
+import { useApp } from "../../context/AppContext";
+import MessageCard from "../../components/common/MessageCard";
 
 type DashboardData = Record<string, number | string | boolean | null | undefined | object>;
 
 type DashboardPageProps = {
   token: string | null;
   role: Role;
-  currentEmployeeId: number | null;
 };
 
 function getIndiaTimeGreeting() {
@@ -64,7 +63,7 @@ function getDashboardContent(role: Role) {
   };
 }
 
-function getAttendanceStatusNote(attendance: EmployeeDashboardSummaryData["attendanceToday"]) {
+function getAttendanceStatusNote(attendance: Attendance | null) {
   if (!attendance) {
     return "You have not marked attendance yet.";
   }
@@ -95,71 +94,43 @@ function getAttendanceStatusNote(attendance: EmployeeDashboardSummaryData["atten
 export default function DashboardPage({ token, role }: DashboardPageProps) {
   const navigate = useNavigate();
   const [data, setData] = useState<DashboardData>({});
-  const [employeeDashboard, setEmployeeDashboard] = useState<EmployeeDashboardSummaryData | null>(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
   const bannerContent = getDashboardContent(role);
 
+  const { summary, loading: summaryLoading, error: summaryError } = useApp();
+
   useEffect(() => {
-    const endpoint = role === "EMPLOYEE" ? "/dashboard/employee-summary" : role === "MANAGER" ? "/dashboard/manager" : "/dashboard/hr";
+    if (role === "EMPLOYEE") {
+      setLoading(false);
+      return;
+    }
+
+    const endpoint = role === "MANAGER" ? "/dashboard/manager" : "/dashboard/hr";
 
     setLoading(true);
-    const request =
-      role === "EMPLOYEE"
-        ? apiRequest<EmployeeDashboardSummaryData>(endpoint, { token })
-        : apiRequest<DashboardData>(endpoint, { token });
-
-    request
+    apiRequest<DashboardData>(endpoint, { token })
       .then((response) => {
-        if (role === "EMPLOYEE") {
-          const payload = response as Awaited<ReturnType<typeof apiRequest<EmployeeDashboardSummaryData>>>;
-          setEmployeeDashboard(payload.data);
-          setData({
-            attendanceToday: payload.data.attendanceToday,
-            pendingLeaves: payload.data.pendingLeaves,
-            payrollCount: payload.data.payrollCount,
-            isTeamLead: payload.data.isTeamLead,
-            scopedTeamCount: payload.data.scopedTeamCount,
-            pendingTeamLeaves: payload.data.pendingTeamLeaves,
-          });
-          return;
-        }
-
-        setData((response as Awaited<ReturnType<typeof apiRequest<DashboardData>>>).data);
+        setData(response.data);
       })
       .catch((requestError) => setError(requestError instanceof Error ? requestError.message : "Failed to load dashboard"))
       .finally(() => setLoading(false));
   }, [role, token]);
 
-  useEffect(() => {
-    if (role !== "EMPLOYEE") {
-      return;
-    }
 
-    const handleAttendanceUpdated = (event: Event) => {
-      const detail = getAttendanceUpdatedDetail(event);
-
-      if (!detail) {
-        return;
-      }
-
-      setEmployeeDashboard((current) => (current ? { ...current, attendanceToday: detail.attendanceToday } : current));
-      setData((current) => ({ ...current, attendanceToday: detail.attendanceToday }));
-    };
-
-    window.addEventListener(ATTENDANCE_EVENT, handleAttendanceUpdated);
-    return () => window.removeEventListener(ATTENDANCE_EVENT, handleAttendanceUpdated);
-  }, [role]);
-
-  const attendanceToday = employeeDashboard?.attendanceToday ?? null;
+  const attendanceToday = summary?.attendanceToday ?? null;
   const todayLabel = new Date().toLocaleDateString(undefined, { day: "numeric", month: "long" });
-  const currentEmployee = employeeDashboard?.currentEmployee ?? null;
+  const currentEmployee = summary?.currentEmployee ?? null;
   const attendanceStatusNote = getAttendanceStatusNote(attendanceToday);
+
+  // Use combined loading/error state
+  const isPageLoading = loading || (role === "EMPLOYEE" && summaryLoading);
+  const pageError = error || (role === "EMPLOYEE" ? summaryError : "");
 
   return (
     <section className="stack">
-      {error ? <MessageCard title="Dashboard issue" tone="error" message={error} /> : null}
-      {loading ? (
+      {pageError ? <MessageCard title="Dashboard issue" tone="error" message={pageError} /> : null}
+      {isPageLoading ? (
         <div className="page-loading">
           <article className="card skeleton-card skeleton-card--hero">
             <span className="skeleton-line skeleton-line--short" />
@@ -176,7 +147,7 @@ export default function DashboardPage({ token, role }: DashboardPageProps) {
           </div>
         </div>
       ) : null}
-      {!loading ? (
+      {!isPageLoading ? (
         <>
           <article className="card dashboard-hero">
             <div className="dashboard-hero-copy">
@@ -245,11 +216,11 @@ export default function DashboardPage({ token, role }: DashboardPageProps) {
                   <div className="dashboard-project-meta">
                     <div className="table-cell-stack">
                       <span className="table-cell-secondary">Scoped team members</span>
-                      <span className="table-cell-primary">{String(data.scopedTeamCount ?? 0)}</span>
+                      <span className="table-cell-primary">{String(summary?.scopedTeamCount ?? 0)}</span>
                     </div>
                     <div className="table-cell-stack">
                       <span className="table-cell-secondary">Pending team leaves</span>
-                      <span className="table-cell-primary">{String(data.pendingTeamLeaves ?? 0)}</span>
+                      <span className="table-cell-primary">{String(summary?.pendingTeamLeaves ?? 0)}</span>
                     </div>
                   </div>
                   <div className="dashboard-inline-row" style={{ justifyContent: "flex-end" }}>

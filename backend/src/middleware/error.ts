@@ -22,6 +22,7 @@ export function errorHandler(error: unknown, _request: Request, response: Respon
   }
 
   if (error instanceof AppError) {
+    console.warn(`[AppError] ${error.statusCode}: ${error.message}`);
     return response.status(error.statusCode).json({
       success: false,
       message: error.message,

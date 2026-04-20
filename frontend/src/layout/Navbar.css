@@ -196,7 +196,7 @@
   border: 1px solid var(--color-border-subtle);
   border-radius: 12px;
   background: var(--color-surface-page);
-  box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
   color: inherit;
   text-align: left;
   transition: all 0.2s ease;

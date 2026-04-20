@@ -31,17 +31,31 @@
 
 .attendance-quick-action {
   min-width: 124px;
-  border: 1px solid transparent;
+  border: 1px solid rgba(0, 0, 0, 0.1);
   border-radius: 999px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.18),
-    0 4px 12px rgba(15, 23, 42, 0.08);
+    inset 0 1px 0 rgba(255, 255, 255, 0.3),
+    0 3px 0 rgba(0, 0, 0, 0.15),
+    0 8px 16px rgba(15, 23, 42, 0.08);
+  position: relative;
+}
+
+.attendance-quick-action:active:not(:disabled) {
+  transform: translateY(2px);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.2),
+    0 1px 0 rgba(0, 0, 0, 0.1),
+    0 4px 8px rgba(15, 23, 42, 0.06);
 }
 
 .attendance-quick-action--compact {
   min-height: 38px;
   min-width: 108px;
-  padding: 9px 12px;
+  padding: 8px 12px;
   font-size: var(--text-sm);
   align-self: center;
 }
@@ -49,21 +63,30 @@
 .attendance-quick-action--check-in,
 .attendance-quick-action--check-out {
   color: #fff;
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.1);
 }
 
 .attendance-quick-action--check-in {
   background: linear-gradient(180deg, #22c55e, #16a34a);
+  border-color: #15803d;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.3),
+    0 3px 0 #15803d,
+    0 8px 16px rgba(34, 197, 94, 0.15);
 }
 
 .attendance-quick-action--check-out {
   background: linear-gradient(180deg, #ef4444, #dc2626);
+  border-color: #b91c1c;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.3),
+    0 3px 0 #b91c1c,
+    0 8px 16px rgba(239, 68, 68, 0.15);
 }
 
 .attendance-quick-action--check-in:hover:not(:disabled),
 .attendance-quick-action--check-out:hover:not(:disabled) {
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.22),
-    0 10px 20px rgba(15, 23, 42, 0.12);
+  filter: brightness(1.05);
 }
 
 .attendance-quick-action--completed,

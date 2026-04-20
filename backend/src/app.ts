@@ -35,7 +35,7 @@ app.use(
   "/api/auth",
   rateLimit({
     windowMs: 15 * 60 * 1000,
-    max: 50,
+    max: 200, // Increased from 50 to 200 to prevent shared IP blocks
   }),
 );
 

@@ -16,8 +16,9 @@ const loginSchema = z.object({
 router.post("/login", validate(loginSchema), async (request, response, next) => {
   try {
     const { email, password } = request.body;
+    const normalizedEmail = email.toLowerCase();
     const loginResult = await loginUser(
-      { email, password },
+      { email: normalizedEmail, password },
       {
         findUserByEmail: (userEmail) =>
           prisma.user.findUnique({

@@ -4,6 +4,7 @@ import { formatAttendanceTime } from "../../utils/format";
 import DashboardHeroClocks from "./DashboardHeroClocks";
 import ThoughtOfTheDay from "./ThoughtOfTheDay";
 import AnnouncementList from "./AnnouncementList";
+import WorkdayTimeline from "./WorkdayTimeline";
 import { formatWorkedDuration, getAttendanceWidgetTitle } from "./dashboardUtils";
 import type { Attendance } from "../../types";
 
@@ -64,6 +65,7 @@ export default function EmployeeDashboard({ token }: { token: string | null }) {
           <DashboardHeroClocks />
         </div>
       </article>
+      <WorkdayTimeline />
 
       <div className="grid cols-2 dashboard-grid">
         <article className="card metric-card metric-card--status">

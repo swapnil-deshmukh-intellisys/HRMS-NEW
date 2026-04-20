@@ -6,6 +6,7 @@ import DashboardHeroClocks from "./DashboardHeroClocks";
 import ThoughtOfTheDay from "./ThoughtOfTheDay";
 import AnnouncementForm from "./AnnouncementForm";
 import AnnouncementList from "./AnnouncementList";
+import WorkdayTimeline from "./WorkdayTimeline";
 
 type DashboardData = Record<string, number | string | boolean | null | undefined | object>;
 
@@ -79,6 +80,7 @@ export default function ManagementDashboard({ token, role }: { token: string | n
           <DashboardHeroClocks />
         </div>
       </article>
+      <WorkdayTimeline />
 
       <AnnouncementForm token={token} onCreated={() => setAnnouncementKey(k => k + 1)} />
 

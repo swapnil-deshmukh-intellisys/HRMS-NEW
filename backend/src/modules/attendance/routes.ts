@@ -248,24 +248,44 @@ router.post("/check-in", validate(attendanceSchema), async (request, response, n
       throw new AppError(existing.checkOutTime ? "Attendance already completed for today" : "Attendance already checked in for today");
     }
 
+    const checkInTime = new Date();
+
+    // --- Late Mark Logic ---
+    // Grace period ends at 10:10 AM. Any check-in after this is marked late.
+    const LATE_THRESHOLD_HOUR = 10;
+    const LATE_THRESHOLD_MINUTE = 10;
+    const thresholdTime = new Date(checkInTime);
+    thresholdTime.setHours(LATE_THRESHOLD_HOUR, LATE_THRESHOLD_MINUTE, 0, 0);
+
+    const isLate = checkInTime > thresholdTime;
+    const lateByMinutes = isLate
+      ? Math.floor((checkInTime.getTime() - thresholdTime.getTime()) / 60000)
+      : 0;
+    // -------------------------
+
     const attendance = existing
       ? await prisma.attendance.update({
           where: { id: existing.id },
           data: {
-            checkInTime: new Date(),
+            checkInTime,
             status: AttendanceStatus.PRESENT,
+            isLate,
+            lateByMinutes,
           },
         })
       : await prisma.attendance.create({
           data: {
             employeeId,
             attendanceDate: today,
-            checkInTime: new Date(),
+            checkInTime,
             status: AttendanceStatus.PRESENT,
+            isLate,
+            lateByMinutes,
           },
         });
 
     return sendSuccess(response, "Attendance checked in successfully", attendance, 201);
+
   } catch (error) {
     next(error);
   }

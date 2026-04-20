@@ -215,6 +215,8 @@ model Attendance {
   checkOutTime   DateTime?
   workedMinutes  Int              @default(0)
   status         AttendanceStatus @default(PRESENT)
+  isLate         Boolean          @default(false)
+  lateByMinutes  Int              @default(0)
   createdAt      DateTime         @default(now())
   updatedAt      DateTime         @updatedAt
   employee       Employee         @relation(fields: [employeeId], references: [id])

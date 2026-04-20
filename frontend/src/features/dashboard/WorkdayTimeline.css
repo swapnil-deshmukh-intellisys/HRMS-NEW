@@ -1,0 +1,294 @@
+/* =====================================================
+   WORKDAY TIMELINE — Premium Design
+   ===================================================== */
+
+.wdt-container {
+  margin: 16px 0 24px;
+  padding: 24px 28px 20px;
+  background: linear-gradient(135deg, #0c1a2e 0%, #112040 55%, #0a2d4e 100%);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 22px;
+  box-shadow:
+    0 8px 40px rgba(0, 0, 0, 0.35),
+    inset 0 1px 0 rgba(255, 255, 255, 0.07);
+  color: white;
+  position: relative;
+  overflow: visible;
+}
+
+/* Subtle background radial glow accent */
+.wdt-container::before {
+  content: "";
+  position: absolute;
+  top: -40px;
+  right: -60px;
+  width: 280px;
+  height: 280px;
+  background: radial-gradient(circle, rgba(16, 185, 129, 0.08), transparent 70%);
+  pointer-events: none;
+}
+
+/* ── Header ─────────────────────────────────────── */
+.wdt-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 22px;
+}
+
+.wdt-title-group {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.wdt-icon {
+  font-size: 28px;
+  line-height: 1;
+  opacity: 0.5;
+}
+
+.wdt-eyebrow {
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.45);
+  margin: 0 0 2px;
+}
+
+.wdt-subtitle {
+  font-size: 13px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.55);
+  margin: 0;
+  letter-spacing: 0.02em;
+}
+
+.wdt-status-group {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+/* Status pill */
+.wdt-status-pill {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 5px 14px 5px 10px;
+  border-radius: 100px;
+  border: 1px solid;
+}
+
+.wdt-status-pill.active {
+  color: #34d399;
+  background: rgba(16, 185, 129, 0.1);
+  border-color: rgba(52, 211, 153, 0.25);
+}
+.wdt-status-pill.late {
+  color: #fbbf24;
+  background: rgba(251, 191, 36, 0.1);
+  border-color: rgba(251, 191, 36, 0.3);
+}
+.wdt-status-pill.over {
+  color: #60a5fa;
+  background: rgba(96, 165, 250, 0.1);
+  border-color: rgba(96, 165, 250, 0.25);
+}
+.wdt-status-pill.pending {
+  color: rgba(255, 255, 255, 0.45);
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+/* Pulsing dot */
+.wdt-status-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.wdt-status-dot.active {
+  background: #34d399;
+  animation: wdt-pulse 2s infinite;
+}
+.wdt-status-dot.late {
+  background: #fbbf24;
+  animation: wdt-pulse-amber 2s infinite;
+}
+.wdt-status-dot.over { background: #60a5fa; }
+.wdt-status-dot.pending { background: rgba(255,255,255,0.3); }
+
+@keyframes wdt-pulse {
+  0%   { box-shadow: 0 0 0 0 rgba(52, 211, 153, 0.6); }
+  70%  { box-shadow: 0 0 0 8px rgba(52, 211, 153, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(52, 211, 153, 0); }
+}
+@keyframes wdt-pulse-amber {
+  0%   { box-shadow: 0 0 0 0 rgba(251, 191, 36, 0.6); }
+  70%  { box-shadow: 0 0 0 8px rgba(251, 191, 36, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(251, 191, 36, 0); }
+}
+
+/* Live clock badge */
+.wdt-clock {
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  color: white;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  padding: 5px 14px;
+}
+
+/* ── Progress Track ──────────────────────────────── */
+.wdt-track-wrapper {
+  margin-bottom: 20px;
+}
+
+.wdt-track {
+  position: relative;
+  height: 10px;
+  background: rgba(255, 255, 255, 0.07);
+  border-radius: 100px;
+  overflow: visible;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+.wdt-fill {
+  height: 100%;
+  border-radius: 100px;
+  background: linear-gradient(90deg, #059669 0%, #10b981 50%, #34d399 100%);
+  box-shadow: 0 0 20px rgba(16, 185, 129, 0.4);
+  position: relative;
+  transition: width 1s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Bar always stays green — late is shown only via status pill and marker */
+
+/* Live cursor */
+.wdt-cursor {
+  position: absolute;
+  right: -6px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.wdt-cursor::after {
+  content: "";
+  width: 12px;
+  height: 12px;
+  background: white;
+  border-radius: 50%;
+  border: 2px solid #10b981;
+  box-shadow:
+    0 0 0 4px rgba(16, 185, 129, 0.2),
+    0 0 16px rgba(16, 185, 129, 0.6);
+  position: relative;
+  z-index: 2;
+}
+
+
+
+.wdt-cursor-ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 1px solid rgba(52, 211, 153, 0.5);
+  animation: wdt-ring-pulse 2.5s ease-in-out infinite;
+}
+
+@keyframes wdt-ring-pulse {
+  0%, 100% { transform: scale(1); opacity: 0.6; }
+  50%       { transform: scale(1.8); opacity: 0; }
+}
+
+/* ── Late Threshold Marker ───────────────────────── */
+.wdt-late-marker {
+  position: absolute;
+  top: -8px;
+  bottom: -8px;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  z-index: 10;
+  pointer-events: none;
+}
+
+.wdt-late-marker-line {
+  width: 1.5px;
+  flex: 1;
+  background: rgba(251, 191, 36, 0.6);
+  border-radius: 2px;
+}
+
+.wdt-late-marker-label {
+  position: absolute;
+  top: -22px;
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #fbbf24;
+  white-space: nowrap;
+  background: rgba(251, 191, 36, 0.12);
+  border: 1px solid rgba(251, 191, 36, 0.25);
+  border-radius: 4px;
+  padding: 1px 6px;
+}
+
+/* Time anchors */
+.wdt-anchors {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 10px;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.25);
+}
+
+/* ── Footer Stats ────────────────────────────────── */
+.wdt-stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  align-items: center;
+  margin-top: 6px;
+  padding-top: 18px;
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.wdt-stat { display: flex; flex-direction: column; gap: 3px; }
+.wdt-stat.right { align-items: flex-end; text-align: right; }
+
+.wdt-stat-value {
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1;
+}
+.wdt-stat-value.elapsed   { color: #34d399; }
+.wdt-stat-value.late      { color: #fbbf24; }
+.wdt-stat-value.remaining { color: rgba(255, 255, 255, 0.7); }
+
+.wdt-stat-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.25);
+}
+

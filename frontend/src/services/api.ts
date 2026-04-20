@@ -79,7 +79,11 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}, 
 
       // 2. Specific error messages
       if (response.status === 401) {
-        throw new ApiError("Session expired. Please login again.", 401);
+        // Only use global 'Session expired' if it's NOT the login route.
+        // For login, we want to show the actual backend error (e.g. "Invalid credentials").
+        if (!path.includes("/auth/login")) {
+          throw new ApiError("Session expired. Please login again.", 401);
+        }
       }
       
       if (response.status === 403) {

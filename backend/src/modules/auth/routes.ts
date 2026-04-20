@@ -21,8 +21,13 @@ router.post("/login", validate(loginSchema), async (request, response, next) => 
       { email: normalizedEmail, password },
       {
         findUserByEmail: (userEmail) =>
-          prisma.user.findUnique({
-            where: { email: userEmail },
+          prisma.user.findFirst({
+            where: { 
+              email: {
+                equals: userEmail,
+                mode: 'insensitive'
+              }
+            },
             include: {
               role: true,
               employee: {

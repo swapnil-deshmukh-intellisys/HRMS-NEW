@@ -3,6 +3,7 @@ import { useApp } from "../../context/AppContext";
 import { formatAttendanceTime } from "../../utils/format";
 import DashboardHeroClocks from "./DashboardHeroClocks";
 import ThoughtOfTheDay from "./ThoughtOfTheDay";
+import AnnouncementList from "./AnnouncementList";
 import { formatWorkedDuration, getAttendanceWidgetTitle } from "./dashboardUtils";
 import type { Attendance } from "../../types";
 
@@ -33,7 +34,7 @@ function getAttendanceStatusNote(attendance: Attendance | null) {
   return "Attendance status is available for today.";
 }
 
-export default function EmployeeDashboard() {
+export default function EmployeeDashboard({ token }: { token: string | null }) {
   const navigate = useNavigate();
   const { summary } = useApp();
   
@@ -59,6 +60,7 @@ export default function EmployeeDashboard() {
               </h3>
             </div>
           </div>
+          <AnnouncementList token={token} />
           <DashboardHeroClocks />
         </div>
       </article>

@@ -4,6 +4,8 @@ import { apiRequest } from "../../services/api";
 import type { Role } from "../../types";
 import DashboardHeroClocks from "./DashboardHeroClocks";
 import ThoughtOfTheDay from "./ThoughtOfTheDay";
+import AnnouncementForm from "./AnnouncementForm";
+import AnnouncementList from "./AnnouncementList";
 
 type DashboardData = Record<string, number | string | boolean | null | undefined | object>;
 
@@ -35,6 +37,7 @@ export default function ManagementDashboard({ token, role }: { token: string | n
   const navigate = useNavigate();
   const [data, setData] = useState<DashboardData>({});
   const [loading, setLoading] = useState(true);
+  const [announcementKey, setAnnouncementKey] = useState(0);
   const bannerContent = getDashboardContent(role);
 
   useEffect(() => {
@@ -72,9 +75,12 @@ export default function ManagementDashboard({ token, role }: { token: string | n
               <h3>{bannerContent.title}</h3>
             </div>
           </div>
+          <AnnouncementList token={token} refreshSignal={announcementKey} />
           <DashboardHeroClocks />
         </div>
       </article>
+
+      <AnnouncementForm token={token} onCreated={() => setAnnouncementKey(k => k + 1)} />
 
       <div className="grid cols-2 dashboard-grid">
         {Object.entries(data).map(([key, value]) => {

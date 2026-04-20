@@ -209,9 +209,12 @@ export default function AttendanceQuickAction({
           </p>
         ) : null}
       </div>
-      <Modal open={confirmOpen} title="Confirm check out" onClose={() => setConfirmOpen(false)}>
+      <Modal open={confirmOpen} title={`Confirm ${actionState.label.toLowerCase()}`} onClose={() => setConfirmOpen(false)}>
         <div className="stack attendance-quick-action-confirm">
-          <p className="muted">Are you sure you want to check out for today? This will complete today&apos;s attendance entry.</p>
+          <p className="muted">
+            Are you sure you want to {actionState.label.toLowerCase()} for today?
+            {actionState.label === "Check out" ? " This will complete today's attendance entry." : " This will start your attendance timer for the day."}
+          </p>
           <div className="button-row">
             <button
               type="button"
@@ -221,7 +224,7 @@ export default function AttendanceQuickAction({
                 void submitAction();
               }}
             >
-              Confirm check out
+              Confirm {actionState.label.toLowerCase()}
             </button>
             <button type="button" className="secondary" onClick={() => setConfirmOpen(false)}>
               Cancel

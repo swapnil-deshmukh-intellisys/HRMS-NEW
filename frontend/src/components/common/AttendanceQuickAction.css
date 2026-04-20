@@ -83,7 +83,21 @@
 
 .attendance-quick-action-confirm-button {
   background: #dc2626;
+  color: white;
+  border: none;
+  border-radius: 12px;
+  padding: 10px 24px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
 }
+
+.attendance-quick-action-confirm-button:hover:not(:disabled) {
+  background: #b91c1c;
+  box-shadow: 0 8px 16px rgba(220, 38, 38, 0.25);
+  transform: translateY(-1px);
+}
+
 
 .attendance-quick-action-error {
   flex-basis: 100%;

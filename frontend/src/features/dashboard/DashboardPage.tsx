@@ -21,7 +21,7 @@ export default function DashboardPage({ token, role }: DashboardPageProps) {
       
       <Suspense fallback={<div className="page-loading">Loading dashboard...</div>}>
         {role === "EMPLOYEE" ? (
-          <EmployeeDashboard />
+          <EmployeeDashboard token={token} />
         ) : (
           <ManagementDashboard token={token} role={role} />
         )}

@@ -86,7 +86,9 @@
 .dashboard-hero-copy h3 {
   margin-bottom: 0;
   color: #ffffff;
-  font-size: var(--text-xl);
+  font-size: calc(var(--text-xl) * 1.55);
+  letter-spacing: -0.01em;
+  font-weight: 700;
 }
 
 .greeting-name {

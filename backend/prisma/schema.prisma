@@ -177,6 +177,7 @@ model Employee {
   verifiedOvertimeSessions OvertimeSession[] @relation("OvertimeVerifier")
   incentives           Incentive[]
   approvedIncentives   Incentive[] @relation("IncentiveApprover")
+  announcements        Announcement[] @relation("AnnouncementCreator")
 
   @@index([departmentId])
   @@index([managerId])
@@ -405,4 +406,20 @@ model CalendarException {
 
   @@index([date])
   @@index([type])
+}
+
+model Announcement {
+  id          Int      @id @default(autoincrement())
+  title       String
+  content     String
+  priority    String   @default("NORMAL")
+  createdById Int
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  createdBy   Employee @relation("AnnouncementCreator", fields: [createdById], references: [id])
+
+  @@index([createdById])
+  @@index([isActive])
 }

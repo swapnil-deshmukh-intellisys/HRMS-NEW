@@ -179,7 +179,7 @@ export default function TimeCard({ timezone, now: externalNow, variant = "defaul
           </span>
           <span className="time-card__offset">{offsetLabel}</span>
         </div>
-        {variant !== "minimal" && <MemoizedAnalogClock timezone={timezone} now={now} />}
+        <MemoizedAnalogClock timezone={timezone} now={now} />
       </div>
     </article>
   );

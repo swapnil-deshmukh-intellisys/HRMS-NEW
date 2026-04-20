@@ -5,11 +5,11 @@
   display: flex;
   align-items: center;
   padding: 24px 30px;
-  border: 1px solid #374151;
+  border: 1px solid #e5e7eb;
   border-radius: 20px;
-  background: #1c1c1c;
-  color: #f9fafb;
-  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.18);
+  background: #ffffff;
+  color: #1f2937;
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.05);
 }
 
 .time-card--minimal {
@@ -20,41 +20,82 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.06);
-  background: #ffffff;
-  border: 1px solid #e5e7eb;
-  color: #1f2937;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.2);
+  background: #1c1c1c;
+  color: #f9fafb;
 }
 
 .time-card--minimal .time-card__content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
   justify-content: center;
+  gap: 12px;
   width: 100%;
+}
+
+.time-card--minimal .time-card__time {
+  font-size: 26px;
+  color: #ffffff;
 }
 
 .time-card--minimal .time-card__details {
   text-align: center;
   align-items: center;
-  gap: 6px;
-}
-
-.time-card--minimal .time-card__time {
-  font-size: 32px;
-  color: #111827;
+  gap: 2px;
 }
 
 .time-card--minimal .time-card__location {
   font-size: 15px;
-  color: #4b5563;
+  color: #9ca3af;
   width: 100%;
 }
 
 .time-card--minimal .time-card__location .time-card__region {
-  color: #ea580c; /* Slightly darker orange for white background */
+  color: #f97316; /* Original vibrant orange for dark background */
 }
 
 .time-card--minimal .time-card__offset {
   font-size: 11px;
   color: #6b7280;
+}
+
+/* Minimal Dark Card Dial - Vertical Layout */
+.time-card--minimal .time-card__analog {
+  order: -1; 
+}
+
+.time-card--minimal .time-card__dial {
+  width: 80px;
+  height: 80px;
+  background:
+    radial-gradient(circle at center, rgba(255, 255, 255, 0.04), transparent 62%),
+    linear-gradient(180deg, #232323, #171717);
+  border: 2px solid rgba(255, 255, 255, 0.08);
+  box-shadow: none;
+}
+
+.time-card--minimal .time-card__tick {
+  background: rgba(255, 255, 255, 0.32);
+}
+
+.time-card--minimal .time-card__hand--hour {
+  height: 18px;
+  background: #ffffff;
+}
+
+.time-card--minimal .time-card__hand--minute {
+  height: 26px;
+  background: #f3f4f6;
+}
+
+.time-card--minimal .time-card__hand--second {
+  height: 32px;
+}
+
+.time-card--minimal .time-card__center-dot {
+  background: #ffffff;
+  border-color: #111827;
 }
 
 .time-card__content {
@@ -71,7 +112,7 @@
 }
 
 .time-card__time {
-  color: #ffffff;
+  color: #111827;
   font-size: 42px;
   font-weight: 700;
   line-height: 1;
@@ -79,14 +120,14 @@
 }
 
 .time-card__location {
-  color: #9ca3af;
+  color: #4b5563;
   font-size: 17px;
   font-weight: 500;
   line-height: 1.4;
 }
 
 .time-card__region {
-  color: #f97316; /* Vibrant Orange */
+  color: #ea580c; /* Darker orange for white middle card */
 }
 
 .time-card__offset {
@@ -102,15 +143,15 @@
   flex-shrink: 0;
 }
 
+/* Default White Card Dial Styling */
 .time-card__dial {
   position: relative;
   width: 128px;
   height: 128px;
-  border: 2px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid #e5e7eb;
   border-radius: 50%;
-  background:
-    radial-gradient(circle at center, rgba(255, 255, 255, 0.04), transparent 62%),
-    linear-gradient(180deg, #232323, #171717);
+  background: #ffffff;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.05);
 }
 
 .time-card__tick {
@@ -119,7 +160,7 @@
   width: 2px;
   height: 8px;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.32);
+  background: #cbd5e1;
   transform: translateX(-50%);
 }
 
@@ -159,13 +200,13 @@
 .time-card__hand--hour {
   width: 4px;
   height: 28px;
-  background: #ffffff;
+  background: #1e293b;
 }
 
 .time-card__hand--minute {
   width: 3px;
   height: 40px;
-  background: #f3f4f6;
+  background: #334155;
 }
 
 .time-card__hand--second {
@@ -180,9 +221,9 @@
   left: 50%;
   width: 10px;
   height: 10px;
-  border: 2px solid #111827;
+  border: 2px solid #ffffff;
   border-radius: 50%;
-  background: #ffffff;
+  background: #1e293b;
   transform: translate(-50%, -50%);
 }
 

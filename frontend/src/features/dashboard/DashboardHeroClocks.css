@@ -27,7 +27,7 @@
   height: 24px;
   background: transparent;
   border: none;
-  color: #6b7280;
+  color: #1f2937;
   cursor: pointer;
   transition: all 0.2s ease;
   padding: 0;
@@ -41,7 +41,7 @@
 }
 
 .time-card--minimal .clock-timezone-trigger {
-  color: #1f2937;
+  color: #ffffff;
   right: 12px;
   top: 12px;
 }

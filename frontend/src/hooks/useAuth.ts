@@ -6,7 +6,6 @@ const TOKEN_KEY = "hrms_token";
 const SESSION_TIMEOUT_KEY = "hrms_session_timeout";
 const LAST_ACTIVITY_KEY = "hrms_last_activity";
 const WARNING_THRESHOLD = 5 * 60 * 1000; // 5 minutes before expiry
-const SESSION_DURATION = 24 * 60 * 60 * 1000; // 24 hours
 
 // Global cache to prevent multiple components from firing the same /auth/me request
 // This prevents 429 Errors when multiple components on the same page use this hook.

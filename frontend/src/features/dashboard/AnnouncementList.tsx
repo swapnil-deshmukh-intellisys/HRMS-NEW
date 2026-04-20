@@ -121,7 +121,7 @@ function AnnouncementItem({ announcement, isLatest }: { announcement: Announceme
             </span>
             <span className="bullet">•</span>
             <span className="time-tag">
-              <Clock size={12} /> {new Date(announcement.createdAt).toLocaleDateString()}
+              <Clock size={12} /> {new Date(announcement.createdAt).toLocaleDateString([], { weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric' })} at {new Date(announcement.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true })}
             </span>
           </div>
           <h5 className="announcement-title">{announcement.title}</h5>

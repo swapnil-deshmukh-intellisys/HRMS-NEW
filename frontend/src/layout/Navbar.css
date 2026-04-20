@@ -32,6 +32,12 @@
   gap: var(--space-3);
 }
 
+.topbar-attendance-action {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
 .topbar-search-wrap {
   display: flex;
   align-items: center;

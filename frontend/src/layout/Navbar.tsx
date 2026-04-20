@@ -4,7 +4,9 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import AttendanceQuickAction from "../components/common/AttendanceQuickAction";
+import BreakQuickAction from "../components/common/BreakQuickAction";
 import Button from "../components/common/Button";
+import Modal from "../components/common/Modal";
 import type { Role } from "../types";
 import { useApp } from "../context/AppContext";
 
@@ -23,6 +25,7 @@ export default function Navbar({ title, navOpen, onToggleNav, token, currentEmpl
   const { summary, loading: notificationsLoading, error: notificationsError, refreshSummary } = useApp();
   const [searchTerm, setSearchTerm] = useState("");
   const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false);
   const notificationsRef = useRef<HTMLDivElement | null>(null);
   const canSearchEmployees = role !== "EMPLOYEE";
 
@@ -158,6 +161,11 @@ export default function Navbar({ title, navOpen, onToggleNav, token, currentEmpl
       <div className="topbar-actions">
         <div className="topbar-attendance-action">
           <AttendanceQuickAction token={token} currentEmployeeId={currentEmployeeId} size="compact" />
+          <BreakQuickAction
+            token={token}
+            isCheckedIn={Boolean(summary?.attendanceToday?.checkInTime)}
+            isCheckedOut={Boolean(summary?.attendanceToday?.checkOutTime)}
+          />
         </div>
         {canSearchEmployees ? (
           <form className="topbar-search-wrap" aria-label="Search employees by name" onSubmit={handleEmployeeSearchSubmit}>
@@ -242,11 +250,32 @@ export default function Navbar({ title, navOpen, onToggleNav, token, currentEmpl
           className="topbar-icon-button topbar-logout-button"
           variant="secondary"
           aria-label="Logout"
-          onClick={onLogout}
+          onClick={() => setLogoutConfirmOpen(true)}
         >
           <LogOut size={18} strokeWidth={2} />
         </Button>
       </div>
+
+      <Modal open={logoutConfirmOpen} title="Confirm Logout" onClose={() => setLogoutConfirmOpen(false)}>
+        <div className="stack">
+          <p className="muted">Are you sure you want to log out? Your current session will be ended.</p>
+          <div className="button-row">
+            <button
+              type="button"
+              className="attendance-quick-action-confirm-button danger"
+              onClick={() => {
+                setLogoutConfirmOpen(false);
+                void onLogout();
+              }}
+            >
+              Log Out
+            </button>
+            <button type="button" className="secondary" onClick={() => setLogoutConfirmOpen(false)}>
+              Cancel
+            </button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }

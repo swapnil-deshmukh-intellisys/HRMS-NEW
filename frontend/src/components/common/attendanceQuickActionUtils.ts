@@ -26,7 +26,7 @@ export function getSelfAttendanceActionState(attendance: Attendance | null) {
       disabled: false,
       toneClass: "attendance-quick-action--check-in",
       hint: "Mark today's attendance",
-      requiresConfirmation: false,
+      requiresConfirmation: true,
     };
   }
 
@@ -90,6 +90,6 @@ export function getSelfAttendanceActionState(attendance: Attendance | null) {
     disabled: false,
     toneClass: "attendance-quick-action--check-in",
     hint: "Mark today's attendance",
-    requiresConfirmation: false,
+    requiresConfirmation: true,
   };
 }

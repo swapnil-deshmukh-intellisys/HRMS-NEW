@@ -15,6 +15,7 @@ import departmentsRoutes from "./modules/departments/routes.js";
 import employeesRoutes from "./modules/employees/routes.js";
 import leaveRoutes from "./modules/leaves/routes.js";
 import payrollRoutes from "./modules/payroll/routes.js";
+import announcementRoutes from "./modules/announcements/routes.js";
 
 export const app = express();
 const __filename = fileURLToPath(import.meta.url);
@@ -53,6 +54,7 @@ app.use("/api/attendance", attendanceRoutes);
 app.use("/api", leaveRoutes);
 app.use("/api/payroll", payrollRoutes);
 app.use("/api/dashboard", dashboardRoutes);
+app.use("/api/announcements", announcementRoutes);
 
 app.use(notFound);
 app.use(errorHandler);

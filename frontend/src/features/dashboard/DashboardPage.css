@@ -10,7 +10,8 @@
   gap: var(--space-4);
   grid-template-columns: minmax(0, 1fr);
   min-height: 180px;
-  overflow: hidden;
+  overflow: visible;
+  z-index: 10;
   background:
     radial-gradient(circle at 14% 18%, rgba(125, 211, 252, 0.18), transparent 18%),
     radial-gradient(circle at 84% 20%, rgba(251, 191, 36, 0.14), transparent 16%),
@@ -28,16 +29,20 @@
   pointer-events: none;
 }
 
-.dashboard-hero-copy {
-  position: relative;
-  z-index: 1;
+.dashboard-hero-top-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  gap: 20px;
 }
 
-.dashboard-hero-copy {
-  display: grid;
-  gap: 10px;
-  width: 100%;
-  max-width: none;
+.dashboard-hero-header {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  text-align: right;
+  flex-shrink: 0; /* Keep greeting together */
 }
 
 .dashboard-hero-copy .eyebrow,
@@ -45,10 +50,45 @@
   color: rgba(255, 255, 255, 0.9);
 }
 
+.thought-of-the-day {
+  color: rgba(255, 255, 255, 0.95);
+  font-size: 1.15rem;
+  line-height: 1.5;
+  max-width: 700px;
+  margin: 0; /* Let flex handle spacing */
+  font-style: italic;
+  font-weight: 300;
+  display: block;
+}
+
+.thought-of-the-day::before,
+.thought-of-the-day::after {
+  display: inline-block;
+  font-family: serif;
+  font-size: 3rem;
+  color: rgba(255, 255, 255, 0.25);
+  line-height: 0;
+  user-select: none;
+}
+
+.thought-of-the-day::before {
+  content: "“";
+  margin-right: 12px;
+  vertical-align: -0.4em;
+}
+
+.thought-of-the-day::after {
+  content: "”";
+  margin-left: 8px;
+  vertical-align: -0.6em;
+}
+
 .dashboard-hero-copy h3 {
   margin-bottom: 0;
   color: #ffffff;
-  font-size: var(--text-xl);
+  font-size: calc(var(--text-xl) * 1.55);
+  letter-spacing: -0.01em;
+  font-weight: 700;
 }
 
 .greeting-name {

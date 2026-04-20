@@ -2,7 +2,11 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { apiRequest } from "../../services/api";
 import type { Role } from "../../types";
-import TimeCard from "../../components/common/TimeCard";
+import DashboardHeroClocks from "./DashboardHeroClocks";
+import ThoughtOfTheDay from "./ThoughtOfTheDay";
+import AnnouncementForm from "./AnnouncementForm";
+import AnnouncementList from "./AnnouncementList";
+import WorkdayTimeline from "./WorkdayTimeline";
 
 type DashboardData = Record<string, number | string | boolean | null | undefined | object>;
 
@@ -34,6 +38,7 @@ export default function ManagementDashboard({ token, role }: { token: string | n
   const navigate = useNavigate();
   const [data, setData] = useState<DashboardData>({});
   const [loading, setLoading] = useState(true);
+  const [announcementKey, setAnnouncementKey] = useState(0);
   const bannerContent = getDashboardContent(role);
 
   useEffect(() => {
@@ -64,16 +69,20 @@ export default function ManagementDashboard({ token, role }: { token: string | n
     <>
       <article className="card dashboard-hero">
         <div className="dashboard-hero-copy">
-          {bannerContent.eyebrow ? <p className="eyebrow">{bannerContent.eyebrow}</p> : null}
-          <h3>{bannerContent.title}</h3>
-          <p className="muted">{bannerContent.description}</p>
-          <div className="dashboard-hero-timezone-group">
-            <TimeCard timezone="Asia/Kolkata" />
-            <TimeCard timezone="Europe/London" />
-            <TimeCard timezone="America/New_York" />
+          <div className="dashboard-hero-top-row">
+            <ThoughtOfTheDay />
+            <div className="dashboard-hero-header">
+              {bannerContent.eyebrow ? <p className="eyebrow">{bannerContent.eyebrow}</p> : null}
+              <h3>{bannerContent.title}</h3>
+            </div>
           </div>
+          <AnnouncementList token={token} refreshSignal={announcementKey} />
+          <DashboardHeroClocks />
         </div>
       </article>
+      <WorkdayTimeline />
+
+      <AnnouncementForm token={token} onCreated={() => setAnnouncementKey(k => k + 1)} />
 
       <div className="grid cols-2 dashboard-grid">
         {Object.entries(data).map(([key, value]) => {

@@ -1,0 +1,468 @@
+/* ── Workday Timeline Design System ──────── */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap');
+
+.wdt-premium {
+  --color-track-bg: rgba(255, 255, 255, 0.03);
+  --color-track-border: rgba(255, 255, 255, 0.06);
+  --color-progress: linear-gradient(90deg, #10b981, #34d399);
+  --color-break: #3b82f6;
+  --color-late: #ef4444;
+  --color-warning: #f59e0b;
+  
+  --f-xs: 10px;
+  --f-sm: 12px;
+  --f-base: 14px;
+  --f-lg: 16px;
+  
+  --marker-width: 1.5px;
+  --marker-color: rgba(255, 255, 255, 0.4);
+  --marker-glow: 0 0 6px rgba(255, 255, 255, 0.2);
+  
+  background: linear-gradient(135deg, #111827 0%, #030712 100%);
+  border-radius: 20px;
+  padding: 24px 28px;
+  color: #f3f4f6;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  box-shadow: 
+    0 25px 50px -12px rgba(0, 0, 0, 0.5),
+    inset 0 1px 1px rgba(255, 255, 255, 0.05);
+  position: relative;
+  overflow: hidden;
+  font-family: 'Inter', sans-serif;
+  margin-bottom: var(--space-6);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.wdt-premium.is-collapsed {
+  padding-top: 14px;
+  padding-bottom: 12px;
+}
+
+/* ── Toggle Controls ────────────────────────────── */
+.wdt-controls {
+  display: flex;
+  justify-content: center;
+  margin-top: 12px;
+}
+
+.is-collapsed .wdt-controls {
+  margin-top: 4px;
+}
+
+.wdt-toggle-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: transparent;
+  border: none;
+  color: rgba(255, 255, 255, 0.3);
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  cursor: pointer;
+  padding: 4px 10px;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+}
+
+.wdt-toggle-btn:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+/* ── Top Section (Heading) ────────────────────────── */
+.wdt-top {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  margin-top: 4px;
+  margin-bottom: 8px;
+  animation: fadeIn 0.3s ease;
+  position: relative;
+  z-index: 20;
+}
+
+.is-expanded .wdt-top {
+  margin-bottom: 44px;
+}
+
+.wdt-title.centered {
+  text-align: center;
+  font-size: var(--f-lg);
+  font-weight: 800;
+  letter-spacing: -0.025em;
+}
+
+.wdt-title.collapsed-heading {
+  margin: 0;
+}
+
+.wdt-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 6px;
+  font-size: var(--f-xs);
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: rgba(255, 255, 255, 0.5);
+  justify-self: start;
+}
+
+.wdt-dot { width: 6px; height: 6px; border-radius: 50%; }
+.wdt-dot.active { background: #10b981; box-shadow: 0 0 10px #10b981; }
+.wdt-dot.late { background: #f59e0b; box-shadow: 0 0 10px #f59e0b; }
+.wdt-dot.over { background: #3b82f6; }
+.wdt-dot.pending { background: #6b7280; }
+
+.wdt-clock-face {
+  justify-self: end;
+  font-size: var(--f-base);
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.4);
+  background: rgba(0,0,0,0.2);
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+
+/* ── Progress Track Area (Viewport) ───────────────── */
+.wdt-viewport {
+  margin-bottom: 4px;
+  position: relative;
+  z-index: 5;
+}
+
+.is-expanded .wdt-viewport {
+  margin-bottom: 48px;
+}
+
+.wdt-rail {
+  position: relative;
+  height: 10px;
+  background: var(--color-track-bg);
+  border-radius: 99px;
+  border: 1px solid var(--color-track-border);
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.2);
+  margin: 6px 0;
+  overflow: visible;
+  transition: margin 0.3s ease;
+}
+
+.is-expanded .wdt-rail {
+  margin: 36px 0;
+}
+
+.wdt-progress-fill {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  background: var(--color-progress);
+  border-radius: 99px;
+  transition: width 0.8s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.wdt-glow-head {
+  position: absolute;
+  right: -4px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 10px;
+  height: 10px;
+  background: #fff;
+  border-radius: 50%;
+  box-shadow: 0 0 12px #fff;
+}
+
+/* ── Hover Tooltip (Mini) ── */
+.wdt-hover-tip {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  z-index: 50;
+  pointer-events: none;
+  transform: translateX(-50%);
+  animation: fadeIn 0.15s ease;
+}
+
+.wdt-hover-label {
+  position: absolute;
+  top: -24px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(31, 41, 55, 0.95);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 9px;
+  font-weight: 800;
+  white-space: nowrap;
+  border: 1px solid rgba(255,255,255,0.1);
+  color: #fff;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+}
+
+.wdt-hover-cursor {
+  position: absolute;
+  top: -4px;
+  bottom: -4px;
+  width: 1px;
+  background: rgba(255, 255, 255, 0.4);
+}
+
+/* Scheduled Break Walls */
+.wdt-scheduled-window {
+  position: absolute;
+  top: -4px;
+  bottom: -4px;
+  background: rgba(255, 255, 255, 0.05);
+  z-index: 4;
+  pointer-events: none;
+}
+
+.wdt-scheduled-window::before,
+.wdt-scheduled-window::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: var(--marker-width);
+  background: var(--marker-color);
+  box-shadow: var(--marker-glow);
+}
+
+.wdt-scheduled-window::before { left: 0; }
+.wdt-scheduled-window::after { right: 0; }
+
+/* Actual Segments */
+.wdt-segment-break {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  background: var(--color-break);
+  z-index: 6;
+  box-shadow: 0 0 12px rgba(59, 130, 246, 0.45);
+}
+
+.wdt-segment-break.is-active {
+  animation: wdt-pulse-blue-light 2s ease-in-out infinite;
+}
+
+@keyframes wdt-pulse-blue-light {
+  0%, 100% { opacity: 1; filter: brightness(1); }
+  50% { opacity: 0.8; filter: brightness(1.3); }
+}
+
+/* ── Indicators ─────────────────── */
+.wdt-mark-late {
+  position: absolute;
+  top: -8px;
+  bottom: -8px;
+  width: var(--marker-width);
+  z-index: 2;
+  transform: translateX(-50%);
+}
+
+.wdt-mark-line {
+  width: 100%;
+  height: 100%;
+  background: var(--color-late);
+  box-shadow: 0 0 10px var(--color-late);
+}
+
+.is-expanded .wdt-mark-late {
+  top: -12px;
+  bottom: -12px;
+}
+
+.wdt-mark-tip {
+  position: absolute;
+  top: -26px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: var(--f-xs);
+  font-weight: 800;
+  color: var(--color-late);
+  white-space: nowrap;
+  animation: fadeIn 0.3s ease;
+}
+
+.wdt-pin-checkin {
+  position: absolute;
+  top: -8px;
+  bottom: -22px;
+  width: var(--marker-width);
+  z-index: 10;
+  transform: translateX(-50%);
+}
+
+.wdt-pin-stem { 
+  height: 100%; 
+  width: 100%; 
+  border-radius: 2px;
+  background: #fff; 
+  box-shadow: 0 0 12px rgba(255,255,255,0.6);
+}
+
+.is-late .wdt-pin-stem { 
+  background: var(--color-warning); 
+  box-shadow: 0 0 10px var(--color-warning); 
+}
+
+.wdt-pin-label {
+  position: absolute;
+  bottom: -24px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(255, 255, 255, 0.08);
+  padding: 3px 8px;
+  border-radius: 4px;
+  font-size: var(--f-xs);
+  font-weight: 800;
+  white-space: nowrap;
+  border: 1px solid rgba(255,255,255,0.1);
+  letter-spacing: 0.02em;
+  animation: fadeIn 0.3s ease;
+  backdrop-filter: blur(4px);
+}
+
+/* Break Pins */
+.wdt-pin-break.bottom {
+  position: absolute;
+  top: -5px;
+  bottom: -20px;
+  width: var(--marker-width);
+  z-index: 11;
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+.wdt-pin-stem-break {
+  height: 100%;
+  width: 100%;
+  background: rgba(59, 130, 246, 0.6);
+  box-shadow: 0 0 8px rgba(59, 130, 246, 0.4);
+}
+
+.wdt-pin-label-break.bottom {
+  position: absolute;
+  bottom: -24px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(59, 130, 246, 0.1);
+  padding: 3px 8px;
+  border-radius: 4px;
+  font-size: var(--f-xs);
+  font-weight: 800;
+  white-space: nowrap;
+  border: 1px solid rgba(59, 130, 246, 0.2);
+  color: #93c5fd;
+  letter-spacing: 0.02em;
+  animation: fadeIn 0.3s ease;
+  backdrop-filter: blur(2px);
+  z-index: 100;
+}
+
+/* ── Timeline Scale ─────────────────────────────── */
+.wdt-scale {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 32px;
+  font-size: var(--f-sm);
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.25);
+  animation: fadeIn 0.3s ease;
+}
+
+.wdt-scale-ticks {
+  flex: 1;
+  display: flex;
+  justify-content: space-evenly;
+}
+
+.tick { width: 1px; height: 5px; background: rgba(255,255,255,0.1); }
+
+/* ── Info Grid (Minified Only Here) ──────────────── */
+.wdt-info-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 24px;
+  padding-top: 32px;
+  border-top: 1px solid rgba(255, 255, 255, 0.04);
+  animation: fadeIn 0.3s ease;
+}
+
+.wdt-info-card {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.wdt-info-tag {
+  font-size: 9px; /* Minified */
+  font-weight: 800;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.2);
+  letter-spacing: 0.08em;
+}
+
+.wdt-info-val {
+  font-size: 13px; /* Minified */
+  font-weight: 700;
+  color: #fff;
+  margin: 0;
+}
+
+.accent-green { color: #5eead4 !important; }
+.accent-blue { color: #60a5fa !important; }
+.accent-late { color: #fcd34d !important; }
+.accent-ontime { color: #5eead4 !important; }
+
+.wdt-info-val-group {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.wdt-info-sub {
+  font-size: 11px; /* Minified */
+  font-weight: 700;
+  margin: 0;
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.wdt-schedule-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.wdt-schedule-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px; /* Minified */
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.35);
+}
+
+.wdt-schedule-row .time { color: rgba(255, 255, 255, 0.6); }
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Responsive ──────────────────────────────────── */
+@media (max-width: 640px) {
+  .wdt-info-grid { grid-template-columns: 1fr; gap: 16px; }
+  .wdt-info-card { flex-direction: row; justify-content: space-between; align-items: center; }
+  .wdt-top { grid-template-columns: 1fr; gap: 12px; }
+}

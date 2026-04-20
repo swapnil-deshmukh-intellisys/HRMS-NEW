@@ -165,6 +165,7 @@ model Employee {
   scopedTeamMembers EmployeeTeamLeadScope[] @relation("TeamLeadScopeLeader")
   teamLeads      EmployeeTeamLeadScope[] @relation("TeamLeadScopeMember")
   attendances    Attendance[]
+  breakSessions  BreakSession[]
   attendanceRegularizationRequests AttendanceRegularizationRequest[] @relation("AttendanceRegularizationRequester")
   reviewedAttendanceRegularizations AttendanceRegularizationRequest[] @relation("AttendanceRegularizationReviewer")
   leaveBalances         LeaveBalance[]
@@ -177,6 +178,7 @@ model Employee {
   verifiedOvertimeSessions OvertimeSession[] @relation("OvertimeVerifier")
   incentives           Incentive[]
   approvedIncentives   Incentive[] @relation("IncentiveApprover")
+  announcements        Announcement[] @relation("AnnouncementCreator")
 
   @@index([departmentId])
   @@index([managerId])
@@ -214,6 +216,9 @@ model Attendance {
   checkOutTime   DateTime?
   workedMinutes  Int              @default(0)
   status         AttendanceStatus @default(PRESENT)
+  isLate         Boolean          @default(false)
+  lateByMinutes  Int              @default(0)
+  breakSessions  BreakSession[]
   createdAt      DateTime         @default(now())
   updatedAt      DateTime         @updatedAt
   employee       Employee         @relation(fields: [employeeId], references: [id])
@@ -221,6 +226,22 @@ model Attendance {
   @@unique([employeeId, attendanceDate])
   @@index([employeeId])
   @@index([attendanceDate])
+}
+
+model BreakSession {
+  id             Int        @id @default(autoincrement())
+  attendanceId   Int
+  employeeId     Int
+  startTime      DateTime
+  endTime        DateTime?
+  durationMinutes Int       @default(0)
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+  attendance     Attendance @relation(fields: [attendanceId], references: [id])
+  employee       Employee   @relation(fields: [employeeId], references: [id])
+
+  @@index([attendanceId])
+  @@index([employeeId])
 }
 
 model AttendanceRegularizationRequest {
@@ -405,4 +426,20 @@ model CalendarException {
 
   @@index([date])
   @@index([type])
+}
+
+model Announcement {
+  id          Int      @id @default(autoincrement())
+  title       String
+  content     String
+  priority    String   @default("NORMAL")
+  createdById Int
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  createdBy   Employee @relation("AnnouncementCreator", fields: [createdById], references: [id])
+
+  @@index([createdById])
+  @@index([isActive])
 }

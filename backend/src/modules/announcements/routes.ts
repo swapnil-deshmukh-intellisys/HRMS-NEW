@@ -92,7 +92,7 @@ router.delete("/:id", requireRoles("ADMIN", "HR", "MANAGER"), async (req, res, n
       data: { isActive: false }
     });
 
-    return sendSuccess(res, "Announcement deactivated successfully");
+    return sendSuccess(res, "Announcement deactivated successfully", null);
   } catch (error) {
     next(error);
   }

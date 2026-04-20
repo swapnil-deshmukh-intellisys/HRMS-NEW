@@ -339,6 +339,97 @@ router.post("/check-out", validate(attendanceSchema), async (request, response, 
   }
 });
 
+// ── Break Session Routes ──────────────────────────────
+
+router.get("/break/today", async (request, response, next) => {
+  try {
+    const employeeId = request.user?.employeeId;
+    if (!employeeId) throw new AppError("Employee context is required", 400);
+
+    const today = startOfDay(new Date());
+    const attendance = await prisma.attendance.findFirst({
+      where: { employeeId, attendanceDate: buildAttendanceWhereForDate(today) },
+      orderBy: { createdAt: "desc" },
+    });
+
+    if (!attendance) {
+      return sendSuccess(response, "No attendance record for today", { breakSessions: [] });
+    }
+
+    const breakSessions = await prisma.breakSession.findMany({
+      where: { attendanceId: attendance.id },
+      orderBy: { startTime: "asc" },
+    });
+
+    return sendSuccess(response, "Break sessions fetched", { breakSessions });
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.post("/break/start", async (request, response, next) => {
+  try {
+    const employeeId = request.user?.employeeId;
+    if (!employeeId) throw new AppError("Employee context is required", 400);
+
+    const today = startOfDay(new Date());
+    const attendance = await prisma.attendance.findFirst({
+      where: { employeeId, attendanceDate: buildAttendanceWhereForDate(today) },
+      orderBy: { createdAt: "desc" },
+    });
+
+    if (!attendance?.checkInTime) throw new AppError("You must be checked in before starting a break");
+    if (attendance.checkOutTime) throw new AppError("Your shift has already ended");
+
+    const openBreak = await prisma.breakSession.findFirst({
+      where: { attendanceId: attendance.id, endTime: null },
+    });
+    if (openBreak) throw new AppError("A break is already in progress");
+
+    const breakSession = await prisma.breakSession.create({
+      data: { attendanceId: attendance.id, employeeId, startTime: new Date() },
+    });
+
+    return sendSuccess(response, "Break started", breakSession, 201);
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.post("/break/end", async (request, response, next) => {
+  try {
+    const employeeId = request.user?.employeeId;
+    if (!employeeId) throw new AppError("Employee context is required", 400);
+
+    const today = startOfDay(new Date());
+    const attendance = await prisma.attendance.findFirst({
+      where: { employeeId, attendanceDate: buildAttendanceWhereForDate(today) },
+      orderBy: { createdAt: "desc" },
+    });
+
+    if (!attendance) throw new AppError("No attendance record found for today");
+
+    const openBreak = await prisma.breakSession.findFirst({
+      where: { attendanceId: attendance.id, endTime: null },
+      orderBy: { startTime: "desc" },
+    });
+
+    if (!openBreak) throw new AppError("No active break session found");
+
+    const endTime = new Date();
+    const durationMinutes = Math.floor((endTime.getTime() - openBreak.startTime.getTime()) / 60000);
+
+    const updated = await prisma.breakSession.update({
+      where: { id: openBreak.id },
+      data: { endTime, durationMinutes },
+    });
+
+    return sendSuccess(response, "Break ended", updated);
+  } catch (error) {
+    next(error);
+  }
+});
+
 router.post(
   "/finalize",
   requireRoles("ADMIN", "HR"),

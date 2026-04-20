@@ -120,7 +120,7 @@ function formatOffsetLabel(now: Date, timezone: string) {
   return `Today, ${sign}${hours} hrs ${minutes} mins`;
 }
 
-function AnalogClock({ timezone, now }: AnalogClockProps) {
+function AnalogClock({ timezone, now, variant = "default" }: AnalogClockProps & { variant?: "default" | "minimal" }) {
   const parts = useMemo(() => getZonedParts(now, timezone), [now, timezone]);
   const secondRotation = parts.second * 6;
   const minuteRotation = parts.minute * 6 + parts.second * 0.1;
@@ -128,15 +128,35 @@ function AnalogClock({ timezone, now }: AnalogClockProps) {
 
   return (
     <div className="time-card__analog" aria-hidden="true">
-      <div className="time-card__dial">
-        <span className="time-card__tick time-card__tick--top" />
-        <span className="time-card__tick time-card__tick--right" />
-        <span className="time-card__tick time-card__tick--bottom" />
-        <span className="time-card__tick time-card__tick--left" />
-        <span className="time-card__hand time-card__hand--hour" style={{ transform: `translateX(-50%) rotate(${hourRotation}deg)` }} />
-        <span className="time-card__hand time-card__hand--minute" style={{ transform: `translateX(-50%) rotate(${minuteRotation}deg)` }} />
-        <span className="time-card__hand time-card__hand--second" style={{ transform: `translateX(-50%) rotate(${secondRotation}deg)` }} />
-        <span className="time-card__center-dot" />
+      <div className="time-card__case">
+        <div className="time-card__dial">
+          {(() => {
+            const tickCount = variant === "minimal" ? 4 : 12;
+            const angleStep = 360 / tickCount;
+            return [...Array(tickCount)].map((_, i) => (
+              <span 
+                key={i} 
+                className="time-card__tick" 
+                style={{ transform: `translateX(-50%) rotate(${i * angleStep}deg)` }} 
+              />
+            ));
+          })()}
+          
+          {variant === "default" && (
+            <div className="time-card__numbers">
+              {[...Array(12)].map((_, i) => (
+                <div key={i + 1} className="time-card__number-wrap" style={{ transform: `translateX(-50%) rotate(${(i + 1) * 30}deg)` }}>
+                  <span className="time-card__number" style={{ transform: `translate(-50%, -50%) rotate(${-(i + 1) * 30}deg)` }}>{i + 1}</span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <span className="time-card__hand time-card__hand--hour" style={{ transform: `translateX(-50%) rotate(${hourRotation}deg)` }} />
+          <span className="time-card__hand time-card__hand--minute" style={{ transform: `translateX(-50%) rotate(${minuteRotation}deg)` }} />
+          <span className="time-card__hand time-card__hand--second" style={{ transform: `translateX(-50%) rotate(${secondRotation}deg)` }} />
+          <span className="time-card__center-dot" />
+        </div>
       </div>
     </div>
   );
@@ -179,7 +199,7 @@ export default function TimeCard({ timezone, now: externalNow, variant = "defaul
           </span>
           <span className="time-card__offset">{offsetLabel}</span>
         </div>
-        <MemoizedAnalogClock timezone={timezone} now={now} />
+        <MemoizedAnalogClock timezone={timezone} now={now} variant={variant} />
       </div>
     </article>
   );

@@ -161,25 +161,33 @@
   font-size: 12px;
 }
 
-@media (max-width: 1280px) {
-  .dashboard-hero-clocks {
-    gap: 12px;
-  }
-}
-
 @media (max-width: 1024px) {
   .dashboard-hero-clocks {
-    grid-template-columns: repeat(5, 1fr);
+    grid-template-columns: repeat(3, 1fr);
     gap: 8px;
+  }
+  .time-card--minimal:nth-of-type(1),
+  .time-card--minimal:nth-of-type(5) {
+    display: none !important;
   }
 }
 
-@media (max-width: 640px) {
+@media (max-width: 768px) {
   .dashboard-hero-clocks {
     grid-template-columns: 1fr;
+    gap: 0;
   }
-  .dashboard-hero-clock-wrapper:nth-child(1),
-  .dashboard-hero-clock-wrapper:nth-child(5) {
-    display: flex;
+
+  .time-card--minimal {
+    display: none !important;
+  }
+
+  .time-card {
+    min-height: auto !important;
+    padding: 20px !important;
+    border: none !important;
+    box-shadow: none !important;
+    background: transparent !important;
+    justify-content: center !important;
   }
 }

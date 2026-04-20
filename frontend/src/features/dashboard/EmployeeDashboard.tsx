@@ -2,6 +2,7 @@ import { useNavigate } from "react-router-dom";
 import { useApp } from "../../context/AppContext";
 import { formatAttendanceTime } from "../../utils/format";
 import DashboardHeroClocks from "./DashboardHeroClocks";
+import ThoughtOfTheDay from "./ThoughtOfTheDay";
 import { formatWorkedDuration, getAttendanceWidgetTitle } from "./dashboardUtils";
 import type { Attendance } from "../../types";
 
@@ -45,15 +46,19 @@ export default function EmployeeDashboard() {
     <>
       <article className="card dashboard-hero">
         <div className="dashboard-hero-copy">
-          <h3>
-            {getIndiaTimeGreeting()}
-            {currentEmployee?.firstName ? (
-              <>
-                , <span className="greeting-name">{currentEmployee.firstName}</span>
-              </>
-            ) : null}
-          </h3>
-          <p className="muted">Use this dashboard for quick actions and essential workday updates.</p>
+          <div className="dashboard-hero-top-row">
+            <ThoughtOfTheDay />
+            <div className="dashboard-hero-header">
+              <h3>
+                {getIndiaTimeGreeting()}
+                {currentEmployee?.firstName ? (
+                  <>
+                    , <span className="greeting-name">{currentEmployee.firstName}</span>
+                  </>
+                ) : null}
+              </h3>
+            </div>
+          </div>
           <DashboardHeroClocks />
         </div>
       </article>

@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { apiRequest } from "../../services/api";
 import type { Role } from "../../types";
 import DashboardHeroClocks from "./DashboardHeroClocks";
+import ThoughtOfTheDay from "./ThoughtOfTheDay";
 
 type DashboardData = Record<string, number | string | boolean | null | undefined | object>;
 
@@ -64,9 +65,13 @@ export default function ManagementDashboard({ token, role }: { token: string | n
     <>
       <article className="card dashboard-hero">
         <div className="dashboard-hero-copy">
-          {bannerContent.eyebrow ? <p className="eyebrow">{bannerContent.eyebrow}</p> : null}
-          <h3>{bannerContent.title}</h3>
-          <p className="muted">{bannerContent.description}</p>
+          <div className="dashboard-hero-top-row">
+            <ThoughtOfTheDay />
+            <div className="dashboard-hero-header">
+              {bannerContent.eyebrow ? <p className="eyebrow">{bannerContent.eyebrow}</p> : null}
+              <h3>{bannerContent.title}</h3>
+            </div>
+          </div>
           <DashboardHeroClocks />
         </div>
       </article>

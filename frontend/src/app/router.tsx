@@ -14,6 +14,7 @@ const LeavesPage = lazy(() => import("../features/leaves/LeavesPage"));
 const TeamPage = lazy(() => import("../features/team/TeamPage"));
 const PayrollPage = lazy(() => import("../features/payroll/PayrollPage"));
 const IncentivesPage = lazy(() => import("../features/payroll/IncentivesPage"));
+const GoogleCallbackPage = lazy(() => import("../features/google/GoogleCallbackPage"));
 const AppLayout = lazy(() => import("../layout/AppLayout"));
 import { AppProvider } from "../context/AppContext";
 
@@ -105,6 +106,7 @@ function AppRoutes() {
           />
           <Route path="/payroll" element={<PayrollPage token={token} role={sessionUser?.role ?? "EMPLOYEE"} />} />
           <Route path="/incentives" element={<IncentivesPage token={token} role={sessionUser?.role ?? "EMPLOYEE"} />} />
+          <Route path="/google-callback" element={<GoogleCallbackPage token={token} />} />
         </Route>
       </Routes>
     </Suspense>

@@ -119,8 +119,11 @@ model User {
   isActive     Boolean  @default(true)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
-  role         Role     @relation(fields: [roleId], references: [id])
+  role         Role      @relation(fields: [roleId], references: [id])
   employee     Employee?
+  googleId           String?  @unique
+  googleRefreshToken String?
+  isGoogleLinked     Boolean  @default(false)
 
   @@index([roleId])
 }

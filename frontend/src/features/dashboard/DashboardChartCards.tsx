@@ -94,7 +94,7 @@ export function EmployeeAttendanceWidgetCard(props: {
       }),
     [],
   );
-  const shiftTargetMinutes = 8 * 60;
+  const shiftTargetMinutes = 9 * 60;
   const shiftTargetDisplay = formatWorkedDuration(shiftTargetMinutes);
   const workedTodayMinutes = useMemo(() => {
     if (!selfAttendance || selfAttendance.status === "LEAVE" || selfAttendance.status === "ABSENT") {

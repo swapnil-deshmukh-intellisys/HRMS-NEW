@@ -75,8 +75,8 @@ export default function AnnouncementList({ token, refreshSignal }: { token?: str
                 className="announcement-toggle-btn"
                 onClick={() => setIsAllVisible(!isAllVisible)}
               >
-                {isAllVisible ? <ChevronUp size={14} /> : <Megaphone size={14} />}
-                <span>{isAllVisible ? "Show Less" : `Show All Older (${older.length})`}</span>
+                <span>{isAllVisible ? "Show less" : `Show all (${older.length})`}</span>
+                {isAllVisible ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
               </button>
             </div>
           )}

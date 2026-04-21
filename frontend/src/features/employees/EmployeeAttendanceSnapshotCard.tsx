@@ -33,7 +33,7 @@ function getProgressPercentage(workedMinutes?: number) {
     return 0;
   }
 
-  return Math.min(100, Math.round((workedMinutes / 480) * 100));
+  return Math.min(100, Math.round((workedMinutes / 540) * 100));
 }
 
 function getStartOfWorkWeek(referenceDate: Date) {
@@ -163,7 +163,7 @@ export default function EmployeeAttendanceSnapshotCard({ attendance }: EmployeeA
           <div className="employee-snapshot-progress">
             <div className="employee-snapshot-progress__meta">
               <span>Shift target</span>
-              <span>{todayRecord?.checkOutTime ? `${getProgressPercentage(todayRecord.workedMinutes)}% of 8h` : "0% of 8h"}</span>
+              <span>{todayRecord?.checkOutTime ? `${getProgressPercentage(todayRecord.workedMinutes)}% of 9h` : "0% of 9h"}</span>
             </div>
             <div className="employee-snapshot-progress__track">
               <span

@@ -78,9 +78,9 @@ export default function ManagementDashboard({ token, role }: { token: string | n
           </div>
           <AnnouncementList token={token} refreshSignal={announcementKey} />
           <DashboardHeroClocks />
+          <WorkdayTimeline />
         </div>
       </article>
-      <WorkdayTimeline />
 
       <AnnouncementForm token={token} onCreated={() => setAnnouncementKey(k => k + 1)} />
 

@@ -71,8 +71,15 @@
 .announcement-toggle:hover {
   background: linear-gradient(135deg, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0.08));
   border-color: rgba(255, 255, 255, 0.3);
-  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
   transform: translateY(-2px);
+}
+
+.announcement-toggle-btn:hover {
+  background: rgba(37, 99, 235, 1);
+  border-color: #2563eb;
+  color: white; /* Blue bg so white text IS visible */
+  transform: scale(1.02);
 }
 
 .announcement-toggle.has-count {
@@ -118,7 +125,7 @@
   border: 1px solid rgba(255, 255, 255, 0.15);
   backdrop-filter: blur(20px);
   color: white;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+  box-shadow: none;
   overflow: hidden;
 }
 
@@ -126,13 +133,13 @@
   border-color: rgba(255, 255, 255, 0.3);
   background: linear-gradient(145deg, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0.08));
   transform: translateY(-2px);
-  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.2);
+  box-shadow: none;
 }
 
 .announcement-item.latest {
   background: linear-gradient(145deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.03));
   border: 2px solid rgba(255, 255, 255, 0.25);
-  box-shadow: 0 15px 40px rgba(0, 0, 0, 0.2);
+  box-shadow: none;
 }
 
 /* Priority Accent Glows */

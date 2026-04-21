@@ -28,6 +28,11 @@ function formatWorkedDuration(workedMinutes?: number) {
   return `${minutes}m`;
 }
 
+function getProgressPercentage(workedMinutes?: number) {
+  if (!workedMinutes || workedMinutes <= 0) {
+    return 0;
+  }
+
   return Math.min(100, Math.round((workedMinutes / 540) * 100));
 }
 

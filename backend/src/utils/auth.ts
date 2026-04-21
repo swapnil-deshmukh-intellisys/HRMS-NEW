@@ -17,8 +17,18 @@ export function comparePassword(password: string, passwordHash: string) {
 }
 
 export function signToken(payload: TokenPayload) {
+  // Calculate seconds until 11:59:59 PM today
+  const now = new Date();
+  const endOfDay = new Date(now);
+  endOfDay.setHours(23, 59, 59, 999);
+  
+  const secondsUntilMidnight = Math.max(
+    Math.floor((endOfDay.getTime() - now.getTime()) / 1000),
+    3600 // Minimum 1 hour if logged in very close to midnight
+  );
+
   return jwt.sign(payload, env.JWT_SECRET, {
-    expiresIn: "8h",
+    expiresIn: secondsUntilMidnight,
   });
 }
 

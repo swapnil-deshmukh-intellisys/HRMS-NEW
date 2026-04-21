@@ -49,8 +49,8 @@ export default function AnnouncementForm({ token, onCreated }: { token: string |
 
       <form onSubmit={handleSubmit} className="announcement-form">
         <div className="form-group">
-          <input 
-            type="text" 
+          <input
+            type="text"
             placeholder="Announcement Title"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
@@ -59,7 +59,7 @@ export default function AnnouncementForm({ token, onCreated }: { token: string |
         </div>
 
         <div className="form-group">
-          <textarea 
+          <textarea
             placeholder="What would you like to share?"
             value={content}
             onChange={(e) => setContent(e.target.value)}
@@ -70,22 +70,22 @@ export default function AnnouncementForm({ token, onCreated }: { token: string |
 
         <div className="announcement-form-footer">
           <div className="priority-selector">
-            <button 
-              type="button" 
+            <button
+              type="button"
               className={`priority-btn normal ${priority === "NORMAL" ? "active" : ""}`}
               onClick={() => setPriority("NORMAL")}
             >
               <Info size={14} /> Normal
             </button>
-            <button 
-              type="button" 
+            <button
+              type="button"
               className={`priority-btn high ${priority === "HIGH" ? "active" : ""}`}
               onClick={() => setPriority("HIGH")}
             >
               High
             </button>
-            <button 
-              type="button" 
+            <button
+              type="button"
               className={`priority-btn urgent ${priority === "URGENT" ? "active" : ""}`}
               onClick={() => setPriority("URGENT")}
             >

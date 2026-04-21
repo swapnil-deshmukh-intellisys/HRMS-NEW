@@ -6,7 +6,10 @@ const TOKEN_KEY = "hrms_token";
 const SESSION_TIMEOUT_KEY = "hrms_session_timeout";
 const LAST_ACTIVITY_KEY = "hrms_last_activity";
 const WARNING_THRESHOLD = 5 * 60 * 1000; // 5 minutes before expiry
-const SESSION_DURATION = 10 * 60 * 60 * 1000; // 10 hours
+
+// Global cache to prevent multiple components from firing the same /auth/me request
+// This prevents 429 Errors when multiple components on the same page use this hook.
+const activeSessionRequests = new Map<string, Promise<any>>();
 
 export function useAuth() {
   const [token, setToken] = useState<string | null>(() => localStorage.getItem(TOKEN_KEY));
@@ -18,13 +21,9 @@ export function useAuth() {
     return saved ? parseInt(saved) : Date.now();
   });
 
-  // Reference for retry count to avoid messy nested timeouts
   const retryCount = useRef(0);
-
-  // Track if we have initiated the initial session check
   const hasFetched = useRef(false);
 
-  // Sync token to localStorage and reset fetch state when token is cleared
   useEffect(() => {
     if (token) {
       localStorage.setItem(TOKEN_KEY, token);
@@ -32,43 +31,35 @@ export function useAuth() {
       localStorage.removeItem(TOKEN_KEY);
       localStorage.removeItem(SESSION_TIMEOUT_KEY);
       localStorage.removeItem(LAST_ACTIVITY_KEY);
-      hasFetched.current = false; // Reset for next login
+      hasFetched.current = false;
     }
   }, [token]);
 
-  // Update last activity with throttling to protect localStorage performance
   const updateLastActivity = useCallback(() => {
     const now = Date.now();
     setLastActivity(now);
-    // Only write to localStorage at most once every 2 seconds
     const lastSaved = localStorage.getItem(LAST_ACTIVITY_KEY);
     if (!lastSaved || now - parseInt(lastSaved) > 2000) {
       localStorage.setItem(LAST_ACTIVITY_KEY, now.toString());
     }
   }, []);
 
-  // Global listeners for user activity
   useEffect(() => {
     if (!token) return;
-
     const events = ['mousedown', 'keydown', 'scroll', 'touchstart'];
     const handler = () => updateLastActivity();
-    
     events.forEach(event => window.addEventListener(event, handler));
     return () => events.forEach(event => window.removeEventListener(event, handler));
   }, [token, updateLastActivity]);
 
-  // Set session timeout expiry marker
   const setSessionTimeout = useCallback(() => {
-    const expiryTime = Date.now() + SESSION_DURATION;
-    localStorage.setItem(SESSION_TIMEOUT_KEY, expiryTime.toString());
+    const midnight = new Date();
+    midnight.setHours(23, 59, 59, 999);
+    localStorage.setItem(SESSION_TIMEOUT_KEY, midnight.getTime().toString());
   }, []);
 
-  // Logout clears state IMMEDIATELY for responsiveness
   const logout = useCallback(async () => {
     const currentToken = token;
-    
-    // Clear local state first
     setToken(null);
     setSessionUser(null);
     setSessionWarning(false);
@@ -76,7 +67,6 @@ export function useAuth() {
     localStorage.removeItem(SESSION_TIMEOUT_KEY);
     localStorage.removeItem(LAST_ACTIVITY_KEY);
 
-    // Call API in background if we had a token
     if (currentToken) {
       try {
         await apiRequest("/auth/logout", { method: "POST", token: currentToken });
@@ -86,16 +76,32 @@ export function useAuth() {
     }
   }, [token]);
 
-  // Re-fetch user session data
   const fetchSession = useCallback(async (isRetry = false) => {
     if (!token) return;
 
+    // Use global request cache to prevent redundant calls from multiple components
+    if (activeSessionRequests.has(token) && !isRetry) {
+      try {
+        const response = await activeSessionRequests.get(token);
+        setSessionUser(response.data);
+        setLoadingSession(false);
+        return;
+      } catch (err) {
+        // Fall through to actual request if cached promise fails
+      }
+    }
+
     try {
       setLoadingSession(true);
-      const response = await apiRequest<SessionUser>("/auth/me", { token });
+      const requestPromise = apiRequest<SessionUser>("/auth/me", { token });
+      
+      // Store in global map
+      activeSessionRequests.set(token, requestPromise);
+      
+      const response = await requestPromise;
       setSessionUser(response.data);
       setSessionTimeout();
-      retryCount.current = 0; // Reset on success
+      retryCount.current = 0;
     } catch (error: any) {
       const isServerError = error.message?.includes('500') || error.status === 500;
       
@@ -108,49 +114,33 @@ export function useAuth() {
         logout();
       }
     } finally {
-      const willRetry = retryCount.current > 0 && retryCount.current <= 2;
-      if (!isRetry && !willRetry) {
-        setLoadingSession(false);
-      } else if (isRetry) {
-        setLoadingSession(false);
-      }
+      activeSessionRequests.delete(token); // Cleanup when done
+      setLoadingSession(false);
     }
   }, [token, logout, setSessionTimeout]);
 
-  // Periodic session checker
   useEffect(() => {
     if (!token) return;
-
     const checkInterval = setInterval(() => {
       const now = Date.now();
-      
-      // 1. Check absolute session timeout
       const sessionTimeout = localStorage.getItem(SESSION_TIMEOUT_KEY);
       if (sessionTimeout) {
         const expiryTime = parseInt(sessionTimeout);
-        const timeUntilExpiry = expiryTime - now;
-
-        if (timeUntilExpiry <= 0) {
-          console.log("Absolute session duration exceeded");
+        if (expiryTime - now <= 0) {
           logout();
           return;
         }
-
-        // Show warning 5 minutes before
-        setSessionWarning(timeUntilExpiry <= WARNING_THRESHOLD);
+        setSessionWarning(expiryTime - now <= WARNING_THRESHOLD);
       }
-
-      // 2. Check inactivity timeout
-      if (now - lastActivity >= SESSION_DURATION) {
-        console.log("Inactivity timeout exceeded");
+      const nowEndOfDay = new Date();
+      nowEndOfDay.setHours(23, 59, 59, 999);
+      if (now >= nowEndOfDay.getTime()) {
         logout();
       }
-    }, 15000); // Check every 15 seconds for responsiveness
-
+    }, 15000);
     return () => clearInterval(checkInterval);
   }, [token, lastActivity, logout]);
 
-  // Initial load
   useEffect(() => {
     if (token && !sessionUser && !hasFetched.current) {
       hasFetched.current = true;

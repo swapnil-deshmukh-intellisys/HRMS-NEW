@@ -55,17 +55,17 @@
   top: 100%;
   right: 0;
   margin-top: 8px;
-  width: 200px;
-  max-height: 280px;
-  background: #1f2937;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  width: 220px; /* Slightly wider */
+  max-height: 320px; /* More room */
+  background: #000000; /* Matching center card black */
+  border: 1px solid rgba(168, 85, 247, 0.5); /* Purple Highlight */
   border-radius: 12px;
-  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.4), 0 8px 10px -6px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6);
   overflow: hidden;
   display: flex;
   flex-direction: column;
   animation: slideDown 0.2s ease-out;
-  z-index: 9999;
+  z-index: 10000; /* Ensure it stays on top */
 }
 
 @keyframes slideDown {
@@ -76,22 +76,21 @@
 .clock-timezone-search {
   display: flex;
   align-items: center;
-  padding: 8px 12px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-  background: rgba(0, 0, 0, 0.2);
-  gap: 8px;
+  padding: 10px 14px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  background: #111111;
+  gap: 10px;
 }
 
 .clock-timezone-search .search-icon {
-  color: #6b7280;
-  flex-shrink: 0;
+  color: #a855f7; /* Purple Search Icon */
 }
 
 .clock-timezone-search input {
   background: transparent;
   border: none;
-  color: #f3f4f6;
-  font-size: 13px;
+  color: #ffffff;
+  font-size: 14px;
   width: 100%;
   outline: none;
 }
@@ -106,52 +105,50 @@
 }
 
 .clock-timezone-search .clear-search:hover {
-  color: #f3f4f6;
+  color: #ffffff;
 }
 
 .clock-timezone-list {
   overflow-y: auto;
   flex: 1;
-  padding: 4px;
+  padding: 6px;
+  background: #000000;
 }
 
 /* Custom Scrollbar */
 .clock-timezone-list::-webkit-scrollbar {
-  width: 4px;
+  width: 5px;
 }
 .clock-timezone-list::-webkit-scrollbar-track {
   background: transparent;
 }
 .clock-timezone-list::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(168, 85, 247, 0.3);
   border-radius: 10px;
 }
 
 .timezone-item {
   width: 100%;
   text-align: left;
-  padding: 8px 12px;
+  padding: 10px 12px;
   background: transparent;
   border: none;
-  border-radius: 6px;
-  color: #9ca3af;
-  font-size: 12px;
+  border-radius: 8px;
+  color: #94a3b8;
+  font-size: 13px;
   cursor: pointer;
   transition: all 0.15s ease;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 .timezone-item:hover {
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(168, 85, 247, 0.15);
   color: #ffffff;
 }
 
 .timezone-item.active {
-  background: rgba(59, 130, 246, 0.1);
-  color: #60a5fa;
-  font-weight: 600;
+  background: rgba(168, 85, 247, 0.25);
+  color: #a855f7;
+  font-weight: 700;
 }
 
 .timezone-no-results {

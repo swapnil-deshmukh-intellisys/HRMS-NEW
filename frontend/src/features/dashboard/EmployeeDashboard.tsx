@@ -63,9 +63,9 @@ export default function EmployeeDashboard({ token }: { token: string | null }) {
           </div>
           <AnnouncementList token={token} />
           <DashboardHeroClocks />
+          <WorkdayTimeline checkInTime={attendanceToday?.checkInTime ?? null} token={token} />
         </div>
       </article>
-      <WorkdayTimeline checkInTime={attendanceToday?.checkInTime ?? null} token={token} />
 
       <div className="grid cols-2 dashboard-grid">
         <article className="card metric-card metric-card--status">

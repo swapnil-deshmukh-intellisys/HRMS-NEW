@@ -1,5 +1,5 @@
 import { createContext, useContext } from "react";
-import type { Attendance, CalendarDay, LeaveRequest } from "../types";
+import type { Attendance, CalendarDay, LeaveRequest, Employee } from "../types";
 
 export type DashboardSummary = {
   pendingLeaves: number;
@@ -14,13 +14,7 @@ export type DashboardSummary = {
   teamCount?: number;
   departments?: number;
   pendingApprovals?: number;
-  currentEmployee?: {
-    id: number;
-    firstName: string;
-    lastName: string;
-    department?: { name: string };
-    manager?: { firstName: string; lastName: string };
-  };
+  currentEmployee?: Employee | null;
   leaveRequests?: LeaveRequest[];
 };
 

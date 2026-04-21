@@ -1,3 +1,4 @@
+import { Video } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useApp } from "../../context/AppContext";
 import { formatAttendanceTime } from "../../utils/format";
@@ -7,6 +8,8 @@ import AnnouncementList from "./AnnouncementList";
 import WorkdayTimeline from "./WorkdayTimeline";
 import { formatWorkedDuration, getAttendanceWidgetTitle } from "./dashboardUtils";
 import type { Attendance } from "../../types";
+import { apiRequest } from "../../services/api";
+import { useState } from "react";
 
 function getIndiaTimeGreeting() {
   const formatter = new Intl.DateTimeFormat("en-IN", {
@@ -38,11 +41,36 @@ function getAttendanceStatusNote(attendance: Attendance | null) {
 export default function EmployeeDashboard({ token }: { token: string | null }) {
   const navigate = useNavigate();
   const { summary } = useApp();
+  const [isStartingMeet, setIsStartingMeet] = useState(false);
   
   const attendanceToday = summary?.attendanceToday ?? null;
   const currentEmployee = summary?.currentEmployee ?? null;
   const todayLabel = new Date().toLocaleDateString(undefined, { day: "numeric", month: "long" });
   const attendanceStatusNote = getAttendanceStatusNote(attendanceToday);
+
+  const handleStartMeet = async () => {
+    if (!currentEmployee?.user?.isGoogleLinked) {
+      alert("Please link your Google Workspace account in your profile first.");
+      return;
+    }
+
+    try {
+      setIsStartingMeet(true);
+      const res = await apiRequest<{ meetLink: string }>("/google/instant-meet", {
+        method: "POST",
+        token,
+        body: { summary: `Quick Sync: ${currentEmployee.firstName}'s Workspace` }
+      });
+
+      if (res.data?.meetLink) {
+        window.open(res.data.meetLink, "_blank");
+      }
+    } catch (err: any) {
+      alert(err.message || "Failed to start Google Meet");
+    } finally {
+      setIsStartingMeet(false);
+    }
+  };
 
   return (
     <>
@@ -103,6 +131,15 @@ export default function EmployeeDashboard({ token }: { token: string | null }) {
               <p className="eyebrow">Workspace</p>
               <strong>{currentEmployee?.department ? `${currentEmployee.department.name} team` : "Department not linked"}</strong>
             </div>
+            <button 
+              className="primary sm meet-btn" 
+              onClick={handleStartMeet} 
+              disabled={isStartingMeet}
+              style={{ display: "flex", alignItems: "center", gap: "8px" }}
+            >
+              <Video size={16} />
+              {isStartingMeet ? "Starting..." : "Instant Meet"}
+            </button>
           </div>
           <p className="muted">
             {currentEmployee?.manager

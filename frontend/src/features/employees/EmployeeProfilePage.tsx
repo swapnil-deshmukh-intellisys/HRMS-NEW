@@ -336,7 +336,7 @@ export default function EmployeeProfilePage({ token, role, currentEmployeeId }: 
         onToggleStatus={() => setStatusConfirmOpen(true)}
       />
       <EmployeeProfileTabs activeTab={activeTab} tabs={visibleTabs} onChange={setActiveTab} />
-      {activeTab === "overview" ? <EmployeeOverviewTab employee={employee} /> : null}
+      {activeTab === "overview" ? <EmployeeOverviewTab employee={employee} token={token} /> : null}
       {activeTab === "attendance" ? <EmployeeAttendanceTab attendance={attendance} /> : null}
       {activeTab === "leaves" ? (
         <EmployeeLeavesTab balances={balances} leaves={leaves} role={role} viewerEmployeeId={currentEmployeeId} />

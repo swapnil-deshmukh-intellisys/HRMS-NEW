@@ -60,6 +60,8 @@ export type Employee = {
   manager?: Employee | null;
   user?: {
     email: string;
+    googleEmail?: string | null;
+    isGoogleLinked?: boolean;
     role: {
       name: Role;
     };

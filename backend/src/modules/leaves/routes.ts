@@ -24,6 +24,7 @@ import {
   SICK_LEAVE_CODE,
 } from "./service.js";
 import { getCalendarDayStatus } from "../calendar/service.js";
+import { syncLeaveToGoogleCalendar, sendTeamNotification } from "../google/service.js";
 
 const router = Router();
 const LEAVE_REASON_MIN_WORDS = 25;
@@ -745,7 +746,23 @@ async function managerApproveLeave(leaveId: number, actor: NonNullable<Express.R
   }
 
   if (leaveRequest.hrApprovalStatus === ApprovalStepStatus.APPROVED) {
-    return prisma.$transaction((transaction) => finalizeApprovedLeave(transaction, leaveRequest, actor));
+    const finalLeave = await prisma.$transaction((transaction) => finalizeApprovedLeave(transaction, leaveRequest, actor));
+    
+    // Background sync to Google Calendar
+    void syncLeaveToGoogleCalendar({
+      employeeId: finalLeave.employeeId,
+      startDate: finalLeave.startDate,
+      endDate: finalLeave.endDate,
+      leaveTypeName: finalLeave.leaveType.name,
+      reason: finalLeave.reason,
+    });
+
+    // Notify on Google Chat
+    void sendTeamNotification(
+      `✅ *Leave Approved*\n*Employee:* ${finalLeave.employee.firstName} ${finalLeave.employee.lastName}\n*Type:* ${finalLeave.leaveType.name}\n*Dates:* ${finalLeave.startDate.toLocaleDateString()} to ${finalLeave.endDate.toLocaleDateString()}\n*Reason:* ${finalLeave.reason}`
+    );
+
+    return finalLeave;
   }
 
   return prisma.leaveRequest.update({
@@ -813,7 +830,23 @@ async function hrApproveLeave(leaveId: number, actor: NonNullable<Express.Reques
   }
 
   if (leaveRequest.managerApprovalStatus === ApprovalStepStatus.APPROVED) {
-    return prisma.$transaction((transaction) => finalizeApprovedLeave(transaction, leaveRequest, actor));
+    const finalLeave = await prisma.$transaction((transaction) => finalizeApprovedLeave(transaction, leaveRequest, actor));
+    
+    // Background sync to Google Calendar
+    void syncLeaveToGoogleCalendar({
+      employeeId: finalLeave.employeeId,
+      startDate: finalLeave.startDate,
+      endDate: finalLeave.endDate,
+      leaveTypeName: finalLeave.leaveType.name,
+      reason: finalLeave.reason,
+    });
+
+    // Notify on Google Chat
+    void sendTeamNotification(
+      `✅ *Leave Approved*\n*Employee:* ${finalLeave.employee.firstName} ${finalLeave.employee.lastName}\n*Type:* ${finalLeave.leaveType.name}\n*Dates:* ${finalLeave.startDate.toLocaleDateString()} to ${finalLeave.endDate.toLocaleDateString()}\n*Reason:* ${finalLeave.reason}`
+    );
+
+    return finalLeave;
   }
 
   return prisma.leaveRequest.update({

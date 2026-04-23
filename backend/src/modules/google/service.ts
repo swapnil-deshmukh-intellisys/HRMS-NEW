@@ -8,6 +8,7 @@ import { google } from "googleapis";
  * Generates the Google Authorization URL for user consent
  */
 export function getGoogleAuthUrl() {
+  console.log("Generating Google Auth URL with Redirect URI:", env.GOOGLE_REDIRECT_URL);
   return oauth2Client.generateAuthUrl({
     access_type: "offline", // Required to get Refresh Token
     scope: GOOGLE_SCOPES,

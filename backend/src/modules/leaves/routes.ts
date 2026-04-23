@@ -759,8 +759,26 @@ async function managerApproveLeave(leaveId: number, actor: NonNullable<Express.R
 
     // Notify on Google Chat
     void sendTeamNotification(
-      `✅ *Leave Approved*\n*Employee:* ${finalLeave.employee.firstName} ${finalLeave.employee.lastName}\n*Type:* ${finalLeave.leaveType.name}\n*Dates:* ${finalLeave.startDate.toLocaleDateString()} to ${finalLeave.endDate.toLocaleDateString()}\n*Reason:* ${finalLeave.reason}`
+      `✅ *Leave Approved*\n*Employee:* ${finalLeave.employee.firstName} ${finalLeave.employee.lastName}\n*Type:* ${finalLeave.leaveType.name}\n*Dates:* ${finalLeave.startDate.toLocaleDateString()} to ${finalLeave.endDate.toLocaleDateString()}\n*Reason:* ${finalLeave.reason}`,
+      actor.id
     );
+
+    // Push notification to User
+    const employeeData = await prisma.employee.findUnique({
+      where: { id: finalLeave.employeeId },
+      select: { userId: true }
+    });
+    
+    if (employeeData) {
+      import("./../notifications/service.js").then(ns => {
+        ns.sendPushNotification(
+          employeeData.userId,
+          "Leave Approved! ✅",
+          `Your leave from ${finalLeave.startDate.toLocaleDateString()} to ${finalLeave.endDate.toLocaleDateString()} has been approved.`,
+          { url: "/leaves" }
+        ).catch(err => console.error("Failed to send leave approval push:", err));
+      });
+    }
 
     return finalLeave;
   }
@@ -843,7 +861,8 @@ async function hrApproveLeave(leaveId: number, actor: NonNullable<Express.Reques
 
     // Notify on Google Chat
     void sendTeamNotification(
-      `✅ *Leave Approved*\n*Employee:* ${finalLeave.employee.firstName} ${finalLeave.employee.lastName}\n*Type:* ${finalLeave.leaveType.name}\n*Dates:* ${finalLeave.startDate.toLocaleDateString()} to ${finalLeave.endDate.toLocaleDateString()}\n*Reason:* ${finalLeave.reason}`
+      `✅ *Leave Approved*\n*Employee:* ${finalLeave.employee.firstName} ${finalLeave.employee.lastName}\n*Type:* ${finalLeave.leaveType.name}\n*Dates:* ${finalLeave.startDate.toLocaleDateString()} to ${finalLeave.endDate.toLocaleDateString()}\n*Reason:* ${finalLeave.reason}`,
+      actor.id
     );
 
     return finalLeave;

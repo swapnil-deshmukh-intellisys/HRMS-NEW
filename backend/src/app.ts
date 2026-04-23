@@ -17,6 +17,7 @@ import leaveRoutes from "./modules/leaves/routes.js";
 import payrollRoutes from "./modules/payroll/routes.js";
 import announcementRoutes from "./modules/announcements/routes.js";
 import googleRoutes from "./modules/google/routes.js";
+import notificationRoutes from "./modules/notifications/routes.js";
 
 export const app = express();
 const __filename = fileURLToPath(import.meta.url);
@@ -57,6 +58,7 @@ app.use("/api/payroll", payrollRoutes);
 app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/announcements", announcementRoutes);
 app.use("/api/google", googleRoutes);
+app.use("/api/notifications", notificationRoutes);
 
 app.use(notFound);
 app.use(errorHandler);

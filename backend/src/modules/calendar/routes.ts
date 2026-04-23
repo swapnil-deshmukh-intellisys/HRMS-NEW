@@ -41,17 +41,36 @@ router.get("/", requireRoles("ADMIN", "HR", "MANAGER", "EMPLOYEE"), validate(cal
     const monthStart = startOfDay(new Date(year, month - 1, 1));
     const monthEnd = startOfDay(new Date(year, month, 0));
 
-    const exceptions = await prisma.calendarException.findMany({
-      where: {
-        date: {
-          gte: monthStart,
-          lte: monthEnd,
+    const [exceptions, approvedLeaves] = await Promise.all([
+      prisma.calendarException.findMany({
+        where: {
+          date: { gte: monthStart, lte: monthEnd },
         },
-      },
-      orderBy: { date: "asc" },
-    });
+        orderBy: { date: "asc" },
+      }),
+      prisma.leaveRequest.findMany({
+        where: {
+          status: "APPROVED",
+          OR: [
+            { startDate: { gte: monthStart, lte: monthEnd } },
+            { endDate: { gte: monthStart, lte: monthEnd } },
+            { AND: [{ startDate: { lte: monthStart } }, { endDate: { gte: monthEnd } }] },
+          ],
+        },
+        include: {
+          employee: {
+            select: { firstName: true, lastName: true },
+          },
+        },
+      }),
+    ]);
 
-    const days = buildMonthCalendarDays({ year, month, exceptions });
+    const days = buildMonthCalendarDays({ 
+      year, 
+      month, 
+      exceptions, 
+      leaves: approvedLeaves as any 
+    });
 
     return sendSuccess(response, "Calendar fetched successfully", {
       month,

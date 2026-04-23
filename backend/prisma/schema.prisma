@@ -124,8 +124,20 @@ model User {
   googleId           String?  @unique
   googleRefreshToken String?
   isGoogleLinked     Boolean  @default(false)
+  pushSubscriptions  PushSubscription[]
 
   @@index([roleId])
+}
+
+model PushSubscription {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  payload   Json     // Stores the full subscription object from browser
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id])
+
+  @@index([userId])
 }
 
 model Department {

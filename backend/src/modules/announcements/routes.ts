@@ -72,6 +72,21 @@ router.post("/", requireRoles("ADMIN", "HR", "MANAGER"), async (req, res, next) 
       }
     });
 
+    // Send push notifications to all users
+    const allUsers = await prisma.user.findMany({
+      where: { isActive: true },
+      select: { id: true }
+    });
+    
+    import("./../notifications/service.js").then(ns => {
+      ns.sendToUsers(
+        allUsers.map(u => u.id),
+        `📢 New Announcement: ${announcement.title}`,
+        announcement.content.substring(0, 100) + (announcement.content.length > 100 ? "..." : ""),
+        { url: "/announcements" }
+      ).catch(err => console.error("Failed to broadcast announcement push:", err));
+    });
+
     return sendSuccess(res, "Announcement created successfully", announcement);
   } catch (error) {
     next(error);

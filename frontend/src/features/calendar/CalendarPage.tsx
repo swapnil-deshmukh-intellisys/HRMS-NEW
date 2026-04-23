@@ -34,6 +34,9 @@ function getDayStatusLabel(status: CalendarDay["status"]) {
   if (status === "WORKING_SATURDAY") {
     return "WORKING SATURDAY";
   }
+  if (status === "WORKING") {
+    return "";
+  }
   return status.replace(/_/g, " ");
 }
 
@@ -173,7 +176,12 @@ export default function CalendarPage({ token, role }: CalendarPageProps) {
   }
 
   function getDayClassName(day: CalendarDay) {
-    return `calendar-day-card calendar-day-card--${day.status.toLowerCase().replace(/_/g, "-")}`;
+    const now = new Date();
+    const isToday = day.dayNumber === now.getDate() && 
+                    visibleMonth.month === (now.getMonth() + 1) && 
+                    visibleMonth.year === now.getFullYear();
+    
+    return `calendar-day-card calendar-day-card--${day.status.toLowerCase().replace(/_/g, "-")} ${isToday ? "calendar-day-card--today" : ""}`;
   }
 
   return (
@@ -208,7 +216,6 @@ export default function CalendarPage({ token, role }: CalendarPageProps) {
           </div>
         </div>
         <div className="calendar-legend">
-          <span><i className="calendar-legend__dot calendar-legend__dot--working" />Working</span>
           <span><i className="calendar-legend__dot calendar-legend__dot--off" />Off</span>
           <span><i className="calendar-legend__dot calendar-legend__dot--holiday" />Holiday</span>
           <span><i className="calendar-legend__dot calendar-legend__dot--working-saturday" />Working Saturday</span>
@@ -244,6 +251,18 @@ export default function CalendarPage({ token, role }: CalendarPageProps) {
                           <span>{getDayStatusLabel(day.status)}</span>
                         </div>
                         {day.exception?.name && day.status !== "WORKING_SATURDAY" ? <p className="calendar-day-card__name">{day.exception.name}</p> : null}
+                        
+                        {day.leaves && day.leaves.length > 0 ? (
+                          <div className="calendar-day-leaves">
+                            <span className="calendar-day-leaves__title">Who's out:</span>
+                            {day.leaves.map(leave => (
+                              <span key={leave.id} className="calendar-day-leaves__item">
+                                {leave.employee.firstName} {leave.employee.lastName[0]}.
+                              </span>
+                            ))}
+                          </div>
+                        ) : null}
+
                         {canManageCalendar && day.exception?.type === "HOLIDAY" ? (
                           <button type="button" className="secondary calendar-day-card__remove calendar-action-button" onClick={() => handleRemoveException(day.exception!.id)}>
                             Remove

@@ -2,6 +2,7 @@ import { useState } from "react";
 import type { Employee } from "../../types";
 import { formatDateLabel } from "../../utils/format";
 import { apiRequest } from "../../services/api";
+import { usePushNotifications } from "../../hooks/usePushNotifications";
 
 type EmployeeOverviewTabProps = {
   employee: Employee;
@@ -15,7 +16,17 @@ type DetailItem = {
 
 export default function EmployeeOverviewTab({ employee, token }: EmployeeOverviewTabProps) {
   const [isConnecting, setIsConnecting] = useState(false);
+  const { subscribeUser, isSubscribing } = usePushNotifications(token || null);
   
+  const handleEnableNotifications = async () => {
+    try {
+      await subscribeUser();
+      alert("Desktop notifications enabled successfully! ✅");
+    } catch (err: any) {
+      alert(err.message || "Failed to enable notifications");
+    }
+  };
+
   const numberFormatter = new Intl.NumberFormat("en-IN", {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
@@ -30,9 +41,9 @@ export default function EmployeeOverviewTab({ employee, token }: EmployeeOvervie
         method: "POST",
         token,
       });
-      alert(`Successfully synced ${res.data?.syncedCount} holidays to your calendar.`);
+      alert(`Successfully synced ${res.data?.syncedCount} items to your calendar.`);
     } catch (err: any) {
-      alert(err.message || "Failed to sync holidays");
+      alert(err.message || "Failed to sync schedule");
     } finally {
       setIsSyncingHolidays(false);
     }
@@ -129,7 +140,7 @@ export default function EmployeeOverviewTab({ employee, token }: EmployeeOvervie
                {employee.user?.isGoogleLinked ? (
                  <>
                    <button className="secondary sm" onClick={handleSyncHolidays} disabled={isSyncingHolidays}>
-                     {isSyncingHolidays ? "Syncing..." : "Sync Holidays"}
+                     {isSyncingHolidays ? "Syncing..." : "Sync Schedule"}
                    </button>
                    <button className="secondary danger sm" onClick={handleUnlinkGoogle} disabled={isConnecting}>
                      Disconnect
@@ -140,6 +151,18 @@ export default function EmployeeOverviewTab({ employee, token }: EmployeeOvervie
                    {isConnecting ? "Connecting..." : "Connect Google"}
                  </button>
                )}
+             </div>
+          </div>
+
+          <div className="integration-card desktop-notifications">
+             <div className="integration-meta">
+                <strong>Desktop Notifications</strong>
+                <p>Receive background alerts for leave status, announcements, and more even when the app is closed.</p>
+             </div>
+             <div className="integration-controls">
+                <button className="primary sm" onClick={handleEnableNotifications} disabled={isSubscribing}>
+                   {isSubscribing ? "Enabling..." : "Enable on this device"}
+                </button>
              </div>
           </div>
         </section>

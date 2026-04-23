@@ -29,6 +29,14 @@ export type CalendarException = {
   updatedAt: string;
 };
 
+export type CalendarLeave = {
+  id: number;
+  employeeId: number;
+  employee: { firstName: string; lastName: string };
+  startDate: string;
+  endDate: string;
+};
+
 export type CalendarDay = {
   date: string;
   dayNumber: number;
@@ -37,6 +45,7 @@ export type CalendarDay = {
   isWorkingDay: boolean;
   isPaidDay: boolean;
   exception: CalendarException | null;
+  leaves?: CalendarLeave[];
 };
 
 export type Employee = {

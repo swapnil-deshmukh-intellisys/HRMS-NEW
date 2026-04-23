@@ -63,12 +63,21 @@ export function getCalendarDayStatus(date: Date, exceptions: CalendarExceptionRe
   };
 }
 
+export type CalendarLeaveRecord = {
+  id: number;
+  employeeId: number;
+  employee: { firstName: string; lastName: string };
+  startDate: Date;
+  endDate: Date;
+};
+
 export function buildMonthCalendarDays(params: {
   year: number;
   month: number;
   exceptions: CalendarExceptionRecord[];
+  leaves?: CalendarLeaveRecord[];
 }) {
-  const { year, month, exceptions } = params;
+  const { year, month, exceptions, leaves = [] } = params;
   const firstDay = new Date(year, month - 1, 1);
   const lastDay = endOfDay(new Date(year, month, 0));
   const days: Array<{
@@ -79,12 +88,21 @@ export function buildMonthCalendarDays(params: {
     isWorkingDay: boolean;
     isPaidDay: boolean;
     exception: CalendarExceptionRecord | null;
+    leaves: CalendarLeaveRecord[];
   }> = [];
 
   const cursor = startOfDay(firstDay);
 
   while (cursor <= lastDay) {
     const result = getCalendarDayStatus(cursor, exceptions);
+    
+    // Find leaves that overlap with this date
+    const dayLeaves = leaves.filter(leave => {
+      const leaveStart = startOfDay(leave.startDate);
+      const leaveEnd = startOfDay(leave.endDate);
+      return cursor >= leaveStart && cursor <= leaveEnd;
+    });
+
     days.push({
       date: new Date(cursor),
       dayNumber: cursor.getDate(),
@@ -93,6 +111,7 @@ export function buildMonthCalendarDays(params: {
       isWorkingDay: result.isWorkingDay,
       isPaidDay: result.isPaidDay,
       exception: result.exception,
+      leaves: dayLeaves,
     });
     cursor.setDate(cursor.getDate() + 1);
   }

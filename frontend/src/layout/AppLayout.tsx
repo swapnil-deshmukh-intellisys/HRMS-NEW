@@ -6,6 +6,9 @@ import { getPageTitle } from "../utils/routes";
 import Navbar from "./Navbar";
 import Sidebar from "./Sidebar";
 import SessionWarning from "../components/SessionWarning";
+import { useBreakReminder } from "../hooks/useBreakReminder";
+import BreakReminderModal from "../components/common/BreakReminderModal";
+import "./BreakReminderModal.css";
 
 type AppLayoutProps = {
   token: string | null;
@@ -21,6 +24,7 @@ export default function AppLayout({ token, sessionUser, onLogout, sessionWarning
   const navigate = useNavigate();
   const [navOpen, setNavOpen] = useState(false);
   const currentPageTitle = getPageTitle(location.pathname);
+  const { showModal, startBreak, snoozeBreak, dismissBreak } = useBreakReminder(token);
 
   async function handleLogout() {
     await onLogout();
@@ -50,6 +54,13 @@ export default function AppLayout({ token, sessionUser, onLogout, sessionWarning
         onRefreshSession={onRefreshSession}
         onLogout={handleLogout}
         onUserActivity={onUserActivity}
+      />
+      
+      <BreakReminderModal 
+        open={showModal} 
+        onClose={dismissBreak} 
+        onStartBreak={startBreak} 
+        onSnooze={snoozeBreak} 
       />
     </div>
   );

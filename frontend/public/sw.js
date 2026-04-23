@@ -28,12 +28,15 @@ self.addEventListener("notificationclick", (event) => {
 
   event.waitUntil(
     clients.matchAll({ type: "window", includeUncontrolled: true }).then((windowClients) => {
-      // Check if there is already a window open and focus it, or open a new one
+      // Find any open tab of the app
       for (const client of windowClients) {
-        if (client.url === urlToOpen && "focus" in client) {
-          return client.focus();
+        if ("focus" in client) {
+          // If we find an open tab, navigate it to include the trigger and focus it
+          const url = new URL(urlToOpen, self.location.origin);
+          return client.navigate(url.href).then(c => c?.focus());
         }
       }
+      // If no tab open, open a new one
       if (clients.openWindow) {
         return clients.openWindow(urlToOpen);
       }

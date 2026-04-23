@@ -6,9 +6,9 @@ import { sendPushNotification } from "../modules/notifications/service.js";
  * Initializes all automated background tasks (Cron Jobs)
  */
 export function initScheduler() {
-  // ☕ Scheduled Break Reminder: TEST TIME (6:22 PM IST)
+  // ☕ Scheduled Break Reminder: TEST TIME (6:30 PM IST)
   // Normal time is 5:00 PM IST
-  cron.schedule("22 18 * * *", async () => {
+  cron.schedule("30 18 * * *", async () => {
     console.log("[Scheduler] Triggering 5:00 PM Break Reminder...");
     try {
       // 1. Get all active users who might need a reminder

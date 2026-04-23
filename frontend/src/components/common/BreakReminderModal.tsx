@@ -1,5 +1,4 @@
-import { useState, useEffect } from "react";
-import Button from "./Button";
+import { useState } from "react";
 import Modal from "./Modal";
 import { Coffee, BellRing, XCircle } from "lucide-react";
 import "./BreakReminderModal.css";

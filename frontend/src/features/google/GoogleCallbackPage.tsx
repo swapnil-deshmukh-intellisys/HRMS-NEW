@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { apiRequest } from "../../services/api";
 import MessageCard from "../../components/common/MessageCard";
+import { useApp } from "../../context/AppContext";
 
 type GoogleCallbackPageProps = {
   token: string | null;
@@ -10,6 +11,7 @@ type GoogleCallbackPageProps = {
 export default function GoogleCallbackPage({ token }: GoogleCallbackPageProps) {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+  const { refreshSummary } = useApp();
   const [status, setStatus] = useState<"loading" | "success" | "error">("loading");
   const [error, setError] = useState("");
 
@@ -38,8 +40,11 @@ export default function GoogleCallbackPage({ token }: GoogleCallbackPageProps) {
         });
         setStatus("success");
         
+        // Refresh summary to reflect Google Link status across the app
+        void refreshSummary();
+        
         // Return to the original page or dashboard
-        const returnUrl = localStorage.getItem("hrms_google_callback_return") || "/dashboard";
+        const returnUrl = localStorage.getItem("hrms_google_callback_return") || "/";
         localStorage.removeItem("hrms_google_callback_return");
         
         setTimeout(() => {

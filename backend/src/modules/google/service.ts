@@ -3,6 +3,7 @@ import { oauth2Client, GOOGLE_SCOPES } from "../../config/google.js";
 import { AppError } from "../../utils/api.js";
 import { startOfDay } from "../../utils/dates.js";
 import { google } from "googleapis";
+import { env } from "../../config/env.js";
 
 /**
  * Generates the Google Authorization URL for user consent

@@ -106,6 +106,7 @@ function AppRoutes() {
           />
           <Route path="/payroll" element={<PayrollPage token={token} role={sessionUser?.role ?? "EMPLOYEE"} />} />
           <Route path="/incentives" element={<IncentivesPage token={token} role={sessionUser?.role ?? "EMPLOYEE"} />} />
+          <Route path="/announcements" element={<DashboardPage token={token} role={sessionUser?.role ?? "EMPLOYEE"} />} />
           <Route path="/google-callback" element={<GoogleCallbackPage token={token} />} />
         </Route>
       </Routes>

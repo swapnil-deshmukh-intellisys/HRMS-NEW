@@ -8,7 +8,6 @@ import Sidebar from "./Sidebar";
 import SessionWarning from "../components/SessionWarning";
 import { useBreakReminder } from "../hooks/useBreakReminder";
 import BreakReminderModal from "../components/common/BreakReminderModal";
-import "./BreakReminderModal.css";
 
 type AppLayoutProps = {
   token: string | null;

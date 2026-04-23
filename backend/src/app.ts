@@ -20,6 +20,7 @@ import googleRoutes from "./modules/google/routes.js";
 import notificationRoutes from "./modules/notifications/routes.js";
 
 export const app = express();
+app.set("trust proxy", 1); // Trust the first proxy (Render)
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 

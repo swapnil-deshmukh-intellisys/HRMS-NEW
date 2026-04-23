@@ -174,16 +174,15 @@ export async function syncHolidaysToGoogleCalendar(userId: number) {
     throw new AppError("Google account not linked.", 403);
   }
 
-  const futureHolidays = await prisma.calendarException.findMany({
+  const futureExceptions = await prisma.calendarException.findMany({
     where: {
-      type: "HOLIDAY",
       date: { gte: startOfDay(new Date()) },
     },
     orderBy: { date: "asc" },
   });
 
-  if (futureHolidays.length === 0) {
-    return { syncedCount: 0, message: "No upcoming holidays to sync." };
+  if (futureExceptions.length === 0) {
+    return { syncedCount: 0, message: "No upcoming schedule exceptions to sync." };
   }
 
   oauth2Client.setCredentials({
@@ -191,26 +190,44 @@ export async function syncHolidaysToGoogleCalendar(userId: number) {
   });
 
   const calendar = google.calendar({ version: "v3", auth: oauth2Client });
+  
+  // Get existing events to avoid duplicates
+  const existingEvents = await calendar.events.list({
+    calendarId: "primary",
+    timeMin: startOfDay(new Date()).toISOString(),
+    singleEvents: true,
+  });
+
   let syncedCount = 0;
 
-  // We loop through and insert. 
-  // Optimization: We could search for existing events to avoid duplicates, but for simplicity we'll just insert.
-  for (const holiday of futureHolidays) {
+  for (const exc of futureExceptions) {
+    const summary = exc.type === "WORKING_SATURDAY" 
+      ? `💻 Working Saturday: ${exc.name || "Shift"}` 
+      : `🌴 Holiday: ${exc.name || "Public Holiday"}`;
+    
+    // Simple deduplication check
+    const isDuplicate = existingEvents.data.items?.some(
+      event => event.summary === summary && event.start?.date === exc.date.toISOString().split("T")[0]
+    );
+
+    if (isDuplicate) continue;
+
     try {
       await calendar.events.insert({
         calendarId: "primary",
         requestBody: {
-          summary: `Holiday: ${holiday.name || "Public Holiday"}`,
-          description: holiday.description || "Company Holiday from HRMS",
-          start: { date: holiday.date.toISOString().split("T")[0] },
-          end: { date: new Date(holiday.date.getTime() + 86400000).toISOString().split("T")[0] },
-          transparency: "transparent", // free/available, just a reminder
+          summary,
+          description: exc.description || "Synced from HRMS",
+          start: { date: exc.date.toISOString().split("T")[0] },
+          end: { date: new Date(exc.date.getTime() + 86400000).toISOString().split("T")[0] },
+          transparency: exc.type === "WORKING_SATURDAY" ? "opaque" : "transparent",
+          colorId: exc.type === "WORKING_SATURDAY" ? "10" : "5", // 10 is Basil (Green), 5 is Banana (Yellow)
           status: "confirmed",
         },
       });
       syncedCount++;
     } catch (err) {
-      console.error(`Failed to sync holiday ${holiday.name}:`, err);
+      console.error(`Failed to sync exception ${exc.name}:`, err);
     }
   }
 
@@ -218,30 +235,47 @@ export async function syncHolidaysToGoogleCalendar(userId: number) {
 }
 
 /**
- * Sends a notification to the configured Google Chat Webhook Space
+ * Sends a notification to a Google Chat Space using either a Webhook or the Chat API
  */
-export async function sendTeamNotification(text: string) {
+export async function sendTeamNotification(text: string, userId?: number) {
   const webhookUrl = process.env.GOOGLE_CHAT_WEBHOOK_URL;
+  const spaceName = process.env.GOOGLE_CHAT_SPACE_ID; // e.g., 'spaces/XXXXXXXX'
 
-  if (!webhookUrl) {
-    console.warn("GOOGLE_CHAT_WEBHOOK_URL not configured. Skipping notification.");
-    return { sent: false, reason: "Missing webhook URL" };
+  // Prioritize Webhook if configured and direct
+  if (webhookUrl && webhookUrl.startsWith("http")) {
+    try {
+      const response = await fetch(webhookUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json; charset=UTF-8" },
+        body: JSON.stringify({ text }),
+      });
+      if (response.ok) return { sent: true, method: "webhook" };
+    } catch (error) {
+      console.error("Webhook notification failed:", error);
+    }
   }
 
-  try {
-    const response = await fetch(webhookUrl, {
-      method: "POST",
-      headers: { "Content-Type": "application/json; charset=UTF-8" },
-      body: JSON.stringify({ text }),
+  // Fallback to Chat API if userId is provided
+  if (userId && spaceName) {
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { googleRefreshToken: true },
     });
 
-    if (!response.ok) {
-      throw new Error(`Google Chat Webhook failed: ${response.statusText}`);
+    if (user?.googleRefreshToken) {
+      try {
+        oauth2Client.setCredentials({ refresh_token: user.googleRefreshToken });
+        const chat = google.chat({ version: "v1", auth: oauth2Client });
+        await chat.spaces.messages.create({
+          parent: spaceName,
+          requestBody: { text },
+        });
+        return { sent: true, method: "api" };
+      } catch (error) {
+        console.error("Chat API notification failed:", error);
+      }
     }
-
-    return { sent: true };
-  } catch (error) {
-    console.error("Failed to send Google Chat notification:", error);
-    return { sent: false, error };
   }
+
+  return { sent: false, reason: "No valid notification channel configured" };
 }

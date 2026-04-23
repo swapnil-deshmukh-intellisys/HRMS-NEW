@@ -54,6 +54,8 @@ export default function EmployeeOverviewTab({ employee, token }: EmployeeOvervie
       setIsConnecting(true);
       const res = await apiRequest<{ url: string }>("/google/auth-url", { token });
       if (res.data?.url) {
+        // Log the URL for debugging
+        console.log("Redirecting to Google with URL:", res.data.url);
         // Store current URL to return back after OAuth callback
         localStorage.setItem("hrms_google_callback_return", window.location.pathname);
         window.location.href = res.data.url;

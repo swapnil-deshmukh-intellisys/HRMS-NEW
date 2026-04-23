@@ -106,3 +106,49 @@
   opacity: 0.7;
   cursor: not-allowed;
 }
+
+.snooze-selector {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  margin: 10px 0;
+}
+
+.snooze-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-text-secondary);
+  font-weight: var(--fw-bold);
+}
+
+.snooze-options {
+  display: flex;
+  gap: 8px;
+  background: rgba(148, 163, 184, 0.08);
+  padding: 4px;
+  border-radius: 12px;
+}
+
+.snooze-opt {
+  padding: 6px 14px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: var(--fw-semibold);
+  border: none;
+  background: transparent;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: all 160ms ease;
+}
+
+.snooze-opt:hover {
+  color: var(--color-text-strong);
+}
+
+.snooze-opt.active {
+  background: white;
+  color: var(--color-primary);
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.08);
+}

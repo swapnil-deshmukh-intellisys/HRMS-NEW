@@ -7,11 +7,12 @@ type BreakReminderModalProps = {
   open: boolean;
   onClose: () => void;
   onStartBreak: () => Promise<void>;
-  onSnooze: () => void;
+  onSnooze: (minutes: number) => void;
 };
 
 export default function BreakReminderModal({ open, onClose, onStartBreak, onSnooze }: BreakReminderModalProps) {
   const [isStarting, setIsStarting] = useState(false);
+  const [snoozeMinutes, setSnoozeMinutes] = useState(5);
 
   const handleStart = async () => {
     setIsStarting(true);
@@ -34,7 +35,7 @@ export default function BreakReminderModal({ open, onClose, onStartBreak, onSnoo
            </div>
            <h3>Recharge Time!</h3>
            <p className="muted">
-             It’s your scheduled break time. Stepping away for a few minutes improves focus and reduces stress. Would you like to take a break now?
+             It’s your scheduled break time. Stepping away for a few minutes improves focus. Would you like to take a break now?
            </p>
         </div>
 
@@ -48,10 +49,28 @@ export default function BreakReminderModal({ open, onClose, onStartBreak, onSnoo
             {isStarting ? "Logging Break..." : "Start Break Now"}
           </button>
           
+          <div className="snooze-selector">
+             <span className="snooze-label">Or snooze for:</span>
+             <div className="snooze-options">
+                {[5, 10, 15].map(mins => (
+                  <button 
+                    key={mins}
+                    className={`snooze-opt ${snoozeMinutes === mins ? 'active' : ''}`}
+                    onClick={() => setSnoozeMinutes(mins)}
+                  >
+                    {mins}m
+                  </button>
+                ))}
+             </div>
+          </div>
+
           <div className="button-row">
-            <button className="break-reminder-btn break-reminder-btn--secondary" onClick={onSnooze}>
+            <button 
+              className="break-reminder-btn break-reminder-btn--secondary" 
+              onClick={() => onSnooze(snoozeMinutes)}
+            >
               <BellRing size={16} />
-              Snooze (5 mins)
+              Snooze
             </button>
             <button className="break-reminder-btn break-reminder-btn--outline" onClick={onClose}>
               <XCircle size={16} />

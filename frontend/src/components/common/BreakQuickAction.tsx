@@ -35,6 +35,11 @@ export default function BreakQuickAction({ token, isCheckedIn, isCheckedOut }: B
 
   useEffect(() => {
     loadTodayBreaks();
+    
+    // Listen for updates from other parts of the app (e.g., BreakReminderModal)
+    const handleUpdate = () => loadTodayBreaks();
+    window.addEventListener("break-updated", handleUpdate);
+    return () => window.removeEventListener("break-updated", handleUpdate);
   }, [loadTodayBreaks]);
 
   // Live elapsed counter when on break
@@ -59,8 +64,10 @@ export default function BreakQuickAction({ token, isCheckedIn, isCheckedOut }: B
       } else {
         const res = await apiRequest<BreakSession>("/attendance/break/start", { method: "POST", token });
         setActiveBreak(res.data ?? null);
+        // NEW: Clear any pending break reminder snoozes if user manually starts it
+        localStorage.removeItem("hrms_break_snooze_until");
       }
-      // Notify WorkdayTimeline to refresh
+      // Notify other components
       window.dispatchEvent(new CustomEvent("break-updated"));
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Break action failed";

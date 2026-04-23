@@ -180,6 +180,7 @@ async function getEmployeeDashboardSharedData(employeeId: number, today: Date) {
               },
               user: {
                 select: {
+                  isGoogleLinked: true,
                   role: {
                     select: {
                       name: true,

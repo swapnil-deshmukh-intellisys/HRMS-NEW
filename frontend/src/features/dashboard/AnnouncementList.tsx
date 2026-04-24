@@ -22,10 +22,29 @@ export default function AnnouncementList({ token, refreshSignal }: { token?: str
   const [isAllVisible, setIsAllVisible] = useState(false);
   const [isVisible, setIsVisible] = useState(true);
 
+  const isToday = (dateString: string) => {
+    const date = new Date(dateString);
+    const today = new Date();
+    return (
+      date.getDate() === today.getDate() &&
+      date.getMonth() === today.getMonth() &&
+      date.getFullYear() === today.getFullYear()
+    );
+  };
+
   const fetchAnnouncements = useCallback(async () => {
     try {
       const response = await apiRequest<Announcement[]>("/announcements", { token });
-      setAnnouncements(response.data);
+      const data = response.data;
+      setAnnouncements(data);
+      
+      // Auto-collapse if no announcements from today
+      const hasToday = data.some(a => isToday(a.createdAt));
+      if (!hasToday) {
+        setIsVisible(false);
+      } else {
+        setIsVisible(true);
+      }
     } catch (err) {
       console.error("Failed to fetch announcements", err);
     } finally {
@@ -39,7 +58,8 @@ export default function AnnouncementList({ token, refreshSignal }: { token?: str
 
   if (loading || announcements.length === 0) return null;
 
-  const [latest, ...older] = announcements;
+  const todayAnnouncements = announcements.filter(a => isToday(a.createdAt));
+  const olderAnnouncements = announcements.filter(a => !isToday(a.createdAt));
 
   if (!isVisible) {
     return (
@@ -62,31 +82,61 @@ export default function AnnouncementList({ token, refreshSignal }: { token?: str
 
   return (
     <div className="announcement-container">
-      {/* Latest Announcement - Always Visible when container is visible */}
+      {/* Announcements from today - Always visible outside "See More" */}
       <div className="announcement-list latest-only">
-        <AnnouncementItem 
-          announcement={latest} 
-          isLatest 
-          onHide={() => setIsVisible(false)}
-        >
-          {older.length > 0 && (
-            <div className="announcement-card-actions">
-              <button 
-                className="announcement-toggle-btn"
-                onClick={() => setIsAllVisible(!isAllVisible)}
-              >
-                <span>{isAllVisible ? "Show less" : `Show all (${older.length})`}</span>
-                {isAllVisible ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-              </button>
-            </div>
-          )}
-        </AnnouncementItem>
+        {todayAnnouncements.length > 0 ? (
+          todayAnnouncements.map((announcement, index) => (
+            <AnnouncementItem 
+              key={announcement.id}
+              announcement={announcement} 
+              isLatest 
+              onHide={index === 0 ? () => setIsVisible(false) : undefined}
+            >
+              {index === todayAnnouncements.length - 1 && olderAnnouncements.length > 0 && (
+                <div className="announcement-card-actions">
+                  <button 
+                    className="announcement-toggle-btn"
+                    onClick={() => setIsAllVisible(!isAllVisible)}
+                  >
+                    <span>{isAllVisible ? "Show less" : `Show all (${olderAnnouncements.length})`}</span>
+                    {isAllVisible ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                  </button>
+                </div>
+              )}
+            </AnnouncementItem>
+          ))
+        ) : (
+          /* If someone clicked "View Announcements" but none from today, show the most recent one as hero anyway or just start the list? 
+             The requirement says "If an announcement is created today, it should be displayed at the top... outside of the See More list."
+             If we clicked "View Announcements" and there's nothing from today, 
+             the original code would show the most recent one. 
+          */
+          announcements.length > 0 && (
+            <AnnouncementItem 
+              announcement={announcements[0]} 
+              isLatest 
+              onHide={() => setIsVisible(false)}
+            >
+              {announcements.length > 1 && (
+                <div className="announcement-card-actions">
+                  <button 
+                    className="announcement-toggle-btn"
+                    onClick={() => setIsAllVisible(!isAllVisible)}
+                  >
+                    <span>{isAllVisible ? "Show less" : `Show all (${announcements.length - 1})`}</span>
+                    {isAllVisible ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                  </button>
+                </div>
+              )}
+            </AnnouncementItem>
+          )
+        )}
       </div>
 
-      {/* Older Announcements */}
-      {isAllVisible && older.length > 0 && (
+      {/* Older Announcements (within 7 day window) */}
+      {isAllVisible && (
         <div className="announcement-list older-list">
-          {older.map((announcement) => (
+          {(todayAnnouncements.length > 0 ? olderAnnouncements : announcements.slice(1)).map((announcement) => (
             <AnnouncementItem key={announcement.id} announcement={announcement} />
           ))}
         </div>

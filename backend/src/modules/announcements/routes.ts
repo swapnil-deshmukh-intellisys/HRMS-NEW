@@ -14,10 +14,18 @@ router.use(authenticate);
  */
 router.get("/", async (req, res, next) => {
   try {
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
     const announcements = await prisma.announcement.findMany({
-      where: { isActive: true },
+      where: { 
+        isActive: true,
+        createdAt: {
+          gte: sevenDaysAgo
+        }
+      },
       orderBy: { createdAt: "desc" },
-      take: 20,
+      take: 50, // Increased from 20 just in case, but filtered by date now
       include: {
         createdBy: {
           select: {

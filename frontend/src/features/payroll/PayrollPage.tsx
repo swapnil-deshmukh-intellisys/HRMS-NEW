@@ -312,6 +312,53 @@ export default function PayrollPage({ token, role }: PayrollPageProps) {
     await reloadData();
   }
 
+  async function handleQuickFinalize(record: PayrollRecord) {
+    if (!window.confirm(`Are you sure you want to finalize payroll for ${record.employee?.firstName}?`)) return;
+    
+    await apiRequest(`/payroll/${record.id}`, {
+      method: "PUT",
+      token,
+      body: { status: "FINALIZED" }
+    });
+    setMessage(`Payroll for ${record.employee?.firstName} finalized.`);
+    await reloadData();
+  }
+
+  async function handleBatchGenerate() {
+    const missingEmployees = employees.filter(emp => 
+      !payroll.some(p => String(p.employeeId) === String(emp.id) && String(p.month) === currentViewMonth && String(p.year) === currentViewYear)
+    );
+
+    if (missingEmployees.length === 0) {
+      setMessage("All employees already have payroll records for this month.");
+      return;
+    }
+
+    if (!window.confirm(`Generate draft payroll records for ${missingEmployees.length} employees?`)) return;
+
+    setLoading(true);
+    let successCount = 0;
+    for (const emp of missingEmployees) {
+      try {
+        await apiRequest("/payroll", {
+          method: "POST",
+          token,
+          body: {
+            employeeId: emp.id,
+            month: Number(currentViewMonth),
+            year: Number(currentViewYear),
+            status: "DRAFT"
+          }
+        });
+        successCount++;
+      } catch (err) {
+        console.error(`Failed for ${emp.firstName}`);
+      }
+    }
+    setMessage(`Successfully generated ${successCount} payroll records.`);
+    await reloadData();
+  }
+
   function startPayrollEdit(record: PayrollRecord) {
     setEditingPayrollId(record.id);
     setForm({
@@ -366,7 +413,7 @@ export default function PayrollPage({ token, role }: PayrollPageProps) {
               .info-label { color: #6b7280; font-size: 13px; }
               .info-value { font-weight: 600; font-size: 13px; }
  
-              .tables-container { display: grid; grid-template-columns: 1.2fr 1fr; gap: 30px; margin-bottom: 40px; }
+               .tables-container { display: grid; grid-template-columns: 1.2fr 1fr; gap: 30px; margin-bottom: 40px; }
               table { width: 100%; border-collapse: collapse; }
               th { text-align: left; background: #f9fafb; padding: 12px; font-size: 12px; text-transform: uppercase; color: #6b7280; border-radius: 4px; }
               td { padding: 12px; border-bottom: 1px solid #f3f4f6; font-size: 14px; }
@@ -382,7 +429,7 @@ export default function PayrollPage({ token, role }: PayrollPageProps) {
               .signature-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 80px; margin-top: 80px; }
               .sig-line { border-top: 1px solid #d1d5db; padding-top: 8px; font-size: 12px; text-align: center; }
  
-              @media print {
+               @media print {
                 body { padding: 0; }
                 .slip-container { border: none; box-shadow: none; width: 100%; max-width: 100%; }
                 .summary-card { -webkit-print-color-adjust: exact; background-color: #7c3aed !important; color: white !important; }
@@ -402,7 +449,7 @@ export default function PayrollPage({ token, role }: PayrollPageProps) {
                 </div>
               </div>
  
-              <div class="info-grid">
+               <div class="info-grid">
                 <div class="info-section">
                   <h3>Employee Details</h3>
                   <div class="info-item"><span class="info-label">Name</span> <span class="info-value">${data.employee.firstName} ${data.employee.lastName}</span></div>
@@ -417,7 +464,7 @@ export default function PayrollPage({ token, role }: PayrollPageProps) {
                 </div>
               </div>
  
-              <div class="tables-container">
+               <div class="tables-container">
                 <div class="earning-side">
                   <table>
                     <thead><tr><th>Earnings</th><th class="amount">Amount</th></tr></thead>
@@ -443,12 +490,12 @@ export default function PayrollPage({ token, role }: PayrollPageProps) {
                 </div>
               </div>
  
-              <div class="summary-card">
+               <div class="summary-card">
                 <span class="summary-label">Total Payable Salary</span>
                 <span class="summary-value">₹${(data.totalPayableSalary ?? 0).toLocaleString()}</span>
               </div>
  
-              <div class="footer">
+               <div class="footer">
                 <p>This is a computer generated payslip and does not require a physical signature.</p>
                 <div class="signature-grid">
                   <div class="sig-line">Employee Signature</div>
@@ -475,11 +522,11 @@ export default function PayrollPage({ token, role }: PayrollPageProps) {
       setPrintingPayrollId(null);
     }
   }
- 
+
   function getMonthLabel(month: number | string) {
     return payrollMonthOptions.find((option) => option.value === String(month))?.label ?? String(month);
   }
- 
+
   const employeeOptions = useMemo<PayrollSelectOption[]>(
     () =>
       employees.map((employee) => ({
@@ -489,7 +536,7 @@ export default function PayrollPage({ token, role }: PayrollPageProps) {
       })),
     [employees],
   );
- 
+
   const monthOptions = useMemo<PayrollSelectOption[]>(() => payrollMonthOptions.map((option) => ({ ...option })), []);
   const isPayrollFormValid = Boolean(form.employeeId && form.month && form.status);
   
@@ -687,6 +734,7 @@ export default function PayrollPage({ token, role }: PayrollPageProps) {
                   <th>Employee</th>
                   <th>Salary</th>
                   <th>Status</th>
+                  <th>Finalize</th>
                   <th>Actions</th>
                 </tr>
               </thead>
@@ -707,6 +755,20 @@ export default function PayrollPage({ token, role }: PayrollPageProps) {
                       <td>₹{Number(record.salary).toLocaleString()}</td>
                       <td>
                         <span className={getStatusClass(record.status)}>{record.status}</span>
+                      </td>
+                      <td>
+                        {(role === "ADMIN" || role === "HR") && record.status === "DRAFT" ? (
+                          <button 
+                            type="button" 
+                            className="payroll-action-button" 
+                            style={{ background: '#ecfdf5', color: '#059669', borderColor: '#d1fae5', width: '100%', justifyContent: 'center' }} 
+                            onClick={(e) => { e.stopPropagation(); handleQuickFinalize(record); }}
+                          >
+                            Finalize
+                          </button>
+                        ) : (
+                          <span style={{ color: '#94a3b8', fontSize: '12px' }}>—</span>
+                        )}
                       </td>
                       <td className="row-actions" onClick={(e) => e.stopPropagation()}>
                         <div style={{ display: 'flex', gap: '0.5rem' }}>
@@ -731,7 +793,19 @@ export default function PayrollPage({ token, role }: PayrollPageProps) {
                   ))
                 ) : (
                   <tr>
-                    <td colSpan={4}>No records found for this month.</td>
+                    <td colSpan={5} style={{ textAlign: 'center', padding: '2rem' }}>
+                      <p style={{ color: '#64748b', marginBottom: '1rem' }}>No records found for this month.</p>
+                      {(role === "ADMIN" || role === "HR") && (
+                        <button 
+                          type="button" 
+                          className="link-button" 
+                          style={{ color: '#2563eb', fontWeight: '600', textDecoration: 'underline', cursor: 'pointer', background: 'none', border: 'none' }}
+                          onClick={handleBatchGenerate}
+                        >
+                          Generate for all employees
+                        </button>
+                      )}
+                    </td>
                   </tr>
                 )}
               </tbody>

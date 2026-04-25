@@ -417,6 +417,16 @@
     radial-gradient(circle at top left, rgba(59, 130, 246, 0.12), transparent 60%);
 }
 
+.notification-dot {
+  width: 10px;
+  height: 10px;
+  background-color: #ef4444; /* red-500 */
+  border: 2px solid white;
+  border-radius: 50%;
+  display: inline-block;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.05);
+}
+
 @media (max-width: 768px) {
   .regularization-time-grid {
     grid-template-columns: 1fr;

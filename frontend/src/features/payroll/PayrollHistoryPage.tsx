@@ -25,7 +25,7 @@ const payrollMonthOptions = [
   { value: "12", label: "December" },
 ] as const;
 
-export default function PayrollHistoryPage({ token, role }: PayrollHistoryPageProps) {
+export default function PayrollHistoryPage({ token }: Omit<PayrollHistoryPageProps, "role">) {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [employee, setEmployee] = useState<Employee | null>(null);

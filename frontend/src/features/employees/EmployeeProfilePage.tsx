@@ -8,9 +8,7 @@ import { apiRequest } from "../../services/api";
 import type { Attendance, Department, Employee, LeaveBalance, LeaveRequest, PayrollRecord, Role } from "../../types";
 import EmployeeForm, { type EmployeeFormValues } from "./EmployeeForm";
 import EmployeeAttendanceTab from "./EmployeeAttendanceTab";
-import EmployeeAttendanceSnapshotCard from "./EmployeeAttendanceSnapshotCard";
 import EmployeeLeavesTab from "./EmployeeLeavesTab";
-import EmployeeLeaveSnapshotCard from "./EmployeeLeaveSnapshotCard";
 import EmployeeOverviewTab from "./EmployeeOverviewTab";
 import EmployeePayrollTab from "./EmployeePayrollTab";
 import EmployeeProfileHeader from "./EmployeeProfileHeader";
@@ -144,28 +142,7 @@ export default function EmployeeProfilePage({ token, role, currentEmployeeId }: 
     }
   }, [searchParams]);
 
-  const latestPayroll = visiblePayroll[0];
 
-  const secondarySummaryCards = useMemo(
-    () =>
-      [
-        ...(canViewPayroll
-          ? [
-              {
-                label: "Payroll snapshot",
-                value: latestPayroll ? `${latestPayroll.month}/${latestPayroll.year}` : "No payroll yet",
-                hint: latestPayroll ? latestPayroll.status : "No payroll records available",
-              },
-            ]
-          : []),
-        {
-        label: "Employment summary",
-        value: employee?.department?.name ?? "-",
-        hint: employee?.manager ? `Reports to ${employee.manager.firstName} ${employee.manager.lastName}` : "No reporting manager assigned",
-        },
-      ],
-    [canViewPayroll, employee?.department?.name, employee?.manager, latestPayroll],
-  );
 
   async function saveTeamLeadConfig(employeeIdToSave: number, isTeamLead: boolean, teamLeadScopeIds: number[]) {
     await apiRequest(`/employees/${employeeIdToSave}/team-lead-config`, {
@@ -342,19 +319,6 @@ export default function EmployeeProfilePage({ token, role, currentEmployeeId }: 
         <EmployeeLeavesTab balances={balances} leaves={leaves} role={role} viewerEmployeeId={currentEmployeeId} />
       ) : null}
       {canViewPayroll && activeTab === "payroll" ? <EmployeePayrollTab payroll={visiblePayroll} /> : null}
-      <div className="grid cols-2 employee-profile-snapshot-row">
-        <EmployeeAttendanceSnapshotCard attendance={attendance} />
-        <EmployeeLeaveSnapshotCard balances={balances} leaves={leaves} />
-      </div>
-      <div className="grid cols-2 employee-profile-summary employee-profile-summary--secondary">
-        {secondarySummaryCards.map((card) => (
-          <article key={card.label} className="card employee-profile-summary-card">
-            <p className="eyebrow">{card.label}</p>
-            <strong>{card.value}</strong>
-            <p className="muted">{card.hint}</p>
-          </article>
-        ))}
-      </div>
       <Modal open={employeeModalOpen} title="Edit employee" className="employee-profile-modal" onClose={() => setEmployeeModalOpen(false)}>
         <EmployeeForm
           form={form}

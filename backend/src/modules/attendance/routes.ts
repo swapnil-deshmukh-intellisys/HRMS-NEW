@@ -645,7 +645,7 @@ router.get("/regularizations", requireRoles("ADMIN", "HR", "MANAGER", "EMPLOYEE"
 
 router.post(
   "/regularizations/:id/review",
-  requireRoles("ADMIN", "HR", "MANAGER", "EMPLOYEE"),
+  requireRoles("ADMIN", "HR", "MANAGER"),
   validate(attendanceRegularizationReviewSchema),
   async (request, response, next) => {
     try {
@@ -679,17 +679,8 @@ router.post(
         throw new AppError("You are not authorized to review this attendance correction request", 403);
       }
 
-      if (request.user?.role === "EMPLOYEE") {
-        if (!request.user.employeeId || regularizationRequest.employeeId === request.user.employeeId) {
-          throw new AppError("You are not authorized to review this attendance correction request", 403);
-        }
-
-        const canAccess = await canTeamLeadAccessEmployee(prisma, request.user.employeeId, regularizationRequest.employeeId);
-
-        if (!canAccess) {
-          throw new AppError("You are not authorized to review this attendance correction request", 403);
-        }
-      }
+      // Reviewer authorization is already ensured by requireRoles and the managerId check above.
+      // Team Leads (Employees) are no longer permitted to review regularization requests.
 
       if (request.body.status === "REJECTED" && !request.body.rejectionReason) {
         throw new AppError("Rejection reason is required");

@@ -44,7 +44,8 @@ export default function LeavesPage({ token, role, currentEmployeeId }: LeavesPag
   const [submittingLeave, setSubmittingLeave] = useState(false);
     const [leaveFormOpen, setLeaveFormOpen] = useState(false);
   const [leaveBalancesOpen, setLeaveBalancesOpen] = useState(false);
-  const [confirmAction, setConfirmAction] = useState<{ type: "cancel"; leaveId: number } | null>(null);
+  const [confirmAction, setConfirmAction] = useState<{ type: "cancel" | "approve" | "reject"; leaveId: number } | null>(null);
+  const [rejectionReason, setRejectionReason] = useState("");
   const [activeTab, setActiveTab] = useState<"pending" | "all">("pending");
   const summaryBalances = balances.filter((balance) => !balance.leaveType.deductFullQuotaOnApproval);
   
@@ -207,6 +208,46 @@ export default function LeavesPage({ token, role, currentEmployeeId }: LeavesPag
     }
   }
 
+  async function approveLeave(id: number) {
+    try {
+      setError("");
+      setMessage("");
+      const endpoint = role === "HR" || role === "ADMIN" ? "hr-approve" : "manager-approve";
+      await apiRequest(`/leaves/${id}/${endpoint}`, {
+        method: "PUT",
+        token,
+      });
+
+      setMessage("Leave request approved.");
+      await reloadData();
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : "Failed to approve leave request.");
+    }
+  }
+
+  async function rejectLeave(id: number, reason: string) {
+    if (!reason.trim()) {
+      setError("Rejection reason is required.");
+      return;
+    }
+    try {
+      setError("");
+      setMessage("");
+      const endpoint = role === "HR" || role === "ADMIN" ? "hr-reject" : "manager-reject";
+      await apiRequest(`/leaves/${id}/${endpoint}`, {
+        method: "PUT",
+        token,
+        body: { rejectionReason: reason },
+      });
+
+      setMessage("Leave request rejected.");
+      setRejectionReason("");
+      await reloadData();
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : "Failed to reject leave request.");
+    }
+  }
+
   async function uploadMedicalProof(id: number, file: File) {
     try {
       setError("");
@@ -311,6 +352,8 @@ export default function LeavesPage({ token, role, currentEmployeeId }: LeavesPag
             role={role}
             currentEmployeeId={currentEmployeeId}
             onCancel={(id) => setConfirmAction({ type: "cancel", leaveId: id })}
+            onApprove={(id) => setConfirmAction({ type: "approve", leaveId: id })}
+            onReject={(id) => setConfirmAction({ type: "reject", leaveId: id })}
             onUploadMedicalProof={uploadMedicalProof}
             onReviewMedicalProof={reviewMedicalProof}
           />
@@ -389,35 +432,60 @@ export default function LeavesPage({ token, role, currentEmployeeId }: LeavesPag
       </Modal>
       <Modal
         open={confirmAction !== null}
-        title="Cancel leave request"
-        onClose={() => setConfirmAction(null)}
+        title={confirmAction?.type === "approve" ? "Approve leave" : confirmAction?.type === "reject" ? "Reject leave" : "Cancel leave request"}
+        onClose={() => {
+          setConfirmAction(null);
+          setRejectionReason("");
+        }}
       >
         <div className="stack leave-review-modal">
           <p className="muted">
-            This will cancel the leave request and remove it from the active approval flow.
+            {confirmAction?.type === "approve" 
+              ? "Are you sure you want to approve this leave request? This will deduct the balance and update attendance."
+              : confirmAction?.type === "reject"
+                ? "Please provide a reason for rejecting this leave request. This will be visible to the employee."
+                : "This will cancel the leave request and remove it from the active approval flow."}
           </p>
+
+          {confirmAction?.type === "reject" && (
+            <textarea
+              className="leave-form__input"
+              style={{ minHeight: '100px' }}
+              placeholder="e.g. Critical project deadline, overlapping leaves in team..."
+              value={rejectionReason}
+              onChange={(e) => setRejectionReason(e.target.value)}
+            />
+          )}
+
           <div className="button-row">
             <button
               type="button"
               className="secondary"
-              onClick={() => setConfirmAction(null)}
+              onClick={() => {
+                setConfirmAction(null);
+                setRejectionReason("");
+              }}
             >
-              Keep as is
+              Back
             </button>
             <button
               type="button"
+              className={confirmAction?.type === "reject" ? "secondary" : ""}
               onClick={() => {
                 const action = confirmAction;
-                setConfirmAction(null);
-
-                if (!action) {
-                  return;
+                if (!action) return;
+                
+                if (action.type === "approve") {
+                  void approveLeave(action.leaveId);
+                } else if (action.type === "reject") {
+                  void rejectLeave(action.leaveId, rejectionReason);
+                } else {
+                  void cancelLeave(action.leaveId);
                 }
-
-                void cancelLeave(action.leaveId);
+                setConfirmAction(null);
               }}
             >
-              Cancel leave
+              {confirmAction?.type === "approve" ? "Confirm Approval" : confirmAction?.type === "reject" ? "Reject Request" : "Cancel leave"}
             </button>
           </div>
         </div>

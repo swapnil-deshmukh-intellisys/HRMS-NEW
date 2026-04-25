@@ -19,7 +19,7 @@ type PayrollFormValues = {
 };
 
 type PayrollPreview = {
-  employee: Pick<Employee, "id" | "firstName" | "lastName" | "annualPackageLpa" | "grossMonthlySalary" | "basicMonthlySalary" | "isOnProbation" | "probationEndDate">;
+  employee: Pick<Employee, "id" | "firstName" | "lastName" | "annualPackageLpa" | "grossMonthlySalary" | "basicMonthlySalary" | "isOnProbation" | "probationEndDate" | "joiningDate">;
   month: number;
   year: number;
   pf: number;
@@ -36,9 +36,9 @@ type PayrollPreview = {
   probationMultiplier: number;
   probationAdjustedSalary: number;
   finalSalary: number;
-  grossSalary: number;
+  netBaseSalary: number;
   totalIncentives: number;
-  baseSalary: number;
+  totalPayableAmount: number;
   incentives: Array<{
     id: number;
     type: string;
@@ -212,6 +212,7 @@ export default function PayrollPage({ token, role }: PayrollPageProps) {
   const [form, setForm] = useState<PayrollFormValues>(initialPayrollForm);
   const [loading, setLoading] = useState(true);
   const [previewLoading, setPreviewLoading] = useState(false);
+  const [printingPayrollId, setPrintingPayrollId] = useState<number | null>(null);
 
   const reloadData = useCallback(async () => {
     setLoading(true);
@@ -249,9 +250,9 @@ export default function PayrollPage({ token, role }: PayrollPageProps) {
           setPreview(response.data);
           if (!editingPayrollId) {
             setForm((current) =>
-              current.salary === String(response.data.finalSalary)
+              current.salary === String(response.data.totalPayableAmount)
                 ? current
-                : { ...current, salary: String(response.data.finalSalary) },
+                : { ...current, salary: String(response.data.totalPayableAmount) },
             );
           }
         })
@@ -277,7 +278,7 @@ export default function PayrollPage({ token, role }: PayrollPageProps) {
     }
 
     const effectiveYear = Number(form.year) || new Date().getFullYear();
-    const effectiveSalary = Number(form.salary || preview?.grossSalary || preview?.finalSalary || 0);
+    const effectiveSalary = Number(form.salary || preview?.totalPayableAmount || 0);
     if (!effectiveSalary) {
       return;
     }
@@ -324,6 +325,147 @@ export default function PayrollPage({ token, role }: PayrollPageProps) {
     return `status-pill status-pill--${status.toLowerCase()}`;
   }
 
+  async function handleDownloadPayslip(record: PayrollRecord) {
+    try {
+      setPrintingPayrollId(record.id);
+      const response = await apiRequest<PayrollPreview>(`/payroll/${record.id}/breakdown`, { token });
+      const data = response.data;
+      
+      const printWindow = window.open('', '_blank', 'width=800,height=900');
+      if (!printWindow) return;
+
+      const monthLabel = getMonthLabel(data.month);
+      
+      printWindow.document.write(`
+        <html>
+          <head>
+            <title>Payslip - ${data.employee.firstName} - ${monthLabel} ${data.year}</title>
+            <style>
+              @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+              body { font-family: 'Inter', system-ui, sans-serif; padding: 40px; color: #1a1a1a; line-height: 1.5; }
+              .slip-container { max-width: 800px; margin: 0 auto; border: 1px solid #e5e7eb; padding: 40px; border-radius: 12px; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1); }
+              .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 40px; padding-bottom: 24px; border-bottom: 2px solid #f3f4f6; }
+              .company-info h1 { margin: 0; color: #7c3aed; font-size: 28px; letter-spacing: -0.025em; }
+              .slip-title { text-align: right; }
+              .slip-title h2 { margin: 0; font-size: 24px; color: #374151; }
+              .slip-title p { margin: 4px 0 0; color: #6b7280; font-weight: 500; }
+              
+              .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; margin-bottom: 40px; }
+              .info-section h3 { font-size: 14px; text-transform: uppercase; letter-spacing: 0.05em; color: #6b7280; margin-bottom: 12px; }
+              .info-item { display: flex; justify-content: space-between; margin-bottom: 8px; border-bottom: 1px dashed #f3f4f6; padding-bottom: 4px; }
+              .info-label { color: #6b7280; font-size: 13px; }
+              .info-value { font-weight: 600; font-size: 13px; }
+
+              .tables-container { display: grid; grid-template-columns: 1.2fr 1fr; gap: 30px; margin-bottom: 40px; }
+              table { width: 100%; border-collapse: collapse; }
+              th { text-align: left; background: #f9fafb; padding: 12px; font-size: 12px; text-transform: uppercase; color: #6b7280; border-radius: 4px; }
+              td { padding: 12px; border-bottom: 1px solid #f3f4f6; font-size: 14px; }
+              .amount { text-align: right; font-weight: 500; }
+              .deduction { color: #dc2626; }
+              .total-row { background: #f9fafb; font-weight: 700 !important; border-top: 2px solid #e5e7eb; }
+              
+              .summary-card { background: #7c3aed; color: white; padding: 24px; border-radius: 12px; display: flex; justify-content: space-between; align-items: center; margin-top: 40px; }
+              .summary-label { font-size: 14px; font-weight: 500; opacity: 0.9; }
+              .summary-value { font-size: 32px; font-weight: 700; }
+              
+              .footer { margin-top: 60px; text-align: center; color: #9ca3af; font-size: 12px; }
+              .signature-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 80px; margin-top: 80px; }
+              .sig-line { border-top: 1px solid #d1d5db; padding-top: 8px; font-size: 12px; text-align: center; }
+
+              @media print {
+                body { padding: 0; }
+                .slip-container { border: none; box-shadow: none; width: 100%; max-width: 100%; }
+                .summary-card { -webkit-print-color-adjust: exact; background-color: #7c3aed !important; color: white !important; }
+              }
+            </style>
+          </head>
+          <body>
+            <div class="slip-container">
+              <div class="header">
+                <div class="company-info">
+                  <h1>HRMS</h1>
+                  <p style="color: #6b7280; font-size: 14px; margin: 4px 0;">INTELLISYS TECHNOLOGIES</p>
+                </div>
+                <div class="slip-title">
+                  <h2>PAYSLIP</h2>
+                  <p>${monthLabel} ${data.year}</p>
+                </div>
+              </div>
+
+              <div class="info-grid">
+                <div class="info-section">
+                  <h3>Employee Details</h3>
+                  <div class="info-item"><span class="info-label">Name</span> <span class="info-value">${data.employee.firstName} ${data.employee.lastName}</span></div>
+                  <div class="info-item"><span class="info-label">Designation</span> <span class="info-value">Software Developer</span></div>
+                  <div class="info-item"><span class="info-label">Department</span> <span class="info-value">Engineering</span></div>
+                </div>
+                <div class="info-section">
+                  <h3>Pay Details</h3>
+                  <div class="info-item"><span class="info-label">Employee Code</span> <span class="info-value">EM-00${data.employee.id}</span></div>
+                  <div class="info-item"><span class="info-label">Joining Date</span> <span class="info-value">${new Date(data.employee.joiningDate).toLocaleDateString()}</span></div>
+                  <div class="info-item"><span class="info-label">Days Payable</span> <span class="info-value">${30 - data.deductibleDays} / 30</span></div>
+                </div>
+              </div>
+
+              <div class="tables-container">
+                <div class="earning-side">
+                  <table>
+                    <thead><tr><th>Earnings</th><th class="amount">Amount</th></tr></thead>
+                    <tbody>
+                      <tr><td>Basic Salary</td><td class="amount">₹${data.netSalary}</td></tr>
+                      ${data.incentives.map(i => `<tr><td>${i.type.replace(/_/g, ' ')}</td><td class="amount">₹${i.amount}</td></tr>`).join('')}
+                      <tr class="total-row"><td>Gross Earnings</td><td class="amount">₹${((data.netBaseSalary ?? 0) + (data.totalIncentives ?? 0)).toLocaleString()}</td></tr>
+                    </tbody>
+                  </table>
+                </div>
+                <div class="deduction-side">
+                  <table>
+                    <thead><tr><th>Deductions</th><th class="amount">Amount</th></tr></thead>
+                    <tbody>
+                      <tr><td>PF Deduction</td><td class="amount deduction">₹${(data.pf ?? 0).toLocaleString()}</td></tr>
+                      <tr><td>PT Deduction</td><td class="amount deduction">₹${(data.pt ?? 0).toLocaleString()}</td></tr>
+                      <tr><td>Gratuity</td><td class="amount deduction">₹${(data.gratuity ?? 0).toLocaleString()}</td></tr>
+                      <tr><td>Unpaid Absence</td><td class="amount deduction">₹${(data.deductionAmount ?? 0).toLocaleString()}</td></tr>
+                      ${data.employee.isOnProbation ? `<tr><td>Probation Cut (50%)</td><td class="amount deduction">₹${((data.finalSalaryBeforeProbation ?? 0) - (data.finalSalary ?? 0)).toLocaleString()}</td></tr>` : ''}
+                      <tr class="total-row"><td>Total Deductions</td><td class="amount">₹${((data.pf ?? 0) + (data.pt ?? 0) + (data.gratuity ?? 0) + (data.deductionAmount ?? 0)).toLocaleString()}</td></tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <div class="summary-card">
+                <span class="summary-label">Net Payable Amount</span>
+                <span class="summary-value">₹${(data.totalPayableAmount ?? 0).toLocaleString()}</span>
+              </div>
+
+              <div class="footer">
+                <p>This is a computer generated payslip and does not require a physical signature.</p>
+                <div class="signature-grid">
+                  <div class="sig-line">Employee Signature</div>
+                  <div class="sig-line">Authorized Signatory</div>
+                </div>
+              </div>
+            </div>
+            <script>
+              window.onload = () => {
+                setTimeout(() => {
+                  window.print();
+                  setTimeout(() => window.close(), 500);
+                }, 500);
+              };
+            </script>
+          </body>
+        </html>
+      `);
+      printWindow.document.close();
+    } catch (err) {
+      console.error(err);
+      alert("Failed to generate payslip.");
+    } finally {
+      setPrintingPayrollId(null);
+    }
+  }
+
   function getMonthLabel(month: number | string) {
     return payrollMonthOptions.find((option) => option.value === String(month))?.label ?? String(month);
   }
@@ -344,8 +486,8 @@ export default function PayrollPage({ token, role }: PayrollPageProps) {
     () => (role === "EMPLOYEE" ? payroll.filter((record) => record.status !== "DRAFT") : payroll),
     [payroll, role],
   );
-  const previewGrossSalary = preview ? Number(preview.grossSalary ?? preview.finalSalary) : 0;
-  const previewBaseSalary = preview ? Number(preview.baseSalary ?? preview.finalSalaryBeforeProbation) : 0;
+  const previewTotalPayable = preview ? Number(preview.totalPayableAmount ?? 0) : 0;
+  const previewNetBase = preview ? Number(preview.netBaseSalary ?? 0) : 0;
 
   return (
     <section className="stack">
@@ -386,26 +528,26 @@ export default function PayrollPage({ token, role }: PayrollPageProps) {
             <div className="payroll-preview-panel">
               <div className="payroll-preview-panel__top">
                 <div className="payroll-preview-panel__headline">
-                  <span className="table-cell-secondary">Final salary</span>
-                  <strong className="payroll-preview-panel__final">{preview.finalSalary}</strong>
+                  <span className="table-cell-secondary">Total payable amount</span>
+                  <strong className="payroll-preview-panel__final">₹{previewTotalPayable.toLocaleString()}</strong>
                 </div>
                 <div className="payroll-preview-panel__chip">
-                  <span className="table-cell-secondary">Net salary</span>
-                  <strong>{preview.netSalary}</strong>
+                  <span className="table-cell-secondary">Potential net salary</span>
+                  <strong>₹{preview.netSalary.toLocaleString()}</strong>
                 </div>
                 {preview.employee.isOnProbation ? (
-                  <span className="payroll-preview-tag">Probation</span>
+                  <span className="payroll-preview-tag">Probation (50% Pay)</span>
                 ) : null}
               </div>
 
               <dl className="payroll-preview-panel__metrics">
                 <div className="payroll-preview-panel__metric">
-                  <dt>Gross salary</dt>
-                  <dd>{previewGrossSalary}</dd>
+                  <dt>Total payable</dt>
+                  <dd>₹{previewTotalPayable.toLocaleString()}</dd>
                 </div>
                 <div className="payroll-preview-panel__metric">
-                  <dt>Base salary</dt>
-                  <dd>{previewBaseSalary}</dd>
+                  <dt>Net base salary</dt>
+                  <dd>₹{previewNetBase.toLocaleString()}</dd>
                 </div>
                 <div className="payroll-preview-panel__metric">
                   <dt>Absent days</dt>
@@ -443,7 +585,7 @@ export default function PayrollPage({ token, role }: PayrollPageProps) {
                 ) : null}
                 <div className="payroll-preview-panel__metric">
                   <dt>Total incentives</dt>
-                  <dd>{Number(preview.totalIncentives ?? 0)}</dd>
+                  <dd>₹{Number(preview.totalIncentives ?? 0).toLocaleString()}</dd>
                 </div>
               </dl>
 
@@ -473,7 +615,7 @@ export default function PayrollPage({ token, role }: PayrollPageProps) {
                     {preview.incentives.map((incentive) => (
                       <tr key={incentive.id}>
                         <td>{incentive.type.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, (l: string) => l.toUpperCase())}</td>
-                        <td className="amount">Rs {incentive.amount.toLocaleString()}</td>
+                        <td className="amount">Rs {(incentive.amount ?? 0).toLocaleString()}</td>
                         <td>{incentive.reason}</td>
                         <td>
                           <span className={`status-badge status-${incentive.status.toLowerCase()}`}>
@@ -486,7 +628,11 @@ export default function PayrollPage({ token, role }: PayrollPageProps) {
                 </table>
               </div>
             </div>
-          ) : null}
+          ) : (
+            <div className="payroll-note muted" style={{ marginTop: '1.5rem', textAlign: 'center' }}>
+              No active incentives found for this period.
+            </div>
+          )}
           <div className="button-row payroll-form-actions">
             <button type="submit" className="payroll-action-button payroll-action-button--primary" disabled={!isPayrollFormValid}>
               {editingPayrollId ? "Update payroll" : "Create payroll"}
@@ -553,10 +699,28 @@ export default function PayrollPage({ token, role }: PayrollPageProps) {
                               Edit
                             </button>
                           ) : (
-                            "Locked"
+                            <button 
+                              type="button" 
+                              className="payroll-action-button" 
+                              onClick={() => handleDownloadPayslip(record)}
+                              disabled={printingPayrollId === record.id}
+                            >
+                              {printingPayrollId === record.id ? "Loading..." : "Download payslip"}
+                            </button>
                           )}
                         </td>
-                      ) : null}
+                      ) : (
+                        <td className="row-actions">
+                          <button 
+                            type="button" 
+                            className="payroll-action-button" 
+                            onClick={() => handleDownloadPayslip(record)}
+                            disabled={printingPayrollId === record.id}
+                          >
+                            {printingPayrollId === record.id ? "Loading..." : "Download"}
+                          </button>
+                        </td>
+                      )}
                     </tr>
                   ))
                 ) : (

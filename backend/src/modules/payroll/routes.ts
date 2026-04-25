@@ -7,24 +7,10 @@ import { validate } from "../../middleware/validate.js";
 import { AppError, sendSuccess } from "../../utils/api.js";
 import { endOfDay, startOfDay } from "../../utils/dates.js";
 import { getCalendarDayStatus } from "../calendar/service.js";
-import { assertPayrollEditable, calculatePayrollPreview } from "./service.js";
+import { assertPayrollEditable, buildPayrollPreview } from "./service.js";
 import { calculateTotalPayrollWithIncentives } from "./incentive-service.js";
 
-type PayrollPreviewWithIncentives = ReturnType<typeof calculatePayrollPreview> & {
-  employee: any;
-  month: number;
-  year: number;
-  grossSalary: number;
-  totalIncentives: number;
-  baseSalary: number;
-  incentives: Array<{
-    id: number;
-    type: string;
-    amount: number;
-    reason: string;
-    status: string;
-  }>;
-};
+type PayrollPreviewWithIncentives = Awaited<ReturnType<typeof buildPayrollPreview>>;
 
 const router = Router();
 
@@ -75,170 +61,8 @@ async function assertPayrollAccess(requestedEmployeeId: number, requestUser: Non
   }
 }
 
-async function buildPayrollPreview(employeeId: number, month: number, year: number): Promise<PayrollPreviewWithIncentives> {
-  const employee = await prisma.employee.findUnique({
-    where: { id: employeeId },
-    select: {
-      id: true,
-      firstName: true,
-      lastName: true,
-      joiningDate: true,
-      annualPackageLpa: true,
-      grossMonthlySalary: true,
-      basicMonthlySalary: true,
-      isOnProbation: true,
-      probationEndDate: true,
-    },
-  });
-
-  if (!employee) {
-    throw new AppError("Employee not found", 404);
-  }
-
-  if (employee.grossMonthlySalary == null || employee.basicMonthlySalary == null) {
-    throw new AppError("Employee compensation is not configured", 400);
-  }
-
-  const { monthStart, monthEnd } = getMonthBounds(month, year);
-  const effectiveRangeStart =
-    startOfDay(employee.joiningDate) > startOfDay(monthStart) ? startOfDay(employee.joiningDate) : startOfDay(monthStart);
-  const today = startOfDay(new Date());
-  const effectiveRangeEnd = today < startOfDay(monthEnd) ? today : startOfDay(monthEnd);
-
-  if (effectiveRangeStart > effectiveRangeEnd) {
-    const preview = calculatePayrollPreview({
-      grossMonthlySalary: employee.grossMonthlySalary,
-      basicMonthlySalary: employee.basicMonthlySalary,
-      month,
-      deductibleDays: 0,
-    });
-
-    return {
-      ...preview,
-      employee,
-      month,
-      year,
-      grossSalary: preview.finalSalary,
-      totalIncentives: 0,
-      baseSalary: preview.finalSalary,
-      incentives: [],
-    };
-  }
-
-  const [calendarExceptions, monthAttendances, approvedLeaves] = await Promise.all([
-    prisma.calendarException.findMany({
-      where: {
-        date: {
-          gte: effectiveRangeStart,
-          lte: effectiveRangeEnd,
-        },
-      },
-      orderBy: { date: "asc" },
-    }),
-    prisma.attendance.findMany({
-      where: {
-        employeeId,
-        attendanceDate: {
-          gte: effectiveRangeStart,
-          lte: effectiveRangeEnd,
-        },
-      },
-    }),
-    prisma.leaveRequest.findMany({
-      where: {
-        employeeId,
-        status: LeaveStatus.APPROVED,
-        startDate: { lte: effectiveRangeEnd },
-        endDate: { gte: effectiveRangeStart },
-      },
-      select: {
-        startDate: true,
-        endDate: true,
-      },
-    }),
-  ]);
-
-  const attendanceByDate = new Map(
-    monthAttendances.map((attendance) => [startOfDay(attendance.attendanceDate).getTime(), attendance]),
-  );
-  const leaveDates = new Set<number>();
-
-  for (const leaveRequest of approvedLeaves) {
-    const cursor = startOfDay(leaveRequest.startDate);
-    const finalDate = startOfDay(leaveRequest.endDate);
-
-    while (cursor <= finalDate) {
-      leaveDates.add(cursor.getTime());
-      cursor.setDate(cursor.getDate() + 1);
-    }
-  }
-
-  let deductibleDays = 0;
-  let absentDeductionDays = 0;
-  let halfDayDeductionDays = 0;
-  const cursor = startOfDay(effectiveRangeStart);
-
-  while (cursor <= effectiveRangeEnd) {
-    const timestamp = cursor.getTime();
-    const isWorkingDay = getCalendarDayStatus(cursor, calendarExceptions).isWorkingDay;
-    const attendance = attendanceByDate.get(timestamp);
-    const hasApprovedLeave = leaveDates.has(timestamp);
-    const isHalfDay = attendance?.status === "HALF_DAY";
-    const hasQualifyingAttendance = Boolean(attendance && attendance.status !== "ABSENT");
-
-    if (isWorkingDay && !hasApprovedLeave && isHalfDay) {
-      halfDayDeductionDays += 0.5;
-      deductibleDays += 0.5;
-    } else if (isWorkingDay && !hasQualifyingAttendance && !hasApprovedLeave) {
-      absentDeductionDays += 1;
-      deductibleDays += 1;
-    }
-
-    cursor.setDate(cursor.getDate() + 1);
-  }
-
-  const preview = calculatePayrollPreview({
-    grossMonthlySalary: employee.grossMonthlySalary,
-    basicMonthlySalary: employee.basicMonthlySalary,
-    month,
-    absentDeductionDays,
-    halfDayDeductionDays,
-    deductibleDays,
-    isOnProbation: employee.isOnProbation,
-  });
-
-  // Fetch approved incentives for the month
-  const incentives = await prisma.incentive.findMany({
-    where: {
-      employeeId,
-      month,
-      year,
-      status: { in: ["APPROVED", "PAID"] },
-    },
-  });
-
-  // Calculate total compensation with incentives
-  const payrollWithIncentives = calculateTotalPayrollWithIncentives(
-    preview.finalSalary,
-    incentives.map(i => ({ ...i, amount: Number(i.amount) }))
-  );
-
-  return {
-    ...preview,
-    employee,
-    month,
-    year,
-    grossSalary: payrollWithIncentives.grossSalary,
-    totalIncentives: payrollWithIncentives.totalIncentives,
-    baseSalary: payrollWithIncentives.baseSalary,
-    incentives: incentives.map(incentive => ({
-      id: incentive.id,
-      type: incentive.type,
-      amount: Number(incentive.amount),
-      reason: incentive.reason,
-      status: incentive.status,
-    })),
-  };
+async function buildPayrollPreviewInternal(employeeId: number, month: number, year: number): Promise<PayrollPreviewWithIncentives> {
+  return buildPayrollPreview({ employeeId, month, year, prisma });
 }
 
 router.get("/", async (request, response, next) => {
@@ -283,7 +107,7 @@ router.get("/preview", validate(payrollPreviewQuerySchema, "query"), async (requ
     const year = Number(request.query.year);
 
     await assertPayrollAccess(employeeId, request.user!);
-    const preview = await buildPayrollPreview(employeeId, month, year);
+    const preview = await buildPayrollPreviewInternal(employeeId, month, year);
 
     return sendSuccess(response, "Payroll preview fetched successfully", preview);
   } catch (error) {
@@ -293,11 +117,11 @@ router.get("/preview", validate(payrollPreviewQuerySchema, "query"), async (requ
 
 router.post("/", requireRoles("ADMIN", "HR"), validate(payrollSchema), async (request, response, next) => {
   try {
-    const generatedPreview = request.body.salary ? null : await buildPayrollPreview(request.body.employeeId, request.body.month, request.body.year);
+    const generatedPreview = request.body.salary ? null : await buildPayrollPreviewInternal(request.body.employeeId, request.body.month, request.body.year);
     const payrollRecord = await prisma.payrollRecord.create({
       data: {
         ...request.body,
-        salary: request.body.salary ?? generatedPreview!.grossSalary,
+        salary: request.body.salary ?? (generatedPreview!.totalPayableAmount),
       },
       include: {
         employee: true,
@@ -323,13 +147,13 @@ router.put("/:id", requireRoles("ADMIN", "HR"), validate(payrollSchema.partial()
     const nextEmployeeId = request.body.employeeId ?? existing.employeeId;
     const nextMonth = request.body.month ?? existing.month;
     const nextYear = request.body.year ?? existing.year;
-    const generatedPreview = request.body.salary ? null : await buildPayrollPreview(nextEmployeeId, nextMonth, nextYear);
+    const generatedPreview = request.body.salary ? null : await buildPayrollPreviewInternal(nextEmployeeId, nextMonth, nextYear);
 
     const updated = await prisma.payrollRecord.update({
       where: { id },
       data: {
         ...request.body,
-        ...(request.body.salary ? {} : { salary: generatedPreview!.grossSalary }),
+        ...(request.body.salary ? {} : { salary: generatedPreview!.totalPayableAmount }),
       },
       include: {
         employee: true,
@@ -337,6 +161,28 @@ router.put("/:id", requireRoles("ADMIN", "HR"), validate(payrollSchema.partial()
     });
 
     return sendSuccess(response, "Payroll record updated successfully", updated);
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.get("/:id/breakdown", async (request, response, next) => {
+  try {
+    const id = Number(request.params.id);
+    const record = await prisma.payrollRecord.findUnique({
+      where: { id },
+      include: { employee: true },
+    });
+
+    if (!record) {
+      throw new AppError("Payroll record not found", 404);
+    }
+
+    await assertPayrollAccess(record.employeeId, request.user!);
+
+    const preview = await buildPayrollPreviewInternal(record.employeeId, record.month, record.year);
+
+    return sendSuccess(response, "Payroll breakdown fetched successfully", preview);
   } catch (error) {
     next(error);
   }

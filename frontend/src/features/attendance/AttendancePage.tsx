@@ -356,7 +356,7 @@ export default function AttendancePage({ token, role, currentEmployeeId, current
       return Boolean(currentEmployeeId) && record.employee.managerId === currentEmployeeId && record.employeeId !== currentEmployeeId;
     }
 
-    return role === "EMPLOYEE" && isTeamLead && record.employeeId !== currentEmployeeId && teamLeadScopeIds.includes(record.employeeId);
+    return false;
   }
 
   const scopedAttendance = useMemo(() => {

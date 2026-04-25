@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import { apiRequest } from "../../services/api";
 import type { Employee, Incentive, IncentiveType, IncentiveStatus, IncentiveSummary, Role } from "../../types";
+import Modal from "../../components/common/Modal";
 
 type IncentivesPageProps = {
   token: string | null;
@@ -24,7 +25,7 @@ type IncentiveReviewValues = {
   rejectionReason: string;
 };
 
-type EmployeeSelectOption = {
+type IncentiveSelectOption = {
   value: string;
   label: string;
   hint?: string;
@@ -64,57 +65,47 @@ const payrollMonthOptions = [
   { value: "12", label: "December" },
 ] as const;
 
-type SearchableEmployeeSelectProps = {
-  id: string;
+type IncentiveSelectFieldProps = {
+  label: string;
   value: string;
-  options: EmployeeSelectOption[];
+  options: IncentiveSelectOption[];
   onChange: (value: string) => void;
-  placeholder: string;
-  searchPlaceholder?: string;
-  emptyMessage?: string;
+  placeholder?: string;
   required?: boolean;
+  searchable?: boolean;
 };
 
-function SearchableEmployeeSelect({
-  id,
+function IncentiveSelectField({
+  label,
   value,
   options,
   onChange,
-  placeholder,
-  searchPlaceholder = "Search employee",
-  emptyMessage = "No matching employees",
+  placeholder = "Select option",
   required = false,
-}: SearchableEmployeeSelectProps) {
+  searchable = false,
+}: IncentiveSelectFieldProps) {
   const [open, setOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const containerRef = useRef<HTMLDivElement | null>(null);
-  const triggerId = `${id}-trigger`;
-  const listboxId = `${id}-listbox`;
+  const triggerId = `${label.toLowerCase().replace(/\s+/g, "-")}-trigger`;
+  const listboxId = `${label.toLowerCase().replace(/\s+/g, "-")}-listbox`;
   const selectedOption = options.find((option) => option.value === value) ?? null;
   const filteredOptions = options.filter((option) => {
-    if (!searchTerm.trim()) return true;
+    if (!searchable || !searchTerm.trim()) return true;
     const haystack = `${option.label} ${option.hint ?? ""}`.toLowerCase();
     return haystack.includes(searchTerm.trim().toLowerCase());
   });
 
   useEffect(() => {
     if (!open) return undefined;
-
     function handlePointerDown(event: MouseEvent) {
-      if (!containerRef.current?.contains(event.target as Node)) {
-        setOpen(false);
-      }
+      if (!containerRef.current?.contains(event.target as Node)) setOpen(false);
     }
-
     function handleEscape(event: KeyboardEvent) {
-      if (event.key === "Escape") {
-        setOpen(false);
-      }
+      if (event.key === "Escape") setOpen(false);
     }
-
     document.addEventListener("mousedown", handlePointerDown);
     document.addEventListener("keydown", handleEscape);
-
     return () => {
       document.removeEventListener("mousedown", handlePointerDown);
       document.removeEventListener("keydown", handleEscape);
@@ -122,66 +113,68 @@ function SearchableEmployeeSelect({
   }, [open]);
 
   useEffect(() => {
-    if (!open && searchTerm) {
-      setSearchTerm("");
-    }
+    if (!open && searchTerm) setSearchTerm("");
   }, [open, searchTerm]);
 
   return (
-    <div className={`incentive-employee-select ${open ? "incentive-employee-select--open" : ""}`} ref={containerRef}>
-      <button
-        type="button"
-        id={triggerId}
-        className="incentive-employee-select__trigger"
-        aria-haspopup="listbox"
-        aria-expanded={open}
-        aria-controls={listboxId}
-        aria-required={required}
-        onClick={() => setOpen((current) => !current)}
-      >
-        <span className={`incentive-employee-select__value ${selectedOption ? "" : "incentive-employee-select__value--placeholder"}`.trim()}>
-          {selectedOption?.label ?? placeholder}
-        </span>
-        <span className="incentive-employee-select__icon" aria-hidden="true">
-          <svg viewBox="0 0 16 16" focusable="false">
-            <path d="M4 6.5 8 10l4-3.5" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-        </span>
-      </button>
-      {required ? <input type="hidden" value={value} required /> : null}
-      {open ? (
-        <div className="incentive-employee-select__menu" role="listbox" id={listboxId} aria-labelledby={triggerId}>
-          <div className="incentive-employee-select__search">
-            <input
-              type="search"
-              value={searchTerm}
-              onChange={(event) => setSearchTerm(event.target.value)}
-              placeholder={searchPlaceholder}
-            />
+    <div className="form-field">
+      {label && <label>{label}</label>}
+      <div className={`incentive-employee-select ${open ? "incentive-employee-select--open" : ""}`} ref={containerRef}>
+        <button
+          type="button"
+          id={triggerId}
+          className="incentive-employee-select__trigger"
+          aria-haspopup="listbox"
+          aria-expanded={open}
+          aria-controls={listboxId}
+          aria-required={required}
+          onClick={() => setOpen((current) => !current)}
+        >
+          <span className={`incentive-employee-select__value ${selectedOption ? "" : "incentive-employee-select__value--placeholder"}`.trim()}>
+            {selectedOption?.label ?? placeholder}
+          </span>
+          <span className="incentive-employee-select__icon" aria-hidden="true">
+            <svg viewBox="0 0 16 16" focusable="false">
+              <path d="M4 6.5 8 10l4-3.5" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </span>
+        </button>
+        {open ? (
+          <div className="incentive-employee-select__menu" role="listbox" id={listboxId} aria-labelledby={triggerId}>
+            {searchable && (
+              <div className="incentive-employee-select__search">
+                <input
+                  type="search"
+                  value={searchTerm}
+                  onChange={(event) => setSearchTerm(event.target.value)}
+                  placeholder="Search..."
+                />
+              </div>
+            )}
+            {filteredOptions.length ? filteredOptions.map((option) => {
+              const selected = option.value === value;
+              return (
+                <button
+                  key={option.value}
+                  type="button"
+                  className={`incentive-employee-select__option ${selected ? "incentive-employee-select__option--selected" : ""}`.trim()}
+                  role="option"
+                  aria-selected={selected}
+                  onClick={() => {
+                    onChange(option.value);
+                    setOpen(false);
+                  }}
+                >
+                  <span className="incentive-employee-select__option-label">{option.label}</span>
+                  {option.hint ? <span className="incentive-employee-select__option-hint">{option.hint}</span> : null}
+                </button>
+              );
+            }) : (
+              <div className="incentive-employee-select__empty">No results found</div>
+            )}
           </div>
-          {filteredOptions.length ? filteredOptions.map((option) => {
-            const selected = option.value === value;
-            return (
-              <button
-                key={option.value}
-                type="button"
-                className={`incentive-employee-select__option ${selected ? "incentive-employee-select__option--selected" : ""}`.trim()}
-                role="option"
-                aria-selected={selected}
-                onClick={() => {
-                  onChange(option.value);
-                  setOpen(false);
-                }}
-              >
-                <span className="incentive-employee-select__option-label">{option.label}</span>
-                {option.hint ? <span className="incentive-employee-select__option-hint">{option.hint}</span> : null}
-              </button>
-            );
-          }) : (
-            <div className="incentive-employee-select__empty">{emptyMessage}</div>
-          )}
-        </div>
-      ) : null}
+        ) : null}
+      </div>
     </div>
   );
 }
@@ -189,7 +182,6 @@ function SearchableEmployeeSelect({
 
 function IncentivesPage({ token, role }: IncentivesPageProps) {
   const isEmployeeView = role === "EMPLOYEE";
-  const [activeTab, setActiveTab] = useState<"list" | "create">("list");
   const [incentives, setIncentives] = useState<Incentive[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [loading, setLoading] = useState(false);
@@ -201,6 +193,7 @@ function IncentivesPage({ token, role }: IncentivesPageProps) {
     rejectionReason: "",
   });
   const [selectedIncentive, setSelectedIncentive] = useState<Incentive | null>(null);
+  const [showCreateModal, setShowCreateModal] = useState(false);
   const [showReviewModal, setShowReviewModal] = useState(false);
   const [filterEmployeeId, setFilterEmployeeId] = useState<string>("");
   const [filterMonth, setFilterMonth] = useState<string>("");
@@ -218,7 +211,6 @@ function IncentivesPage({ token, role }: IncentivesPageProps) {
     try {
       const response = await apiRequest("/employees?limit=1000", { token });
       if (response.success) {
-        // Handle different response structures
         const employeesData = Array.isArray(response.data) 
           ? response.data 
           : (response.data as { items?: Employee[] })?.items || [];
@@ -245,7 +237,6 @@ function IncentivesPage({ token, role }: IncentivesPageProps) {
 
       const response = await apiRequest(`/payroll/incentives?${queryParams}`, { token });
       if (response.success) {
-        // Ensure incentives is always an array
         const incentivesData = Array.isArray(response.data) 
           ? response.data 
           : [];
@@ -265,7 +256,6 @@ function IncentivesPage({ token, role }: IncentivesPageProps) {
       const currentMonth = new Date().getMonth() + 1;
       const currentYear = new Date().getFullYear();
       
-      // Get current employee ID if role is EMPLOYEE
       let employeeId = "";
       if (role === "EMPLOYEE") {
         const userResponse = await apiRequest<{ employeeId: number }>("/auth/me", { token });
@@ -312,7 +302,7 @@ function IncentivesPage({ token, role }: IncentivesPageProps) {
       if (response.success) {
         setSuccess("Incentive created successfully!");
         setFormValues(initialIncentiveForm());
-        setActiveTab("list");
+        setShowCreateModal(false);
         fetchIncentives();
       }
     } catch (err) {
@@ -360,7 +350,7 @@ function IncentivesPage({ token, role }: IncentivesPageProps) {
     }
   }, [fetchEmployees, fetchIncentives, fetchIncentiveSummary, role]);
 
-  const employeeOptions = useMemo<EmployeeSelectOption[]>(() => {
+  const employeeOptions = useMemo<IncentiveSelectOption[]>(() => {
     if (!Array.isArray(employees)) return [];
     return employees.map((emp) => ({
       value: emp.id.toString(),
@@ -392,6 +382,10 @@ function IncentivesPage({ token, role }: IncentivesPageProps) {
     });
   }, [incentives]);
 
+  const incentiveTypes = useMemo(() => incentiveTypeOptions.map(opt => ({ value: opt.value, label: opt.label })), []);
+  const months = useMemo(() => payrollMonthOptions.map(opt => ({ value: opt.value, label: opt.label })), []);
+  const years = useMemo(() => yearOptions.map(y => ({ value: String(y), label: String(y) })), [yearOptions]);
+
   return (
     <section className="stack incentives-page">
       <div className="action-row incentives-page__header">
@@ -416,325 +410,293 @@ function IncentivesPage({ token, role }: IncentivesPageProps) {
       {error && <div className="error-message">{error}</div>}
       {success && <div className="success-message">{success}</div>}
 
-      <div className="incentives-tabs">
-        <button
-          className={`incentives-tab ${activeTab === "list" ? "active" : ""}`}
-          onClick={() => setActiveTab("list")}
-        >
-          {isEmployeeView ? "Month-wise Incentives" : "Incentives List"}
-        </button>
-        {canCreateIncentive && (
-          <button
-            className={`incentives-tab ${activeTab === "create" ? "active" : ""}`}
-            onClick={() => setActiveTab("create")}
-          >
-            Create Incentive
-          </button>
+      <div className="card incentives-card">
+        <div className="incentives-card__header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div>
+            <p className="eyebrow">{isEmployeeView ? "My Earnings" : "Overview"}</p>
+            <h3>{isEmployeeView ? "Monthly Incentive Panels" : "Incentives List"}</h3>
+          </div>
+          {canCreateIncentive && (
+            <button
+              type="button"
+              className="incentives-action-button incentives-action-button--primary"
+              onClick={() => setShowCreateModal(true)}
+            >
+              Create Incentive
+            </button>
+          )}
+        </div>
+        {!isEmployeeView ? (
+          <div className="incentives-filters">
+            <div className="filter-row">
+              <div className="filter-field">
+                <label>Employee</label>
+                <IncentiveSelectField
+                  label=""
+                  value={filterEmployeeId}
+                  options={employeeOptions}
+                  onChange={setFilterEmployeeId}
+                  placeholder="Any employee"
+                  searchable
+                />
+              </div>
+              <div className="filter-field">
+                <label>Month</label>
+                <IncentiveSelectField
+                  label=""
+                  value={filterMonth}
+                  options={[{ value: "", label: "Any month" }, ...months]}
+                  onChange={setFilterMonth}
+                />
+              </div>
+              <div className="filter-field">
+                <label>Year</label>
+                <IncentiveSelectField
+                  label=""
+                  value={filterYear}
+                  options={[{ value: "", label: "Any year" }, ...years]}
+                  onChange={setFilterYear}
+                />
+              </div>
+              <button className="filter-button" onClick={fetchIncentives}>
+                Apply Filters
+              </button>
+            </div>
+          </div>
+        ) : null}
+
+        {loading ? (
+          <div className="loading">Loading incentives...</div>
+        ) : !Array.isArray(incentives) || incentives.length === 0 ? (
+          <div className="table-empty-state">
+            <strong>No incentives found</strong>
+            <span>{isEmployeeView ? "No incentives are recorded for your account yet." : "Try changing the selected filters."}</span>
+          </div>
+        ) : isEmployeeView ? (
+          <div className="incentive-month-panels">
+            {groupedMonthlyIncentives.map((group) => (
+              <article key={`${group.year}-${group.month}`} className="incentive-month-panel">
+                <header className="incentive-month-panel__header">
+                  <div>
+                    <p className="eyebrow">Month</p>
+                    <h4>{payrollMonthOptions.find((m) => m.value === String(group.month))?.label} {group.year}</h4>
+                  </div>
+                  <div className="incentive-month-panel__total">
+                    <span>Total</span>
+                    <strong>Rs {group.total.toLocaleString()}</strong>
+                  </div>
+                </header>
+                <div className="incentive-month-panel__items">
+                  {group.items.map((incentive) => (
+                    <div key={incentive.id} className="incentive-month-panel__item">
+                      <div className="table-cell-stack">
+                        <span className="table-cell-primary">{incentive.typeDisplay || incentive.type}</span>
+                        <span className="table-cell-secondary">{incentive.reason}</span>
+                      </div>
+                      <div className="incentive-month-panel__meta">
+                        <strong className="amount">Rs {Number(incentive.amount).toLocaleString()}</strong>
+                        <span className={getStatusClass(incentive.status)}>{incentive.statusDisplay || incentive.status}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </article>
+            ))}
+          </div>
+        ) : (
+          <div className="table-wrap incentives-table-wrap">
+            <table className="table table--dense">
+              <thead>
+                <tr>
+                  <th>Employee</th>
+                  <th>Type</th>
+                  <th>Amount</th>
+                  <th>Reason</th>
+                  <th>Month</th>
+                  <th>Status</th>
+                  <th>Created</th>
+                  {canReviewIncentive && <th>Actions</th>}
+                </tr>
+              </thead>
+              <tbody>
+                {Array.isArray(incentives) && incentives.map((incentive) => (
+                  <tr key={incentive.id}>
+                    <td>
+                      {incentive.employee
+                        ? (
+                          <div className="table-cell-stack">
+                            <span className="table-cell-primary">{`${incentive.employee.firstName} ${incentive.employee.lastName}`}</span>
+                            <span className="table-cell-secondary">{incentive.employee.employeeCode ?? `#${incentive.employeeId}`}</span>
+                          </div>
+                        )
+                        : `Employee #${incentive.employeeId}`}
+                    </td>
+                    <td>
+                      <span className="incentive-type">{incentive.typeDisplay || incentive.type}</span>
+                    </td>
+                    <td className="amount">Rs {Number(incentive.amount).toLocaleString()}</td>
+                    <td className="reason">{incentive.reason}</td>
+                    <td>
+                      {payrollMonthOptions.find(m => m.value === incentive.month.toString())?.label} {incentive.year}
+                    </td>
+                    <td>
+                      <span className={getStatusClass(incentive.status)}>
+                        {incentive.statusDisplay || incentive.status}
+                      </span>
+                    </td>
+                    <td>{new Date(incentive.createdAt).toLocaleDateString()}</td>
+                    {canReviewIncentive ? (
+                      <td>
+                        {incentive.status === "PENDING" ? (
+                          <button
+                            className="incentives-action-button"
+                            onClick={() => {
+                              setSelectedIncentive(incentive);
+                              setShowReviewModal(true);
+                            }}
+                          >
+                            Review
+                          </button>
+                        ) : (
+                          <span className="table-cell-secondary">No action</span>
+                        )}
+                      </td>
+                    ) : null}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
 
-      {activeTab === "list" && (
-        <div className="card incentives-card">
-          <div className="incentives-card__header">
-            <div>
-              <p className="eyebrow">{isEmployeeView ? "My Earnings" : "Overview"}</p>
-              <h3>{isEmployeeView ? "Monthly Incentive Panels" : "Incentives List"}</h3>
+      <Modal open={showCreateModal} title="Create Incentive" className="incentive-modal" onClose={() => setShowCreateModal(false)}>
+        <form onSubmit={handleCreateIncentive} className="incentive-form">
+          <div className="form-row grid cols-2">
+            <IncentiveSelectField
+              label="Employee *"
+              value={formValues.employeeId}
+              options={employeeOptions}
+              onChange={(value) => setFormValues({ ...formValues, employeeId: value })}
+              placeholder="Select employee"
+              required
+              searchable
+            />
+            <IncentiveSelectField
+              label="Incentive Type *"
+              value={formValues.type}
+              onChange={(value) => setFormValues({ ...formValues, type: value as IncentiveType })}
+              options={incentiveTypes}
+              required
+            />
+          </div>
+          <div className="form-row grid cols-2">
+            <div className="form-field">
+              <label>Amount (Rs) *</label>
+              <input
+                type="number"
+                value={formValues.amount}
+                onChange={(e) => setFormValues({ ...formValues, amount: e.target.value })}
+                placeholder="Enter amount"
+                min="0"
+                step="0.01"
+                required
+              />
+            </div>
+            <div className="period-fields grid cols-2 gap-2">
+              <IncentiveSelectField
+                label="Month *"
+                value={formValues.month}
+                options={months}
+                onChange={(value) => setFormValues({ ...formValues, month: value })}
+                required
+              />
+              <IncentiveSelectField
+                label="Year *"
+                value={formValues.year}
+                options={years}
+                onChange={(value) => setFormValues({ ...formValues, year: value })}
+                required
+              />
             </div>
           </div>
-          {!isEmployeeView ? (
-            <div className="incentives-filters">
-              <div className="filter-row">
-                <div className="filter-field">
-                  <label>Employee</label>
-                  <SearchableEmployeeSelect
-                    id="incentive-filter-employee"
-                    value={filterEmployeeId}
-                    options={employeeOptions}
-                    onChange={setFilterEmployeeId}
-                    placeholder="Any employee"
-                    searchPlaceholder="Search team member"
-                    emptyMessage="No matching team members"
-                  />
-                </div>
-                <div className="filter-field">
-                  <label>Incentive Month</label>
-                  <select value={filterMonth} onChange={(e) => setFilterMonth(e.target.value)}>
-                    <option value="">Any month</option>
-                    {payrollMonthOptions.map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div className="filter-field">
-                  <label>Incentive Year</label>
-                  <select value={filterYear} onChange={(e) => setFilterYear(e.target.value)}>
-                    <option value="">Any year</option>
-                    {yearOptions.map((year) => (
-                      <option key={year} value={year}>
-                        {year}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <button className="filter-button" onClick={fetchIncentives}>
-                  Apply Filters
-                </button>
-              </div>
-            </div>
-          ) : null}
-
-          {loading ? (
-            <div className="loading">Loading incentives...</div>
-          ) : !Array.isArray(incentives) || incentives.length === 0 ? (
-            <div className="table-empty-state">
-              <strong>No incentives found</strong>
-              <span>{isEmployeeView ? "No incentives are recorded for your account yet." : "Try changing the selected filters."}</span>
-            </div>
-          ) : isEmployeeView ? (
-            <div className="incentive-month-panels">
-              {groupedMonthlyIncentives.map((group) => (
-                <article key={`${group.year}-${group.month}`} className="incentive-month-panel">
-                  <header className="incentive-month-panel__header">
-                    <div>
-                      <p className="eyebrow">Month</p>
-                      <h4>{payrollMonthOptions.find((m) => m.value === String(group.month))?.label} {group.year}</h4>
-                    </div>
-                    <div className="incentive-month-panel__total">
-                      <span>Total</span>
-                      <strong>Rs {group.total.toLocaleString()}</strong>
-                    </div>
-                  </header>
-                  <div className="incentive-month-panel__items">
-                    {group.items.map((incentive) => (
-                      <div key={incentive.id} className="incentive-month-panel__item">
-                        <div className="table-cell-stack">
-                          <span className="table-cell-primary">{incentive.typeDisplay || incentive.type}</span>
-                          <span className="table-cell-secondary">{incentive.reason}</span>
-                        </div>
-                        <div className="incentive-month-panel__meta">
-                          <strong className="amount">Rs {Number(incentive.amount).toLocaleString()}</strong>
-                          <span className={getStatusClass(incentive.status)}>{incentive.statusDisplay || incentive.status}</span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </article>
-              ))}
-            </div>
-          ) : (
-            <div className="table-wrap incentives-table-wrap">
-              <table className="table table--dense">
-                <thead>
-                  <tr>
-                    <th>Employee</th>
-                    <th>Type</th>
-                    <th>Amount</th>
-                    <th>Reason</th>
-                    <th>Period</th>
-                    <th>Status</th>
-                    <th>Created</th>
-                    {canReviewIncentive && <th>Actions</th>}
-                  </tr>
-                </thead>
-                <tbody>
-                  {Array.isArray(incentives) && incentives.map((incentive) => (
-                    <tr key={incentive.id}>
-                      <td>
-                        {incentive.employee
-                          ? (
-                            <div className="table-cell-stack">
-                              <span className="table-cell-primary">{`${incentive.employee.firstName} ${incentive.employee.lastName}`}</span>
-                              <span className="table-cell-secondary">{incentive.employee.employeeCode ?? `#${incentive.employeeId}`}</span>
-                            </div>
-                          )
-                          : `Employee #${incentive.employeeId}`}
-                      </td>
-                      <td>
-                        <span className="incentive-type">{incentive.typeDisplay || incentive.type}</span>
-                      </td>
-                      <td className="amount">Rs {Number(incentive.amount).toLocaleString()}</td>
-                      <td className="reason">{incentive.reason}</td>
-                      <td>
-                        {payrollMonthOptions.find(m => m.value === incentive.month.toString())?.label} {incentive.year}
-                      </td>
-                      <td>
-                        <span className={getStatusClass(incentive.status)}>
-                          {incentive.statusDisplay || incentive.status}
-                        </span>
-                      </td>
-                      <td>{new Date(incentive.createdAt).toLocaleDateString()}</td>
-                      {canReviewIncentive ? (
-                        <td>
-                          {incentive.status === "PENDING" ? (
-                            <button
-                              className="incentives-action-button"
-                              onClick={() => {
-                                setSelectedIncentive(incentive);
-                                setShowReviewModal(true);
-                              }}
-                            >
-                              Review
-                            </button>
-                          ) : (
-                            <span className="table-cell-secondary">No action</span>
-                          )}
-                        </td>
-                      ) : null}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
-      )}
-
-      {activeTab === "create" && canCreateIncentive && (
-        <div className="card incentives-card">
-          <div className="incentives-card__header">
-            <div>
-              <p className="eyebrow">New Entry</p>
-              <h3>Create Incentive</h3>
-            </div>
+          <div className="form-field">
+            <label>Reason *</label>
+            <input
+              type="text"
+              value={formValues.reason}
+              onChange={(e) => setFormValues({ ...formValues, reason: e.target.value })}
+              placeholder="Brief reason for incentive"
+              required
+            />
           </div>
-          <form onSubmit={handleCreateIncentive} className="incentive-form">
-            <div className="form-row">
-              <div className="form-field">
-                <label>Employee *</label>
-                <SearchableEmployeeSelect
-                  id="incentive-form-employee"
-                  value={formValues.employeeId}
-                  options={employeeOptions}
-                  onChange={(value) => setFormValues({ ...formValues, employeeId: value })}
-                  placeholder="Select employee"
-                  required
-                />
-              </div>
-              <div className="form-field">
-                <label>Incentive Type *</label>
-                <select
-                  value={formValues.type}
-                  onChange={(e) => setFormValues({ ...formValues, type: e.target.value as IncentiveType })}
-                  required
-                >
-                  {incentiveTypeOptions.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-            <div className="form-row">
-              <div className="form-field">
-                <label>Amount (Rs) *</label>
-                <input
-                  type="number"
-                  value={formValues.amount}
-                  onChange={(e) => setFormValues({ ...formValues, amount: e.target.value })}
-                  placeholder="Enter amount"
-                  min="0"
-                  step="0.01"
-                  required
-                />
-              </div>
-              <div className="form-field">
-                <label>Period *</label>
-                <div className="period-fields">
-                  <select
-                    value={formValues.month}
-                    onChange={(e) => setFormValues({ ...formValues, month: e.target.value })}
-                    required
-                  >
-                    {payrollMonthOptions.map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
-                  <select
-                    value={formValues.year}
-                    onChange={(e) => setFormValues({ ...formValues, year: e.target.value })}
-                    required
-                  >
-                    {yearOptions.map((year) => (
-                      <option key={year} value={year}>
-                        {year}
-                      </option>
-                    ))}
-                  </select>
+          <div className="form-field">
+            <label>Description</label>
+            <textarea
+              value={formValues.description}
+              onChange={(e) => setFormValues({ ...formValues, description: e.target.value })}
+              placeholder="Detailed description (optional)"
+              rows={3}
+            />
+          </div>
+          <div className="button-row">
+            <button type="submit" className="submit-button" disabled={loading}>
+              {loading ? "Creating..." : "Create Incentive"}
+            </button>
+            <button
+              type="button"
+              className="secondary"
+              onClick={() => setShowCreateModal(false)}
+            >
+              Cancel
+            </button>
+          </div>
+        </form>
+      </Modal>
+
+      <Modal open={showReviewModal} title="Review Incentive" className="incentive-modal" onClose={() => {
+        setShowReviewModal(false);
+        setSelectedIncentive(null);
+      }}>
+        {selectedIncentive && (
+          <div className="stack">
+            <div className="incentive-details-summary card card--flat">
+              <div className="grid cols-2 gap-4 detail-grid">
+                <div>
+                  <p className="eyebrow">Employee</p>
+                  <p><strong>{selectedIncentive.employee?.firstName} {selectedIncentive.employee?.lastName}</strong></p>
+                </div>
+                <div>
+                  <p className="eyebrow">Amount</p>
+                  <p><strong>Rs {Number(selectedIncentive.amount).toLocaleString()}</strong></p>
+                </div>
+                <div>
+                  <p className="eyebrow">Type</p>
+                  <p>{selectedIncentive.typeDisplay || selectedIncentive.type}</p>
+                </div>
+                <div>
+                  <p className="eyebrow">Reason</p>
+                  <p>{selectedIncentive.reason}</p>
                 </div>
               </div>
-            </div>
-            <div className="form-row">
-              <div className="form-field full-width">
-                <label>Reason *</label>
-                <input
-                  type="text"
-                  value={formValues.reason}
-                  onChange={(e) => setFormValues({ ...formValues, reason: e.target.value })}
-                  placeholder="Brief reason for incentive"
-                  required
-                />
-              </div>
-            </div>
-            <div className="form-row">
-              <div className="form-field full-width">
-                <label>Description</label>
-                <textarea
-                  value={formValues.description}
-                  onChange={(e) => setFormValues({ ...formValues, description: e.target.value })}
-                  placeholder="Detailed description (optional)"
-                  rows={3}
-                />
-              </div>
-            </div>
-            <div className="form-actions">
-              <button type="submit" className="submit-button" disabled={loading}>
-                {loading ? "Creating..." : "Create Incentive"}
-              </button>
-              <button
-                type="button"
-                className="cancel-button secondary"
-                onClick={() => {
-                  setFormValues(initialIncentiveForm());
-                  setActiveTab("list");
-                }}
-              >
-                Cancel
-              </button>
-            </div>
-          </form>
-        </div>
-      )}
-
-      {showReviewModal && selectedIncentive && (
-        <div className="modal-overlay">
-          <div className="modal-content">
-            <h2>Review Incentive</h2>
-            <div className="incentive-details">
-              <p><strong>Employee:</strong> {selectedIncentive.employee?.firstName} {selectedIncentive.employee?.lastName}</p>
-              <p><strong>Type:</strong> {selectedIncentive.typeDisplay || selectedIncentive.type}</p>
-              <p><strong>Amount:</strong> Rs {Number(selectedIncentive.amount).toLocaleString()}</p>
-              <p><strong>Reason:</strong> {selectedIncentive.reason}</p>
               {selectedIncentive.description && (
-                <p><strong>Description:</strong> {selectedIncentive.description}</p>
+                <div style={{ marginTop: '1rem' }}>
+                  <p className="eyebrow">Description</p>
+                  <p className="muted">{selectedIncentive.description}</p>
+                </div>
               )}
             </div>
-            <form onSubmit={handleReviewIncentive}>
-              <div className="form-field">
-                <label>Action *</label>
-                <select
-                  value={reviewFormValues.status}
-                  onChange={(e) => setReviewFormValues({ ...reviewFormValues, status: e.target.value as "APPROVED" | "REJECTED" })}
-                  required
-                >
-                  <option value="APPROVED">Approve</option>
-                  <option value="REJECTED">Reject</option>
-                </select>
-              </div>
+            <form onSubmit={handleReviewIncentive} className="stack">
+              <IncentiveSelectField
+                label="Action *"
+                value={reviewFormValues.status}
+                options={[
+                  { value: "APPROVED", label: "Approve" },
+                  { value: "REJECTED", label: "Reject" },
+                ]}
+                onChange={(value) => setReviewFormValues({ ...reviewFormValues, status: value as "APPROVED" | "REJECTED" })}
+                required
+              />
               {reviewFormValues.status === "REJECTED" && (
                 <div className="form-field">
                   <label>Rejection Reason *</label>
@@ -747,17 +709,16 @@ function IncentivesPage({ token, role }: IncentivesPageProps) {
                   />
                 </div>
               )}
-              <div className="modal-actions">
+              <div className="button-row">
                 <button type="submit" className="submit-button" disabled={loading}>
                   {loading ? "Processing..." : reviewFormValues.status === "APPROVED" ? "Approve" : "Reject"}
                 </button>
                 <button
                   type="button"
-                  className="cancel-button secondary"
+                  className="secondary"
                   onClick={() => {
                     setShowReviewModal(false);
                     setSelectedIncentive(null);
-                    setReviewFormValues({ status: "APPROVED", rejectionReason: "" });
                   }}
                 >
                   Cancel
@@ -765,8 +726,8 @@ function IncentivesPage({ token, role }: IncentivesPageProps) {
               </div>
             </form>
           </div>
-        </div>
-      )}
+        )}
+      </Modal>
     </section>
   );
 }

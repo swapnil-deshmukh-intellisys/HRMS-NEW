@@ -188,7 +188,7 @@ export default function CalendarPage({ token, role }: CalendarPageProps) {
     <section className="stack calendar-page">
       {error ? <MessageCard title="Calendar issue" tone="error" message={error} /> : null}
       {message ? <p className="success-text">{message}</p> : null}
-      <article className="card calendar-page__surface">
+      <article className="calendar-page__surface">
         <div className="calendar-page__header">
           <div>
             <p className="eyebrow">Calendar</p>

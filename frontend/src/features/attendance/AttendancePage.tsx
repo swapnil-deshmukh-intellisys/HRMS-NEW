@@ -78,9 +78,6 @@ export default function AttendancePage({ token, role, currentEmployeeId, current
   const [regularizationOpen, setRegularizationOpen] = useState(false);
 
   const [finalizeConfirmOpen, setFinalizeConfirmOpen] = useState(false);
-  const [reviewModalOpen, setReviewModalOpen] = useState(false);
-  const [reviewTarget, setReviewTarget] = useState<AttendanceRegularizationRequest | null>(null);
-  const [reviewRejectionReason, setReviewRejectionReason] = useState("");
   const [regularizationForm, setRegularizationForm] = useState({
     attendanceDate: today,
     proposedCheckInTime: "",
@@ -91,10 +88,6 @@ export default function AttendancePage({ token, role, currentEmployeeId, current
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
   const isTeamLead = Boolean(currentEmployee?.capabilities?.some((capability) => capability.capability === "TEAM_LEAD"));
-  const teamLeadScopeIds = useMemo(
-    () => currentEmployee?.scopedTeamMembers?.map((item) => item.employee.id) ?? [],
-    [currentEmployee?.scopedTeamMembers],
-  );
   const canManageOthers = role !== "EMPLOYEE" || isTeamLead;
   const showTeamWorkspace = role === "EMPLOYEE" && isTeamLead;
   const showEmployeeColumn = canManageOthers && !showTeamWorkspace;
@@ -275,27 +268,6 @@ export default function AttendancePage({ token, role, currentEmployeeId, current
     }
   }
 
-  async function handleReviewRequest(status: "APPROVED" | "REJECTED", requestId: number, rejectionReason?: string) {
-    try {
-      setError("");
-      const response = await apiRequest<AttendanceRegularizationRequest>(`/attendance/regularizations/${requestId}/review`, {
-        method: "POST",
-        token,
-        body: {
-          status,
-          rejectionReason,
-        },
-      });
-      setMessage(response.message);
-      setReviewModalOpen(false);
-      setReviewTarget(null);
-      setReviewRejectionReason("");
-      await Promise.all([reloadRegularizations(), reloadAttendance()]);
-    } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : "Failed to review attendance correction request.");
-    }
-  }
-
   async function handleCancelRegularization(requestId: number) {
     try {
       setError("");
@@ -344,20 +316,9 @@ export default function AttendancePage({ token, role, currentEmployeeId, current
   }
 
   function getRegularizationStatusClass(status: AttendanceRegularizationRequest["status"]) {
-    return `status-pill status-pill--${status.toLowerCase().replace(/_/g, "-")}`;
+    return `status-pill status-pill--${status.toLowerCase().replace(/_/, "-")}`;
   }
 
-  function canReviewRequest(record: AttendanceRegularizationRequest) {
-    if (role === "ADMIN" || role === "HR") {
-      return true;
-    }
-
-    if (role === "MANAGER") {
-      return Boolean(currentEmployeeId) && record.employee.managerId === currentEmployeeId && record.employeeId !== currentEmployeeId;
-    }
-
-    return role === "EMPLOYEE" && isTeamLead && record.employeeId !== currentEmployeeId && teamLeadScopeIds.includes(record.employeeId);
-  }
 
   const scopedAttendance = useMemo(() => {
     if (!showTeamWorkspace || !currentEmployeeId) {
@@ -550,9 +511,22 @@ export default function AttendancePage({ token, role, currentEmployeeId, current
               </p>
             </div>
             <div className="button-row row-actions">
-              <button className="secondary attendance-header-action" onClick={() => setRegularizationOpen(true)}>
-                Request correction
-              </button>
+              {(role === "ADMIN" || role === "HR") ? (
+                <button 
+                  className="secondary attendance-header-action" 
+                  onClick={() => navigate("/attendance/requests")}
+                  style={{ position: 'relative' }}
+                >
+                  Correction Requests
+                  {visibleRegularizations.filter(r => r.status === "PENDING").length > 0 && (
+                    <span className="notification-dot" style={{ position: 'absolute', top: '-4px', right: '-4px' }}></span>
+                  )}
+                </button>
+              ) : (
+                <button className="secondary attendance-header-action" onClick={() => setRegularizationOpen(true)}>
+                  Request correction
+                </button>
+              )}
               {canFinalizeAttendance ? (
                 <button className="secondary attendance-header-action" onClick={() => setFinalizeConfirmOpen(true)}>
                   Finalize selected day
@@ -690,6 +664,12 @@ export default function AttendancePage({ token, role, currentEmployeeId, current
           <Table
             compact
             columns={columns}
+            onRowClick={(index) => {
+              const record = attendanceRows[index];
+              if (record?.employee) {
+                navigate(`/employees/${record.employee.id}?tab=attendance`);
+              }
+            }}
             rows={attendanceRows.map((record) => {
               const cells = [
                 <div className="table-cell-stack" key={`date-${record.id}`}>
@@ -709,18 +689,9 @@ export default function AttendancePage({ token, role, currentEmployeeId, current
               if (showEmployeeColumn) {
                 cells.unshift(
                   <div className="table-cell-stack attendance-person-cell" key={`employee-${record.id}`}>
-                    <button
-                      type="button"
-                      className="attendance-history-person-trigger attendance-history-person-trigger--name"
-                      onClick={() => {
-                        if (!record.employee) {
-                          return;
-                        }
-                        navigate(`/employees/${record.employee.id}?tab=attendance`);
-                      }}
-                    >
+                    <span className="table-cell-primary">
                       {record.employee ? `${record.employee.firstName} ${record.employee.lastName}` : "Unknown employee"}
-                    </button>
+                    </span>
                     <span className="table-cell-secondary attendance-person-cell__code">{record.employee?.employeeCode ?? "-"}</span>
                   </div>,
                 );
@@ -760,12 +731,12 @@ export default function AttendancePage({ token, role, currentEmployeeId, current
         </div>
       ) : null}
 
-      {(!showTeamWorkspace || teamLeadMainTab === "DAY") ? (
+      {(!showTeamWorkspace || teamLeadMainTab === "DAY") && role === "EMPLOYEE" ? (
       <div className="card dense-table-card attendance-table-card">
         <div className="attendance-history-header">
           <div>
             <h3>Correction requests</h3>
-            <p className="muted">Review submitted corrections and keep attendance records accurate.</p>
+            <p className="muted">Track your submitted attendance correction requests.</p>
           </div>
         </div>
         <Table
@@ -800,46 +771,19 @@ export default function AttendancePage({ token, role, currentEmployeeId, current
                 </span>
               </div>,
               <div key={`regularization-actions-${record.id}`} className="table-action-group">
-                {record.status === "PENDING" && canReviewRequest(record) ? (
-                  <>
-                    <button className="secondary" onClick={() => handleReviewRequest("APPROVED", record.id)}>
-                      Approve
-                    </button>
-                    <button
-                      className="secondary"
-                      onClick={() => {
-                        setReviewTarget(record);
-                        setReviewRejectionReason("");
-                        setReviewModalOpen(true);
-                      }}
-                    >
-                      Reject
-                    </button>
-                  </>
-                ) : null}
                 {record.status === "PENDING" && currentEmployeeId === record.employeeId ? (
                   <button className="secondary" onClick={() => handleCancelRegularization(record.id)}>
                     Cancel
                   </button>
-                ) : null}
-                {record.status !== "PENDING" || (!canReviewRequest(record) && currentEmployeeId !== record.employeeId) ? <span>-</span> : null}
+                ) : <span>-</span>}
               </div>,
             ];
-
-            if (role !== "EMPLOYEE") {
-              cells.unshift(
-                <div className="table-cell-stack" key={`regularization-employee-${record.id}`}>
-                  <span className="table-cell-primary">{`${record.employee.firstName} ${record.employee.lastName}`}</span>
-                  <span className="table-cell-secondary">{record.employee.employeeCode}</span>
-                </div>,
-              );
-            }
 
             return cells;
           })}
           emptyState={{
             title: "No correction requests yet",
-            description: "Submitted attendance correction requests will appear here for tracking and review.",
+            description: "Submitted attendance correction requests will appear here for tracking.",
           }}
         />
       </div>
@@ -891,6 +835,7 @@ export default function AttendancePage({ token, role, currentEmployeeId, current
           </div>
         </div>
       </Modal>
+
       <Modal open={finalizeConfirmOpen} title="Finalize attendance" onClose={() => setFinalizeConfirmOpen(false)}>
         <div className="stack regularization-form">
           <p className="muted">
@@ -912,35 +857,6 @@ export default function AttendancePage({ token, role, currentEmployeeId, current
               }}
             >
               Finalize selected day
-            </button>
-          </div>
-        </div>
-      </Modal>
-
-      <Modal open={reviewModalOpen} title="Reject correction request" onClose={() => setReviewModalOpen(false)}>
-        <div className="stack regularization-form">
-          <p className="muted">Add a clear reason so the employee understands why the correction was rejected.</p>
-          <label>
-            Rejection reason
-            <textarea
-              rows={4}
-              value={reviewRejectionReason}
-              onChange={(event) => setReviewRejectionReason(event.target.value)}
-              placeholder="Explain why this request is being rejected"
-            />
-          </label>
-          <div className="button-row">
-            <button
-              onClick={() => {
-                if (reviewTarget) {
-                  void handleReviewRequest("REJECTED", reviewTarget.id, reviewRejectionReason);
-                }
-              }}
-            >
-              Reject request
-            </button>
-            <button className="secondary" onClick={() => setReviewModalOpen(false)}>
-              Close
             </button>
           </div>
         </div>

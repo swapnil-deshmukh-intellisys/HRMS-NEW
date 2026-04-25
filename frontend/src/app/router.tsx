@@ -4,6 +4,7 @@ import { useAuth } from "../hooks/useAuth";
 
 const LoginPage = lazy(() => import("../features/auth/LoginPage"));
 const AttendancePage = lazy(() => import("../features/attendance/AttendancePage"));
+const AttendanceRequestsPage = lazy(() => import("../features/attendance/AttendanceRequestsPage"));
 const AnalyticsPage = lazy(() => import("../features/dashboard/AnalyticsPage"));
 const DashboardPage = lazy(() => import("../features/dashboard/DashboardPage"));
 const CalendarPage = lazy(() => import("../features/calendar/CalendarPage"));
@@ -13,6 +14,7 @@ const EmployeesPage = lazy(() => import("../features/employees/EmployeesPage"));
 const LeavesPage = lazy(() => import("../features/leaves/LeavesPage"));
 const TeamPage = lazy(() => import("../features/team/TeamPage"));
 const PayrollPage = lazy(() => import("../features/payroll/PayrollPage"));
+const PayrollHistoryPage = lazy(() => import("../features/payroll/PayrollHistoryPage"));
 const IncentivesPage = lazy(() => import("../features/payroll/IncentivesPage"));
 const GoogleCallbackPage = lazy(() => import("../features/google/GoogleCallbackPage"));
 const AppLayout = lazy(() => import("../layout/AppLayout"));
@@ -84,6 +86,16 @@ function AppRoutes() {
             }
           />
           <Route
+            path="/attendance/requests"
+            element={
+              <AttendanceRequestsPage
+                token={token}
+                role={sessionUser?.role ?? "EMPLOYEE"}
+                currentEmployeeId={sessionUser?.employee?.id ?? null}
+              />
+            }
+          />
+          <Route
             path="/leaves"
             element={
               <LeavesPage
@@ -105,6 +117,7 @@ function AppRoutes() {
             }
           />
           <Route path="/payroll" element={<PayrollPage token={token} role={sessionUser?.role ?? "EMPLOYEE"} />} />
+          <Route path="/payroll/history/:id" element={<PayrollHistoryPage token={token} />} />
           <Route path="/incentives" element={<IncentivesPage token={token} role={sessionUser?.role ?? "EMPLOYEE"} />} />
           <Route path="/announcements" element={<DashboardPage token={token} role={sessionUser?.role ?? "EMPLOYEE"} />} />
           <Route path="/google-callback" element={<GoogleCallbackPage token={token} />} />

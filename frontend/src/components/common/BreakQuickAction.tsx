@@ -56,6 +56,10 @@ export default function BreakQuickAction({ token, isCheckedIn, isCheckedOut }: B
 
   async function handleBreakToggle() {
     if (!token || loading) return;
+
+    const actionName = activeBreak ? "End break" : "Start break";
+    if (!window.confirm(`${actionName}?`)) return;
+
     setLoading(true);
     try {
       if (activeBreak) {

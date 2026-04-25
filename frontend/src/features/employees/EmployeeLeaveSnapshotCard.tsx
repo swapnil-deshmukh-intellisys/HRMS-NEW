@@ -18,7 +18,6 @@ export default function EmployeeLeaveSnapshotCard({ balances, leaves }: Employee
     [balances],
   );
 
-  const totalUsableLeave = summaryBalances.reduce((total, balance) => total + (balance.visibleDays ?? balance.remainingDays), 0);
   const pendingLeaves = leaves.filter((leave) => leave.status === "PENDING").length;
   const latestLeave = useMemo(() => leaves[0], [leaves]);
   const totalPaidDays = approvedLeaves.reduce((total, leave) => total + leave.paidDays, 0);
@@ -67,15 +66,6 @@ export default function EmployeeLeaveSnapshotCard({ balances, leaves }: Employee
 
       {activeTab === "balance" ? (
         <div className="employee-snapshot-card__body">
-          <div className="employee-snapshot-stat">
-            <span className="employee-snapshot-stat__label">Available now</span>
-            <strong>{formatLeaveDays(totalUsableLeave)}</strong>
-            <p className="muted">
-              {summaryBalances.length
-                ? "Current leave available across visible leave types."
-                : "No leave balances assigned yet"}
-            </p>
-          </div>
           <div className="employee-snapshot-balance-list">
             {summaryBalances.length ? (
               summaryBalances.map((balance) => (

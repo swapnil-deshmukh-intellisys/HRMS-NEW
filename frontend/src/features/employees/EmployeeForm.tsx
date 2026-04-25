@@ -57,69 +57,147 @@ export default function EmployeeForm({
   }
 
   return (
-    <form className="card stack compact-form employee-form-card" onSubmit={onSubmit}>
+    <form className="stack compact-form employee-form-card" onSubmit={onSubmit}>
       <fieldset className="employee-form-fieldset" disabled={isSubmitting}>
-        <h3>{editingEmployeeId ? "Edit employee" : "Create employee"}</h3>
-        <p className="muted">The email and password entered here will be used by this employee to log in.</p>
-        <label>
-          Email
-          <input value={form.email} onChange={(event) => onChange({ ...form, email: event.target.value })} required type="email" />
-        </label>
-        <label>
-          Password
-          <div className="employee-password-input-wrap">
-            <input
-              value={form.password}
-              onChange={(event) => onChange({ ...form, password: event.target.value })}
-              type={showPassword ? "text" : "password"}
-              placeholder="Password@123"
-            />
-            <button
-              type="button"
-              className="employee-password-visibility-toggle"
-              aria-label={showPassword ? "Hide password" : "Show password"}
-              onClick={() => setShowPassword((current) => !current)}
+        
+        <div className="employee-form-group">
+          <h3 className="employee-form-group-title">Account Access</h3>
+          <p className="muted" style={{ gridColumn: '1 / -1', marginTop: '-12px' }}>
+            The email and password entered here will be used by this employee to log in.
+          </p>
+          <label>
+            Email
+            <input value={form.email} onChange={(event) => onChange({ ...form, email: event.target.value })} required type="email" />
+          </label>
+          <label>
+            Password
+            <div className="employee-password-input-wrap">
+              <input
+                value={form.password}
+                onChange={(event) => onChange({ ...form, password: event.target.value })}
+                type={showPassword ? "text" : "password"}
+                placeholder="Password@123"
+              />
+              <button
+                type="button"
+                className="employee-password-visibility-toggle"
+                aria-label={showPassword ? "Hide password" : "Show password"}
+                onClick={() => setShowPassword((current) => !current)}
+              >
+                {showPassword ? <EyeOff size={16} strokeWidth={2} /> : <Eye size={16} strokeWidth={2} />}
+              </button>
+            </div>
+          </label>
+        </div>
+
+        <div className="employee-form-group">
+          <h3 className="employee-form-group-title">Personal Details</h3>
+          <label>
+            First name
+            <input value={form.firstName} onChange={(event) => onChange({ ...form, firstName: event.target.value })} required />
+          </label>
+          <label>
+            Last name
+            <input value={form.lastName} onChange={(event) => onChange({ ...form, lastName: event.target.value })} required />
+          </label>
+          <label>
+            Employee code
+            <input value={form.employeeCode} onChange={(event) => onChange({ ...form, employeeCode: event.target.value })} required />
+          </label>
+          <label>
+            Mobile number
+            <input value={form.phone} onChange={(event) => onChange({ ...form, phone: event.target.value })} placeholder="+91 98765 43210" />
+          </label>
+        </div>
+
+        <div className="employee-form-group">
+          <h3 className="employee-form-group-title">Professional Placement</h3>
+          <label>
+            Job title
+            <input value={form.jobTitle} onChange={(event) => onChange({ ...form, jobTitle: event.target.value })} placeholder="Software Developer" />
+          </label>
+          <label>
+            Department
+            <select value={form.departmentId} onChange={(event) => onChange({ ...form, departmentId: event.target.value })} required>
+              <option value="">Select department</option>
+              {departments.map((department) => (
+                <option key={department.id} value={department.id}>
+                  {department.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            Role
+            <select value={form.role} onChange={(event) => onChange({ ...form, role: event.target.value as EmployeeFormValues["role"] })}>
+              <option value="EMPLOYEE">Employee</option>
+              <option value="MANAGER">Manager</option>
+              <option value="HR">HR</option>
+              <option value="ADMIN">Admin</option>
+            </select>
+          </label>
+          <label>
+            Manager
+            <select value={form.managerId} onChange={(event) => onChange({ ...form, managerId: event.target.value })}>
+              <option value="">No manager</option>
+              {managerOptions.map((employee) => (
+                <option key={employee.id} value={employee.id}>
+                  {employee.firstName} {employee.lastName}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            Joining date
+            <input value={form.joiningDate} onChange={(event) => onChange({ ...form, joiningDate: event.target.value })} type="datetime-local" required />
+          </label>
+          <label>
+            Employment status
+            <select
+              value={form.employmentStatus}
+              onChange={(event) => onChange({ ...form, employmentStatus: event.target.value as EmployeeFormValues["employmentStatus"] })}
             >
-              {showPassword ? <EyeOff size={16} strokeWidth={2} /> : <Eye size={16} strokeWidth={2} />}
-            </button>
-          </div>
-        </label>
-        <label>
-          Employee code
-          <input value={form.employeeCode} onChange={(event) => onChange({ ...form, employeeCode: event.target.value })} required />
-        </label>
-        <label>
-          First name
-          <input value={form.firstName} onChange={(event) => onChange({ ...form, firstName: event.target.value })} required />
-        </label>
-        <label>
-          Last name
-          <input value={form.lastName} onChange={(event) => onChange({ ...form, lastName: event.target.value })} required />
-        </label>
-        <label>
-          Job title
-          <input value={form.jobTitle} onChange={(event) => onChange({ ...form, jobTitle: event.target.value })} placeholder="Software Developer" />
-        </label>
-        <label>
-          Mobile number
-          <input value={form.phone} onChange={(event) => onChange({ ...form, phone: event.target.value })} placeholder="+91 98765 43210" />
-        </label>
+              <option value="ACTIVE">Active</option>
+              <option value="INACTIVE">Inactive</option>
+              <option value="TERMINATED">Terminated</option>
+            </select>
+          </label>
+        </div>
+
         <div className="employee-form-section employee-form-section--compensation">
           <div className="employee-form-section__header">
-            <h4>Compensation</h4>
-            <p className="muted">Package is entered in LPA and the monthly breakdown preview updates automatically.</p>
+            <h4>Compensation Structure</h4>
+            <p className="muted">Package in LPA. Monthly breakdown updates automatically.</p>
           </div>
-          <label>
-            Package (LPA)
-            <input
-              value={form.annualPackageLpa}
-              onChange={(event) => onChange({ ...form, annualPackageLpa: event.target.value })}
-              type="number"
-              min="0"
-              step="0.01"
-              placeholder="6.00"
-            />
-          </label>
+          <div className="employee-form-group">
+            <label>
+              Package (LPA)
+              <input
+                value={form.annualPackageLpa}
+                onChange={(event) => onChange({ ...form, annualPackageLpa: event.target.value })}
+                type="number"
+                min="0"
+                step="0.01"
+                placeholder="6.00"
+              />
+            </label>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', justifyContent: 'center' }}>
+              <label className="checkbox-row">
+                <input checked={form.isOnProbation} type="checkbox" onChange={(event) => onChange({ ...form, isOnProbation: event.target.checked })} />
+                <span>On probation</span>
+              </label>
+              {form.isOnProbation ? (
+                <label>
+                  Probation end date
+                  <input
+                    value={form.probationEndDate}
+                    onChange={(event) => onChange({ ...form, probationEndDate: event.target.value })}
+                    type="date"
+                  />
+                </label>
+              ) : null}
+            </div>
+          </div>
           {compensationPreview ? (
             <div className="employee-compensation-preview" aria-live="polite">
               <article className="employee-compensation-preview__item">
@@ -158,108 +236,53 @@ export default function EmployeeForm({
           ) : (
             <p className="muted employee-compensation-preview__empty">Enter a package value to preview the salary structure.</p>
           )}
+        </div>
+
+        <div className="employee-form-group employee-form-group--full">
           <label className="checkbox-row">
-            <input checked={form.isOnProbation} type="checkbox" onChange={(event) => onChange({ ...form, isOnProbation: event.target.checked })} />
-            <span>On probation</span>
+            <input checked={form.isTeamLead} type="checkbox" onChange={(event) => onChange({ ...form, isTeamLead: event.target.checked })} />
+            <strong>Assign Team Leader capability</strong>
           </label>
-          {form.isOnProbation ? (
-            <label>
-              Probation end date
-              <input
-                value={form.probationEndDate}
-                onChange={(event) => onChange({ ...form, probationEndDate: event.target.value })}
-                type="date"
-              />
-            </label>
+          {form.isTeamLead ? (
+            <div className="stack tl-scope-list">
+              <p className="muted" style={{ marginBottom: '8px', fontSize: '12px' }}>Select team members in scope:</p>
+              <div className="employee-form-group">
+                {employees
+                  .filter(
+                    (employee) =>
+                      employee.id !== editingEmployeeId && employee.isActive && employee.user?.role.name === "EMPLOYEE",
+                  )
+                  .map((employee) => (
+                    <label key={employee.id} className="checkbox-row">
+                      <input
+                        checked={form.teamLeadScopeIds.includes(employee.id)}
+                        type="checkbox"
+                        onChange={(event) =>
+                          onChange({
+                            ...form,
+                            teamLeadScopeIds: event.target.checked
+                              ? [...form.teamLeadScopeIds, employee.id]
+                              : form.teamLeadScopeIds.filter((id) => id !== employee.id),
+                          })
+                        }
+                      />
+                      <span>{`${employee.firstName} ${employee.lastName}`}</span>
+                    </label>
+                  ))}
+              </div>
+            </div>
           ) : null}
         </div>
-        <label>
-          Role
-          <select value={form.role} onChange={(event) => onChange({ ...form, role: event.target.value as EmployeeFormValues["role"] })}>
-            <option value="EMPLOYEE">Employee</option>
-            <option value="MANAGER">Manager</option>
-            <option value="HR">HR</option>
-            <option value="ADMIN">Admin</option>
-          </select>
-        </label>
-        <label>
-          Department
-          <select value={form.departmentId} onChange={(event) => onChange({ ...form, departmentId: event.target.value })} required>
-            <option value="">Select department</option>
-            {departments.map((department) => (
-              <option key={department.id} value={department.id}>
-                {department.name}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label>
-          Manager
-          <select value={form.managerId} onChange={(event) => onChange({ ...form, managerId: event.target.value })}>
-            <option value="">No manager</option>
-            {managerOptions.map((employee) => (
-              <option key={employee.id} value={employee.id}>
-                {employee.firstName} {employee.lastName}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label>
-          Joining date
-          <input value={form.joiningDate} onChange={(event) => onChange({ ...form, joiningDate: event.target.value })} type="datetime-local" required />
-        </label>
-        <label>
-          Employment status
-          <select
-            value={form.employmentStatus}
-            onChange={(event) => onChange({ ...form, employmentStatus: event.target.value as EmployeeFormValues["employmentStatus"] })}
-          >
-            <option value="ACTIVE">Active</option>
-            <option value="INACTIVE">Inactive</option>
-            <option value="TERMINATED">Terminated</option>
-          </select>
-        </label>
-        <label className="checkbox-row">
-          <input checked={form.isTeamLead} type="checkbox" onChange={(event) => onChange({ ...form, isTeamLead: event.target.checked })} />
-          <span>Assign Team Leader capability</span>
-        </label>
-        {form.isTeamLead ? (
-          <div className="stack tl-scope-list">
-            <p className="muted">Team members in scope</p>
-            {employees
-              .filter(
-                (employee) =>
-                  employee.id !== editingEmployeeId && employee.isActive && employee.user?.role.name === "EMPLOYEE",
-              )
-              .map((employee) => (
-                <label key={employee.id} className="checkbox-row">
-                  <input
-                    checked={form.teamLeadScopeIds.includes(employee.id)}
-                    type="checkbox"
-                    onChange={(event) =>
-                      onChange({
-                        ...form,
-                        teamLeadScopeIds: event.target.checked
-                          ? [...form.teamLeadScopeIds, employee.id]
-                          : form.teamLeadScopeIds.filter((id) => id !== employee.id),
-                      })
-                    }
-                  />
-                  <span>{`${employee.firstName} ${employee.lastName}`}</span>
-                </label>
-              ))}
-          </div>
-        ) : null}
       </fieldset>
       <div className="button-row">
-        <button type="submit" disabled={isSubmitting}>
-          {isSubmitting ? "Saving..." : editingEmployeeId ? "Update employee" : "Create employee"}
-        </button>
         {editingEmployeeId ? (
           <button type="button" className="secondary" onClick={onCancelEdit} disabled={isSubmitting}>
             Cancel edit
           </button>
         ) : null}
+        <button type="submit" disabled={isSubmitting}>
+          {isSubmitting ? "Saving..." : editingEmployeeId ? "Update employee" : "Create employee"}
+        </button>
       </div>
     </form>
   );

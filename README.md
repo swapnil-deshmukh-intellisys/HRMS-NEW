@@ -14,51 +14,42 @@ Lean, production-ready HRMS MVP built with:
 - `frontend/` React app for HRMS workflows
 - `docs/` architecture and planning documents
 
-## Setup
+## Setup & Local Development
 
-1. Install dependencies:
+Follow these steps to get the project running locally:
 
+### 1. Initial Installation
+Install all dependencies for both frontend and backend using npm workspaces:
 ```powershell
 npm install
 ```
 
-2. Create backend env file from the example:
+### 2. Environment Configuration
+Create `.env` files for both modules from their respective examples.
+
+**Backend:** `backend/.env` (Update with **PostgreSQL URL**, `JWT_SECRET`, and VAPID keys)
+**Frontend:** `frontend/.env` (Ensure `VITE_API_BASE_URL` points to your backend)
+
+### 3. Database & Prisma Setup
+Ensure your PostgreSQL server is running, then initialize the database:
 
 ```powershell
-Copy-Item backend\.env.example backend\.env
-```
-
-3. Create frontend env file from the example:
-
-```powershell
-Copy-Item frontend\.env.example frontend\.env
-```
-
-4. Update `backend/.env` with your PostgreSQL connection string and JWT secret.
-
-5. Run Prisma migration and seed:
-
-```powershell
+# Run migrations to create tables
 npm --workspace backend run prisma:migrate
+
+# Seed essential data (Roles, Departments, and Leave Types)
 npm --workspace backend run prisma:seed
 ```
 
-6. Start the backend:
+### 4. Running the Application
+You can start both frontend and backend simultaneously from the root:
 
 ```powershell
-npm --workspace backend run dev
+# Start both in dev mode
+npm run dev:backend
+npm run dev:frontend
 ```
-
-7. Start the frontend:
-
-```powershell
-npm --workspace frontend run dev
-```
-
-## Default Seed Login
-
-- Email: `admin@hrms.local`
-- Password: `Admin@123`
+Alternatively, go into each directory and run `npm run dev`.
 
 ## Implemented Lean V1 Modules
 

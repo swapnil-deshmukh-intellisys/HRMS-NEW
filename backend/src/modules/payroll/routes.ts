@@ -121,7 +121,7 @@ router.post("/", requireRoles("ADMIN", "HR"), validate(payrollSchema), async (re
     const payrollRecord = await prisma.payrollRecord.create({
       data: {
         ...request.body,
-        salary: request.body.salary ?? (generatedPreview!.totalPayableAmount),
+        salary: request.body.salary ?? (generatedPreview!.totalPayableSalary),
       },
       include: {
         employee: true,
@@ -153,7 +153,7 @@ router.put("/:id", requireRoles("ADMIN", "HR"), validate(payrollSchema.partial()
       where: { id },
       data: {
         ...request.body,
-        ...(request.body.salary ? {} : { salary: generatedPreview!.totalPayableAmount }),
+        ...(request.body.salary ? {} : { salary: generatedPreview!.totalPayableSalary }),
       },
       include: {
         employee: true,

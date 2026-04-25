@@ -91,10 +91,6 @@ export default function AttendancePage({ token, role, currentEmployeeId, current
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
   const isTeamLead = Boolean(currentEmployee?.capabilities?.some((capability) => capability.capability === "TEAM_LEAD"));
-  const teamLeadScopeIds = useMemo(
-    () => currentEmployee?.scopedTeamMembers?.map((item) => item.employee.id) ?? [],
-    [currentEmployee?.scopedTeamMembers],
-  );
   const canManageOthers = role !== "EMPLOYEE" || isTeamLead;
   const showTeamWorkspace = role === "EMPLOYEE" && isTeamLead;
   const showEmployeeColumn = canManageOthers && !showTeamWorkspace;
@@ -690,6 +686,12 @@ export default function AttendancePage({ token, role, currentEmployeeId, current
           <Table
             compact
             columns={columns}
+            onRowClick={(index) => {
+              const record = attendanceRows[index];
+              if (record?.employee) {
+                navigate(`/employees/${record.employee.id}?tab=attendance`);
+              }
+            }}
             rows={attendanceRows.map((record) => {
               const cells = [
                 <div className="table-cell-stack" key={`date-${record.id}`}>
@@ -709,18 +711,9 @@ export default function AttendancePage({ token, role, currentEmployeeId, current
               if (showEmployeeColumn) {
                 cells.unshift(
                   <div className="table-cell-stack attendance-person-cell" key={`employee-${record.id}`}>
-                    <button
-                      type="button"
-                      className="attendance-history-person-trigger attendance-history-person-trigger--name"
-                      onClick={() => {
-                        if (!record.employee) {
-                          return;
-                        }
-                        navigate(`/employees/${record.employee.id}?tab=attendance`);
-                      }}
-                    >
+                    <span className="table-cell-primary">
                       {record.employee ? `${record.employee.firstName} ${record.employee.lastName}` : "Unknown employee"}
-                    </button>
+                    </span>
                     <span className="table-cell-secondary attendance-person-cell__code">{record.employee?.employeeCode ?? "-"}</span>
                   </div>,
                 );

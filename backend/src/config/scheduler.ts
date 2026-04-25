@@ -4,8 +4,7 @@ import { startOfDay, endOfDay } from "../utils/dates.js";
 import { 
   finalizeAttendanceForDate, 
   buildApprovedLeaveWhereForAttendanceDate, 
-  finalizeAttendanceStatus,
-  buildPayrollPreview
+  finalizeAttendanceStatus
 } from "../modules/attendance/service.js";
 import { buildPayrollPreview as buildPayrollData } from "../modules/payroll/service.js";
 import { getCalendarDayStatus } from "../modules/calendar/service.js";
@@ -236,7 +235,7 @@ export function initScheduler() {
               employeeId: employee.id,
               month: monthNumber,
               year: targetYear,
-              salary: preview.totalPayableAmount,
+              salary: preview.totalPayableSalary,
               status: "DRAFT"
             }
           });

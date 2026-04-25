@@ -372,30 +372,8 @@
 
 
 
-.attendance-history-person-trigger {
-  padding: 0;
-  border: 0;
-  background: transparent;
-  color: var(--color-primary);
-  font: inherit;
-}
-
-.attendance-history-person-trigger:hover,
-.attendance-history-person-trigger:focus-visible {
-  text-decoration: underline;
-}
-
 .attendance-person-cell {
   gap: 4px;
-}
-
-.table .attendance-history-person-trigger--name {
-  font-size: inherit;
-  font-weight: var(--fw-medium);
-  line-height: 1.25;
-  min-height: 0;
-  padding: 0;
-  color: inherit;
 }
 
 .attendance-person-cell__code {

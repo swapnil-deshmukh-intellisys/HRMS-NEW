@@ -9,9 +9,9 @@ type LeaveTableProps = {
   leaves: LeaveRequest[];
   role: Role;
   currentEmployeeId: number | null;
-  onCancel: (id: number) => void | Promise<void>;
-  onApprove: (id: number) => void | Promise<void>;
-  onReject: (id: number) => void | Promise<void>;
+  onCancel?: (id: number) => void | Promise<void>;
+  onApprove?: (id: number) => void | Promise<void>;
+  onReject?: (id: number) => void | Promise<void>;
   onUploadMedicalProof?: (id: number, file: File) => void | Promise<void>;
   onReviewMedicalProof?: (id: number, action: "approve" | "reject") => void | Promise<void>;
 };
@@ -72,7 +72,7 @@ export default function LeaveTable({
     const isPending = leave.status === "PENDING";
     
     // For personal leaves, only allow cancellation of pending requests
-    if (isPending && leave.managerApprovalStatus === "PENDING" && leave.employee.id === currentEmployeeId) {
+    if (isPending && leave.managerApprovalStatus === "PENDING" && leave.employee.id === currentEmployeeId && onCancel) {
       return (
         <button className="secondary leave-action-button" onClick={() => onCancel(leave.id)}>
           Cancel
@@ -85,7 +85,7 @@ export default function LeaveTable({
       const isManagerReview = role === "MANAGER" && leave.employee.managerId === currentEmployeeId && leave.managerApprovalStatus === "PENDING";
       const isHrReview = (role === "HR" || role === "ADMIN") && leave.hrApprovalStatus === "PENDING";
 
-      if (isManagerReview || isHrReview) {
+      if ((isManagerReview || isHrReview) && onApprove && onReject) {
         return (
           <Fragment>
             <button onClick={() => onApprove(leave.id)}>

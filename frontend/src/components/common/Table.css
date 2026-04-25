@@ -66,6 +66,14 @@
   box-shadow: inset 2px 0 0 0 var(--color-accent);
 }
 
+.table-row--clickable {
+  cursor: pointer;
+}
+
+.table-row--clickable:hover {
+  background: rgba(241, 245, 249, 0.8) !important;
+}
+
 .table tbody tr:last-child td {
   border-bottom: none;
 }

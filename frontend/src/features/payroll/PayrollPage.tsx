@@ -2,8 +2,10 @@ import "./PayrollPage.css";
 import "../../components/common/Table.css";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { FormEvent } from "react";
+import { useNavigate } from "react-router-dom";
 import { apiRequest } from "../../services/api";
 import type { Employee, PayrollRecord, Role } from "../../types";
+import Modal from "../../components/common/Modal";
 
 type PayrollPageProps = {
   token: string | null;
@@ -36,9 +38,8 @@ type PayrollPreview = {
   probationMultiplier: number;
   probationAdjustedSalary: number;
   finalSalary: number;
-  netBaseSalary: number;
   totalIncentives: number;
-  totalPayableAmount: number;
+  totalPayableSalary: number;
   incentives: Array<{
     id: number;
     type: string;
@@ -89,9 +90,10 @@ type PayrollSelectFieldProps = {
   onChange: (value: string) => void;
   placeholder?: string;
   required?: boolean;
+  menuAlign?: "left" | "right";
 };
 
-function PayrollSelectField({ label, value, options, onChange, placeholder = "Select an option", required = false }: PayrollSelectFieldProps) {
+function PayrollSelectField({ label, value, options, onChange, placeholder = "Select an option", required = false, menuAlign = "left" }: PayrollSelectFieldProps) {
   const [open, setOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -163,7 +165,7 @@ function PayrollSelectField({ label, value, options, onChange, placeholder = "Se
         </button>
         <input type="hidden" value={value} required={required} />
         {open ? (
-          <div className="payroll-select__menu" role="listbox" id={listboxId} aria-labelledby={triggerId}>
+          <div className={`payroll-select__menu payroll-select__menu--${menuAlign}`} role="listbox" id={listboxId} aria-labelledby={triggerId}>
             {searchable ? (
               <div className="payroll-select__search">
                 <input
@@ -204,6 +206,7 @@ function PayrollSelectField({ label, value, options, onChange, placeholder = "Se
 }
 
 export default function PayrollPage({ token, role }: PayrollPageProps) {
+  const navigate = useNavigate();
   const [payroll, setPayroll] = useState<PayrollRecord[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [preview, setPreview] = useState<PayrollPreview | null>(null);
@@ -213,6 +216,10 @@ export default function PayrollPage({ token, role }: PayrollPageProps) {
   const [loading, setLoading] = useState(true);
   const [previewLoading, setPreviewLoading] = useState(false);
   const [printingPayrollId, setPrintingPayrollId] = useState<number | null>(null);
+  const [modalOpen, setModalOpen] = useState(false);
+  
+  const [currentViewMonth, setCurrentViewMonth] = useState(String(new Date().getMonth() + 1));
+  const [currentViewYear, setCurrentViewYear] = useState(String(new Date().getFullYear()));
 
   const reloadData = useCallback(async () => {
     setLoading(true);
@@ -250,9 +257,9 @@ export default function PayrollPage({ token, role }: PayrollPageProps) {
           setPreview(response.data);
           if (!editingPayrollId) {
             setForm((current) =>
-              current.salary === String(response.data.totalPayableAmount)
+              current.salary === String(response.data.totalPayableSalary)
                 ? current
-                : { ...current, salary: String(response.data.totalPayableAmount) },
+                : { ...current, salary: String(response.data.totalPayableSalary) },
             );
           }
         })
@@ -278,7 +285,7 @@ export default function PayrollPage({ token, role }: PayrollPageProps) {
     }
 
     const effectiveYear = Number(form.year) || new Date().getFullYear();
-    const effectiveSalary = Number(form.salary || preview?.totalPayableAmount || 0);
+    const effectiveSalary = Number(form.salary || preview?.totalPayableSalary || 0);
     if (!effectiveSalary) {
       return;
     }
@@ -301,6 +308,7 @@ export default function PayrollPage({ token, role }: PayrollPageProps) {
     setEditingPayrollId(null);
     setForm(initialPayrollForm());
     setPreview(null);
+    setModalOpen(false);
     await reloadData();
   }
 
@@ -313,12 +321,14 @@ export default function PayrollPage({ token, role }: PayrollPageProps) {
       salary: String(record.salary),
       status: record.status,
     });
+    setModalOpen(true);
   }
 
   function cancelEdit() {
     setEditingPayrollId(null);
     setForm(initialPayrollForm());
     setPreview(null);
+    setModalOpen(false);
   }
 
   function getStatusClass(status: PayrollRecord["status"]) {
@@ -355,7 +365,7 @@ export default function PayrollPage({ token, role }: PayrollPageProps) {
               .info-item { display: flex; justify-content: space-between; margin-bottom: 8px; border-bottom: 1px dashed #f3f4f6; padding-bottom: 4px; }
               .info-label { color: #6b7280; font-size: 13px; }
               .info-value { font-weight: 600; font-size: 13px; }
-
+ 
               .tables-container { display: grid; grid-template-columns: 1.2fr 1fr; gap: 30px; margin-bottom: 40px; }
               table { width: 100%; border-collapse: collapse; }
               th { text-align: left; background: #f9fafb; padding: 12px; font-size: 12px; text-transform: uppercase; color: #6b7280; border-radius: 4px; }
@@ -371,7 +381,7 @@ export default function PayrollPage({ token, role }: PayrollPageProps) {
               .footer { margin-top: 60px; text-align: center; color: #9ca3af; font-size: 12px; }
               .signature-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 80px; margin-top: 80px; }
               .sig-line { border-top: 1px solid #d1d5db; padding-top: 8px; font-size: 12px; text-align: center; }
-
+ 
               @media print {
                 body { padding: 0; }
                 .slip-container { border: none; box-shadow: none; width: 100%; max-width: 100%; }
@@ -391,7 +401,7 @@ export default function PayrollPage({ token, role }: PayrollPageProps) {
                   <p>${monthLabel} ${data.year}</p>
                 </div>
               </div>
-
+ 
               <div class="info-grid">
                 <div class="info-section">
                   <h3>Employee Details</h3>
@@ -406,7 +416,7 @@ export default function PayrollPage({ token, role }: PayrollPageProps) {
                   <div class="info-item"><span class="info-label">Days Payable</span> <span class="info-value">${30 - data.deductibleDays} / 30</span></div>
                 </div>
               </div>
-
+ 
               <div class="tables-container">
                 <div class="earning-side">
                   <table>
@@ -414,7 +424,7 @@ export default function PayrollPage({ token, role }: PayrollPageProps) {
                     <tbody>
                       <tr><td>Basic Salary</td><td class="amount">₹${data.netSalary}</td></tr>
                       ${data.incentives.map(i => `<tr><td>${i.type.replace(/_/g, ' ')}</td><td class="amount">₹${i.amount}</td></tr>`).join('')}
-                      <tr class="total-row"><td>Gross Earnings</td><td class="amount">₹${((data.netBaseSalary ?? 0) + (data.totalIncentives ?? 0)).toLocaleString()}</td></tr>
+                      <tr class="total-row"><td>Gross Earnings</td><td class="amount">₹${((data.finalSalary ?? 0) + (data.totalIncentives ?? 0)).toLocaleString()}</td></tr>
                     </tbody>
                   </table>
                 </div>
@@ -432,12 +442,12 @@ export default function PayrollPage({ token, role }: PayrollPageProps) {
                   </table>
                 </div>
               </div>
-
+ 
               <div class="summary-card">
-                <span class="summary-label">Net Payable Amount</span>
-                <span class="summary-value">₹${(data.totalPayableAmount ?? 0).toLocaleString()}</span>
+                <span class="summary-label">Total Payable Salary</span>
+                <span class="summary-value">₹${(data.totalPayableSalary ?? 0).toLocaleString()}</span>
               </div>
-
+ 
               <div class="footer">
                 <p>This is a computer generated payslip and does not require a physical signature.</p>
                 <div class="signature-grid">
@@ -465,11 +475,11 @@ export default function PayrollPage({ token, role }: PayrollPageProps) {
       setPrintingPayrollId(null);
     }
   }
-
+ 
   function getMonthLabel(month: number | string) {
     return payrollMonthOptions.find((option) => option.value === String(month))?.label ?? String(month);
   }
-
+ 
   const employeeOptions = useMemo<PayrollSelectOption[]>(
     () =>
       employees.map((employee) => ({
@@ -479,27 +489,27 @@ export default function PayrollPage({ token, role }: PayrollPageProps) {
       })),
     [employees],
   );
-
+ 
   const monthOptions = useMemo<PayrollSelectOption[]>(() => payrollMonthOptions.map((option) => ({ ...option })), []);
   const isPayrollFormValid = Boolean(form.employeeId && form.month && form.status);
-  const visiblePayroll = useMemo(
-    () => (role === "EMPLOYEE" ? payroll.filter((record) => record.status !== "DRAFT") : payroll),
-    [payroll, role],
-  );
-  const previewTotalPayable = preview ? Number(preview.totalPayableAmount ?? 0) : 0;
-  const previewNetBase = preview ? Number(preview.netBaseSalary ?? 0) : 0;
+  
+  const filteredPayroll = useMemo(() => {
+    let base = role === "EMPLOYEE" ? payroll.filter((record) => record.status !== "DRAFT") : payroll;
+    if (currentViewMonth && currentViewYear) {
+      base = base.filter(r => String(r.month) === currentViewMonth && String(r.year) === currentViewYear);
+    }
+    return base;
+  }, [payroll, role, currentViewMonth, currentViewYear]);
 
+  const previewTotalPayable = preview ? Number(preview.totalPayableSalary ?? 0) : 0;
+  const previewTargetNet = preview ? Number(preview.netSalary ?? 0) : 0;
+ 
   return (
     <section className="stack">
       {message ? <p className="success-text">{message}</p> : null}
-      {(role === "ADMIN" || role === "HR") && !loading ? (
-        <form className="card stack compact-form payroll-form-card" onSubmit={handleSubmit}>
-          <div className="payroll-form-card__header">
-            <div>
-              <p className="eyebrow">Payroll</p>
-              <h3>{editingPayrollId ? "Update payroll record" : "Create payroll record"}</h3>
-            </div>
-          </div>
+      
+      <Modal open={modalOpen} title={editingPayrollId ? "Update payroll record" : "Create payroll record"} onClose={cancelEdit}>
+        <form className="stack compact-form" onSubmit={handleSubmit}>
           <div className="grid payroll-form-grid payroll-form-grid--compact">
             <PayrollSelectField
               label="Employee"
@@ -521,6 +531,7 @@ export default function PayrollPage({ token, role }: PayrollPageProps) {
               value={form.status}
               options={payrollStatusOptions}
               required
+              menuAlign="right"
               onChange={(value) => setForm({ ...form, status: value as PayrollFormValues["status"] })}
             />
           </div>
@@ -528,26 +539,26 @@ export default function PayrollPage({ token, role }: PayrollPageProps) {
             <div className="payroll-preview-panel">
               <div className="payroll-preview-panel__top">
                 <div className="payroll-preview-panel__headline">
-                  <span className="table-cell-secondary">Total payable amount</span>
+                  <span className="table-cell-secondary">Total Payable Salary</span>
                   <strong className="payroll-preview-panel__final">₹{previewTotalPayable.toLocaleString()}</strong>
                 </div>
                 <div className="payroll-preview-panel__chip">
-                  <span className="table-cell-secondary">Potential net salary</span>
-                  <strong>₹{preview.netSalary.toLocaleString()}</strong>
+                  <span className="table-cell-secondary">Monthly Net Salary</span>
+                  <strong>₹{previewTargetNet.toLocaleString()}</strong>
                 </div>
                 {preview.employee.isOnProbation ? (
                   <span className="payroll-preview-tag">Probation (50% Pay)</span>
                 ) : null}
               </div>
-
+ 
               <dl className="payroll-preview-panel__metrics">
                 <div className="payroll-preview-panel__metric">
-                  <dt>Total payable</dt>
+                  <dt>Final Payout</dt>
                   <dd>₹{previewTotalPayable.toLocaleString()}</dd>
                 </div>
                 <div className="payroll-preview-panel__metric">
-                  <dt>Net base salary</dt>
-                  <dd>₹{previewNetBase.toLocaleString()}</dd>
+                  <dt>Attendance Deduction</dt>
+                  <dd>₹{(preview?.deductionAmount ?? 0).toLocaleString()}</dd>
                 </div>
                 <div className="payroll-preview-panel__metric">
                   <dt>Absent days</dt>
@@ -562,25 +573,21 @@ export default function PayrollPage({ token, role }: PayrollPageProps) {
                   <dd>{preview.deductibleDays}</dd>
                 </div>
                 <div className="payroll-preview-panel__metric">
-                  <dt>Deduction amount</dt>
-                  <dd>{preview.deductionAmount}</dd>
+                  <dt>PF Deduction</dt>
+                  <dd>₹{Number(preview.pf ?? 0).toLocaleString()}</dd>
                 </div>
                 <div className="payroll-preview-panel__metric">
-                  <dt>PF deduction</dt>
-                  <dd>{preview.pf}</dd>
+                  <dt>Gratuity</dt>
+                  <dd>₹{Number(preview.gratuity ?? 0).toLocaleString()}</dd>
                 </div>
                 <div className="payroll-preview-panel__metric">
-                  <dt>Gratuity deduction</dt>
-                  <dd>{preview.gratuity}</dd>
-                </div>
-                <div className="payroll-preview-panel__metric">
-                  <dt>PT deduction</dt>
-                  <dd>{preview.pt}</dd>
+                  <dt>Professional Tax (PT)</dt>
+                  <dd>₹{Number(preview.pt ?? 0).toLocaleString()}</dd>
                 </div>
                 {preview.employee.isOnProbation ? (
                   <div className="payroll-preview-panel__metric">
                     <dt>Before probation</dt>
-                    <dd>{preview.finalSalaryBeforeProbation}</dd>
+                    <dd>₹{Number(preview.finalSalaryBeforeProbation ?? 0).toLocaleString()}</dd>
                   </div>
                 ) : null}
                 <div className="payroll-preview-panel__metric">
@@ -588,18 +595,15 @@ export default function PayrollPage({ token, role }: PayrollPageProps) {
                   <dd>₹{Number(preview.totalIncentives ?? 0).toLocaleString()}</dd>
                 </div>
               </dl>
-
             </div>
           ) : null}
-          {preview && editingPayrollId ? <p className="muted payroll-note">Preview is shown for reference only. The saved salary will stay unchanged unless you edit it.</p> : null}
           {previewLoading ? <p className="muted payroll-note">Refreshing payroll preview...</p> : null}
           
-          {/* Incentive Breakdown */}
           {preview?.incentives && preview.incentives.length > 0 ? (
-            <div className="card" style={{ marginTop: '2rem' }}>
+            <div className="card" style={{ marginTop: '1rem' }}>
               <div className="card__header">
                 <h4>Incentive Breakdown</h4>
-                <span className="eyebrow">{preview.incentives.length} incentive(s) included</span>
+                <span className="eyebrow">{preview.incentives.length} incentive(s)</span>
               </div>
               <div className="table-wrap">
                 <table className="table table--dense">
@@ -607,7 +611,6 @@ export default function PayrollPage({ token, role }: PayrollPageProps) {
                     <tr>
                       <th>Type</th>
                       <th>Amount</th>
-                      <th>Reason</th>
                       <th>Status</th>
                     </tr>
                   </thead>
@@ -616,7 +619,6 @@ export default function PayrollPage({ token, role }: PayrollPageProps) {
                       <tr key={incentive.id}>
                         <td>{incentive.type.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, (l: string) => l.toUpperCase())}</td>
                         <td className="amount">Rs {(incentive.amount ?? 0).toLocaleString()}</td>
-                        <td>{incentive.reason}</td>
                         <td>
                           <span className={`status-badge status-${incentive.status.toLowerCase()}`}>
                             {incentive.status}
@@ -628,28 +630,46 @@ export default function PayrollPage({ token, role }: PayrollPageProps) {
                 </table>
               </div>
             </div>
-          ) : (
-            <div className="payroll-note muted" style={{ marginTop: '1.5rem', textAlign: 'center' }}>
-              No active incentives found for this period.
-            </div>
-          )}
+          ) : null}
+          
           <div className="button-row payroll-form-actions">
             <button type="submit" className="payroll-action-button payroll-action-button--primary" disabled={!isPayrollFormValid}>
               {editingPayrollId ? "Update payroll" : "Create payroll"}
             </button>
-            {editingPayrollId ? (
-              <button type="button" className="secondary payroll-action-button" onClick={cancelEdit}>
-                Cancel edit
-              </button>
-            ) : null}
+            <button type="button" className="secondary payroll-action-button" onClick={cancelEdit}>
+              Cancel
+            </button>
           </div>
         </form>
-      ) : null}
+      </Modal>
+ 
       <div className="card dense-table-card payroll-table-card">
-        <div className="payroll-table-card__header">
+        <div className="payroll-table-card__header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
           <div>
-            <p className="eyebrow">Payroll</p>
-            <h3>Payroll records</h3>
+            <p className="eyebrow">Payroll Overview</p>
+            <h3>{getMonthLabel(currentViewMonth)} {currentViewYear}</h3>
+          </div>
+          
+          <div className="filter-actions" style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+              <PayrollSelectField 
+                label="" 
+                value={currentViewMonth} 
+                options={monthOptions} 
+                onChange={setCurrentViewMonth} 
+              />
+              <PayrollSelectField 
+                label="" 
+                value={currentViewYear} 
+                options={[{value: '2025', label: '2025'}, {value: '2026', label: '2026'}]} 
+                onChange={setCurrentViewYear} 
+              />
+            </div>
+            {(role === "ADMIN" || role === "HR") ? (
+              <button type="button" className="payroll-action-button payroll-action-button--primary" onClick={() => setModalOpen(true)}>
+                Create record
+              </button>
+            ) : null}
           </div>
         </div>
         {loading ? (
@@ -665,17 +685,15 @@ export default function PayrollPage({ token, role }: PayrollPageProps) {
               <thead>
                 <tr>
                   <th>Employee</th>
-                  <th>Month</th>
-                  <th>Year</th>
                   <th>Salary</th>
                   <th>Status</th>
-                  {role === "ADMIN" || role === "HR" ? <th>Actions</th> : null}
+                  <th>Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {visiblePayroll.length ? (
-                  visiblePayroll.map((record) => (
-                    <tr key={record.id}>
+                {filteredPayroll.length ? (
+                  filteredPayroll.map((record) => (
+                    <tr key={record.id} style={{ cursor: 'pointer' }} onClick={() => record.employeeId && navigate(`/payroll/history/${record.employeeId}`)}>
                       <td>
                         {record.employee ? (
                           <div className="table-cell-stack">
@@ -686,46 +704,34 @@ export default function PayrollPage({ token, role }: PayrollPageProps) {
                           String(record.employeeId)
                         )}
                       </td>
-                      <td>{getMonthLabel(record.month)}</td>
-                      <td>{record.year}</td>
-                      <td>{record.salary}</td>
+                      <td>₹{Number(record.salary).toLocaleString()}</td>
                       <td>
                         <span className={getStatusClass(record.status)}>{record.status}</span>
                       </td>
-                      {role === "ADMIN" || role === "HR" ? (
-                        <td className="row-actions">
-                          {record.status === "DRAFT" ? (
+                      <td className="row-actions" onClick={(e) => e.stopPropagation()}>
+                        <div style={{ display: 'flex', gap: '0.5rem' }}>
+                          {(role === "ADMIN" || role === "HR") && record.status === "DRAFT" && (
                             <button type="button" className="payroll-action-button payroll-action-button--primary" onClick={() => startPayrollEdit(record)}>
                               Edit
                             </button>
-                          ) : (
+                          )}
+                          {record.status === "FINALIZED" && (
                             <button 
                               type="button" 
                               className="payroll-action-button" 
                               onClick={() => handleDownloadPayslip(record)}
                               disabled={printingPayrollId === record.id}
                             >
-                              {printingPayrollId === record.id ? "Loading..." : "Download payslip"}
+                              {printingPayrollId === record.id ? "Loading..." : "Payslip"}
                             </button>
                           )}
-                        </td>
-                      ) : (
-                        <td className="row-actions">
-                          <button 
-                            type="button" 
-                            className="payroll-action-button" 
-                            onClick={() => handleDownloadPayslip(record)}
-                            disabled={printingPayrollId === record.id}
-                          >
-                            {printingPayrollId === record.id ? "Loading..." : "Download"}
-                          </button>
-                        </td>
-                      )}
+                        </div>
+                      </td>
                     </tr>
                   ))
                 ) : (
                   <tr>
-                    <td colSpan={role === "ADMIN" || role === "HR" ? 6 : 5}>No records yet.</td>
+                    <td colSpan={4}>No records found for this month.</td>
                   </tr>
                 )}
               </tbody>

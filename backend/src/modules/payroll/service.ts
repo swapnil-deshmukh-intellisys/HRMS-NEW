@@ -247,9 +247,8 @@ export async function buildPayrollPreview(params: {
     employee,
     month,
     year,
-    netBaseSalary: preview.finalSalary,
     totalIncentives: payrollWithIncentives.totalIncentives,
-    totalPayableAmount: payrollWithIncentives.grossSalary,
+    totalPayableSalary: payrollWithIncentives.grossSalary,
     incentives: incentives.map(incentive => ({
       id: incentive.id,
       type: incentive.type,

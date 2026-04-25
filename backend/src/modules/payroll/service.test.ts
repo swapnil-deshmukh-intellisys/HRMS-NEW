@@ -68,7 +68,7 @@ test("calculatePayrollPreview applies 50 percent probation adjustment at final s
     absentDeductionDays: 2,
     halfDayDeductionDays: 0,
     deductibleDays: 2,
-    isOnProbation: true,
+    probationMultiplier: 0.5,
   }), {
     pf: 3600,
     gratuity: 1443,

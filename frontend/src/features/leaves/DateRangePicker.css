@@ -60,7 +60,7 @@
 
 .date-range-picker__popover {
   position: absolute;
-  z-index: 20;
+  z-index: var(--z-dropdown);
   top: calc(100% + 10px);
   left: 0;
   width: min(100%, 360px);

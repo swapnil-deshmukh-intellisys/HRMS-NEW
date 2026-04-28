@@ -12,7 +12,8 @@
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.95),
     0 14px 30px rgba(15, 23, 42, 0.04);
-  overflow: hidden;
+  overflow-x: auto;
+  overflow-y: visible;
 }
 
 .leaves-page-table-card .table th:first-child,
@@ -25,8 +26,17 @@
   padding-right: 20px;
 }
 
-.leaves-page-header {
-  margin-bottom: var(--space-2);
+.leaves-history-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+  flex-wrap: wrap;
+}
+
+.leaves-history-header h3 {
+  margin-bottom: 6px;
 }
 
 .leaves-page-tabs {
@@ -38,6 +48,7 @@
   border: 1px solid var(--color-border-subtle);
   border-radius: 999px;
   background: var(--color-surface-secondary);
+  flex-wrap: wrap;
 }
 
 .leaves-page-tab {
@@ -157,7 +168,7 @@
   color: var(--color-text-secondary);
 }
 
-.leave-policy-note__list li + li {
+.leave-policy-note__list li+li {
   margin-top: 6px;
 }
 
@@ -349,6 +360,7 @@
     text-align: left;
   }
 }
+
 .leaves-page-actions .leaves-page-balance-button,
 .leaves-page-actions .leaves-page-primary-button,
 .leave-action-button {

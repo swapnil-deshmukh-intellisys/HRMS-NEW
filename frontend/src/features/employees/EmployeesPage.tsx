@@ -4,6 +4,7 @@ import type { FormEvent } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import MessageCard from "../../components/common/MessageCard";
 import Modal from "../../components/common/Modal";
+import toast from "react-hot-toast";
 import { apiRequest } from "../../services/api";
 import type { Department, Employee, Role } from "../../types";
 import EmployeeForm, { type EmployeeFormValues } from "./EmployeeForm";
@@ -20,8 +21,6 @@ export default function EmployeesPage({ token, role }: EmployeesPageProps) {
   const [searchParams] = useSearchParams();
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
-  const [error, setError] = useState("");
-  const [message, setMessage] = useState("");
   const [editingEmployeeId, setEditingEmployeeId] = useState<number | null>(null);
   const [employeeModalOpen, setEmployeeModalOpen] = useState(false);
   const [form, setForm] = useState<EmployeeFormValues>(createInitialEmployeeForm);
@@ -60,7 +59,7 @@ export default function EmployeesPage({ token, role }: EmployeesPageProps) {
     if (role === "EMPLOYEE") return;
 
     reloadData().catch((requestError) => {
-      setError(requestError instanceof Error ? requestError.message : "Failed to load employees");
+      toast.error(requestError instanceof Error ? requestError.message : "Failed to load employees");
       setLoading(false);
     });
   }, [reloadData, role]);
@@ -79,7 +78,6 @@ export default function EmployeesPage({ token, role }: EmployeesPageProps) {
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setSubmitting(true);
-    setError("");
 
     try {
       const { isTeamLead, teamLeadScopeIds, ...formValues } = form;
@@ -104,13 +102,13 @@ export default function EmployeesPage({ token, role }: EmployeesPageProps) {
 
       await saveTeamLeadConfig(response.data.id, isTeamLead, teamLeadScopeIds);
 
-      setMessage(editingEmployeeId ? "Employee updated." : "Employee created.");
+      toast.success(editingEmployeeId ? "Employee updated." : "Employee created.");
       setEditingEmployeeId(null);
       setEmployeeModalOpen(false);
       setForm(createEmployeeFormWithDefaults());
       await reloadData();
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : "Failed to save employee");
+      toast.error(requestError instanceof Error ? requestError.message : "Failed to save employee");
     } finally {
       setSubmitting(false);
     }
@@ -124,7 +122,7 @@ export default function EmployeesPage({ token, role }: EmployeesPageProps) {
         setEmployeeModalOpen(true);
       })
       .catch((requestError) => {
-        setError(requestError instanceof Error ? requestError.message : "Failed to load departments");
+        toast.error(requestError instanceof Error ? requestError.message : "Failed to load departments");
       });
   }
 
@@ -140,8 +138,6 @@ export default function EmployeesPage({ token, role }: EmployeesPageProps) {
 
   return (
     <section className="stack">
-      {error ? <MessageCard title="Employee loading failed" tone="error" message={error} /> : null}
-      {message ? <p className="success-text">{message}</p> : null}
       {loading ? (
         <article className="card skeleton-card skeleton-card--table">
           <span className="skeleton-line skeleton-line--title" />

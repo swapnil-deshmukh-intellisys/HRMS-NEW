@@ -1,4 +1,5 @@
 import "./LeaveTable.css";
+import "../../components/common/Table.css";
 import { Calendar, ChevronDown } from "lucide-react";
 import { Fragment, useState } from "react";
 import { getFileUrl } from "../../services/api";

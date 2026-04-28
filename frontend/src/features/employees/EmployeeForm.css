@@ -67,29 +67,37 @@
   outline: none;
 }
 
-.employee-password-input-wrap {
+.password-label {
   position: relative;
 }
 
-.employee-password-input-wrap input {
+.password-label input {
   padding-right: 44px !important;
 }
 
 .employee-password-visibility-toggle {
   position: absolute;
-  top: 50%;
+  bottom: 5px;
   right: 6px;
-  transform: translateY(-50%);
+  transform: none !important;
   min-width: 32px;
   width: 32px;
-  min-height: 32px;
+  min-height: 32px !important;
   padding: 0;
   border: none;
-  background: transparent;
+  background: transparent !important;
   color: #64748b;
   display: flex;
   align-items: center;
   justify-content: center;
+  box-shadow: none !important;
+}
+
+.employee-password-visibility-toggle:hover {
+  background: #f1f5f9 !important;
+  transform: none !important;
+  box-shadow: none !important;
+  border-radius: 6px;
 }
 
 .employee-password-visibility-toggle:hover {

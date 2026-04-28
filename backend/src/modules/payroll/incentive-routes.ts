@@ -45,6 +45,9 @@ router.post(
           description: request.body.description,
           month: request.body.month,
           year: request.body.year,
+          status: "APPROVED",
+          approvedBy: request.user?.employeeId,
+          approvedAt: new Date(),
         },
         include: {
           employee: true,
@@ -118,7 +121,7 @@ router.get("/incentives", requireRoles("ADMIN", "HR", "MANAGER", "EMPLOYEE"), as
 
 router.post(
   "/incentives/:id/review",
-  requireRoles("ADMIN", "HR", "MANAGER"),
+  requireRoles("ADMIN", "HR"),
   validate(incentiveReviewSchema),
   async (request, response, next) => {
     try {
@@ -143,13 +146,6 @@ router.post(
         throw new AppError("Only pending incentives can be reviewed");
       }
 
-      if (
-        request.user?.role === "MANAGER" &&
-        (!request.user.employeeId ||
-          incentive.employee.managerId !== request.user.employeeId)
-      ) {
-        throw new AppError("You are not authorized to review this incentive", 403);
-      }
 
       if (request.body.status === "REJECTED" && !request.body.rejectionReason) {
         throw new AppError("Rejection reason is required");
@@ -174,6 +170,21 @@ router.post(
         typeDisplay: getIncentiveTypeDisplay(updatedIncentive.type),
         statusDisplay: getIncentiveStatusDisplay(updatedIncentive.status),
       };
+
+      // DB Notification
+      import("./../notifications/service.js").then(ns => {
+        const isApproved = updatedIncentive.status === "APPROVED";
+        ns.createNotification({
+          userId: updatedIncentive.employee.userId,
+          title: isApproved ? "Incentive Approved! 💰" : "Incentive Rejected ❌",
+          message: isApproved 
+            ? `Your incentive of ₹${updatedIncentive.amount} for ${updatedIncentive.reason} has been approved.`
+            : `Your incentive request for ${updatedIncentive.reason} was rejected.`,
+          type: isApproved ? "INCENTIVE_APPROVED" : "INCENTIVE_REJECTED",
+          link: "/payroll",
+          sendPush: true
+        }).catch(err => console.error("Failed to create incentive notification:", err));
+      });
 
       return sendSuccess(response, "Incentive reviewed successfully", enrichedIncentive);
     } catch (error) {

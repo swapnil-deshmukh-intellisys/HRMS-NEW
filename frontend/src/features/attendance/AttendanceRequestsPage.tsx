@@ -6,6 +6,7 @@ import type { AttendanceRegularizationRequest, Role } from "../../types";
 import { formatAttendanceTime, formatDateLabel, formatDateTime, formatWeekday } from "../../utils/format";
 import Table from "../../components/common/Table";
 import Modal from "../../components/common/Modal";
+import toast from "react-hot-toast";
 import { ArrowLeft } from "lucide-react";
 
 type AttendanceRequestsPageProps = {
@@ -26,8 +27,6 @@ export default function AttendanceRequestsPage({ token, role, currentEmployeeId 
   const today = toLocalDateString(new Date());
   const [regularizations, setRegularizations] = useState<AttendanceRegularizationRequest[]>([]);
   const [loading, setLoading] = useState(true);
-  const [message, setMessage] = useState("");
-  const [error, setError] = useState("");
 
   const [reviewModalOpen, setReviewModalOpen] = useState(false);
   const [reviewTarget, setReviewTarget] = useState<AttendanceRegularizationRequest | null>(null);
@@ -48,7 +47,7 @@ export default function AttendanceRequestsPage({ token, role, currentEmployeeId 
       const response = await apiRequest<AttendanceRegularizationRequest[]>("/attendance/regularizations", { token });
       setRegularizations(response.data);
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : "Failed to load attendance correction requests.");
+      toast.error(requestError instanceof Error ? requestError.message : "Failed to load attendance correction requests.");
     } finally {
       setLoading(false);
     }
@@ -59,26 +58,30 @@ export default function AttendanceRequestsPage({ token, role, currentEmployeeId 
   }, [reloadRegularizations]);
 
   async function handleReviewRequest(status: "APPROVED" | "REJECTED", requestId: number, rejectionReason?: string) {
+    if (status === "APPROVED") {
+      if (!window.confirm("Are you sure you want to approve this attendance correction request?")) {
+        return;
+      }
+    }
+
     try {
-      setError("");
       const response = await apiRequest<AttendanceRegularizationRequest>(`/attendance/regularizations/${requestId}/review`, {
         method: "POST",
         token,
         body: { status, rejectionReason },
       });
-      setMessage(response.message);
+      toast.success(response.message);
       setReviewModalOpen(false);
       setReviewTarget(null);
       setReviewRejectionReason("");
       await reloadRegularizations();
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : "Failed to review attendance correction request.");
+      toast.error(requestError instanceof Error ? requestError.message : "Failed to review attendance correction request.");
     }
   }
 
   async function handleRegularizationSubmit() {
     try {
-      setError("");
       const response = await apiRequest<AttendanceRegularizationRequest>("/attendance/regularizations", {
         method: "POST",
         token,
@@ -89,7 +92,7 @@ export default function AttendanceRequestsPage({ token, role, currentEmployeeId 
           reason: regularizationForm.reason,
         },
       });
-      setMessage(response.message);
+      toast.success(response.message);
       setRegularizationOpen(false);
       setRegularizationForm({
         attendanceDate: today,
@@ -99,21 +102,24 @@ export default function AttendanceRequestsPage({ token, role, currentEmployeeId 
       });
       await reloadRegularizations();
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : "Failed to submit attendance correction request.");
+      toast.error(requestError instanceof Error ? requestError.message : "Failed to submit attendance correction request.");
     }
   }
 
   async function handleCancelRegularization(requestId: number) {
+    if (!window.confirm("Are you sure you want to cancel this attendance correction request?")) {
+      return;
+    }
+
     try {
-      setError("");
       const response = await apiRequest<AttendanceRegularizationRequest>(`/attendance/regularizations/${requestId}/cancel`, {
         method: "POST",
         token,
       });
-      setMessage(response.message);
+      toast.success(response.message);
       await reloadRegularizations();
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : "Failed to cancel attendance correction request.");
+      toast.error(requestError instanceof Error ? requestError.message : "Failed to cancel attendance correction request.");
     }
   }
 
@@ -159,18 +165,17 @@ export default function AttendanceRequestsPage({ token, role, currentEmployeeId 
         </button>
       </div>
 
-      {error ? <p className="error-text">{error}</p> : null}
-      {message ? <p className="success-text">{message}</p> : null}
-
       <div className="card dense-table-card attendance-table-card">
         <div className="attendance-history-header">
           <div>
             <p className="eyebrow">Attendance Management</p>
             <h3>Correction Requests</h3>
           </div>
-          <button className="secondary attendance-header-action" onClick={() => setRegularizationOpen(true)}>
-            Correct self attendance
-          </button>
+          {(role === "ADMIN" || role === "HR" || role === "MANAGER") && (
+            <button className="secondary attendance-header-action" onClick={() => setRegularizationOpen(true)}>
+              Correct self attendance
+            </button>
+          )}
         </div>
 
         {loading ? (

@@ -82,7 +82,7 @@ export default function EmployeeAttendanceTab({ attendance }: EmployeeAttendance
         <h3>Attendance history</h3>
         <Table
           compact
-          columns={["Date", "Check in", "Check out", "Worked duration", "Status"]}
+          columns={["Date", "Check in", "Check out", "Worked duration", "Today's update", "Status"]}
           rows={attendance.map((record) => [
             <div className="table-cell-stack" key={`date-${record.id}`}>
               <span className="table-cell-primary">{isToday(record.attendanceDate) ? "Today" : formatDateLabel(record.attendanceDate)}</span>
@@ -93,6 +93,9 @@ export default function EmployeeAttendanceTab({ attendance }: EmployeeAttendance
             record.status === "LEAVE" ? "-" : formatAttendanceTime(record.checkInTime),
             record.status === "LEAVE" ? "-" : formatAttendanceTime(record.checkOutTime),
             renderWorkedDuration(record),
+            <span key={`update-${record.id}`} className="muted" style={{ fontSize: '12px', maxWidth: '180px', display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={record.todaysUpdate ?? ""}>
+              {record.todaysUpdate || "-"}
+            </span>,
             <div className="table-cell-stack" key={`status-${record.id}`}>
               <span className={getStatusClass(record.status)}>{getStatusLabel(record)}</span>
             </div>,

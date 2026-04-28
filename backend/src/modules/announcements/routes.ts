@@ -87,12 +87,27 @@ router.post("/", requireRoles("ADMIN", "HR", "MANAGER"), async (req, res, next) 
     });
     
     import("./../notifications/service.js").then(ns => {
+      const title = `📢 New Announcement: ${announcement.title}`;
+      const message = announcement.content.substring(0, 100) + (announcement.content.length > 100 ? "..." : "");
+      
+      // Send push notifications to all users
       ns.sendToUsers(
         allUsers.map(u => u.id),
-        `📢 New Announcement: ${announcement.title}`,
-        announcement.content.substring(0, 100) + (announcement.content.length > 100 ? "..." : ""),
+        title,
+        message,
         { url: "/announcements" }
       ).catch(err => console.error("Failed to broadcast announcement push:", err));
+
+      // Create individual DB notifications
+      Promise.all(allUsers.map(user => 
+        ns.createNotification({
+          userId: user.id,
+          title,
+          message,
+          type: "ANNOUNCEMENT",
+          link: "/announcements"
+        })
+      )).catch(err => console.error("Failed to create announcement DB notifications:", err));
     });
 
     return sendSuccess(res, "Announcement created successfully", announcement);

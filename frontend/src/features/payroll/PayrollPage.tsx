@@ -6,6 +6,7 @@ import { useNavigate } from "react-router-dom";
 import { apiRequest } from "../../services/api";
 import type { Employee, PayrollRecord, Role } from "../../types";
 import Modal from "../../components/common/Modal";
+import toast from "react-hot-toast";
 
 type PayrollPageProps = {
   token: string | null;
@@ -210,7 +211,6 @@ export default function PayrollPage({ token, role }: PayrollPageProps) {
   const [payroll, setPayroll] = useState<PayrollRecord[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [preview, setPreview] = useState<PayrollPreview | null>(null);
-  const [message, setMessage] = useState("");
   const [editingPayrollId, setEditingPayrollId] = useState<number | null>(null);
   const [form, setForm] = useState<PayrollFormValues>(initialPayrollForm);
   const [loading, setLoading] = useState(true);
@@ -304,7 +304,7 @@ export default function PayrollPage({ token, role }: PayrollPageProps) {
       },
     });
 
-    setMessage(editingPayrollId ? "Payroll updated." : "Payroll created.");
+    toast.success(editingPayrollId ? "Payroll updated." : "Payroll created.");
     setEditingPayrollId(null);
     setForm(initialPayrollForm());
     setPreview(null);
@@ -320,7 +320,7 @@ export default function PayrollPage({ token, role }: PayrollPageProps) {
       token,
       body: { status: "FINALIZED" }
     });
-    setMessage(`Payroll for ${record.employee?.firstName} finalized.`);
+    toast.success(`Payroll for ${record.employee?.firstName} finalized.`);
     await reloadData();
   }
 
@@ -330,7 +330,7 @@ export default function PayrollPage({ token, role }: PayrollPageProps) {
     );
 
     if (missingEmployees.length === 0) {
-      setMessage("All employees already have payroll records for this month.");
+      toast.success("All employees already have payroll records for this month.");
       return;
     }
 
@@ -355,7 +355,7 @@ export default function PayrollPage({ token, role }: PayrollPageProps) {
         console.error(`Failed for ${emp.firstName}`);
       }
     }
-    setMessage(`Successfully generated ${successCount} payroll records.`);
+    toast.success(`Successfully generated ${successCount} payroll records.`);
     await reloadData();
   }
 
@@ -517,7 +517,7 @@ export default function PayrollPage({ token, role }: PayrollPageProps) {
       printWindow.document.close();
     } catch (err) {
       console.error(err);
-      alert("Failed to generate payslip.");
+      toast.error("Failed to generate payslip.");
     } finally {
       setPrintingPayrollId(null);
     }
@@ -553,7 +553,6 @@ export default function PayrollPage({ token, role }: PayrollPageProps) {
  
   return (
     <section className="stack">
-      {message ? <p className="success-text">{message}</p> : null}
       
       <Modal open={modalOpen} title={editingPayrollId ? "Update payroll record" : "Create payroll record"} onClose={cancelEdit}>
         <form className="stack compact-form" onSubmit={handleSubmit}>

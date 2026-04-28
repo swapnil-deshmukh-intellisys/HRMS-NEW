@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import type { FormEvent } from "react";
 import MessageCard from "../../components/common/MessageCard";
 import Modal from "../../components/common/Modal";
+import toast from "react-hot-toast";
 import { apiRequest } from "../../services/api";
 import type { Department, Role } from "../../types";
 import DepartmentForm, { type DepartmentFormValues } from "./DepartmentForm";
@@ -16,7 +17,6 @@ type DepartmentsPageProps = {
 export default function DepartmentsPage({ token, role }: DepartmentsPageProps) {
   const [departments, setDepartments] = useState<Department[]>([]);
   const [form, setForm] = useState<DepartmentFormValues>({ name: "", code: "" });
-  const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(role !== "EMPLOYEE");
   const [departmentFormOpen, setDepartmentFormOpen] = useState(false);
 
@@ -33,7 +33,7 @@ export default function DepartmentsPage({ token, role }: DepartmentsPageProps) {
     const response = await apiRequest<Department>("/departments", { method: "POST", token, body: form });
     setDepartments((current) => [response.data, ...current]);
     setForm({ name: "", code: "" });
-    setMessage("Department created.");
+    toast.success("Department created.");
     setDepartmentFormOpen(false);
   }
 
@@ -54,7 +54,7 @@ export default function DepartmentsPage({ token, role }: DepartmentsPageProps) {
         <DepartmentTable departments={departments} onAddDepartment={() => setDepartmentFormOpen(true)} />
       )}
       <Modal open={departmentFormOpen} title="Add department" onClose={() => setDepartmentFormOpen(false)}>
-        <DepartmentForm form={form} onChange={setForm} onSubmit={handleSubmit} message={message} />
+        <DepartmentForm form={form} onChange={setForm} onSubmit={handleSubmit} />
       </Modal>
     </section>
   );

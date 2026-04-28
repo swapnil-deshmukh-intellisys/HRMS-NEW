@@ -201,7 +201,7 @@ function IncentivesPage({ token, role }: IncentivesPageProps) {
   const [incentiveSummary, setIncentiveSummary] = useState<IncentiveSummary | null>(null);
 
   const canCreateIncentive = role === "ADMIN" || role === "HR";
-  const canReviewIncentive = role === "ADMIN" || role === "HR" || role === "MANAGER";
+  const canReviewIncentive = role === "ADMIN" || role === "HR";
   const currentYear = new Date().getFullYear();
   const yearOptions = [currentYear - 1, currentYear, currentYear + 1, currentYear + 2];
 
@@ -300,7 +300,7 @@ function IncentivesPage({ token, role }: IncentivesPageProps) {
 
       const response = await apiRequest("/payroll/incentives", { method: "POST", body: payload, token });
       if (response.success) {
-        setSuccess("Incentive created successfully!");
+        setSuccess("Incentive created and approved successfully!");
         setFormValues(initialIncentiveForm());
         setShowCreateModal(false);
         fetchIncentives();
@@ -312,7 +312,30 @@ function IncentivesPage({ token, role }: IncentivesPageProps) {
     }
   };
 
-  // Review incentive
+  // Approve incentive immediately
+  const handleApproveIncentive = async (incentive: Incentive) => {
+    if (!token) return;
+    if (!window.confirm(`Are you sure you want to approve the ${incentive.typeDisplay || incentive.type} of Rs ${Number(incentive.amount).toLocaleString()} for ${incentive.employee?.firstName}?`)) return;
+
+    setLoading(true);
+    try {
+      const response = await apiRequest(`/payroll/incentives/${incentive.id}/review`, { 
+        method: "POST", 
+        body: { status: "APPROVED" }, 
+        token 
+      });
+      if (response.success) {
+        setSuccess("Incentive approved successfully!");
+        fetchIncentives();
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to approve incentive");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Review incentive (Reject path)
   const handleReviewIncentive = async (e: FormEvent) => {
     e.preventDefault();
     if (!token || !selectedIncentive) return;
@@ -323,13 +346,13 @@ function IncentivesPage({ token, role }: IncentivesPageProps) {
 
     try {
       const payload = {
-        status: reviewFormValues.status,
-        rejectionReason: reviewFormValues.status === "REJECTED" ? reviewFormValues.rejectionReason.trim() : undefined,
+        status: "REJECTED" as const,
+        rejectionReason: reviewFormValues.rejectionReason.trim(),
       };
 
       const response = await apiRequest(`/payroll/incentives/${selectedIncentive.id}/review`, { method: "POST", body: payload, token });
       if (response.success) {
-        setSuccess(`Incentive ${reviewFormValues.status.toLowerCase()} successfully!`);
+        setSuccess("Incentive rejected successfully!");
         setShowReviewModal(false);
         setSelectedIncentive(null);
         setReviewFormValues({ status: "APPROVED", rejectionReason: "" });
@@ -548,15 +571,26 @@ function IncentivesPage({ token, role }: IncentivesPageProps) {
                     {canReviewIncentive ? (
                       <td>
                         {incentive.status === "PENDING" ? (
-                          <button
-                            className="incentives-action-button"
-                            onClick={() => {
-                              setSelectedIncentive(incentive);
-                              setShowReviewModal(true);
-                            }}
-                          >
-                            Review
-                          </button>
+                          <div className="table-action-group" style={{ display: 'flex', gap: '0.5rem' }}>
+                            <button
+                              className="incentives-action-button"
+                              style={{ background: '#ecfdf5', color: '#059669', borderColor: '#d1fae5' }}
+                              onClick={() => handleApproveIncentive(incentive)}
+                            >
+                              Approve
+                            </button>
+                            <button
+                              className="incentives-action-button"
+                              style={{ background: '#fef2f2', color: '#dc2626', borderColor: '#fee2e2' }}
+                              onClick={() => {
+                                setSelectedIncentive(incentive);
+                                setReviewFormValues({ status: "REJECTED", rejectionReason: "" });
+                                setShowReviewModal(true);
+                              }}
+                            >
+                              Reject
+                            </button>
+                          </div>
                         ) : (
                           <span className="table-cell-secondary">No action</span>
                         )}
@@ -687,31 +721,20 @@ function IncentivesPage({ token, role }: IncentivesPageProps) {
               )}
             </div>
             <form onSubmit={handleReviewIncentive} className="stack">
-              <IncentiveSelectField
-                label="Action *"
-                value={reviewFormValues.status}
-                options={[
-                  { value: "APPROVED", label: "Approve" },
-                  { value: "REJECTED", label: "Reject" },
-                ]}
-                onChange={(value) => setReviewFormValues({ ...reviewFormValues, status: value as "APPROVED" | "REJECTED" })}
-                required
-              />
-              {reviewFormValues.status === "REJECTED" && (
-                <div className="form-field">
-                  <label>Rejection Reason *</label>
-                  <textarea
-                    value={reviewFormValues.rejectionReason}
-                    onChange={(e) => setReviewFormValues({ ...reviewFormValues, rejectionReason: e.target.value })}
-                    placeholder="Reason for rejection"
-                    required
-                    rows={3}
-                  />
-                </div>
-              )}
+              <div className="form-field">
+                <label>Rejection Reason *</label>
+                <textarea
+                  value={reviewFormValues.rejectionReason}
+                  onChange={(e) => setReviewFormValues({ ...reviewFormValues, rejectionReason: e.target.value })}
+                  placeholder="Why is this incentive being rejected?"
+                  required
+                  rows={3}
+                  autoFocus
+                />
+              </div>
               <div className="button-row">
-                <button type="submit" className="submit-button" disabled={loading}>
-                  {loading ? "Processing..." : reviewFormValues.status === "APPROVED" ? "Approve" : "Reject"}
+                <button type="submit" className="submit-button danger" disabled={loading}>
+                  {loading ? "Processing..." : "Confirm Rejection"}
                 </button>
                 <button
                   type="button"

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Megaphone, Send, AlertTriangle, Info } from "lucide-react";
+import { Megaphone, Send, AlertTriangle, Info, CheckCircle2 } from "lucide-react";
 import { apiRequest } from "../../services/api";
 import "./Announcement.css";
 
@@ -11,6 +11,7 @@ export default function AnnouncementForm({ token, onCreated }: { token: string |
   const [priority, setPriority] = useState<Priority>("NORMAL");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -24,10 +25,14 @@ export default function AnnouncementForm({ token, onCreated }: { token: string |
         token,
         body: { title, content, priority }
       });
-      setTitle("");
-      setContent("");
-      setPriority("NORMAL");
-      onCreated();
+      setSuccess(true);
+      setTimeout(() => {
+        setSuccess(false);
+        setTitle("");
+        setContent("");
+        setPriority("NORMAL");
+        onCreated();
+      }, 1500);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to create announcement");
     } finally {
@@ -127,6 +132,12 @@ export default function AnnouncementForm({ token, onCreated }: { token: string |
           <div className="broadcast-error">
              <Info size={14} />
              <span>{error}</span>
+          </div>
+        )}
+        {success && (
+          <div className="broadcast-success" style={{ marginTop: '20px', background: '#ecfdf5', color: '#059669', padding: '12px 16px', borderRadius: '12px', fontSize: '13px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '10px', border: '1px solid #d1fae5', animation: 'slideDown 0.3s ease-out' }}>
+             <CheckCircle2 size={16} />
+             <span>Announcement published successfully!</span>
           </div>
         )}
       </form>

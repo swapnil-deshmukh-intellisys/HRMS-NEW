@@ -1,7 +1,7 @@
 import "./CalendarPage.css";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Modal from "../../components/common/Modal";
-import MessageCard from "../../components/common/MessageCard";
+import toast from "react-hot-toast";
 import { apiRequest } from "../../services/api";
 import type { CalendarDay, CalendarException, Role } from "../../types";
 
@@ -47,8 +47,6 @@ export default function CalendarPage({ token, role }: CalendarPageProps) {
   });
   const [days, setDays] = useState<CalendarDay[]>([]);
   const [loading, setLoading] = useState(true);
-  const [message, setMessage] = useState("");
-  const [error, setError] = useState("");
   const [holidayModalOpen, setHolidayModalOpen] = useState(false);
   const [workingSaturdayModalOpen, setWorkingSaturdayModalOpen] = useState(false);
   const [holidayForm, setHolidayForm] = useState({
@@ -66,11 +64,10 @@ export default function CalendarPage({ token, role }: CalendarPageProps) {
   const loadCalendar = useCallback(async () => {
     try {
       setLoading(true);
-      setError("");
       const response = await apiRequest<CalendarResponse>(`/calendar?month=${visibleMonth.month}&year=${visibleMonth.year}`, { token });
       setDays(response.data.days);
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : "Failed to load calendar.");
+      toast.error(requestError instanceof Error ? requestError.message : "Failed to load calendar.");
     } finally {
       setLoading(false);
     }
@@ -109,52 +106,49 @@ export default function CalendarPage({ token, role }: CalendarPageProps) {
 
   async function handleCreateHoliday() {
     try {
-      setError("");
-      setMessage("");
       await apiRequest("/calendar/holidays", {
         method: "POST",
         token,
         body: holidayForm,
       });
-      setMessage("Holiday saved.");
+      toast.success("Holiday saved.");
       setHolidayModalOpen(false);
       setHolidayForm({ date: "", name: "", description: "" });
       await loadCalendar();
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : "Failed to save holiday.");
+      toast.error(requestError instanceof Error ? requestError.message : "Failed to save holiday.");
     }
   }
 
   async function handleCreateWorkingSaturday() {
     try {
-      setError("");
-      setMessage("");
       await apiRequest("/calendar/working-saturdays", {
         method: "POST",
         token,
         body: workingSaturdayForm,
       });
-      setMessage("Working Saturday saved.");
+      toast.success("Working Saturday saved.");
       setWorkingSaturdayModalOpen(false);
       setWorkingSaturdayForm({ date: "", name: "", description: "" });
       await loadCalendar();
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : "Failed to save working Saturday.");
+      toast.error(requestError instanceof Error ? requestError.message : "Failed to save working Saturday.");
     }
   }
 
   async function handleRemoveException(id: number) {
+    if (!window.confirm("Are you sure you want to remove this calendar exception/holiday? This may affect attendance calculations for this day.")) {
+      return;
+    }
     try {
-      setError("");
-      setMessage("");
       await apiRequest(`/calendar/${id}`, {
         method: "DELETE",
         token,
       });
-      setMessage("Calendar exception removed.");
+      toast.success("Calendar exception removed.");
       await loadCalendar();
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : "Failed to remove calendar exception.");
+      toast.error(requestError instanceof Error ? requestError.message : "Failed to remove calendar exception.");
     }
   }
 
@@ -186,8 +180,6 @@ export default function CalendarPage({ token, role }: CalendarPageProps) {
 
   return (
     <section className="stack calendar-page">
-      {error ? <MessageCard title="Calendar issue" tone="error" message={error} /> : null}
-      {message ? <p className="success-text">{message}</p> : null}
       <article className="calendar-page__surface">
         <div className="calendar-page__header">
           <div>

@@ -156,6 +156,7 @@ export type Attendance = {
   status: "PRESENT" | "ABSENT" | "HALF_DAY" | "LEAVE";
   leaveTypeCode?: string | null;
   leaveTypeName?: string | null;
+  todaysUpdate?: string | null;
   employee?: Employee;
 };
 
@@ -275,4 +276,14 @@ export type PayrollPreview = {
     reason: string;
     status: string;
   }>;
+};
+export type Notification = {
+  id: number;
+  userId: number;
+  title: string;
+  message: string;
+  type: string;
+  link?: string | null;
+  isRead: boolean;
+  createdAt: string;
 };

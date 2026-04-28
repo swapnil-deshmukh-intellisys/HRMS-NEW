@@ -59,11 +59,16 @@ export default function Sidebar({ sessionUser, navOpen, onNavigate }: SidebarPro
           </div>
           <div className="sidebar-user-box">
             <div className="sidebar-user-avatar">
-              <UserRound size={20} strokeWidth={2.5} />
+              <UserRound size={24} strokeWidth={2.5} />
             </div>
             <div className="sidebar-user-info">
+              <strong className="sidebar-user-name">
+                {sessionUser.employee ? `${sessionUser.employee.firstName} ${sessionUser.employee.lastName}` : "Workspace access"}
+              </strong>
+              {sessionUser.employee?.employeeCode && (
+                <span className="sidebar-user-id">ID: {sessionUser.employee.employeeCode}</span>
+              )}
               <div className="sidebar-role-badge">{sessionUser.role}</div>
-              <p className="muted">{sessionUser.employee ? `${sessionUser.employee.firstName} ${sessionUser.employee.lastName}` : "Workspace access"}</p>
             </div>
           </div>
         </div>

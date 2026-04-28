@@ -125,6 +125,7 @@ model User {
   googleRefreshToken String?
   isGoogleLinked     Boolean  @default(false)
   pushSubscriptions  PushSubscription[]
+  notifications      Notification[]
 
   @@index([roleId])
 }
@@ -234,6 +235,7 @@ model Attendance {
   isLate         Boolean          @default(false)
   lateByMinutes  Int              @default(0)
   breakSessions  BreakSession[]
+  todaysUpdate   String?
   createdAt      DateTime         @default(now())
   updatedAt      DateTime         @updatedAt
   employee       Employee         @relation(fields: [employeeId], references: [id])
@@ -457,4 +459,21 @@ model Announcement {
 
   @@index([createdById])
   @@index([isActive])
+}
+
+model Notification {
+  id          Int      @id @default(autoincrement())
+  userId      Int
+  title       String
+  message     String
+  type        String
+  link        String?
+  isRead      Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  user        User     @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([isRead])
+  @@index([createdAt])
 }

@@ -1,7 +1,7 @@
 import "./LeavesPage.css";
 import { useCallback, useEffect, useState } from "react";
 import type { FormEvent } from "react";
-import MessageCard from "../../components/common/MessageCard";
+import toast from "react-hot-toast";
 import Modal from "../../components/common/Modal";
 import { apiRequest } from "../../services/api";
 import type { LeaveBalance, LeaveRequest, LeaveType, Role } from "../../types";
@@ -36,49 +36,54 @@ export default function LeavesPage({ token, role, currentEmployeeId }: LeavesPag
   const [leaveTypes, setLeaveTypes] = useState<LeaveType[]>([]);
   const [balances, setBalances] = useState<LeaveBalance[]>([]);
   const [leaves, setLeaves] = useState<LeaveRequest[]>([]);
-  const [message, setMessage] = useState("");
-  const [error, setError] = useState("");
   const [form, setForm] = useState<LeaveFormValues>(initialLeaveForm);
   const [attachmentFile, setAttachmentFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(true);
   const [submittingLeave, setSubmittingLeave] = useState(false);
-    const [leaveFormOpen, setLeaveFormOpen] = useState(false);
+  const [leaveFormOpen, setLeaveFormOpen] = useState(false);
   const [leaveBalancesOpen, setLeaveBalancesOpen] = useState(false);
   const [confirmAction, setConfirmAction] = useState<{ type: "cancel" | "approve" | "reject"; leaveId: number } | null>(null);
   const [rejectionReason, setRejectionReason] = useState("");
   const [activeTab, setActiveTab] = useState<"pending" | "all">("pending");
   const summaryBalances = balances.filter((balance) => !balance.leaveType.deductFullQuotaOnApproval);
-  
-  // Filter leaves based on active tab
+
+  // Filter leaves based on role and active tab
   const getFilteredLeaves = () => {
+    // 1. First, determine which leaves this user should even see in this page
+    // For Managers and Employees: show only their OWN leaves
+    // For HR and Admin: show all leaves for management
+    const visibleLeaves = (role === "HR" || role === "ADMIN")
+      ? leaves
+      : leaves.filter(leave => leave.employee.id === currentEmployeeId);
+
+    // 2. Then filter by the active tab
     if (activeTab === "pending") {
-      // For HR/ADMIN: show leaves pending HR approval
-      // For MANAGER: show leaves pending manager approval
-      // For EMPLOYEE: show their pending leaves
-      return leaves.filter(leave => {
+      return visibleLeaves.filter(leave => {
         if (role === "HR" || role === "ADMIN") {
           return leave.status === "PENDING" && leave.hrApprovalStatus === "PENDING";
-        } else if (role === "MANAGER") {
-          return leave.status === "PENDING" && leave.managerApprovalStatus === "PENDING";
         } else {
-          return leave.status === "PENDING" && leave.employee.id === currentEmployeeId;
+          // For everyone else, just their own pending leaves
+          return leave.status === "PENDING";
         }
       });
     }
-    return leaves; // "all" tab shows all leaves
+
+    return visibleLeaves; // "all" tab shows all visible leaves
   };
 
   const filteredLeaves = getFilteredLeaves();
-  
+
   // Get pending leaves count for badge (independent of active tab)
   const getPendingLeavesCount = () => {
-    return leaves.filter(leave => {
+    const visibleLeaves = (role === "HR" || role === "ADMIN")
+      ? leaves
+      : leaves.filter(leave => leave.employee.id === currentEmployeeId);
+
+    return visibleLeaves.filter(leave => {
       if (role === "HR" || role === "ADMIN") {
         return leave.status === "PENDING" && leave.hrApprovalStatus === "PENDING";
-      } else if (role === "MANAGER") {
-        return leave.status === "PENDING" && leave.managerApprovalStatus === "PENDING";
       } else {
-        return leave.status === "PENDING" && leave.employee.id === currentEmployeeId;
+        return leave.status === "PENDING";
       }
     }).length;
   };
@@ -110,7 +115,6 @@ export default function LeavesPage({ token, role, currentEmployeeId }: LeavesPag
       if (showPageLoader) {
         setLoading(true);
       }
-      setError("");
       const [balancesResponse, leavesResponse] = await Promise.all([
         apiRequest<LeaveBalance[]>("/leave-balances/me", { token }),
         apiRequest<LeaveRequest[]>("/leaves", { token }),
@@ -119,7 +123,7 @@ export default function LeavesPage({ token, role, currentEmployeeId }: LeavesPag
       setBalances(balancesResponse.data);
       setLeaves(leavesResponse.data);
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : "Failed to load leave information.");
+      toast.error(requestError instanceof Error ? requestError.message : "Failed to load leave information.");
     } finally {
       if (showPageLoader) {
         setLoading(false);
@@ -133,7 +137,7 @@ export default function LeavesPage({ token, role, currentEmployeeId }: LeavesPag
 
   useEffect(() => {
     loadLeaveTypes().catch((requestError) => {
-      setError(requestError instanceof Error ? requestError.message : "Failed to load leave types.");
+      toast.error(requestError instanceof Error ? requestError.message : "Failed to load leave types.");
     });
   }, [loadLeaveTypes]);
 
@@ -141,24 +145,22 @@ export default function LeavesPage({ token, role, currentEmployeeId }: LeavesPag
     event.preventDefault();
     try {
       setSubmittingLeave(true);
-      setError("");
-      setMessage("");
       const todayIso = formatLocalIsoDate(new Date());
 
       if (form.startDate < todayIso || form.endDate < todayIso) {
-        setError("Leave dates cannot be in the past.");
+        toast.error("Leave dates cannot be in the past.");
         return;
       }
 
       if (form.startDate === form.endDate && form.startDayDuration !== form.endDayDuration) {
-        setError("For a single-date leave, duration must match on both start and end.");
+        toast.error("For a single-date leave, duration must match on both start and end.");
         return;
       }
 
       const reasonWordCount = countWords(form.reason);
 
       if (reasonWordCount < LEAVE_REASON_MIN_WORDS || reasonWordCount > LEAVE_REASON_MAX_WORDS) {
-        setError(`Leave reason must be between ${LEAVE_REASON_MIN_WORDS} and ${LEAVE_REASON_MAX_WORDS} words.`);
+        toast.error(`Leave reason must be between ${LEAVE_REASON_MIN_WORDS} and ${LEAVE_REASON_MAX_WORDS} words.`);
         return;
       }
 
@@ -179,60 +181,54 @@ export default function LeavesPage({ token, role, currentEmployeeId }: LeavesPag
         body: formData,
       });
 
-      setMessage("Leave request submitted.");
+      toast.success("Leave request submitted.");
       setForm(initialLeaveForm());
       setAttachmentFile(null);
       setLeaveFormOpen(false);
       await reloadData({ showPageLoader: false });
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : "Failed to submit leave request.");
+      toast.error(requestError instanceof Error ? requestError.message : "Failed to submit leave request.");
     } finally {
       setSubmittingLeave(false);
     }
   }
 
-  
+
   async function cancelLeave(id: number) {
     try {
-      setError("");
-      setMessage("");
       await apiRequest(`/leaves/${id}/cancel`, {
         method: "PUT",
         token,
       });
 
-      setMessage("Leave request cancelled.");
+      toast.success("Leave request cancelled.");
       await reloadData();
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : "Failed to cancel leave request.");
+      toast.error(requestError instanceof Error ? requestError.message : "Failed to cancel leave request.");
     }
   }
 
   async function approveLeave(id: number) {
     try {
-      setError("");
-      setMessage("");
       const endpoint = role === "HR" || role === "ADMIN" ? "hr-approve" : "manager-approve";
       await apiRequest(`/leaves/${id}/${endpoint}`, {
         method: "PUT",
         token,
       });
 
-      setMessage("Leave request approved.");
+      toast.success("Leave request approved.");
       await reloadData();
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : "Failed to approve leave request.");
+      toast.error(requestError instanceof Error ? requestError.message : "Failed to approve leave request.");
     }
   }
 
   async function rejectLeave(id: number, reason: string) {
     if (!reason.trim()) {
-      setError("Rejection reason is required.");
+      toast.error("Rejection reason is required.");
       return;
     }
     try {
-      setError("");
-      setMessage("");
       const endpoint = role === "HR" || role === "ADMIN" ? "hr-reject" : "manager-reject";
       await apiRequest(`/leaves/${id}/${endpoint}`, {
         method: "PUT",
@@ -240,18 +236,16 @@ export default function LeavesPage({ token, role, currentEmployeeId }: LeavesPag
         body: { rejectionReason: reason },
       });
 
-      setMessage("Leave request rejected.");
+      toast.success("Leave request rejected.");
       setRejectionReason("");
       await reloadData();
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : "Failed to reject leave request.");
+      toast.error(requestError instanceof Error ? requestError.message : "Failed to reject leave request.");
     }
   }
 
   async function uploadMedicalProof(id: number, file: File) {
     try {
-      setError("");
-      setMessage("");
       const formData = new FormData();
       formData.append("medicalProof", file);
       await apiRequest(`/leaves/${id}/medical-proof`, {
@@ -260,33 +254,29 @@ export default function LeavesPage({ token, role, currentEmployeeId }: LeavesPag
         body: formData,
       });
 
-      setMessage("Medical proof uploaded.");
+      toast.success("Medical proof uploaded.");
       await reloadData();
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : "Failed to upload medical proof.");
+      toast.error(requestError instanceof Error ? requestError.message : "Failed to upload medical proof.");
     }
   }
 
   async function reviewMedicalProof(id: number, action: "approve" | "reject") {
     try {
-      setError("");
-      setMessage("");
       await apiRequest(`/leaves/${id}/medical-proof/${action}`, {
         method: "PUT",
         token,
       });
 
-      setMessage(action === "approve" ? "Medical proof verified." : "Medical proof rejected and leave converted to unpaid.");
+      toast.success(action === "approve" ? "Medical proof verified." : "Medical proof rejected and leave converted to unpaid.");
       await reloadData();
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : "Failed to review medical proof.");
+      toast.error(requestError instanceof Error ? requestError.message : "Failed to review medical proof.");
     }
   }
 
   return (
     <section className="stack">
-      {error ? <MessageCard title="Leave issue" tone="error" message={error} /> : null}
-      {message ? <p className="success-text">{message}</p> : null}
       {loading ? (
         <article className="card skeleton-card skeleton-card--table">
           <span className="skeleton-line skeleton-line--title" />
@@ -296,9 +286,10 @@ export default function LeavesPage({ token, role, currentEmployeeId }: LeavesPag
         </article>
       ) : (
         <div className="card dense-table-card leaves-page-table-card">
-          <div className="action-row leaves-page-header">
+          <div className="leaves-history-header">
             <div>
               <h3>Leave requests</h3>
+              <p className="muted">Track and manage your time off applications.</p>
             </div>
             <div className="button-row row-actions leaves-page-actions">
               <button type="button" className="secondary leaves-page-balance-button" onClick={() => setLeaveBalancesOpen(true)}>
@@ -328,31 +319,33 @@ export default function LeavesPage({ token, role, currentEmployeeId }: LeavesPag
                 Pending
               </button>
             )}
-            {leaves.length > 0 ? (
-              <button
-                type="button"
-                className={activeTab === "all" ? "leaves-page-tab active leaves-page-tab--with-count" : "leaves-page-tab leaves-page-tab--with-count"}
-                onClick={() => setActiveTab("all")}
-              >
-                <span>All</span>
-                <span className="leaves-page-tab__count">{leaves.length}</span>
-              </button>
-            ) : (
-              <button
-                type="button"
-                className={activeTab === "all" ? "leaves-page-tab active" : "leaves-page-tab"}
-                onClick={() => setActiveTab("all")}
-              >
-                All
-              </button>
-            )}
+            <button
+              type="button"
+              className={activeTab === "all" ? "leaves-page-tab active leaves-page-tab--with-count" : "leaves-page-tab leaves-page-tab--with-count"}
+              onClick={() => setActiveTab("all")}
+            >
+              <span>All</span>
+              <span className="leaves-page-tab__count">
+                {(role === "HR" || role === "ADMIN")
+                  ? leaves.length
+                  : leaves.filter(l => l.employee.id === currentEmployeeId).length}
+              </span>
+            </button>
           </div>
           <LeaveTable
             leaves={filteredLeaves}
             role={role}
             currentEmployeeId={currentEmployeeId}
-            onCancel={(id) => setConfirmAction({ type: "cancel", leaveId: id })}
-            onApprove={(id) => setConfirmAction({ type: "approve", leaveId: id })}
+            onCancel={(id) => {
+              if (window.confirm("Are you sure you want to cancel this leave request? This will remove it from the active approval flow.")) {
+                void cancelLeave(id);
+              }
+            }}
+            onApprove={(id) => {
+              if (window.confirm("Are you sure you want to approve this leave request? This will deduct the balance and update attendance records.")) {
+                void approveLeave(id);
+              }
+            }}
             onReject={(id) => setConfirmAction({ type: "reject", leaveId: id })}
             onUploadMedicalProof={uploadMedicalProof}
             onReviewMedicalProof={reviewMedicalProof}
@@ -432,7 +425,7 @@ export default function LeavesPage({ token, role, currentEmployeeId }: LeavesPag
       </Modal>
       <Modal
         open={confirmAction !== null}
-        title={confirmAction?.type === "approve" ? "Approve leave" : confirmAction?.type === "reject" ? "Reject leave" : "Cancel leave request"}
+        title="Reject leave request"
         onClose={() => {
           setConfirmAction(null);
           setRejectionReason("");
@@ -440,22 +433,16 @@ export default function LeavesPage({ token, role, currentEmployeeId }: LeavesPag
       >
         <div className="stack leave-review-modal">
           <p className="muted">
-            {confirmAction?.type === "approve" 
-              ? "Are you sure you want to approve this leave request? This will deduct the balance and update attendance."
-              : confirmAction?.type === "reject"
-                ? "Please provide a reason for rejecting this leave request. This will be visible to the employee."
-                : "This will cancel the leave request and remove it from the active approval flow."}
+            Please provide a reason for rejecting this leave request. This will be visible to the employee.
           </p>
 
-          {confirmAction?.type === "reject" && (
-            <textarea
-              className="leave-form__input"
-              style={{ minHeight: '100px' }}
-              placeholder="e.g. Critical project deadline, overlapping leaves in team..."
-              value={rejectionReason}
-              onChange={(e) => setRejectionReason(e.target.value)}
-            />
-          )}
+          <textarea
+            className="leave-form__input"
+            style={{ minHeight: '100px' }}
+            placeholder="e.g. Critical project deadline, overlapping leaves in team..."
+            value={rejectionReason}
+            onChange={(e) => setRejectionReason(e.target.value)}
+          />
 
           <div className="button-row">
             <button
@@ -470,22 +457,15 @@ export default function LeavesPage({ token, role, currentEmployeeId }: LeavesPag
             </button>
             <button
               type="button"
-              className={confirmAction?.type === "reject" ? "secondary" : ""}
+              className="secondary"
               onClick={() => {
                 const action = confirmAction;
-                if (!action) return;
-                
-                if (action.type === "approve") {
-                  void approveLeave(action.leaveId);
-                } else if (action.type === "reject") {
-                  void rejectLeave(action.leaveId, rejectionReason);
-                } else {
-                  void cancelLeave(action.leaveId);
-                }
+                if (!action || action.type !== "reject") return;
+                void rejectLeave(action.leaveId, rejectionReason);
                 setConfirmAction(null);
               }}
             >
-              {confirmAction?.type === "approve" ? "Confirm Approval" : confirmAction?.type === "reject" ? "Reject Request" : "Cancel leave"}
+              Reject Request
             </button>
           </div>
         </div>

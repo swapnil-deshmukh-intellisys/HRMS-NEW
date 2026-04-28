@@ -9,7 +9,9 @@ webpush.setVapidDetails(
   env.VAPID_PRIVATE_KEY
 );
 
-export async function saveSubscription(userId: number, payload: any) {
+export async function saveSubscription(userId: number, body: any) {
+  const payload = body.subscription || body;
+
   // Check if this subscription already exists for this user to avoid duplicates
   const existing = await prisma.pushSubscription.findFirst({
     where: {
@@ -63,6 +65,53 @@ export async function sendPushNotification(userId: number, title: string, body: 
   });
 
   return Promise.all(notifications);
+}
+
+export async function createNotification(params: {
+  userId: number;
+  title: string;
+  message: string;
+  type: string;
+  link?: string;
+  sendPush?: boolean;
+}) {
+  const notification = await prisma.notification.create({
+    data: {
+      userId: params.userId,
+      title: params.title,
+      message: params.message,
+      type: params.type,
+      link: params.link,
+    },
+  });
+
+  if (params.sendPush) {
+    void sendPushNotification(params.userId, params.title, params.message, { url: params.link });
+  }
+
+  return notification;
+}
+
+export async function getUserNotifications(userId: number, limit = 50) {
+  return prisma.notification.findMany({
+    where: { userId },
+    orderBy: { createdAt: "desc" },
+    take: limit,
+  });
+}
+
+export async function markAsRead(notificationId: number) {
+  return prisma.notification.update({
+    where: { id: notificationId },
+    data: { isRead: true },
+  });
+}
+
+export async function markAllAsRead(userId: number) {
+  return prisma.notification.updateMany({
+    where: { userId, isRead: false },
+    data: { isRead: true },
+  });
 }
 
 // Helper to send to multiple users (e.g. all admins)

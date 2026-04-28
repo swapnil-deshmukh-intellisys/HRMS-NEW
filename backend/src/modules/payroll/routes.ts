@@ -160,6 +160,19 @@ router.put("/:id", requireRoles("ADMIN", "HR"), validate(payrollSchema.partial()
       },
     });
 
+    if (updated.status === "FINALIZED") {
+      import("./../notifications/service.js").then(ns => {
+        ns.createNotification({
+          userId: updated.employee.userId,
+          title: "Payslip Ready! 🧾",
+          message: `Your payslip for ${new Date(updated.year, updated.month - 1).toLocaleDateString("en-IN", { month: "long", year: "numeric" })} is now available.`,
+          type: "PAYROLL_FINALIZED",
+          link: "/payroll",
+          sendPush: true
+        }).catch(err => console.error("Failed to create payroll notification:", err));
+      });
+    }
+
     return sendSuccess(response, "Payroll record updated successfully", updated);
   } catch (error) {
     next(error);

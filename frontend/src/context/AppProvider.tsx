@@ -1,15 +1,26 @@
 import { useEffect, useState, useCallback, useMemo } from "react";
 import type { ReactNode } from "react";
 import { apiRequest } from "../services/api";
-import type { Role } from "../types";
+import type { Role, Notification } from "../types";
 import { ATTENDANCE_EVENT, getAttendanceUpdatedDetail } from "../components/common/attendanceQuickActionUtils";
 import { AppContext, type DashboardSummary, type AnalyticsData } from "./useApp";
 
 export function AppProvider({ children, token, role }: { children: ReactNode; token: string | null; role: Role }) {
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
   const [analyticsData, setAnalyticsData] = useState<AnalyticsData | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  const fetchNotifications = useCallback(async () => {
+    if (!token) return;
+    try {
+      const response = await apiRequest<Notification[]>("/notifications", { token });
+      setNotifications(response.data);
+    } catch (err) {
+      console.error("Failed to fetch notifications:", err);
+    }
+  }, [token]);
 
   const refreshSummary = useCallback(async () => {
     if (!token) return;
@@ -17,9 +28,14 @@ export function AppProvider({ children, token, role }: { children: ReactNode; to
     try {
       setLoading(true);
       setError("");
-      const response = await apiRequest<DashboardSummary>("/dashboard/employee-summary", { token });
       
-      const nextSummary = { ...response.data };
+      // Fetch both summary and notifications
+      const [summaryRes] = await Promise.all([
+        apiRequest<DashboardSummary>("/dashboard/employee-summary", { token }),
+        fetchNotifications()
+      ]);
+      
+      const nextSummary = { ...summaryRes.data };
 
       // Handle HR/Admin specific fallbacks if backend does not yet include these fields in the base summary
       if ((role === "HR" || role === "ADMIN") && typeof nextSummary.pendingCorrectionRequests !== "number") {
@@ -46,7 +62,27 @@ export function AppProvider({ children, token, role }: { children: ReactNode; to
     } finally {
       setLoading(false);
     }
-  }, [token, role]);
+  }, [token, role, fetchNotifications]);
+
+  const markNotificationAsRead = useCallback(async (id: number) => {
+    if (!token) return;
+    try {
+      await apiRequest(`/notifications/${id}/read`, { method: "POST", token });
+      setNotifications(prev => prev.map(n => n.id === id ? { ...n, isRead: true } : n));
+    } catch (err) {
+      console.error("Failed to mark notification as read:", err);
+    }
+  }, [token]);
+
+  const markAllNotificationsAsRead = useCallback(async () => {
+    if (!token) return;
+    try {
+      await apiRequest("/notifications/read-all", { method: "POST", token });
+      setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
+    } catch (err) {
+      console.error("Failed to mark all notifications as read:", err);
+    }
+  }, [token]);
 
   const fetchAnalyticsData = useCallback(async (force = false) => {
     if (!token) return;
@@ -77,6 +113,7 @@ export function AppProvider({ children, token, role }: { children: ReactNode; to
       void refreshSummary();
     } else {
       setSummary(null);
+      setNotifications([]);
     }
   }, [token, refreshSummary]);
 
@@ -97,12 +134,15 @@ export function AppProvider({ children, token, role }: { children: ReactNode; to
 
   const value = useMemo(() => ({
     summary,
+    notifications,
     loading,
     error,
     refreshSummary,
+    markNotificationAsRead,
+    markAllNotificationsAsRead,
     analyticsData,
     fetchAnalyticsData
-  }), [summary, loading, error, refreshSummary, analyticsData, fetchAnalyticsData]);
+  }), [summary, notifications, loading, error, refreshSummary, markNotificationAsRead, markAllNotificationsAsRead, analyticsData, fetchAnalyticsData]);
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
 }

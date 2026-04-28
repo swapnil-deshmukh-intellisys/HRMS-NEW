@@ -4,6 +4,7 @@ import type { FormEvent } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 import MessageCard from "../../components/common/MessageCard";
 import Modal from "../../components/common/Modal";
+import toast from "react-hot-toast";
 import { apiRequest } from "../../services/api";
 import type { Attendance, Department, Employee, LeaveBalance, LeaveRequest, PayrollRecord, Role } from "../../types";
 import EmployeeForm, { type EmployeeFormValues } from "./EmployeeForm";
@@ -55,8 +56,6 @@ export default function EmployeeProfilePage({ token, role, currentEmployeeId }: 
   const [departments, setDepartments] = useState<Department[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-  const [message, setMessage] = useState("");
   const [activeTab, setActiveTab] = useState<EmployeeProfileTabKey>(() => {
     const requestedTab = searchParams.get("tab");
     return requestedTab === "attendance" || requestedTab === "leaves" || requestedTab === "payroll" || requestedTab === "overview"
@@ -64,7 +63,6 @@ export default function EmployeeProfilePage({ token, role, currentEmployeeId }: 
       : "overview";
   });
   const [employeeModalOpen, setEmployeeModalOpen] = useState(false);
-  const [statusConfirmOpen, setStatusConfirmOpen] = useState(false);
   const [form, setForm] = useState<EmployeeFormValues>(createInitialEmployeeForm);
     const [submitting, setSubmitting] = useState(false);
 
@@ -78,14 +76,13 @@ export default function EmployeeProfilePage({ token, role, currentEmployeeId }: 
 
   const reloadProfile = useCallback(async () => {
     if (!employeeId) {
-      setError("Employee profile not found.");
+      toast.error("Employee profile not found.");
       setLoading(false);
       return;
     }
 
     try {
       setLoading(true);
-      setError("");
       const [employeeResponse, attendanceResponse, balancesResponse, leavesResponse, payrollResponse] = await Promise.all([
         apiRequest<Employee>(`/employees/${employeeId}`, { token }),
         apiRequest<Attendance[]>(`/attendance?employeeId=${employeeId}`, { token }),
@@ -100,7 +97,7 @@ export default function EmployeeProfilePage({ token, role, currentEmployeeId }: 
       setLeaves(leavesResponse.data);
       setPayroll(payrollResponse.data);
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : "Failed to load employee profile.");
+      toast.error(requestError instanceof Error ? requestError.message : "Failed to load employee profile.");
     } finally {
       setLoading(false);
     }
@@ -115,18 +112,6 @@ export default function EmployeeProfilePage({ token, role, currentEmployeeId }: 
       setForm(toEmployeeForm(employee));
     }
   }, [employee]);
-
-  useEffect(() => {
-    if (!message) {
-      return;
-    }
-
-    const timer = window.setTimeout(() => {
-      setMessage("");
-    }, 3200);
-
-    return () => window.clearTimeout(timer);
-  }, [message]);
 
   useEffect(() => {
     if (!canViewPayroll && activeTab === "payroll") {
@@ -190,7 +175,7 @@ export default function EmployeeProfilePage({ token, role, currentEmployeeId }: 
       await ensureEmployeeFormOptionsLoaded();
       setEmployeeModalOpen(true);
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : "Failed to load employee form options.");
+      toast.error(requestError instanceof Error ? requestError.message : "Failed to load employee form options.");
     }
   }
 
@@ -200,7 +185,6 @@ export default function EmployeeProfilePage({ token, role, currentEmployeeId }: 
       return;
     }
     setSubmitting(true);
-    setError("");
 
     try {
       const { isTeamLead, teamLeadScopeIds, ...formValues } = form;
@@ -225,11 +209,11 @@ export default function EmployeeProfilePage({ token, role, currentEmployeeId }: 
 
       await saveTeamLeadConfig(employee.id, isTeamLead, teamLeadScopeIds);
 
-      setMessage("Employee updated.");
+      toast.success("Employee updated.");
       setEmployeeModalOpen(false);
       await reloadProfile();
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : "Failed to update employee");
+      toast.error(requestError instanceof Error ? requestError.message : "Failed to update employee");
     } finally {
       setSubmitting(false);
     }
@@ -249,7 +233,7 @@ export default function EmployeeProfilePage({ token, role, currentEmployeeId }: 
       },
     });
 
-    setMessage(`Employee ${employee.isActive ? "deactivated" : "activated"}.`);
+    toast.success(`Employee ${employee.isActive ? "deactivated" : "activated"}.`);
     await reloadProfile();
   }
 
@@ -280,10 +264,6 @@ export default function EmployeeProfilePage({ token, role, currentEmployeeId }: 
     );
   }
 
-  if (error) {
-    return <MessageCard title="Employee profile issue" tone="error" message={error} />;
-  }
-
   if (!employee) {
     return <MessageCard title="Employee profile" tone="error" message="Employee not found." />;
   }
@@ -303,14 +283,22 @@ export default function EmployeeProfilePage({ token, role, currentEmployeeId }: 
           Back to employee directory
         </Link>
       ) : null}
-      {message ? <p className="success-text">{message}</p> : null}
       <EmployeeProfileHeader
         employee={employee}
         role={role}
         onEdit={() => {
           void openEmployeeModal();
         }}
-        onToggleStatus={() => setStatusConfirmOpen(true)}
+        onToggleStatus={() => {
+          if (!employee) return;
+          const confirmMessage = employee.isActive 
+            ? "Are you sure you want to deactivate this employee? This will disable their system access."
+            : "Are you sure you want to activate this employee? This will restore their system access.";
+          
+          if (window.confirm(confirmMessage)) {
+            void toggleStatus();
+          }
+        }}
       />
       <EmployeeProfileTabs activeTab={activeTab} tabs={visibleTabs} onChange={setActiveTab} />
       {activeTab === "overview" ? <EmployeeOverviewTab employee={employee} token={token} /> : null}
@@ -331,37 +319,6 @@ export default function EmployeeProfilePage({ token, role, currentEmployeeId }: 
           onCancelEdit={() => setEmployeeModalOpen(false)}
         />
       </Modal>
-      <Modal
-        open={statusConfirmOpen}
-        title={employee.isActive ? "Confirm deactivation" : "Confirm activation"}
-        onClose={() => setStatusConfirmOpen(false)}
-      >
-        <div className="stack leave-review-modal">
-          <p className="muted">
-            {employee.isActive
-              ? "Deactivating this employee will disable access and mark them inactive in the system."
-              : "Activating this employee will restore access and mark them active in the system."}
-          </p>
-          <div className="button-row">
-            <button
-              type="button"
-              className="secondary"
-              onClick={() => setStatusConfirmOpen(false)}
-            >
-              Cancel
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setStatusConfirmOpen(false);
-                void toggleStatus();
-              }}
-            >
-              {employee.isActive ? "Deactivate employee" : "Activate employee"}
-            </button>
-          </div>
-        </div>
-      </Modal>
-          </section>
+    </section>
   );
 }

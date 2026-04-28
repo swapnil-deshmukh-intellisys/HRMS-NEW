@@ -24,7 +24,7 @@ router.get("/", async (req, res, next) => {
 router.post("/read-all", async (req, res, next) => {
   try {
     await markAllAsRead(req.user!.id);
-    return sendSuccess(res, "All notifications marked as read");
+    return sendSuccess(res, "All notifications marked as read", null);
   } catch (error) {
     next(error);
   }
@@ -33,7 +33,7 @@ router.post("/read-all", async (req, res, next) => {
 router.post("/:id/read", async (req, res, next) => {
   try {
     await markAsRead(Number(req.params.id));
-    return sendSuccess(res, "Notification marked as read");
+    return sendSuccess(res, "Notification marked as read", null);
   } catch (error) {
     next(error);
   }
@@ -42,7 +42,7 @@ router.post("/:id/read", async (req, res, next) => {
 router.post("/subscribe", async (req, res, next) => {
   try {
     await saveSubscription(req.user!.id, req.body);
-    return sendSuccess(res, "Push subscription saved successfully");
+    return sendSuccess(res, "Push subscription saved successfully", null);
   } catch (error) {
     next(error);
   }

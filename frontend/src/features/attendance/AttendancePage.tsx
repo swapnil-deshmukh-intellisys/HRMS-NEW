@@ -7,7 +7,7 @@ import Table from "../../components/common/Table";
 import { ATTENDANCE_EVENT } from "../../components/common/attendanceQuickActionUtils";
 import { apiRequest } from "../../services/api";
 import type { Attendance, AttendanceRegularizationRequest, Employee, Role } from "../../types";
-import { formatAttendanceTime, formatDateLabel, formatDateTime, formatWeekday, isToday } from "../../utils/format";
+import { formatAttendanceTime, formatDateLabel, formatWeekday, isToday } from "../../utils/format";
 
 type AttendancePageProps = {
   token: string | null;
@@ -263,19 +263,6 @@ export default function AttendancePage({ token, role, currentEmployeeId, current
     }
   }
 
-  async function handleCancelRegularization(requestId: number) {
-    try {
-      const response = await apiRequest<AttendanceRegularizationRequest>(`/attendance/regularizations/${requestId}/cancel`, {
-        method: "POST",
-        token,
-      });
-      toast.success(response.message);
-      await reloadRegularizations();
-    } catch (requestError) {
-      toast.error(requestError instanceof Error ? requestError.message : "Failed to cancel attendance correction request.");
-    }
-  }
-
   function formatWorkedDuration(workedMinutes: number) {
     if (!workedMinutes || workedMinutes <= 0) {
       return "-";
@@ -307,10 +294,6 @@ export default function AttendancePage({ token, role, currentEmployeeId, current
     }
 
     return baseLabel;
-  }
-
-  function getRegularizationStatusClass(status: AttendanceRegularizationRequest["status"]) {
-    return `status-pill status-pill--${status.toLowerCase().replace(/_/, "-")}`;
   }
 
 
@@ -421,16 +404,6 @@ export default function AttendancePage({ token, role, currentEmployeeId, current
     "Worked duration",
     "Today's update",
     "Status",
-  ];
-
-  const regularizationColumns = [
-    ...(role !== "EMPLOYEE" ? ["Employee"] : []),
-    "Date",
-    "Proposed times",
-    "Reason",
-    "Status",
-    "Reviewed On",
-    "Actions",
   ];
 
   const visibleRegularizations = useMemo(() => {

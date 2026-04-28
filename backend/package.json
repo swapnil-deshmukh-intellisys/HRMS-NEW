@@ -4,7 +4,7 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "dev": "tsx watch src/server.ts",
+    "dev": "prisma db push --accept-data-loss && tsx watch src/server.ts",
     "build": "prisma generate && tsc -p tsconfig.json",
     "prestart": "prisma db push --accept-data-loss",
     "start": "node dist/server.js",

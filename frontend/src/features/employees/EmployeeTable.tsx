@@ -56,7 +56,7 @@ export default function EmployeeTable({ employees, onAdd, onSelect, initialSearc
 
   function renderJobTitle(employee: Employee) {
     if (!employee.jobTitle) {
-      return employee.user?.email ?? employee.employeeCode;
+      return "-";
     }
 
     const designationBadgeClass = getDesignationBadgeClass(employee.jobTitle);

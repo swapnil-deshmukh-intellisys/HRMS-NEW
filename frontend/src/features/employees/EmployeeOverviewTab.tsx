@@ -81,11 +81,11 @@ export default function EmployeeOverviewTab({ employee, token }: EmployeeOvervie
   };
 
   const compensationDetails: DetailItem[] = [
-    { label: "Package (LPA)", value: employee.annualPackageLpa != null ? numberFormatter.format(employee.annualPackageLpa) : "Not set" },
-    { label: "Gross monthly", value: employee.grossMonthlySalary != null ? numberFormatter.format(employee.grossMonthlySalary) : "Not set" },
-    { label: "Basic monthly", value: employee.basicMonthlySalary != null ? numberFormatter.format(employee.basicMonthlySalary) : "Not set" },
+    { label: "Package (LPA)", value: employee.annualPackageLpa != null ? numberFormatter.format(employee.annualPackageLpa) : "-" },
+    { label: "Gross monthly", value: employee.grossMonthlySalary != null ? numberFormatter.format(employee.grossMonthlySalary) : "-" },
+    { label: "Basic monthly", value: employee.basicMonthlySalary != null ? numberFormatter.format(employee.basicMonthlySalary) : "-" },
     { label: "Probation", value: employee.isOnProbation ? "On probation" : "Not on probation" },
-    { label: "Probation end", value: employee.probationEndDate ? formatDateLabel(employee.probationEndDate) : "Not set" },
+    { label: "Probation end", value: employee.probationEndDate ? formatDateLabel(employee.probationEndDate) : "-" },
   ];
 
   const employmentDetails: DetailItem[] = [
@@ -97,7 +97,7 @@ export default function EmployeeOverviewTab({ employee, token }: EmployeeOvervie
   ];
 
   const reportingDetails: DetailItem[] = [
-    { label: "Manager", value: employee.manager ? `${employee.manager.firstName} ${employee.manager.lastName}` : "Not assigned" },
+    { label: "Manager", value: employee.manager ? `${employee.manager.firstName} ${employee.manager.lastName}` : "-" },
     { label: "Department code", value: employee.department?.code ?? "-" },
     { label: "Employment type", value: employee.employmentStatus === "ACTIVE" ? "Current employee" : "Restricted access" },
   ];

@@ -25,8 +25,8 @@ async function check() {
     });
 
     console.log("API PREVIEW KEYS:", Object.keys(preview));
-    console.log("totalPayableAmount:", preview.totalPayableAmount);
-    console.log("netBaseSalary:", preview.netBaseSalary);
+    console.log("totalPayableSalary:", preview.totalPayableSalary);
+    console.log("netSalary:", preview.netSalary);
     console.log("finalSalary:", preview.finalSalary);
   } catch (err) {
     console.error(err);

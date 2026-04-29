@@ -45,12 +45,12 @@ export default function EmployeeProfileHeader({ employee, role, onEdit, onToggle
           <div className="employee-profile-header__summary">
             <div className="employee-profile-header__primary-contact">
               <span className="employee-profile-header__detail-label">Email</span>
-              <strong>{employee.user?.email ?? "Not available"}</strong>
+              <strong>{employee.user?.email ?? "-"}</strong>
             </div>
             <div className="employee-profile-header__detail-list">
               <div className="employee-profile-header__detail-row">
                 <span className="employee-profile-header__detail-label">Phone</span>
-                <strong>{employee.phone || "Not provided"}</strong>
+                <strong>{employee.phone || "-"}</strong>
               </div>
               <div className="employee-profile-header__detail-row">
                 <span className="employee-profile-header__detail-label">Joined</span>
@@ -58,7 +58,7 @@ export default function EmployeeProfileHeader({ employee, role, onEdit, onToggle
               </div>
               <div className="employee-profile-header__detail-row">
                 <span className="employee-profile-header__detail-label">Manager</span>
-                <strong>{employee.manager ? `${employee.manager.firstName} ${employee.manager.lastName}` : "Not assigned"}</strong>
+                <strong>{employee.manager ? `${employee.manager.firstName} ${employee.manager.lastName}` : "-"}</strong>
               </div>
             </div>
           </div>

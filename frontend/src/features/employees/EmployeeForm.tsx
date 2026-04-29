@@ -69,24 +69,22 @@ export default function EmployeeForm({
             Email
             <input value={form.email} onChange={(event) => onChange({ ...form, email: event.target.value })} required type="email" />
           </label>
-          <label>
+          <label className="password-label">
             Password
-            <div className="employee-password-input-wrap">
-              <input
-                value={form.password}
-                onChange={(event) => onChange({ ...form, password: event.target.value })}
-                type={showPassword ? "text" : "password"}
-                placeholder="Password@123"
-              />
-              <button
-                type="button"
-                className="employee-password-visibility-toggle"
-                aria-label={showPassword ? "Hide password" : "Show password"}
-                onClick={() => setShowPassword((current) => !current)}
-              >
-                {showPassword ? <EyeOff size={16} strokeWidth={2} /> : <Eye size={16} strokeWidth={2} />}
-              </button>
-            </div>
+            <input
+              value={form.password}
+              onChange={(event) => onChange({ ...form, password: event.target.value })}
+              type={showPassword ? "text" : "password"}
+              placeholder="Password@123"
+            />
+            <button
+              type="button"
+              className="employee-password-visibility-toggle"
+              aria-label={showPassword ? "Hide password" : "Show password"}
+              onClick={() => setShowPassword((current) => !current)}
+            >
+              {showPassword ? <EyeOff size={16} strokeWidth={2} /> : <Eye size={16} strokeWidth={2} />}
+            </button>
           </label>
         </div>
 

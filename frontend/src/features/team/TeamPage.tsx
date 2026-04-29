@@ -4,7 +4,10 @@ import MessageCard from "../../components/common/MessageCard";
 import Table from "../../components/common/Table";
 import { apiRequest } from "../../services/api";
 import type { Attendance, Employee, LeaveRequest, Role } from "../../types";
-import { formatAttendanceTime, formatDateLabel, formatLeaveDays } from "../../utils/format";
+import { formatAttendanceTime, formatDateLabel } from "../../utils/format";
+import LeaveTable from "../leaves/LeaveTable";
+import Modal from "../../components/common/Modal";
+import toast from "react-hot-toast";
 
 type TeamPageProps = {
   token: string | null;
@@ -67,8 +70,9 @@ export default function TeamPage({ token, role, currentEmployee }: TeamPageProps
   const [attendance, setAttendance] = useState<Attendance[]>([]);
   const [leaves, setLeaves] = useState<LeaveRequest[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  const [confirmAction, setConfirmAction] = useState<{ type: "cancel" | "approve" | "reject"; leaveId: number } | null>(null);
   const [teamAttendanceFilter, setTeamAttendanceFilter] = useState<"" | "PRESENT" | "ABSENT" | "LEAVE" | "HALF_DAY">("");
+  const [rejectionReason, setRejectionReason] = useState("");
   const isTeamLead = Boolean(currentEmployee?.capabilities?.some((capability) => capability.capability === "TEAM_LEAD"));
   const teamMembers = useMemo(() => currentEmployee?.scopedTeamMembers?.map((item) => item.employee) ?? [], [currentEmployee?.scopedTeamMembers]);
   const teamMemberIds = useMemo(() => new Set(teamMembers.map((member) => member.id)), [teamMembers]);
@@ -87,7 +91,6 @@ export default function TeamPage({ token, role, currentEmployee }: TeamPageProps
     async function loadTeamData() {
       try {
         setLoading(true);
-        setError("");
         const attendancePath = attendanceDate ? `/attendance?date=${attendanceDate}` : "/attendance";
         const [attendanceResponse, leaveResponse] = await Promise.all([
           apiRequest<Attendance[]>(attendancePath, { token }),
@@ -96,7 +99,7 @@ export default function TeamPage({ token, role, currentEmployee }: TeamPageProps
         setAttendance(attendanceResponse.data);
         setLeaves(leaveResponse.data);
       } catch (requestError) {
-        setError(requestError instanceof Error ? requestError.message : "Failed to load team data.");
+        toast.error(requestError instanceof Error ? requestError.message : "Failed to load team data.");
       } finally {
         setLoading(false);
       }
@@ -104,6 +107,57 @@ export default function TeamPage({ token, role, currentEmployee }: TeamPageProps
 
     void loadTeamData();
   }, [attendanceDate, isTeamLead, token]);
+
+  async function approveLeave(id: number) {
+    try {
+      await apiRequest(`/leaves/${id}/manager-approve`, {
+        method: "PUT",
+        token,
+      });
+      toast.success("Leave request approved.");
+      // Reload leaves
+      const leaveResponse = await apiRequest<LeaveRequest[]>("/leaves", { token });
+      setLeaves(leaveResponse.data);
+    } catch (requestError) {
+      toast.error(requestError instanceof Error ? requestError.message : "Failed to approve leave request.");
+    }
+  }
+
+  async function rejectLeave(id: number, reason: string) {
+    if (!reason.trim()) {
+      toast.error("Rejection reason is required.");
+      return;
+    }
+    try {
+      await apiRequest(`/leaves/${id}/manager-reject`, {
+        method: "PUT",
+        token,
+        body: { rejectionReason: reason },
+      });
+      toast.success("Leave request rejected.");
+      setRejectionReason("");
+      // Reload leaves
+      const leaveResponse = await apiRequest<LeaveRequest[]>("/leaves", { token });
+      setLeaves(leaveResponse.data);
+    } catch (requestError) {
+      toast.error(requestError instanceof Error ? requestError.message : "Failed to reject leave request.");
+    }
+  }
+
+  async function cancelLeave(id: number) {
+    try {
+      await apiRequest(`/leaves/${id}/cancel`, {
+        method: "PUT",
+        token,
+      });
+      toast.success("Leave request cancelled.");
+      // Reload leaves
+      const leaveResponse = await apiRequest<LeaveRequest[]>("/leaves", { token });
+      setLeaves(leaveResponse.data);
+    } catch (requestError) {
+      toast.error(requestError instanceof Error ? requestError.message : "Failed to cancel leave request.");
+    }
+  }
 
   useEffect(() => {
     setVisibleMonth(getVisibleMonthFromDate(attendanceDate || today));
@@ -190,7 +244,6 @@ export default function TeamPage({ token, role, currentEmployee }: TeamPageProps
 
   return (
     <section className="stack">
-      {error ? <MessageCard title="Team issue" tone="error" message={error} /> : null}
       <div className="team-page-primary-tabs" role="tablist" aria-label="Team workspace sections">
         <button
           type="button"
@@ -446,29 +499,74 @@ export default function TeamPage({ token, role, currentEmployee }: TeamPageProps
                 }}
               />
             ) : (
-              <Table
-                compact
-                columns={["Employee", "Designation", "Leave type", "Duration", "Status"]}
-                rows={teamLeaveRows.map((leave) => [
-                  <span className="table-cell-primary" key={`team-leave-name-${leave.id}`}>
-                    {`${leave.employee.firstName} ${leave.employee.lastName}`}
-                  </span>,
-                  leave.employee.jobTitle ?? "-",
-                  leave.leaveType.code,
-                  `${formatDateLabel(leave.startDate)} to ${formatDateLabel(leave.endDate)} (${formatLeaveDays(leave.totalDays)})`,
-                  <span className={`status-pill status-pill--${leave.status.toLowerCase()}`} key={`team-leave-status-${leave.id}`}>
-                    {leave.status}
-                  </span>,
-                ])}
-                emptyState={{
-                  title: "No team leave records",
-                  description: "Team leave requests will appear here.",
+              <LeaveTable
+                leaves={teamLeaveRows}
+                role={role}
+                currentEmployeeId={currentEmployee?.id ?? null}
+                onApprove={(id) => {
+                  if (window.confirm("Are you sure you want to approve this team member's leave request? This will update the attendance records.")) {
+                    void approveLeave(id);
+                  }
+                }}
+                onReject={(id) => setConfirmAction({ type: "reject", leaveId: id })}
+                onCancel={(id) => {
+                  if (window.confirm("Are you sure you want to cancel this leave request?")) {
+                    void cancelLeave(id);
+                  }
                 }}
               />
             )}
           </div>
         </>
       )}
+
+      <Modal
+        open={confirmAction !== null}
+        title="Reject leave"
+        onClose={() => {
+          setConfirmAction(null);
+          setRejectionReason("");
+        }}
+      >
+        <div className="stack leave-review-modal">
+          <p className="muted">
+            Please provide a reason for rejecting this leave request. This will be visible to the team member.
+          </p>
+
+          <textarea
+            className="leave-form__input"
+            style={{ minHeight: '100px', width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid var(--color-border)' }}
+            placeholder="e.g. Critical project deadline, overlapping leaves in team..."
+            value={rejectionReason}
+            onChange={(e) => setRejectionReason(e.target.value)}
+          />
+
+          <div className="button-row" style={{ display: 'flex', gap: '12px', marginTop: '20px' }}>
+            <button
+              type="button"
+              className="secondary"
+              onClick={() => {
+                setConfirmAction(null);
+                setRejectionReason("");
+              }}
+            >
+              Back
+            </button>
+            <button
+              type="button"
+              className="secondary"
+              onClick={() => {
+                const action = confirmAction;
+                if (!action || action.type !== "reject") return;
+                void rejectLeave(action.leaveId, rejectionReason);
+                setConfirmAction(null);
+              }}
+            >
+              Reject Request
+            </button>
+          </div>
+        </div>
+      </Modal>
     </section>
   );
 }

@@ -12,7 +12,7 @@
   min-height: 240px;
   /* Slightly taller for the image to shine */
   overflow: visible;
-  z-index: 10;
+  z-index: 20;
   background:
     linear-gradient(135deg, rgba(15, 23, 42, 0.85) 0%, rgba(15, 23, 42, 0.4) 100%),
     url('/assets/images/bgh2.jpg') center/cover no-repeat;
@@ -547,7 +547,7 @@
 
 .dashboard-chart-tooltip {
   position: relative;
-  z-index: 20;
+  z-index: var(--z-overlay);
   display: grid;
   gap: 8px;
   min-width: 172px;

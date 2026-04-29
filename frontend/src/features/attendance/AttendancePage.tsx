@@ -1,13 +1,13 @@
 import "./AttendancePage.css";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import MessageCard from "../../components/common/MessageCard";
+import toast from "react-hot-toast";
 import Modal from "../../components/common/Modal";
 import Table from "../../components/common/Table";
 import { ATTENDANCE_EVENT } from "../../components/common/attendanceQuickActionUtils";
 import { apiRequest } from "../../services/api";
 import type { Attendance, AttendanceRegularizationRequest, Employee, Role } from "../../types";
-import { formatAttendanceTime, formatDateLabel, formatDateTime, formatWeekday, isToday } from "../../utils/format";
+import { formatAttendanceTime, formatDateLabel, formatWeekday, isToday } from "../../utils/format";
 
 type AttendancePageProps = {
   token: string | null;
@@ -84,8 +84,6 @@ export default function AttendancePage({ token, role, currentEmployeeId, current
     proposedCheckOutTime: "",
     reason: "",
   });
-  const [message, setMessage] = useState("");
-  const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
   const isTeamLead = Boolean(currentEmployee?.capabilities?.some((capability) => capability.capability === "TEAM_LEAD"));
   const canManageOthers = role !== "EMPLOYEE" || isTeamLead;
@@ -133,7 +131,6 @@ export default function AttendancePage({ token, role, currentEmployeeId, current
   const reloadAttendance = useCallback(async () => {
     try {
       setLoading(true);
-      setError("");
       const searchParams = new URLSearchParams();
       const useDayFilter = !(showTeamWorkspace && teamLeadMainTab === "MONTH");
       if (useDayFilter && filterDate) {
@@ -143,7 +140,7 @@ export default function AttendancePage({ token, role, currentEmployeeId, current
       const response = await apiRequest<Attendance[]>(path, { token });
       setAttendance(response.data);
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : "Failed to load attendance history.");
+      toast.error(requestError instanceof Error ? requestError.message : "Failed to load attendance history.");
     } finally {
       setLoading(false);
     }
@@ -154,7 +151,7 @@ export default function AttendancePage({ token, role, currentEmployeeId, current
       const response = await apiRequest<AttendanceRegularizationRequest[]>("/attendance/regularizations", { token });
       setRegularizations(response.data);
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : "Failed to load attendance correction requests.");
+      toast.error(requestError instanceof Error ? requestError.message : "Failed to load attendance correction requests.");
     }
   }, [token]);
 
@@ -165,7 +162,7 @@ export default function AttendancePage({ token, role, currentEmployeeId, current
         setEmployees(response.data.items);
         setEmployeesTotal(response.data.pagination?.total ?? response.data.items.length);
       } catch (requestError) {
-        setError(requestError instanceof Error ? requestError.message : "Failed to load employees for attendance.");
+        toast.error(requestError instanceof Error ? requestError.message : "Failed to load employees for attendance.");
       }
       return;
     }
@@ -220,7 +217,6 @@ export default function AttendancePage({ token, role, currentEmployeeId, current
 
   async function handleFinalizeAttendance() {
     try {
-      setError("");
       const response = await apiRequest<{ attendanceDate: string; createdCount: number }>("/attendance/finalize", {
         method: "POST",
         token,
@@ -230,20 +226,19 @@ export default function AttendancePage({ token, role, currentEmployeeId, current
       });
 
       const createdCount = response.data.createdCount;
-      setMessage(
+      toast.success(
         createdCount > 0
           ? `Attendance finalized. ${createdCount} employee${createdCount === 1 ? "" : "s"} marked absent.`
           : "Attendance finalized. No new absent records were needed.",
       );
       await reloadAttendance();
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : "Failed to finalize attendance.");
+      toast.error(requestError instanceof Error ? requestError.message : "Failed to finalize attendance.");
     }
   }
 
   async function handleRegularizationSubmit() {
     try {
-      setError("");
       const response = await apiRequest<AttendanceRegularizationRequest>("/attendance/regularizations", {
         method: "POST",
         token,
@@ -254,7 +249,7 @@ export default function AttendancePage({ token, role, currentEmployeeId, current
           reason: regularizationForm.reason,
         },
       });
-      setMessage(response.message);
+      toast.success(response.message);
       setRegularizationOpen(false);
       setRegularizationForm({
         attendanceDate: today,
@@ -264,21 +259,7 @@ export default function AttendancePage({ token, role, currentEmployeeId, current
       });
       await reloadRegularizations();
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : "Failed to submit attendance correction request.");
-    }
-  }
-
-  async function handleCancelRegularization(requestId: number) {
-    try {
-      setError("");
-      const response = await apiRequest<AttendanceRegularizationRequest>(`/attendance/regularizations/${requestId}/cancel`, {
-        method: "POST",
-        token,
-      });
-      setMessage(response.message);
-      await reloadRegularizations();
-    } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : "Failed to cancel attendance correction request.");
+      toast.error(requestError instanceof Error ? requestError.message : "Failed to submit attendance correction request.");
     }
   }
 
@@ -313,10 +294,6 @@ export default function AttendancePage({ token, role, currentEmployeeId, current
     }
 
     return baseLabel;
-  }
-
-  function getRegularizationStatusClass(status: AttendanceRegularizationRequest["status"]) {
-    return `status-pill status-pill--${status.toLowerCase().replace(/_/, "-")}`;
   }
 
 
@@ -425,17 +402,8 @@ export default function AttendancePage({ token, role, currentEmployeeId, current
     "Check in",
     "Check out",
     "Worked duration",
+    "Today's update",
     "Status",
-  ];
-
-  const regularizationColumns = [
-    ...(role !== "EMPLOYEE" ? ["Employee"] : []),
-    "Date",
-    "Proposed times",
-    "Reason",
-    "Status",
-    "Reviewed On",
-    "Actions",
   ];
 
   const visibleRegularizations = useMemo(() => {
@@ -473,8 +441,6 @@ export default function AttendancePage({ token, role, currentEmployeeId, current
 
   return (
     <section className="stack">
-      {error ? <MessageCard title="Attendance issue" tone="error" message={error} /> : null}
-      {message ? <p className="success-text">{message}</p> : null}
       {showTeamWorkspace ? (
         <div className="attendance-team-main-tabs" role="tablist" aria-label="Attendance workspace">
           <button
@@ -499,209 +465,217 @@ export default function AttendancePage({ token, role, currentEmployeeId, current
       ) : null}
 
       {(!showTeamWorkspace || teamLeadMainTab === "DAY") ? (
-      <div className="card dense-table-card attendance-table-card">
-        <div className="stack">
-          <div className="attendance-history-header">
-            <div>
-              <h3>Attendance history</h3>
-              <p className="muted">
-                {showTeamWorkspace
-                  ? "Track your own attendance entries and manage your correction requests."
-                  : "Track attendance entries, mark today, and manage correction requests from one workspace."}
-              </p>
+        <div className="card dense-table-card attendance-table-card">
+          <div className="stack">
+            <div className="attendance-history-header">
+              <div>
+                <h3>Attendance history</h3>
+                <p className="muted">
+                  {showTeamWorkspace
+                    ? "Track your own attendance entries and manage your correction requests."
+                    : "Track attendance entries, mark today, and manage correction requests from one workspace."}
+                </p>
+              </div>
+              <div className="button-row row-actions">
+                {(role === "ADMIN" || role === "HR") ? (
+                  <button
+                    className="secondary attendance-header-action"
+                    onClick={() => navigate("/attendance/requests")}
+                    style={{ position: 'relative' }}
+                  >
+                    Correction Requests
+                    {visibleRegularizations.filter(r => r.status === "PENDING").length > 0 && (
+                      <span className="notification-dot" style={{ position: 'absolute', top: '-4px', right: '-4px' }}></span>
+                    )}
+                  </button>
+                ) : (
+                  <div className="button-row">
+                    <button className="secondary attendance-header-action" onClick={() => setRegularizationOpen(true)}>
+                      Request correction
+                    </button>
+                    <button className="secondary attendance-header-action" onClick={() => navigate("/attendance/requests")}>
+                      View requests
+                    </button>
+                  </div>
+                )}
+                {canFinalizeAttendance ? (
+                  <button className="secondary attendance-header-action" onClick={() => setFinalizeConfirmOpen(true)}>
+                    Finalize selected day
+                  </button>
+                ) : null}
+              </div>
             </div>
-            <div className="button-row row-actions">
-              {(role === "ADMIN" || role === "HR") ? (
-                <button 
-                  className="secondary attendance-header-action" 
-                  onClick={() => navigate("/attendance/requests")}
-                  style={{ position: 'relative' }}
-                >
-                  Correction Requests
-                  {visibleRegularizations.filter(r => r.status === "PENDING").length > 0 && (
-                    <span className="notification-dot" style={{ position: 'absolute', top: '-4px', right: '-4px' }}></span>
-                  )}
-                </button>
-              ) : (
-                <button className="secondary attendance-header-action" onClick={() => setRegularizationOpen(true)}>
-                  Request correction
-                </button>
-              )}
-              {canFinalizeAttendance ? (
-                <button className="secondary attendance-header-action" onClick={() => setFinalizeConfirmOpen(true)}>
-                  Finalize selected day
-                </button>
+            <div className="attendance-toolbar">
+              <div className="attendance-history-filters">
+                <label className="attendance-filter-field attendance-filter-field--date">
+                  Date
+                  <div className="attendance-date-picker">
+                    <button
+                      type="button"
+                      className="attendance-date-input attendance-date-trigger"
+                      onClick={() => setDatePickerOpen((current) => !current)}
+                    >
+                      <span>{formatDateLabel(filterDate)}</span>
+                    </button>
+                    {datePickerOpen ? (
+                      <div className="attendance-date-popover">
+                        <div className="attendance-date-popover__header">
+                          <button
+                            type="button"
+                            className="secondary attendance-date-popover__nav"
+                            onClick={() =>
+                              setVisibleMonth((current) => {
+                                const previousMonth = new Date(current.year, current.month - 1, 1);
+                                return {
+                                  month: previousMonth.getMonth(),
+                                  year: previousMonth.getFullYear(),
+                                };
+                              })
+                            }
+                          >
+                            Prev
+                          </button>
+                          <strong>{currentMonthLabel}</strong>
+                          <button
+                            type="button"
+                            className="secondary attendance-date-popover__nav"
+                            onClick={() =>
+                              setVisibleMonth((current) => {
+                                const nextMonth = new Date(current.year, current.month + 1, 1);
+                                return {
+                                  month: nextMonth.getMonth(),
+                                  year: nextMonth.getFullYear(),
+                                };
+                              })
+                            }
+                          >
+                            Next
+                          </button>
+                        </div>
+                        <div className="attendance-date-popover__weekdays">
+                          {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((label) => (
+                            <span key={label}>{label}</span>
+                          ))}
+                        </div>
+                        <div className="attendance-date-popover__grid">
+                          {calendarDays.map((day) => {
+                            const isoDate = toLocalDateString(day.value);
+                            const isSelected = isoDate === filterDate;
+                            const isFuture = isoDate > today;
+
+                            return (
+                              <button
+                                key={day.key}
+                                type="button"
+                                className={`attendance-date-popover__day ${!day.inCurrentMonth ? "attendance-date-popover__day--muted" : ""} ${isSelected ? "attendance-date-popover__day--selected" : ""}`.trim()}
+                                disabled={isFuture}
+                                onClick={() => {
+                                  setFilterDate(isoDate);
+                                  setDatePickerOpen(false);
+                                }}
+                              >
+                                {day.value.getDate()}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ) : null}
+                  </div>
+                </label>
+              </div>
+              {showAttendanceOverviewFilters ? (
+                <div className="attendance-overview-row">
+                  <button
+                    type="button"
+                    className={`attendance-overview-chip attendance-overview-chip--present ${activeOverviewFilter === "PRESENT" ? "attendance-overview-chip--active" : ""}`.trim()}
+                    onClick={() => setFilterStatus((current) => (current === "PRESENT" || current === "HALF_DAY" ? "" : "PRESENT"))}
+                  >
+                    <span className="attendance-overview-chip__label">Present</span>
+                    <strong className="attendance-overview-chip__value">
+                      {attendanceOverview.present}/{totalWorkforceCount}
+                    </strong>
+                  </button>
+                  <button
+                    type="button"
+                    className={`attendance-overview-chip attendance-overview-chip--absent ${activeOverviewFilter === "ABSENT" ? "attendance-overview-chip--active" : ""}`.trim()}
+                    onClick={() => setFilterStatus((current) => (current === "ABSENT" ? "" : "ABSENT"))}
+                  >
+                    <span className="attendance-overview-chip__label">Absent</span>
+                    <strong className="attendance-overview-chip__value">{attendanceOverview.absent}</strong>
+                  </button>
+                  <button
+                    type="button"
+                    className={`attendance-overview-chip attendance-overview-chip--leave ${activeOverviewFilter === "LEAVE" ? "attendance-overview-chip--active" : ""}`.trim()}
+                    onClick={() => setFilterStatus((current) => (current === "LEAVE" ? "" : "LEAVE"))}
+                  >
+                    <span className="attendance-overview-chip__label">On leave</span>
+                    <strong className="attendance-overview-chip__value">{attendanceOverview.leave}</strong>
+                  </button>
+                  <button
+                    type="button"
+                    className={`attendance-overview-chip attendance-overview-chip--unmarked ${activeOverviewFilter === "UNMARKED" ? "attendance-overview-chip--active" : ""}`.trim()}
+                    onClick={() => setFilterStatus((current) => (current === "UNMARKED" ? "" : "UNMARKED"))}
+                  >
+                    <span className="attendance-overview-chip__label">Unmarked</span>
+                    <strong className="attendance-overview-chip__value">{unmarkedCount}</strong>
+                  </button>
+                </div>
               ) : null}
             </div>
           </div>
-          <div className="attendance-toolbar">
-            <div className="attendance-history-filters">
-              <label className="attendance-filter-field attendance-filter-field--date">
-                Date
-                <div className="attendance-date-picker">
-                  <button
-                    type="button"
-                    className="attendance-date-input attendance-date-trigger"
-                    onClick={() => setDatePickerOpen((current) => !current)}
-                  >
-                    <span>{formatDateLabel(filterDate)}</span>
-                  </button>
-                  {datePickerOpen ? (
-                    <div className="attendance-date-popover">
-                      <div className="attendance-date-popover__header">
-                        <button
-                          type="button"
-                          className="secondary attendance-date-popover__nav"
-                          onClick={() =>
-                            setVisibleMonth((current) => {
-                              const previousMonth = new Date(current.year, current.month - 1, 1);
-                              return {
-                                month: previousMonth.getMonth(),
-                                year: previousMonth.getFullYear(),
-                              };
-                            })
-                          }
-                        >
-                          Prev
-                        </button>
-                        <strong>{currentMonthLabel}</strong>
-                        <button
-                          type="button"
-                          className="secondary attendance-date-popover__nav"
-                          onClick={() =>
-                            setVisibleMonth((current) => {
-                              const nextMonth = new Date(current.year, current.month + 1, 1);
-                              return {
-                                month: nextMonth.getMonth(),
-                                year: nextMonth.getFullYear(),
-                              };
-                            })
-                          }
-                        >
-                          Next
-                        </button>
-                      </div>
-                      <div className="attendance-date-popover__weekdays">
-                        {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((label) => (
-                          <span key={label}>{label}</span>
-                        ))}
-                      </div>
-                      <div className="attendance-date-popover__grid">
-                        {calendarDays.map((day) => {
-                          const isoDate = toLocalDateString(day.value);
-                          const isSelected = isoDate === filterDate;
-                          const isFuture = isoDate > today;
-
-                          return (
-                            <button
-                              key={day.key}
-                              type="button"
-                              className={`attendance-date-popover__day ${!day.inCurrentMonth ? "attendance-date-popover__day--muted" : ""} ${isSelected ? "attendance-date-popover__day--selected" : ""}`.trim()}
-                              disabled={isFuture}
-                              onClick={() => {
-                                setFilterDate(isoDate);
-                                setDatePickerOpen(false);
-                              }}
-                            >
-                              {day.value.getDate()}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  ) : null}
-                </div>
-              </label>
+          {loading ? (
+            <div className="page-loading">
+              <span className="skeleton-line skeleton-line--title" />
+              <span className="skeleton-line skeleton-line--long" />
+              <span className="skeleton-line skeleton-line--long" />
+              <span className="skeleton-line skeleton-line--long" />
             </div>
-            {showAttendanceOverviewFilters ? (
-              <div className="attendance-overview-row">
-                <button
-                  type="button"
-                  className={`attendance-overview-chip attendance-overview-chip--present ${activeOverviewFilter === "PRESENT" ? "attendance-overview-chip--active" : ""}`.trim()}
-                  onClick={() => setFilterStatus((current) => (current === "PRESENT" || current === "HALF_DAY" ? "" : "PRESENT"))}
-                >
-                  <span className="attendance-overview-chip__label">Present</span>
-                  <strong className="attendance-overview-chip__value">
-                    {attendanceOverview.present}/{totalWorkforceCount}
-                  </strong>
-                </button>
-                <button
-                  type="button"
-                  className={`attendance-overview-chip attendance-overview-chip--absent ${activeOverviewFilter === "ABSENT" ? "attendance-overview-chip--active" : ""}`.trim()}
-                  onClick={() => setFilterStatus((current) => (current === "ABSENT" ? "" : "ABSENT"))}
-                >
-                  <span className="attendance-overview-chip__label">Absent</span>
-                  <strong className="attendance-overview-chip__value">{attendanceOverview.absent}</strong>
-                </button>
-                <button
-                  type="button"
-                  className={`attendance-overview-chip attendance-overview-chip--leave ${activeOverviewFilter === "LEAVE" ? "attendance-overview-chip--active" : ""}`.trim()}
-                  onClick={() => setFilterStatus((current) => (current === "LEAVE" ? "" : "LEAVE"))}
-                >
-                  <span className="attendance-overview-chip__label">On leave</span>
-                  <strong className="attendance-overview-chip__value">{attendanceOverview.leave}</strong>
-                </button>
-                <button
-                  type="button"
-                  className={`attendance-overview-chip attendance-overview-chip--unmarked ${activeOverviewFilter === "UNMARKED" ? "attendance-overview-chip--active" : ""}`.trim()}
-                  onClick={() => setFilterStatus((current) => (current === "UNMARKED" ? "" : "UNMARKED"))}
-                >
-                  <span className="attendance-overview-chip__label">Unmarked</span>
-                  <strong className="attendance-overview-chip__value">{unmarkedCount}</strong>
-                </button>
-              </div>
-            ) : null}
-          </div>
-        </div>
-        {loading ? (
-          <div className="page-loading">
-            <span className="skeleton-line skeleton-line--title" />
-            <span className="skeleton-line skeleton-line--long" />
-            <span className="skeleton-line skeleton-line--long" />
-            <span className="skeleton-line skeleton-line--long" />
-          </div>
-        ) : (
-          <Table
-            compact
-            columns={columns}
-            onRowClick={(index) => {
-              const record = attendanceRows[index];
-              if (record?.employee) {
-                navigate(`/employees/${record.employee.id}?tab=attendance`);
-              }
-            }}
-            rows={attendanceRows.map((record) => {
-              const cells = [
-                <div className="table-cell-stack" key={`date-${record.id}`}>
-                  <span className="table-cell-primary">{isToday(record.attendanceDate) ? "Today" : formatDateLabel(record.attendanceDate)}</span>
-                  <span className="table-cell-secondary">
-                    {isToday(record.attendanceDate) ? formatDateLabel(record.attendanceDate) : formatWeekday(record.attendanceDate)}
-                  </span>
-                </div>,
-                formatAttendanceTime(record.checkInTime),
-                formatAttendanceTime(record.checkOutTime),
-                renderWorkedDuration(record),
-                <div className="table-cell-stack" key={`status-${record.id}`}>
-                  <span className={getStatusClass(record.status)}>{getStatusLabel(record)}</span>
-                </div>,
-              ];
-
-              if (showEmployeeColumn) {
-                cells.unshift(
-                  <div className="table-cell-stack attendance-person-cell" key={`employee-${record.id}`}>
-                    <span className="table-cell-primary">
-                      {record.employee ? `${record.employee.firstName} ${record.employee.lastName}` : "Unknown employee"}
+          ) : (
+            <Table
+              compact
+              columns={columns}
+              onRowClick={(index) => {
+                const record = attendanceRows[index];
+                if (record?.employee) {
+                  navigate(`/employees/${record.employee.id}?tab=attendance`);
+                }
+              }}
+              rows={attendanceRows.map((record) => {
+                const cells = [
+                  <div className="table-cell-stack" key={`date-${record.id}`}>
+                    <span className="table-cell-primary">{isToday(record.attendanceDate) ? "Today" : formatDateLabel(record.attendanceDate)}</span>
+                    <span className="table-cell-secondary">
+                      {isToday(record.attendanceDate) ? formatDateLabel(record.attendanceDate) : formatWeekday(record.attendanceDate)}
                     </span>
-                    <span className="table-cell-secondary attendance-person-cell__code">{record.employee?.employeeCode ?? "-"}</span>
                   </div>,
-                );
-              }
+                  formatAttendanceTime(record.checkInTime),
+                  formatAttendanceTime(record.checkOutTime),
+                  renderWorkedDuration(record),
+                  <span key={`update-${record.id}`} className="muted" style={{ fontSize: '12px', maxWidth: '180px', display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={record.todaysUpdate ?? ""}>
+                    {record.todaysUpdate || "-"}
+                  </span>,
+                  <div className="table-cell-stack" key={`status-${record.id}`}>
+                    <span className={getStatusClass(record.status)}>{getStatusLabel(record)}</span>
+                  </div>,
+                ];
 
-              return cells;
-            })}
-          />
-        )}
-      </div>
+                if (showEmployeeColumn) {
+                  cells.unshift(
+                    <div className="table-cell-stack attendance-person-cell" key={`employee-${record.id}`}>
+                      <span className="table-cell-primary">
+                        {record.employee ? `${record.employee.firstName} ${record.employee.lastName}` : "Unknown employee"}
+                      </span>
+                      <span className="table-cell-secondary attendance-person-cell__code">{record.employee?.employeeCode ?? "-"}</span>
+                    </div>,
+                  );
+                }
+
+                return cells;
+              })}
+            />
+          )}
+        </div>
       ) : null}
 
       {showTeamWorkspace && teamLeadMainTab === "MONTH" ? (
@@ -731,63 +705,7 @@ export default function AttendancePage({ token, role, currentEmployeeId, current
         </div>
       ) : null}
 
-      {(!showTeamWorkspace || teamLeadMainTab === "DAY") && role === "EMPLOYEE" ? (
-      <div className="card dense-table-card attendance-table-card">
-        <div className="attendance-history-header">
-          <div>
-            <h3>Correction requests</h3>
-            <p className="muted">Track your submitted attendance correction requests.</p>
-          </div>
-        </div>
-        <Table
-          compact
-          columns={regularizationColumns}
-          rows={visibleRegularizations.map((record) => {
-            const cells = [
-              <div className="table-cell-stack" key={`regularization-date-${record.id}`}>
-                <span className="table-cell-primary">{formatDateLabel(record.attendanceDate)}</span>
-                <span className="table-cell-secondary">{formatWeekday(record.attendanceDate)}</span>
-              </div>,
-              <div className="table-cell-stack" key={`regularization-times-${record.id}`}>
-                <span className="table-cell-primary">
-                  {formatAttendanceTime(record.proposedCheckInTime)} to {formatAttendanceTime(record.proposedCheckOutTime)}
-                </span>
-                <span className="table-cell-secondary">
-                  {record.proposedCheckInTime && record.proposedCheckOutTime
-                    ? "Full correction"
-                    : record.proposedCheckInTime
-                      ? "Check-in only"
-                      : "Check-out only"}
-                </span>
-              </div>,
-              record.reason,
-              <span key={`regularization-status-${record.id}`} className={getRegularizationStatusClass(record.status)}>
-                {record.status}
-              </span>,
-              <div className="table-cell-stack" key={`regularization-reviewed-${record.id}`}>
-                <span className="table-cell-primary">{formatDateTime(record.reviewedAt)}</span>
-                <span className="table-cell-secondary">
-                  {record.rejectionReason ? `Reason: ${record.rejectionReason}` : record.reviewedBy ? `${record.reviewedBy.firstName} ${record.reviewedBy.lastName}` : "-"}
-                </span>
-              </div>,
-              <div key={`regularization-actions-${record.id}`} className="table-action-group">
-                {record.status === "PENDING" && currentEmployeeId === record.employeeId ? (
-                  <button className="secondary" onClick={() => handleCancelRegularization(record.id)}>
-                    Cancel
-                  </button>
-                ) : <span>-</span>}
-              </div>,
-            ];
 
-            return cells;
-          })}
-          emptyState={{
-            title: "No correction requests yet",
-            description: "Submitted attendance correction requests will appear here for tracking.",
-          }}
-        />
-      </div>
-      ) : null}
 
       <Modal open={regularizationOpen} title="Request attendance correction" onClose={() => setRegularizationOpen(false)}>
         <div className="stack regularization-form">

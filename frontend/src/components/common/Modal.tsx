@@ -1,3 +1,4 @@
+import { createPortal } from "react-dom";
 import "./Modal.css";
 import { X } from "lucide-react";
 import type { ReactNode } from "react";
@@ -13,7 +14,10 @@ type ModalProps = {
 export default function Modal({ open, title, className = "", onClose, children }: ModalProps) {
   if (!open) return null;
 
-  return (
+  const modalRoot = document.getElementById("modal-root");
+  if (!modalRoot) return null;
+
+  return createPortal(
     <div className="modal-backdrop">
       <div className={`card modal-surface ${className}`.trim()} role="dialog" aria-modal="true" aria-label={title}>
         {title || onClose ? (
@@ -28,6 +32,7 @@ export default function Modal({ open, title, className = "", onClose, children }
         ) : null}
         {children}
       </div>
-    </div>
+    </div>,
+    modalRoot
   );
 }

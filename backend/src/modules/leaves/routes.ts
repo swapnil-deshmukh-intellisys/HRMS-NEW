@@ -220,8 +220,8 @@ router.get("/leaves", async (request, response, next) => {
 
         where = isTeamLead
           ? {
-              OR: [{ employeeId: request.user.employeeId }, { employeeId: { in: await getScopedEmployeeIdsForTeamLead(prisma, request.user.employeeId) } }],
-            }
+            OR: [{ employeeId: request.user.employeeId }, { employeeId: { in: await getScopedEmployeeIdsForTeamLead(prisma, request.user.employeeId) } }],
+          }
           : { employeeId: request.user.employeeId };
       } else {
         where = { employeeId: request.user.employeeId };
@@ -271,7 +271,7 @@ router.post("/leaves", upload.single("attachment"), validate(applyLeaveSchema), 
     const requestEndDate = new Date(request.body.endDate);
     const calendarExceptions = await getCalendarExceptionsForRange(requestStartDate, requestEndDate);
 
-    const leaveRequest = await createLeaveRequestForEmployee(
+    const leaveRequest: any = await createLeaveRequestForEmployee(
       {
         actor: request.user!,
         leaveTypeId: request.body.leaveTypeId,
@@ -385,6 +385,25 @@ router.post("/leaves", upload.single("attachment"), validate(applyLeaveSchema), 
           }),
       },
     );
+
+    if (leaveRequest.employee.managerId) {
+      const manager = await prisma.employee.findUnique({
+        where: { id: leaveRequest.employee.managerId },
+        select: { userId: true }
+      });
+      if (manager) {
+        import("./../notifications/service.js").then(ns => {
+          ns.createNotification({
+            userId: manager.userId,
+            title: "New Leave Request 📅",
+            message: `${leaveRequest.employee.firstName} has requested leave for ${new Date(leaveRequest.startDate).toLocaleDateString()}.`,
+            type: "LEAVE_REQUESTED",
+            link: "/leaves",
+            sendPush: true
+          }).catch(err => console.error("Failed to notify manager of leave:", err));
+        });
+      }
+    }
 
     return sendSuccess(response, "Leave request submitted successfully", leaveRequest, 201);
   } catch (error) {
@@ -606,15 +625,15 @@ async function finalizeApprovedLeave(
       medicalProofStatus: leaveRequest.medicalProofRequired ? leaveRequest.medicalProofStatus : MEDICAL_PROOF_STATUS.NOT_REQUIRED,
       ...(actor.role === "HR"
         ? {
-            hrApprovedById: actor.employeeId,
-            hrApprovedAt: new Date(),
-            hrRejectionReason: null,
-          }
+          hrApprovedById: actor.employeeId,
+          hrApprovedAt: new Date(),
+          hrRejectionReason: null,
+        }
         : {
-            managerApprovedById: actor.employeeId,
-            managerApprovedAt: new Date(),
-            managerRejectionReason: null,
-          }),
+          managerApprovedById: actor.employeeId,
+          managerApprovedAt: new Date(),
+          managerRejectionReason: null,
+        }),
     } as never,
     include: {
       employee: true,
@@ -747,7 +766,7 @@ async function managerApproveLeave(leaveId: number, actor: NonNullable<Express.R
 
   if (leaveRequest.hrApprovalStatus === ApprovalStepStatus.APPROVED) {
     const finalLeave = await prisma.$transaction((transaction) => finalizeApprovedLeave(transaction, leaveRequest, actor));
-    
+
     // Background sync to Google Calendar
     void syncLeaveToGoogleCalendar({
       employeeId: finalLeave.employeeId,
@@ -768,15 +787,18 @@ async function managerApproveLeave(leaveId: number, actor: NonNullable<Express.R
       where: { id: finalLeave.employeeId },
       select: { userId: true }
     });
-    
+
     if (employeeData) {
       import("./../notifications/service.js").then(ns => {
-        ns.sendPushNotification(
-          employeeData.userId,
-          "Leave Approved! ✅",
-          `Your leave from ${finalLeave.startDate.toLocaleDateString()} to ${finalLeave.endDate.toLocaleDateString()} has been approved.`,
-          { url: "/leaves" }
-        ).catch(err => console.error("Failed to send leave approval push:", err));
+        // DB Notification
+        ns.createNotification({
+          userId: employeeData.userId,
+          title: "Leave Approved! ✅",
+          message: `Your leave from ${finalLeave.startDate.toLocaleDateString()} to ${finalLeave.endDate.toLocaleDateString()} has been approved.`,
+          type: "LEAVE_APPROVED",
+          link: "/leaves",
+          sendPush: true
+        }).catch(err => console.error("Failed to create leave approval notification:", err));
       });
     }
 
@@ -815,7 +837,7 @@ async function managerRejectLeave(
     throw new AppError("Manager review is already completed");
   }
 
-  return prisma.leaveRequest.update({
+  const result = await prisma.leaveRequest.update({
     where: { id: leaveRequest.id },
     data: {
       status: LeaveStatus.REJECTED,
@@ -835,6 +857,20 @@ async function managerRejectLeave(
       hrApprovedBy: true,
     },
   });
+
+  // DB Notification
+  import("./../notifications/service.js").then(ns => {
+    ns.createNotification({
+      userId: result.employee.userId,
+      title: "Leave Rejected ❌",
+      message: `Your leave request for ${result.startDate.toLocaleDateString()} has been rejected by your manager.`,
+      type: "LEAVE_REJECTED",
+      link: "/leaves",
+      sendPush: true
+    }).catch(err => console.error("Failed to create leave rejection notification:", err));
+  });
+
+  return result;
 }
 
 async function hrApproveLeave(leaveId: number, actor: NonNullable<Express.Request["user"]>) {
@@ -849,7 +885,7 @@ async function hrApproveLeave(leaveId: number, actor: NonNullable<Express.Reques
 
   if (leaveRequest.managerApprovalStatus === ApprovalStepStatus.APPROVED) {
     const finalLeave = await prisma.$transaction((transaction) => finalizeApprovedLeave(transaction, leaveRequest, actor));
-    
+
     // Background sync to Google Calendar
     void syncLeaveToGoogleCalendar({
       employeeId: finalLeave.employeeId,
@@ -868,7 +904,7 @@ async function hrApproveLeave(leaveId: number, actor: NonNullable<Express.Reques
     return finalLeave;
   }
 
-  return prisma.leaveRequest.update({
+  const result = await prisma.leaveRequest.update({
     where: { id: leaveRequest.id },
     data: {
       hrApprovalStatus: ApprovalStepStatus.APPROVED,
@@ -884,6 +920,20 @@ async function hrApproveLeave(leaveId: number, actor: NonNullable<Express.Reques
       medicalProofReviewedBy: true,
     },
   });
+
+  // DB Notification
+  import("./../notifications/service.js").then(ns => {
+    ns.createNotification({
+      userId: result.employee.userId,
+      title: "Leave Approved! ✅",
+      message: `Your leave request for ${result.startDate.toLocaleDateString()} has been approved by HR.`,
+      type: "LEAVE_APPROVED",
+      link: "/leaves",
+      sendPush: true
+    }).catch(err => console.error("Failed to create leave approval notification:", err));
+  });
+
+  return result;
 }
 
 async function hrRejectLeave(
@@ -900,7 +950,7 @@ async function hrRejectLeave(
     throw new AppError("HR review is already completed");
   }
 
-  return prisma.leaveRequest.update({
+  const result = await prisma.leaveRequest.update({
     where: { id: leaveRequest.id },
     data: {
       status: LeaveStatus.REJECTED,
@@ -917,6 +967,20 @@ async function hrRejectLeave(
       medicalProofReviewedBy: true,
     },
   });
+
+  // DB Notification
+  import("./../notifications/service.js").then(ns => {
+    ns.createNotification({
+      userId: result.employee.userId,
+      title: "Leave Rejected ❌",
+      message: `Your leave request for ${result.startDate.toLocaleDateString()} has been rejected by HR.`,
+      type: "LEAVE_REJECTED",
+      link: "/leaves",
+      sendPush: true
+    }).catch(err => console.error("Failed to create leave rejection notification:", err));
+  });
+
+  return result;
 }
 
 async function cancelLeave(leaveId: number, actor: NonNullable<Express.Request["user"]>) {

@@ -4,8 +4,9 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "dev": "tsx watch src/server.ts",
+    "dev": "prisma db push --accept-data-loss && tsx watch src/server.ts",
     "build": "prisma generate && tsc -p tsconfig.json",
+    "prestart": "prisma db push --accept-data-loss",
     "start": "node dist/server.js",
     "lint": "tsc --noEmit",
     "test": "tsx --test src/modules/auth/service.test.ts src/modules/attendance/service.test.ts src/modules/calendar/service.test.ts src/modules/leaves/service.test.ts src/modules/payroll/service.test.ts src/utils/financial-year.test.ts",

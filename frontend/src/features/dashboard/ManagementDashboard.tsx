@@ -7,6 +7,7 @@ import ThoughtOfTheDay from "./ThoughtOfTheDay";
 import AnnouncementForm from "./AnnouncementForm";
 import AnnouncementList from "./AnnouncementList";
 import WorkdayTimeline from "./WorkdayTimeline";
+import Modal from "../../components/common/Modal";
 
 type DashboardData = Record<string, number | string | boolean | null | undefined | object>;
 
@@ -39,6 +40,7 @@ export default function ManagementDashboard({ token, role }: { token: string | n
   const [data, setData] = useState<DashboardData>({});
   const [loading, setLoading] = useState(true);
   const [announcementKey, setAnnouncementKey] = useState(0);
+  const [isAnnouncementModalOpen, setAnnouncementModalOpen] = useState(false);
   const bannerContent = getDashboardContent(role);
 
   useEffect(() => {
@@ -76,13 +78,15 @@ export default function ManagementDashboard({ token, role }: { token: string | n
               <h3>{bannerContent.title}</h3>
             </div>
           </div>
-          <AnnouncementList token={token} refreshSignal={announcementKey} />
+          <AnnouncementList token={token} refreshSignal={announcementKey} onCreateClick={() => setAnnouncementModalOpen(true)} />
           <DashboardHeroClocks />
           <WorkdayTimeline />
         </div>
       </article>
 
-      <AnnouncementForm token={token} onCreated={() => setAnnouncementKey(k => k + 1)} />
+      <Modal open={isAnnouncementModalOpen} onClose={() => setAnnouncementModalOpen(false)}>
+        <AnnouncementForm token={token} onCreated={() => { setAnnouncementKey(k => k + 1); setAnnouncementModalOpen(false); }} />
+      </Modal>
 
       <div className="grid cols-2 dashboard-grid">
         {Object.entries(data).map(([key, value]) => {

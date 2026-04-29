@@ -7,7 +7,8 @@
 /* Month header styling */
 .leave-month-header {
   position: sticky;
-  top: 48px; /* Offset for table header if any, though native table headers usually stick at top:0 */
+  top: 48px;
+  /* Offset for table header if any, though native table headers usually stick at top:0 */
   z-index: 5;
   background: transparent;
 }
@@ -20,11 +21,10 @@
 .leave-month-header__content {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 12px 20px;
-  background: rgba(255, 255, 255, 0.9);
-  backdrop-filter: blur(8px);
-  border-bottom: 1px solid rgba(148, 163, 184, 0.12);
+  justify-content: center;
+  padding: 10px 20px;
+  background: #ffffff;
+  border-bottom: 1px solid #f1f5f9;
   margin: 0;
   position: relative;
 }
@@ -44,15 +44,21 @@
 .leave-month-header__title {
   font-size: 14px;
   font-weight: 800;
-  color: #0f172a; /* Slate 900 */
+  color: #0f172a;
   margin: 0;
   display: flex;
   align-items: center;
-  gap: 10px;
+  justify-content: center;
+  gap: 8px;
   letter-spacing: -0.01em;
+  line-height: 1;
 }
 
 .leave-month-header__count {
+  position: absolute;
+  right: 20px;
+  top: 50%;
+  transform: translateY(-50%);
   font-size: 11px;
   color: #475569;
   background: #f1f5f9;
@@ -66,51 +72,23 @@
 
 .leave-table-surface .table {
   min-width: 100%;
+  table-layout: auto;
+  border-collapse: collapse;
 }
 
-.leave-table-surface .table th:nth-child(1),
-.leave-table-surface .table td:nth-child(1) {
-  width: 14%;
+.leave-table-surface .table th,
+.leave-table-surface .table td {
+  text-align: left;
 }
 
-.leave-table-surface .table th:nth-child(1),
-.leave-table-surface .table td:nth-child(1),
-.leave-table-surface .table th:nth-child(2),
-.leave-table-surface .table td:nth-child(2),
-.leave-table-surface .table th:nth-child(3),
-.leave-table-surface .table td:nth-child(3),
-.leave-table-surface .table th:nth-child(4),
-.leave-table-surface .table td:nth-child(4) {
-  white-space: normal;
-  word-break: break-word;
+.leave-table-surface .table th:first-child,
+.leave-table-surface .table td:first-child {
+  padding-left: 20px;
 }
 
-.leave-table-surface .table th:nth-child(2),
-.leave-table-surface .table td:nth-child(2) {
-  width: 7%;
-  text-align: center;
-  white-space: nowrap;
-  word-break: normal;
-}
-
-.leave-table-surface .table th:nth-child(3),
-.leave-table-surface .table td:nth-child(3) {
-  width: 20%;
-}
-
-.leave-table-surface .table th:nth-child(4),
-.leave-table-surface .table td:nth-child(4) {
-  width: 13%;
-}
-
-.leave-table-surface .table th:nth-child(5),
-.leave-table-surface .table td:nth-child(5),
-.leave-table-surface .table th:nth-child(6),
-.leave-table-surface .table td:nth-child(6),
-.leave-table-surface .table th:nth-child(7),
-.leave-table-surface .table td:nth-child(7) {
-  width: 1%;
-  white-space: nowrap;
+.leave-table-surface .table th:last-child,
+.leave-table-surface .table td:last-child {
+  padding-right: 20px;
 }
 
 .leave-request-row--expanded {
@@ -317,6 +295,7 @@
 }
 
 @media (max-width: 900px) {
+
   .leave-request-details__grid,
   .leave-request-details__meta {
     grid-template-columns: 1fr;

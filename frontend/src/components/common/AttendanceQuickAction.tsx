@@ -1,11 +1,11 @@
 import "./AttendanceQuickAction.css";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import Modal from "./Modal";
 import { apiRequest } from "../../services/api";
 import type { Attendance } from "../../types";
 import { ATTENDANCE_EVENT, dispatchAttendanceUpdated, getAttendanceUpdatedDetail, getSelfAttendanceActionState } from "./attendanceQuickActionUtils";
 import { formatAttendanceTime } from "../../utils/format";
 import { useAuth } from "../../hooks/useAuth";
+import Modal from "./Modal";
 
 type AttendanceQuickActionProps = {
   token: string | null;
@@ -28,9 +28,10 @@ export default function AttendanceQuickAction({
 }: AttendanceQuickActionProps) {
   const [attendanceToday, setAttendanceToday] = useState<Attendance | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  const [confirmOpen, setConfirmOpen] = useState(false);
   const [actionError, setActionError] = useState("");
   const [now, setNow] = useState(() => Date.now());
+  const [showCheckoutModal, setShowCheckoutModal] = useState(false);
+  const [todaysUpdateInput, setTodaysUpdateInput] = useState("");
   const latestLoadRequestRef = useRef(0);
   const attendanceVersionRef = useRef(0);
   const { refreshSession, updateLastActivity } = useAuth();
@@ -127,15 +128,35 @@ export default function AttendanceQuickAction({
       return;
     }
 
+    if (actionState.label === "Check out") {
+      setShowCheckoutModal(true);
+      return;
+    }
+
     if (actionState.requiresConfirmation) {
-      setConfirmOpen(true);
+      const confirmMessage = `Are you sure you want to ${actionState.label.toLowerCase()} for today? This will start your attendance timer for the day.`;
+
+      if (window.confirm(confirmMessage)) {
+        await submitAction();
+      }
       return;
     }
 
     await submitAction();
   }
 
-  async function submitAction() {
+  async function handleCheckoutSubmit(event: React.FormEvent) {
+    event.preventDefault();
+    if (!todaysUpdateInput.trim()) {
+      setActionError("Please provide an update on what you worked on today.");
+      return;
+    }
+    await submitAction({ todaysUpdate: todaysUpdateInput });
+    setShowCheckoutModal(false);
+    setTodaysUpdateInput("");
+  }
+
+  async function submitAction(body: Record<string, any> = {}) {
     if (!actionState.actionPath || actionState.disabled || submitting) {
       return;
     }
@@ -151,7 +172,7 @@ export default function AttendanceQuickAction({
       const response = await apiRequest<Attendance>(actionState.actionPath, {
         method: "POST",
         token,
-        body: {},
+        body,
       });
       const nextAttendance = response.data;
       syncAttendanceState(nextAttendance);
@@ -209,28 +230,67 @@ export default function AttendanceQuickAction({
           </p>
         ) : null}
       </div>
-      <Modal open={confirmOpen} title={`Confirm ${actionState.label.toLowerCase()}`} onClose={() => setConfirmOpen(false)}>
-        <div className="stack attendance-quick-action-confirm">
-          <p className="muted">
-            Are you sure you want to {actionState.label.toLowerCase()} for today?
-            {actionState.label === "Check out" ? " This will complete today's attendance entry." : " This will start your attendance timer for the day."}
+
+      <Modal
+        open={showCheckoutModal}
+        onClose={() => {
+          setShowCheckoutModal(false);
+          setTodaysUpdateInput("");
+          setActionError("");
+        }}
+        title="Check out"
+        className="checkout-modal"
+      >
+        <form onSubmit={handleCheckoutSubmit} className="stack">
+          <p className="muted" style={{ fontSize: '14px', marginBottom: '8px' }}>
+            Great job today! Please briefly mention what you worked on before checking out.
           </p>
-          <div className="button-row">
+          <label>
+            Today's Update
+            <textarea
+              value={todaysUpdateInput}
+              onChange={(e) => setTodaysUpdateInput(e.target.value)}
+              placeholder="e.g. Worked on the dashboard refactoring and fixed 3 bugs in the attendance module."
+              required
+              rows={4}
+              style={{ 
+                resize: 'none',
+                padding: '12px',
+                borderRadius: '12px',
+                border: '1.5px solid var(--color-border-default)',
+                fontSize: '14px',
+                lineHeight: '1.6',
+                background: 'rgba(255, 255, 255, 0.5)'
+              }}
+              autoFocus
+            />
+          </label>
+          <div className="button-row" style={{ marginTop: '8px', justifyContent: 'flex-end', display: 'flex', gap: '12px' }}>
             <button
               type="button"
-              className="attendance-quick-action-confirm-button"
+              className="secondary"
               onClick={() => {
-                setConfirmOpen(false);
-                void submitAction();
+                setShowCheckoutModal(false);
+                setTodaysUpdateInput("");
+                setActionError("");
               }}
+              disabled={submitting}
+              style={{ minWidth: '100px' }}
             >
-              Confirm {actionState.label.toLowerCase()}
-            </button>
-            <button type="button" className="secondary" onClick={() => setConfirmOpen(false)}>
               Cancel
             </button>
+            <button
+              type="submit"
+              disabled={submitting}
+              style={{ minWidth: '120px' }}
+            >
+              {submitting ? "Checking out..." : "Finalize & Out"}
+            </button>
           </div>
-        </div>
+          {actionError ? (
+            <p className="error-text" style={{ marginTop: '12px' }}>{actionError}</p>
+          ) : null}
+        </form>
       </Modal>
     </>
   );

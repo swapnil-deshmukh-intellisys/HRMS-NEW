@@ -217,40 +217,38 @@
   line-height: 1.4;
 }
 
-.password-input-wrap {
+.password-label {
   position: relative;
 }
 
-.password-input-wrap input {
+.password-label input {
   padding-right: 44px;
 }
 
 .password-visibility-toggle {
   position: absolute;
-  top: 50%;
+  bottom: 8px;
   right: 8px;
-  transform: translateY(-50%);
+  transform: none !important;
   min-width: 32px;
   width: 32px;
-  min-height: 32px;
+  min-height: 32px !important;
   padding: 0;
   border: none;
-  background: transparent;
+  background: transparent !important;
   color: var(--color-text-secondary);
+  box-shadow: none !important;
+}
+
+.password-visibility-toggle:hover {
+  background: transparent !important;
+  transform: none !important;
+  box-shadow: none !important;
 }
 
 .password-visibility-toggle:focus-visible {
   outline: 2px solid rgba(11, 116, 255, 0.28);
   outline-offset: 2px;
-}
-
-.password-visibility-toggle:hover {
-  transform: translateY(-50%);
-  background: transparent;
-}
-
-.password-visibility-toggle:hover:not(:disabled) {
-  transform: translateY(-50%);
 }
 
 @media (max-width: 980px) {

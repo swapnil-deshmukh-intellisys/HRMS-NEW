@@ -29,6 +29,7 @@ const router = Router();
 
 const attendanceSchema = z.object({
   employeeId: z.coerce.number().int().positive().optional(),
+  todaysUpdate: z.string().optional(),
 });
 
 const attendanceFinalizeSchema = z.object({
@@ -140,19 +141,19 @@ async function getAttendanceTodayForEmployee(employeeId: number) {
     attendanceTodayRecord ??
     (approvedLeaveToday
       ? {
-          id: 0,
-          employeeId,
-          attendanceDate: today,
-          checkInTime: null,
-          checkOutTime: null,
-          workedMinutes: 0,
-          status:
-            getApprovedLeaveAttendanceStatusForDate(approvedLeaveToday, today) === AttendanceStatus.HALF_DAY
-              ? AttendanceStatus.HALF_DAY
-              : AttendanceStatus.LEAVE,
-          leaveTypeCode: approvedLeaveToday.leaveType.code,
-          leaveTypeName: approvedLeaveToday.leaveType.name,
-        }
+        id: 0,
+        employeeId,
+        attendanceDate: today,
+        checkInTime: null,
+        checkOutTime: null,
+        workedMinutes: 0,
+        status:
+          getApprovedLeaveAttendanceStatusForDate(approvedLeaveToday, today) === AttendanceStatus.HALF_DAY
+            ? AttendanceStatus.HALF_DAY
+            : AttendanceStatus.LEAVE,
+        leaveTypeCode: approvedLeaveToday.leaveType.code,
+        leaveTypeName: approvedLeaveToday.leaveType.name,
+      }
       : null)
   );
 }
@@ -181,10 +182,10 @@ router.get("/today", requireRoles("EMPLOYEE", "MANAGER", "HR", "ADMIN"), async (
 
     const isOvertimeEligible = attendanceToday?.checkOutTime ? true : false;
 
-    return sendSuccess(response, "Today's attendance fetched successfully", { 
-      attendanceToday, 
+    return sendSuccess(response, "Today's attendance fetched successfully", {
+      attendanceToday,
       overtimeSession,
-      isOvertimeEligible 
+      isOvertimeEligible
     });
   } catch (error) {
     next(error);
@@ -265,24 +266,24 @@ router.post("/check-in", validate(attendanceSchema), async (request, response, n
 
     const attendance = existing
       ? await prisma.attendance.update({
-          where: { id: existing.id },
-          data: {
-            checkInTime,
-            status: AttendanceStatus.PRESENT,
-            isLate,
-            lateByMinutes,
-          },
-        })
+        where: { id: existing.id },
+        data: {
+          checkInTime,
+          status: AttendanceStatus.PRESENT,
+          isLate,
+          lateByMinutes,
+        },
+      })
       : await prisma.attendance.create({
-          data: {
-            employeeId,
-            attendanceDate: today,
-            checkInTime,
-            status: AttendanceStatus.PRESENT,
-            isLate,
-            lateByMinutes,
-          },
-        });
+        data: {
+          employeeId,
+          attendanceDate: today,
+          checkInTime,
+          status: AttendanceStatus.PRESENT,
+          isLate,
+          lateByMinutes,
+        },
+      });
 
     return sendSuccess(response, "Attendance checked in successfully", attendance, 201);
 
@@ -330,6 +331,7 @@ router.post("/check-out", validate(attendanceSchema), async (request, response, 
       data: {
         checkOutTime,
         workedMinutes,
+        todaysUpdate: request.body.todaysUpdate,
       },
     });
 
@@ -597,6 +599,25 @@ router.post(
         },
       });
 
+      if (regularizationRequest.employee.managerId) {
+        const manager = await prisma.employee.findUnique({
+          where: { id: regularizationRequest.employee.managerId },
+          select: { userId: true }
+        });
+        if (manager) {
+          import("./../notifications/service.js").then(ns => {
+            ns.createNotification({
+              userId: manager.userId,
+              title: "Correction Request 🕒",
+              message: `${regularizationRequest.employee.firstName} requested a correction for ${regularizationRequest.attendanceDate.toLocaleDateString()}.`,
+              type: "ATTENDANCE_REGULARIZATION_REQUESTED",
+              link: "/attendance/requests",
+              sendPush: true
+            }).catch(err => console.error("Failed to notify manager of regularization:", err));
+          });
+        }
+      }
+
       return sendSuccess(response, "Attendance correction request submitted successfully", regularizationRequest, 201);
     } catch (error) {
       next(error);
@@ -619,8 +640,8 @@ router.get("/regularizations", requireRoles("ADMIN", "HR", "MANAGER", "EMPLOYEE"
 
       where = isTeamLead
         ? {
-            OR: [{ employeeId }, { employeeId: { in: await getScopedEmployeeIdsForTeamLead(prisma, employeeId) } }],
-          }
+          OR: [{ employeeId }, { employeeId: { in: await getScopedEmployeeIdsForTeamLead(prisma, employeeId) } }],
+        }
         : { employeeId };
     } else if (request.user?.role === "MANAGER" && request.user.employeeId) {
       where = {
@@ -723,24 +744,24 @@ router.post(
         await prisma.$transaction([
           existingAttendance
             ? prisma.attendance.update({
-                where: { id: existingAttendance.id },
-                data: {
-                  checkInTime: regularizationRequest.proposedCheckInTime,
-                  checkOutTime: regularizationRequest.proposedCheckOutTime,
-                  workedMinutes,
-                  status,
-                },
-              })
+              where: { id: existingAttendance.id },
+              data: {
+                checkInTime: regularizationRequest.proposedCheckInTime,
+                checkOutTime: regularizationRequest.proposedCheckOutTime,
+                workedMinutes,
+                status,
+              },
+            })
             : prisma.attendance.create({
-                data: {
-                  employeeId: regularizationRequest.employeeId,
-                  attendanceDate: regularizationRequest.attendanceDate,
-                  checkInTime: regularizationRequest.proposedCheckInTime,
-                  checkOutTime: regularizationRequest.proposedCheckOutTime,
-                  workedMinutes,
-                  status,
-                },
-              }),
+              data: {
+                employeeId: regularizationRequest.employeeId,
+                attendanceDate: regularizationRequest.attendanceDate,
+                checkInTime: regularizationRequest.proposedCheckInTime,
+                checkOutTime: regularizationRequest.proposedCheckOutTime,
+                workedMinutes,
+                status,
+              },
+            }),
           prisma.attendanceRegularizationRequest.update({
             where: { id: regularizationRequest.id },
             data: {
@@ -770,6 +791,22 @@ router.post(
           reviewedBy: true,
         },
       });
+
+      if (updatedRequest) {
+        import("./../notifications/service.js").then(ns => {
+          const isApproved = updatedRequest.status === "APPROVED";
+          ns.createNotification({
+            userId: updatedRequest.employee.userId,
+            title: isApproved ? "Attendance Corrected! ✅" : "Correction Rejected ❌",
+            message: isApproved
+              ? `Your attendance correction for ${updatedRequest.attendanceDate.toLocaleDateString()} has been approved.`
+              : `Your attendance correction for ${updatedRequest.attendanceDate.toLocaleDateString()} was rejected.`,
+            type: isApproved ? "ATTENDANCE_CORRECTION_APPROVED" : "ATTENDANCE_CORRECTION_REJECTED",
+            link: "/attendance/requests",
+            sendPush: true
+          }).catch(err => console.error("Failed to create attendance correction notification:", err));
+        });
+      }
 
       return sendSuccess(response, "Attendance correction request reviewed successfully", updatedRequest);
     } catch (error) {
@@ -846,8 +883,8 @@ router.get("/", requireRoles("ADMIN", "HR", "MANAGER", "EMPLOYEE"), async (reque
 
         where = isTeamLead
           ? {
-              OR: [{ employeeId: request.user.employeeId }, { employeeId: { in: await getScopedEmployeeIdsForTeamLead(prisma, request.user.employeeId) } }],
-            }
+            OR: [{ employeeId: request.user.employeeId }, { employeeId: { in: await getScopedEmployeeIdsForTeamLead(prisma, request.user.employeeId) } }],
+          }
           : { employeeId: request.user.employeeId };
       }
     } else if (request.user?.role === "MANAGER" && request.user.employeeId) {
@@ -928,7 +965,7 @@ router.post("/overtime/start", validate(attendanceSchema), async (request, respo
     }
 
     const today = startOfDay(new Date());
-    
+
     // Check if regular attendance is completed
     const attendance = await prisma.attendance.findFirst({
       where: {
@@ -1030,7 +1067,7 @@ router.get("/overtime", requireRoles("ADMIN", "HR", "MANAGER", "EMPLOYEE"), asyn
     const requestedEmployeeId = request.query.employeeId ? Number(request.query.employeeId) : undefined;
     const requestedMonth = request.query.month ? Number(request.query.month) : undefined;
     const requestedYear = request.query.year ? Number(request.query.year) : undefined;
-    
+
     let where: Record<string, unknown> = {};
 
     if (request.user?.role === "EMPLOYEE") {
@@ -1051,8 +1088,8 @@ router.get("/overtime", requireRoles("ADMIN", "HR", "MANAGER", "EMPLOYEE"), asyn
 
         where = isTeamLead
           ? {
-              OR: [{ employeeId: request.user.employeeId }, { employeeId: { in: await getScopedEmployeeIdsForTeamLead(prisma, request.user.employeeId) } }],
-            }
+            OR: [{ employeeId: request.user.employeeId }, { employeeId: { in: await getScopedEmployeeIdsForTeamLead(prisma, request.user.employeeId) } }],
+          }
           : { employeeId: request.user.employeeId };
       }
     } else if (request.user?.role === "MANAGER" && request.user.employeeId) {
@@ -1069,7 +1106,7 @@ router.get("/overtime", requireRoles("ADMIN", "HR", "MANAGER", "EMPLOYEE"), asyn
     if (requestedMonth && requestedYear) {
       const startDate = new Date(requestedYear, requestedMonth - 1, 1);
       const endDate = new Date(requestedYear, requestedMonth, 0);
-      
+
       where = {
         ...where,
         date: {

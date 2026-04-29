@@ -4,19 +4,29 @@
   gap: 12px;
   width: 100%;
   margin-top: 20px;
+  position: relative;
+  z-index: var(--z-sticky); /* Ensure the entire clock section stays above content below it */
 }
 
 .dashboard-hero-clock-wrapper {
   position: relative;
   display: flex;
   flex-direction: column;
+  z-index: 1; /* Base z-index */
+  transition: z-index 0s;
+}
+
+/* Elevate the card that has an open dropdown */
+.dashboard-hero-clock-wrapper:has(.clock-timezone-dropdown),
+.dashboard-hero-clock-wrapper:focus-within {
+  z-index: 50;
 }
 
 .clock-timezone-picker {
   position: absolute;
   top: 12px;
   right: 12px;
-  z-index: 999;
+  z-index: 100;
 }
 
 .clock-timezone-trigger {
@@ -60,12 +70,12 @@
   background: #000000; /* Matching center card black */
   border: 1px solid rgba(168, 85, 247, 0.5); /* Purple Highlight */
   border-radius: 12px;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.8); /* Stronger shadow for depth */
   overflow: hidden;
   display: flex;
   flex-direction: column;
   animation: slideDown 0.2s ease-out;
-  z-index: 10000; /* Ensure it stays on top */
+  z-index: var(--z-dropdown); /* High enough within its own stacking context */
 }
 
 @keyframes slideDown {

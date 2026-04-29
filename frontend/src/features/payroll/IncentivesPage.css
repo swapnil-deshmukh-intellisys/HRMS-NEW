@@ -447,7 +447,8 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
-  padding-bottom: 60px; /* Room for employee dropdown */
+  padding-bottom: 60px;
+  /* Room for employee dropdown */
 }
 
 .form-row.grid {

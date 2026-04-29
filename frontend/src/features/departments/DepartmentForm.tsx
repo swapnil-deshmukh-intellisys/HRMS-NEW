@@ -10,10 +10,9 @@ type DepartmentFormProps = {
   form: DepartmentFormValues;
   onChange: (nextForm: DepartmentFormValues) => void;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
-  message: string;
 };
 
-export default function DepartmentForm({ form, onChange, onSubmit, message }: DepartmentFormProps) {
+export default function DepartmentForm({ form, onChange, onSubmit }: DepartmentFormProps) {
   return (
     <form className="card stack compact-form" onSubmit={onSubmit}>
       <h3>Create department</h3>
@@ -26,7 +25,6 @@ export default function DepartmentForm({ form, onChange, onSubmit, message }: De
         <input value={form.code} onChange={(event) => onChange({ ...form, code: event.target.value })} required />
       </label>
       <button type="submit">Save department</button>
-      {message ? <p className="success-text">{message}</p> : null}
     </form>
   );
 }

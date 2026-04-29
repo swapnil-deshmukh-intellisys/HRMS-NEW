@@ -6,9 +6,9 @@ import { useNavigate } from "react-router-dom";
 import AttendanceQuickAction from "../components/common/AttendanceQuickAction";
 import BreakQuickAction from "../components/common/BreakQuickAction";
 import Button from "../components/common/Button";
-import Modal from "../components/common/Modal";
 import type { Role } from "../types";
 import { useApp } from "../context/AppContext";
+import { usePushNotifications } from "../hooks/usePushNotifications";
 
 type NavbarProps = {
   title: string;
@@ -22,100 +22,16 @@ type NavbarProps = {
 
 export default function Navbar({ title, navOpen, onToggleNav, token, currentEmployeeId, role, onLogout }: NavbarProps) {
   const navigate = useNavigate();
-  const { summary, loading: notificationsLoading, error: notificationsError, refreshSummary } = useApp();
+  const { summary, notifications, loading: notificationsLoading, error: notificationsError, refreshSummary, markNotificationAsRead, markAllNotificationsAsRead } = useApp();
+  const { subscribeUser, isSubscribing } = usePushNotifications(token);
   const [searchTerm, setSearchTerm] = useState("");
   const [notificationsOpen, setNotificationsOpen] = useState(false);
-  const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false);
   const notificationsRef = useRef<HTMLDivElement | null>(null);
   const canSearchEmployees = role !== "EMPLOYEE";
 
-  const notifications = useMemo(() => {
-    if (!summary) return [];
-
-    const items: Array<{ id: string; title: string; description: string; action: () => void }> = [];
-
-    if ((summary.pendingLeaves ?? 0) > 0) {
-      items.push({
-        id: "pending-leaves",
-        title: role === "HR" || role === "ADMIN" ? "Leave approvals pending" : "Leave request update",
-        description:
-          role === "HR" || role === "ADMIN"
-            ? `${summary.pendingLeaves} leave request(s) are pending review.`
-            : `You have ${summary.pendingLeaves} pending leave request(s).`,
-        action: () => navigate("/leaves"),
-      });
-    }
-
-    const shouldShowTeamLeadItems = role === "MANAGER" || (role === "EMPLOYEE" && Boolean(summary.isTeamLead));
-
-    if ((summary.pendingTeamLeaves ?? 0) > 0 && shouldShowTeamLeadItems) {
-      items.push({
-        id: "team-pending-leaves",
-        title: "Team approvals pending",
-        description: `${summary.pendingTeamLeaves} team leave request(s) need review.`,
-        action: () => navigate("/leaves"),
-      });
-    }
-
-    if ((summary.scopedTeamCount ?? 0) > 0 && shouldShowTeamLeadItems) {
-      items.push({
-        id: "team-size",
-        title: "Team scope snapshot",
-        description: `You currently have ${summary.scopedTeamCount} team member(s) in scope.`,
-        action: () => navigate("/team"),
-      });
-    }
-
-    if ((summary.payrollCount ?? 0) > 0 && role !== "EMPLOYEE") {
-      items.push({
-        id: "payroll-records",
-        title: "Payroll records available",
-        description: `${summary.payrollCount} payroll record(s) currently in system.`,
-        action: () => navigate("/payroll"),
-      });
-    }
-
-    if ((summary.pendingCorrectionRequests ?? 0) > 0) {
-      items.push({
-        id: "pending-corrections",
-        title: "Correction requests pending",
-        description: `${summary.pendingCorrectionRequests} attendance correction request(s) need review.`,
-        action: () => navigate("/attendance"),
-      });
-    }
-
-    if ((summary.pendingIncentiveApprovals ?? 0) > 0 && (role === "HR" || role === "ADMIN")) {
-      items.push({
-        id: "pending-incentives",
-        title: "Incentive approvals pending",
-        description: `${summary.pendingIncentiveApprovals} incentive request(s) are waiting for action.`,
-        action: () => navigate("/incentives"),
-      });
-    }
-
-    const priorityOrder: Record<string, number> = {
-      "pending-corrections": 1,
-      "pending-leaves": 2,
-      "pending-incentives": 3,
-      "payroll-records": 4,
-      "team-pending-leaves": 5,
-      "team-size": 6,
-    };
-
-    return items.sort((a, b) => (priorityOrder[a.id] ?? 99) - (priorityOrder[b.id] ?? 99));
-  }, [navigate, role, summary]);
-
-  const totalPendingCount = useMemo(() => {
-    if (!summary) return 0;
-    
-    // Only sum indicators that represent actual "pending actions"
-    return (
-      (summary.pendingLeaves ?? 0) +
-      (summary.pendingTeamLeaves ?? 0) +
-      (summary.pendingCorrectionRequests ?? 0) +
-      (summary.pendingIncentiveApprovals ?? 0)
-    );
-  }, [summary]);
+  const totalUnreadCount = useMemo(() => {
+    return notifications.filter(n => !n.isRead).length;
+  }, [notifications]);
 
   useEffect(() => {
     if (!notificationsOpen) return;
@@ -190,9 +106,9 @@ export default function Navbar({ title, navOpen, onToggleNav, token, currentEmpl
             }}
           >
             <Bell size={18} strokeWidth={2} />
-            {totalPendingCount > 0 ? (
+            {totalUnreadCount > 0 ? (
               <span className="topbar-notification-badge" aria-hidden="true">
-                {totalPendingCount > 99 ? "99+" : totalPendingCount}
+                {totalUnreadCount > 99 ? "99+" : totalUnreadCount}
               </span>
             ) : null}
           </Button>
@@ -200,9 +116,29 @@ export default function Navbar({ title, navOpen, onToggleNav, token, currentEmpl
             <div className="topbar-notification-popover">
               <div className="topbar-notification-popover__header">
                 <strong>Notifications</strong>
-                <button type="button" className="secondary" onClick={() => void refreshSummary()} disabled={notificationsLoading}>
-                  Refresh
-                </button>
+                <div className="topbar-notification-popover__actions">
+                  <button type="button" className="secondary" onClick={() => void markAllNotificationsAsRead()} disabled={totalUnreadCount === 0}>
+                    Mark all read
+                  </button>
+                  <button 
+                    type="button" 
+                    className="secondary" 
+                    onClick={async () => {
+                      try {
+                        await subscribeUser();
+                        alert("Desktop notifications enabled!");
+                      } catch (err: any) {
+                        alert(err.message || "Failed to enable notifications");
+                      }
+                    }} 
+                    disabled={isSubscribing}
+                  >
+                    {isSubscribing ? "Enabling..." : "Desktop Alerts"}
+                  </button>
+                  <button type="button" className="secondary" onClick={() => void refreshSummary()} disabled={notificationsLoading}>
+                    Refresh
+                  </button>
+                </div>
               </div>
               {notificationsLoading ? <p className="muted">Loading updates...</p> : null}
               {notificationsError ? <p className="error-text">{notificationsError}</p> : null}
@@ -213,19 +149,32 @@ export default function Navbar({ title, navOpen, onToggleNav, token, currentEmpl
                       <button
                         key={item.id}
                         type="button"
-                        className="topbar-notification-item"
+                        className={`topbar-notification-item ${!item.isRead ? "unread" : ""}`}
                         onClick={() => {
-                          item.action();
+                          if (!item.isRead) {
+                            void markNotificationAsRead(item.id);
+                          }
+                          if (item.link) {
+                            navigate(item.link);
+                          }
                           setNotificationsOpen(false);
                         }}
                       >
-                        <span className="topbar-notification-item__title">{item.title}</span>
-                        <span className="topbar-notification-item__desc">{item.description}</span>
+                        <div className="topbar-notification-item__content">
+                          <span className="topbar-notification-item__title">
+                            {item.title}
+                            {!item.isRead && <span className="unread-dot" />}
+                          </span>
+                          <span className="topbar-notification-item__desc">{item.message}</span>
+                          <span className="topbar-notification-item__time">
+                            {new Date(item.createdAt).toLocaleDateString()} {new Date(item.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                        </div>
                       </button>
                     ))}
                   </div>
                 ) : (
-                  <p className="muted">No new notifications.</p>
+                  <p className="muted">No notifications yet.</p>
                 )
               ) : null}
             </div>
@@ -250,32 +199,15 @@ export default function Navbar({ title, navOpen, onToggleNav, token, currentEmpl
           className="topbar-icon-button topbar-logout-button"
           variant="secondary"
           aria-label="Logout"
-          onClick={() => setLogoutConfirmOpen(true)}
+          onClick={() => {
+            if (window.confirm("Are you sure you want to log out? Your current session will be ended.")) {
+              void onLogout();
+            }
+          }}
         >
           <LogOut size={18} strokeWidth={2} />
         </Button>
       </div>
-
-      <Modal open={logoutConfirmOpen} title="Confirm Logout" onClose={() => setLogoutConfirmOpen(false)}>
-        <div className="stack">
-          <p className="muted">Are you sure you want to log out? Your current session will be ended.</p>
-          <div className="button-row">
-            <button
-              type="button"
-              className="attendance-quick-action-confirm-button danger"
-              onClick={() => {
-                setLogoutConfirmOpen(false);
-                void onLogout();
-              }}
-            >
-              Log Out
-            </button>
-            <button type="button" className="secondary" onClick={() => setLogoutConfirmOpen(false)}>
-              Cancel
-            </button>
-          </div>
-        </div>
-      </Modal>
     </div>
   );
 }

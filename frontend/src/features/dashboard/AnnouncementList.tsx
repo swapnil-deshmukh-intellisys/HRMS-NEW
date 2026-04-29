@@ -16,7 +16,7 @@ type Announcement = {
   };
 };
 
-export default function AnnouncementList({ token, refreshSignal }: { token?: string | null; refreshSignal?: number }) {
+export default function AnnouncementList({ token, refreshSignal, onCreateClick }: { token?: string | null; refreshSignal?: number; onCreateClick?: () => void }) {
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [loading, setLoading] = useState(true);
   const [isAllVisible, setIsAllVisible] = useState(false);
@@ -56,7 +56,23 @@ export default function AnnouncementList({ token, refreshSignal }: { token?: str
     fetchAnnouncements();
   }, [fetchAnnouncements, refreshSignal]);
 
-  if (loading || announcements.length === 0) return null;
+  if (loading) return null;
+
+  if (announcements.length === 0) {
+    if (!onCreateClick) return null;
+    return (
+      <div className="announcement-container collapsed">
+        <div className="announcement-controls centered">
+          <button className="announcement-toggle" onClick={onCreateClick}>
+            <div className="announcement-toggle-copy">
+              <Megaphone size={16} />
+              <span>Create First Announcement</span>
+            </div>
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   const todayAnnouncements = announcements.filter(a => isToday(a.createdAt));
   const olderAnnouncements = announcements.filter(a => !isToday(a.createdAt));
@@ -64,7 +80,7 @@ export default function AnnouncementList({ token, refreshSignal }: { token?: str
   if (!isVisible) {
     return (
       <div className="announcement-container collapsed">
-        <div className="announcement-controls centered">
+        <div className="announcement-controls centered" style={{ gap: '12px', flexWrap: 'wrap' }}>
           <button 
             className="announcement-toggle has-count"
             onClick={() => setIsVisible(true)}
@@ -75,6 +91,15 @@ export default function AnnouncementList({ token, refreshSignal }: { token?: str
             </div>
             <ChevronDown size={16} />
           </button>
+          
+          {onCreateClick && (
+            <button className="announcement-toggle" onClick={onCreateClick}>
+              <div className="announcement-toggle-copy">
+                <Megaphone size={16} />
+                <span>Create Announcement</span>
+              </div>
+            </button>
+          )}
         </div>
       </div>
     );
@@ -82,6 +107,14 @@ export default function AnnouncementList({ token, refreshSignal }: { token?: str
 
   return (
     <div className="announcement-container">
+      {onCreateClick && (
+        <div className="announcement-controls top-controls">
+          <button className="announcement-toggle-btn" onClick={onCreateClick} style={{ padding: '6px 14px', fontSize: '11px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <Megaphone size={14} />
+            <span>Create Announcement</span>
+          </button>
+        </div>
+      )}
       {/* Announcements from today - Always visible outside "See More" */}
       <div className="announcement-list latest-only">
         {todayAnnouncements.length > 0 ? (

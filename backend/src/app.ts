@@ -55,13 +55,13 @@ app.use("/api/departments", departmentsRoutes);
 app.use("/api/calendar", calendarRoutes);
 app.use("/api/employees", employeesRoutes);
 app.use("/api/attendance", attendanceRoutes);
-app.use("/api", leaveRoutes);
 app.use("/api/payroll", payrollRoutes);
 app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/announcements", announcementRoutes);
 app.use("/api/google", googleRoutes);
 app.use("/api/notifications", notificationRoutes);
 app.use("/api/system", systemRoutes);
+app.use("/api", leaveRoutes);
 
 app.use(notFound);
 app.use(errorHandler);

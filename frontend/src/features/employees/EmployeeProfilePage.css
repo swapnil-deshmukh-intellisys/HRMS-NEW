@@ -266,8 +266,22 @@
 }
 
 .status-pill--working-saturday {
-  background: #e0e7ff;
-  color: #4338ca;
+  background: #eef2ff;
+  color: #4f46e5;
+}
+
+/* Row Highlighting */
+.attendance-row--off {
+  background-color: #f1f5f9 !important; /* Slightly darker slate */
+}
+
+.attendance-row--holiday {
+  background-color: #dcfce7 !important; /* Slightly darker emerald */
+}
+
+.attendance-row--off td,
+.attendance-row--holiday td {
+  border-bottom-color: #e2e8f0;
 }
 
 .status-pill--off {

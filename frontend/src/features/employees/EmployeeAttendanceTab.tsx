@@ -247,6 +247,12 @@ export default function EmployeeAttendanceTab({ attendance, exceptions }: Employ
         <Table
           compact
           columns={["Date", "Check in", "Check out", "Worked duration", "Today's update", "Status"]}
+          getRowClassName={(index) => {
+            const item = unifiedHistory[index];
+            if (item.status === "HOLIDAY") return "attendance-row--holiday";
+            if (item.status === "OFF") return "attendance-row--off";
+            return "";
+          }}
           rows={unifiedHistory.map((item) => {
             const { date, record, status, isOffDay, isWorkingSaturday, exceptionLabel } = item;
             

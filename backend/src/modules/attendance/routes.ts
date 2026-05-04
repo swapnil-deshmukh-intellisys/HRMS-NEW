@@ -331,7 +331,6 @@ router.post("/check-out", validate(attendanceSchema), async (request, response, 
       data: {
         checkOutTime,
         workedMinutes,
-        todaysUpdate: request.body.todaysUpdate,
       },
     });
 

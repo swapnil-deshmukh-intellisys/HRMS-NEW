@@ -52,7 +52,8 @@
 }
 
 .time-card--minimal .time-card__location .time-card__region {
-  color: #f97316; /* Original vibrant orange for dark background */
+  color: #f97316;
+  /* Original vibrant orange for dark background */
 }
 
 .time-card--minimal .time-card__offset {
@@ -62,7 +63,7 @@
 
 /* Minimal Dark Card Dial - Vertical Layout */
 .time-card--minimal .time-card__analog {
-  order: -1; 
+  order: -1;
 }
 
 .time-card--minimal .time-card__dial {
@@ -170,7 +171,10 @@
 
 .time-card__numbers {
   position: absolute;
-  top: 0; left: 0; width: 100%; height: 100%;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
 }
 
 .time-card__number-wrap {
@@ -216,7 +220,7 @@
 
 /* Position dashes inside numbers for main clock */
 .time-card__dial .time-card__tick::after {
-  top: 22px; 
+  top: 22px;
 }
 
 /* Micro-dashes for minimal clocks */
@@ -312,7 +316,8 @@
   }
 
   .time-card__region {
-    color: #fbbf24 !important; /* Gold on dark background */
+    color: #fbbf24 !important;
+    /* Gold on dark background */
   }
 
   .time-card__offset {

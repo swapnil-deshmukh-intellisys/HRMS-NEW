@@ -5,14 +5,15 @@
   width: 100%;
   margin-top: 20px;
   position: relative;
-  z-index: var(--z-sticky); /* Ensure the entire clock section stays above content below it */
+  /* Removed static z-index to avoid stacking context traps */
 }
 
 .dashboard-hero-clock-wrapper {
   position: relative;
   display: flex;
   flex-direction: column;
-  z-index: 1; /* Base z-index */
+  z-index: 1;
+  /* Base z-index */
   transition: z-index 0s;
 }
 
@@ -63,43 +64,60 @@
 .clock-timezone-dropdown {
   position: absolute;
   top: 100%;
-  right: 0;
   margin-top: 8px;
-  width: 220px; /* Slightly wider */
-  max-height: 320px; /* More room */
-  background: #000000; /* Matching center card black */
-  border: 1px solid rgba(168, 85, 247, 0.5); /* Purple Highlight */
-  border-radius: 12px;
-  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.8); /* Stronger shadow for depth */
+  width: 240px;
+  max-height: 320px;
+  background: #ffffff;
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
   overflow: hidden;
   display: flex;
   flex-direction: column;
   animation: slideDown 0.2s ease-out;
-  z-index: var(--z-dropdown); /* High enough within its own stacking context */
+  z-index: 9999 !important;
+}
+
+/* Edge Case: First two clocks open right, last two open left */
+.dashboard-hero-clock-wrapper:nth-child(-n+2) .clock-timezone-dropdown {
+  left: 0;
+  right: auto;
+}
+
+.dashboard-hero-clock-wrapper:nth-child(n+4) .clock-timezone-dropdown {
+  right: 0;
+  left: auto;
 }
 
 @keyframes slideDown {
-  from { opacity: 0; transform: translateY(-4px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .clock-timezone-search {
   display: flex;
   align-items: center;
-  padding: 10px 14px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-  background: #111111;
+  padding: 12px 14px;
+  background: var(--color-surface-secondary);
+  border-bottom: 1px solid var(--color-border-subtle);
   gap: 10px;
 }
 
 .clock-timezone-search .search-icon {
-  color: #a855f7; /* Purple Search Icon */
+  color: var(--color-accent);
 }
 
 .clock-timezone-search input {
   background: transparent;
   border: none;
-  color: #ffffff;
+  color: var(--color-text-strong);
   font-size: 14px;
   width: 100%;
   outline: none;
@@ -122,16 +140,18 @@
   overflow-y: auto;
   flex: 1;
   padding: 6px;
-  background: #000000;
+  background: #ffffff;
 }
 
 /* Custom Scrollbar */
 .clock-timezone-list::-webkit-scrollbar {
   width: 5px;
 }
+
 .clock-timezone-list::-webkit-scrollbar-track {
   background: transparent;
 }
+
 .clock-timezone-list::-webkit-scrollbar-thumb {
   background: rgba(168, 85, 247, 0.3);
   border-radius: 10px;
@@ -140,24 +160,24 @@
 .timezone-item {
   width: 100%;
   text-align: left;
-  padding: 10px 12px;
+  padding: 10px 14px;
   background: transparent;
   border: none;
   border-radius: 8px;
-  color: #94a3b8;
+  color: var(--color-text-muted);
   font-size: 13px;
   cursor: pointer;
   transition: all 0.15s ease;
 }
 
 .timezone-item:hover {
-  background: rgba(168, 85, 247, 0.15);
-  color: #ffffff;
+  background: var(--color-surface-secondary);
+  color: var(--color-text-strong);
 }
 
 .timezone-item.active {
-  background: rgba(168, 85, 247, 0.25);
-  color: #a855f7;
+  background: var(--color-accent-soft);
+  color: var(--color-accent);
   font-weight: 700;
 }
 
@@ -173,6 +193,7 @@
     grid-template-columns: repeat(3, 1fr);
     gap: 8px;
   }
+
   .time-card--minimal:nth-of-type(1),
   .time-card--minimal:nth-of-type(5) {
     display: none !important;

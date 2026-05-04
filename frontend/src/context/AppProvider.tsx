@@ -8,19 +8,10 @@ import { AppContext, type DashboardSummary, type AnalyticsData } from "./useApp"
 export function AppProvider({ children, token, role }: { children: ReactNode; token: string | null; role: Role }) {
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
   const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [announcements, setAnnouncements] = useState<any[]>([]);
   const [analyticsData, setAnalyticsData] = useState<AnalyticsData | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-
-  const fetchNotifications = useCallback(async () => {
-    if (!token) return;
-    try {
-      const response = await apiRequest<Notification[]>("/notifications", { token });
-      setNotifications(response.data);
-    } catch (err) {
-      console.error("Failed to fetch notifications:", err);
-    }
-  }, [token]);
 
   const refreshSummary = useCallback(async () => {
     if (!token) return;
@@ -29,40 +20,32 @@ export function AppProvider({ children, token, role }: { children: ReactNode; to
       setLoading(true);
       setError("");
       
-      // Fetch both summary and notifications
-      const [summaryRes] = await Promise.all([
-        apiRequest<DashboardSummary>("/dashboard/employee-summary", { token }),
-        fetchNotifications()
-      ]);
+      // 🚀 Hydration Check: If useAuth already fetched this during startup, use it!
+      const cachedData = (window as any).__HRMS_BOOTSTRAP_DATA__;
+      if (cachedData && cachedData.user?.role === role) {
+        setSummary(cachedData.summary);
+        setNotifications(cachedData.notifications);
+        setAnnouncements(cachedData.announcements || []);
+        // Clear the cache to ensure future "refreshSummary" calls actually hit the API
+        (window as any).__HRMS_BOOTSTRAP_DATA__ = null;
+        return;
+      }
+
+      const response = await apiRequest<{
+        summary: DashboardSummary;
+        notifications: Notification[];
+        announcements: any[];
+      }>("/system/bootstrap", { token });
       
-      const nextSummary = { ...summaryRes.data };
-
-      // Handle HR/Admin specific fallbacks if backend does not yet include these fields in the base summary
-      if ((role === "HR" || role === "ADMIN") && typeof nextSummary.pendingCorrectionRequests !== "number") {
-        try {
-          const regularizationResponse = await apiRequest<Array<{ status: string }>>("/attendance/regularizations", { token });
-          nextSummary.pendingCorrectionRequests = regularizationResponse.data.filter((item) => item.status === "PENDING").length;
-        } catch {
-          nextSummary.pendingCorrectionRequests = 0;
-        }
-      }
-
-      if ((role === "HR" || role === "ADMIN") && typeof nextSummary.pendingIncentiveApprovals !== "number") {
-        try {
-          const incentivesResponse = await apiRequest<Array<{ status: string }>>("/payroll/incentives", { token });
-          nextSummary.pendingIncentiveApprovals = incentivesResponse.data.filter((item) => item.status === "PENDING").length;
-        } catch {
-          nextSummary.pendingIncentiveApprovals = 0;
-        }
-      }
-
-      setSummary(nextSummary);
+      setSummary(response.data.summary);
+      setNotifications(response.data.notifications);
+      setAnnouncements(response.data.announcements || []);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load summary");
+      setError(err instanceof Error ? err.message : "Failed to load workspace data");
     } finally {
       setLoading(false);
     }
-  }, [token, role, fetchNotifications]);
+  }, [token, role]);
 
   const markNotificationAsRead = useCallback(async (id: number) => {
     if (!token) return;
@@ -135,6 +118,7 @@ export function AppProvider({ children, token, role }: { children: ReactNode; to
   const value = useMemo(() => ({
     summary,
     notifications,
+    announcements,
     loading,
     error,
     refreshSummary,
@@ -142,7 +126,7 @@ export function AppProvider({ children, token, role }: { children: ReactNode; to
     markAllNotificationsAsRead,
     analyticsData,
     fetchAnalyticsData
-  }), [summary, notifications, loading, error, refreshSummary, markNotificationAsRead, markAllNotificationsAsRead, analyticsData, fetchAnalyticsData]);
+  }), [summary, notifications, announcements, loading, error, refreshSummary, markNotificationAsRead, markAllNotificationsAsRead, analyticsData, fetchAnalyticsData]);
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
 }

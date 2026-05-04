@@ -31,12 +31,12 @@ type ClockConfig = {
   variant: "default" | "minimal";
 };
 
-function TimezoneDropdown({ 
-  value, 
-  onChange 
-}: { 
-  value: string; 
-  onChange: (tz: string) => void 
+function TimezoneDropdown({
+  value,
+  onChange
+}: {
+  value: string;
+  onChange: (tz: string) => void
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
@@ -56,16 +56,16 @@ function TimezoneDropdown({
 
   const filteredTimezones = useMemo(() => {
     const term = searchTerm.toLowerCase();
-    return availableTimezones.filter(tz => 
-      tz.toLowerCase().includes(term) || 
+    return availableTimezones.filter(tz =>
+      tz.toLowerCase().includes(term) ||
       tz.replace(/_/g, " ").toLowerCase().includes(term)
     );
   }, [searchTerm]);
 
   return (
-    <div className="clock-timezone-picker" ref={dropdownRef}>
-      <button 
-        className="clock-timezone-trigger" 
+    <div className={`clock-timezone-picker ${isOpen ? "is-open" : ""}`} ref={dropdownRef}>
+      <button
+        className="clock-timezone-trigger"
         onClick={() => setIsOpen(!isOpen)}
         aria-label="Change timezone"
       >
@@ -76,9 +76,9 @@ function TimezoneDropdown({
         <div className="clock-timezone-dropdown">
           <div className="clock-timezone-search">
             <Search size={14} className="search-icon" />
-            <input 
-              type="text" 
-              placeholder="Search region..." 
+            <input
+              type="text"
+              placeholder="Search region..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               autoFocus
@@ -92,8 +92,8 @@ function TimezoneDropdown({
           <div className="clock-timezone-list">
             {filteredTimezones.length > 0 ? (
               filteredTimezones.map(tz => (
-                <button 
-                  key={tz} 
+                <button
+                  key={tz}
                   className={`timezone-item ${tz === value ? "active" : ""}`}
                   onClick={() => {
                     onChange(tz);
@@ -141,15 +141,15 @@ export default function DashboardHeroClocks() {
     <div className="dashboard-hero-clocks">
       {CLOCKS.map((clock) => (
         <div key={clock.id} className="dashboard-hero-clock-wrapper">
-          <TimeCard 
-            timezone={timezones[clock.id]} 
-            now={now} 
+          <TimeCard
+            timezone={timezones[clock.id]}
+            now={now}
             variant={clock.variant}
           >
             {!clock.fixed && (
-              <TimezoneDropdown 
-                value={timezones[clock.id]} 
-                onChange={(tz) => handleTzChange(clock.id, tz)} 
+              <TimezoneDropdown
+                value={timezones[clock.id]}
+                onChange={(tz) => handleTzChange(clock.id, tz)}
               />
             )}
           </TimeCard>

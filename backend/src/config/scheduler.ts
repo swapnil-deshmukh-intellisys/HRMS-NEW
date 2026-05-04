@@ -10,6 +10,7 @@ import { buildPayrollPreview as buildPayrollData } from "../modules/payroll/serv
 import { getCalendarDayStatus } from "../modules/calendar/service.js";
 import { AttendanceStatus } from "@prisma/client";
 import { sendPushNotification } from "../modules/notifications/service.js";
+import { processOutbox } from "../services/outbox.js";
 
 /**
  * Initializes all automated background tasks (Cron Jobs)
@@ -253,5 +254,14 @@ export function initScheduler() {
     timezone: "Asia/Kolkata"
   });
 
-  console.log("[Scheduler] Background tasks initialized (Attendance, Payroll, & Break Reminders active).");
+  // 📮 Notification Outbox Processor: Every 30 seconds
+  cron.schedule("*/30 * * * * *", async () => {
+    try {
+      await processOutbox();
+    } catch (err) {
+      console.error("[Scheduler] Outbox processing failed:", err);
+    }
+  });
+
+  console.log("[Scheduler] Background tasks initialized (Attendance, Payroll, Break Reminders, & Outbox active).");
 }

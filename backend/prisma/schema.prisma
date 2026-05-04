@@ -7,6 +7,398 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model Role {
+  id        Int      @id @default(autoincrement())
+  name      RoleName @unique
+  createdAt DateTime @default(now())
+  users     User[]
+}
+
+model User {
+  id                 Int                @id @default(autoincrement())
+  email              String             @unique
+  passwordHash       String
+  roleId             Int
+  isActive           Boolean            @default(true)
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+  googleId           String?            @unique
+  googleRefreshToken String?
+  isGoogleLinked     Boolean            @default(false)
+  employee           Employee?
+  notifications      Notification[]
+  pushSubscriptions  PushSubscription[]
+  role               Role               @relation(fields: [roleId], references: [id])
+
+  @@index([roleId])
+}
+
+model PushSubscription {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  payload   Json
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+}
+
+model Department {
+  id        Int        @id @default(autoincrement())
+  name      String
+  code      String     @unique
+  isActive  Boolean    @default(true)
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  employees Employee[]
+}
+
+model Employee {
+  id                                Int                               @id @default(autoincrement())
+  userId                            Int                               @unique
+  employeeCode                      String                            @unique
+  firstName                         String
+  lastName                          String
+  phone                             String?
+  departmentId                      Int
+  managerId                         Int?
+  joiningDate                       DateTime
+  employmentStatus                  EmploymentStatus                  @default(ACTIVE)
+  isActive                          Boolean                           @default(true)
+  deletedAt                         DateTime?
+  createdAt                         DateTime                          @default(now())
+  updatedAt                         DateTime                          @updatedAt
+  jobTitle                          String?
+  annualPackageLpa                  Float?
+  grossMonthlySalary                Float?
+  basicMonthlySalary                Float?
+  isOnProbation                     Boolean                           @default(false)
+  probationEndDate                  DateTime?
+  announcements                     Announcement[]                    @relation("AnnouncementCreator")
+  attendances                       Attendance[]
+  attendanceRegularizationRequests  AttendanceRegularizationRequest[] @relation("AttendanceRegularizationRequester")
+  reviewedAttendanceRegularizations AttendanceRegularizationRequest[] @relation("AttendanceRegularizationReviewer")
+  breakSessions                     BreakSession[]
+  department                        Department                        @relation(fields: [departmentId], references: [id])
+  manager                           Employee?                         @relation("EmployeeManager", fields: [managerId], references: [id])
+  teamMembers                       Employee[]                        @relation("EmployeeManager")
+  user                              User                              @relation(fields: [userId], references: [id])
+  capabilities                      EmployeeCapability[]
+  teamLeads                         EmployeeTeamLeadScope[]           @relation("TeamLeadScopeMember")
+  scopedTeamMembers                 EmployeeTeamLeadScope[]           @relation("TeamLeadScopeLeader")
+  approvedIncentives                Incentive[]                       @relation("IncentiveApprover")
+  incentives                        Incentive[]
+  leaveBalances                     LeaveBalance[]
+  leaveRequests                     LeaveRequest[]                    @relation("LeaveRequester")
+  hrReviewedLeaves                  LeaveRequest[]                    @relation("LeaveHrApprover")
+  managerReviewedLeaves             LeaveRequest[]                    @relation("LeaveManagerApprover")
+  medicalProofReviewedLeaves        LeaveRequest[]                    @relation("LeaveMedicalProofReviewer")
+  overtimeSessions                  OvertimeSession[]
+  verifiedOvertimeSessions          OvertimeSession[]                 @relation("OvertimeVerifier")
+  payrollRecords                    PayrollRecord[]
+
+  @@index([departmentId])
+  @@index([managerId])
+}
+
+model EmployeeCapability {
+  id         Int                    @id @default(autoincrement())
+  employeeId Int
+  capability EmployeeCapabilityType
+  createdAt  DateTime               @default(now())
+  employee   Employee               @relation(fields: [employeeId], references: [id])
+
+  @@unique([employeeId, capability])
+  @@index([employeeId])
+}
+
+model EmployeeTeamLeadScope {
+  id           Int      @id @default(autoincrement())
+  teamLeaderId Int
+  employeeId   Int
+  createdAt    DateTime @default(now())
+  employee     Employee @relation("TeamLeadScopeMember", fields: [employeeId], references: [id])
+  teamLeader   Employee @relation("TeamLeadScopeLeader", fields: [teamLeaderId], references: [id])
+
+  @@unique([teamLeaderId, employeeId])
+  @@index([teamLeaderId])
+  @@index([employeeId])
+}
+
+model Attendance {
+  id             Int              @id @default(autoincrement())
+  employeeId     Int
+  attendanceDate DateTime
+  checkInTime    DateTime?
+  checkOutTime   DateTime?
+  workedMinutes  Int              @default(0)
+  status         AttendanceStatus @default(PRESENT)
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+  isLate         Boolean          @default(false)
+  lateByMinutes  Int              @default(0)
+  employee       Employee         @relation(fields: [employeeId], references: [id])
+  breakSessions  BreakSession[]
+
+  @@unique([employeeId, attendanceDate])
+  @@index([employeeId])
+  @@index([attendanceDate])
+}
+
+model BreakSession {
+  id              Int        @id @default(autoincrement())
+  attendanceId    Int
+  employeeId      Int
+  startTime       DateTime
+  endTime         DateTime?
+  durationMinutes Int        @default(0)
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+  attendance      Attendance @relation(fields: [attendanceId], references: [id])
+  employee        Employee   @relation(fields: [employeeId], references: [id])
+
+  @@index([attendanceId])
+  @@index([employeeId])
+}
+
+model AttendanceRegularizationRequest {
+  id                   Int                            @id @default(autoincrement())
+  employeeId           Int
+  attendanceDate       DateTime
+  proposedCheckInTime  DateTime?
+  proposedCheckOutTime DateTime?
+  reason               String
+  status               AttendanceRegularizationStatus @default(PENDING)
+  reviewedById         Int?
+  reviewedAt           DateTime?
+  rejectionReason      String?
+  createdAt            DateTime                       @default(now())
+  updatedAt            DateTime                       @updatedAt
+  employee             Employee                       @relation("AttendanceRegularizationRequester", fields: [employeeId], references: [id])
+  reviewedBy           Employee?                      @relation("AttendanceRegularizationReviewer", fields: [reviewedById], references: [id])
+
+  @@index([employeeId])
+  @@index([status])
+}
+
+model LeaveType {
+  id                          Int                 @id @default(autoincrement())
+  name                        String              @unique
+  code                        String              @unique
+  defaultDaysPerYear          Int
+  isActive                    Boolean             @default(true)
+  createdAt                   DateTime            @default(now())
+  allocationMode              LeaveAllocationMode @default(YEARLY)
+  quarterlyAllocationDays     Float?
+  carryForwardAllowed         Boolean             @default(false)
+  carryForwardCap             Float?
+  requiresAttachmentAfterDays Float?
+  deductFullQuotaOnApproval   Boolean             @default(false)
+  maxUsagesPerYear            Int?
+  policyEffectiveFromYear     Int?
+  balances                    LeaveBalance[]
+  requests                    LeaveRequest[]
+}
+
+model LeaveBalance {
+  id                   Int       @id @default(autoincrement())
+  employeeId           Int
+  leaveTypeId          Int
+  year                 Int
+  allocatedDays        Float
+  usedDays             Float     @default(0)
+  remainingDays        Float
+  updatedAt            DateTime  @updatedAt
+  visibleDays          Float     @default(0)
+  carryForwardDays     Float     @default(0)
+  lastQuarterProcessed Int?
+  employee             Employee  @relation(fields: [employeeId], references: [id])
+  leaveType            LeaveType @relation(fields: [leaveTypeId], references: [id])
+
+  @@unique([employeeId, leaveTypeId, year])
+}
+
+model LeaveRequest {
+  id                          Int                @id @default(autoincrement())
+  employeeId                  Int
+  leaveTypeId                 Int
+  startDate                   DateTime
+  endDate                     DateTime
+  totalDays                   Float
+  reason                      String
+  status                      LeaveStatus        @default(PENDING)
+  createdAt                   DateTime           @default(now())
+  updatedAt                   DateTime           @updatedAt
+  isUnpaid                    Boolean            @default(false)
+  paidDays                    Float
+  unpaidDays                  Float              @default(0)
+  attachmentMime              String?
+  attachmentName              String?
+  attachmentPath              String?
+  startDayDuration            LeaveDurationType  @default(FULL_DAY)
+  endDayDuration              LeaveDurationType  @default(FULL_DAY)
+  managerApprovalStatus       ApprovalStepStatus @default(PENDING)
+  managerApprovedById         Int?
+  managerApprovedAt           DateTime?
+  managerRejectionReason      String?
+  hrApprovalStatus            ApprovalStepStatus @default(PENDING)
+  hrApprovedById              Int?
+  hrApprovedAt                DateTime?
+  hrRejectionReason           String?
+  deductedDays                Float?
+  fullQuotaDeducted           Boolean            @default(false)
+  medicalProofRequired        Boolean            @default(false)
+  medicalProofDueAt           DateTime?
+  medicalProofSubmittedAt     DateTime?
+  medicalProofStatus          MedicalProofStatus @default(NOT_REQUIRED)
+  medicalProofReviewedAt      DateTime?
+  medicalProofReviewedById    Int?
+  medicalProofRejectionReason String?
+  employee                    Employee           @relation("LeaveRequester", fields: [employeeId], references: [id])
+  hrApprovedBy                Employee?          @relation("LeaveHrApprover", fields: [hrApprovedById], references: [id])
+  leaveType                   LeaveType          @relation(fields: [leaveTypeId], references: [id])
+  managerApprovedBy           Employee?          @relation("LeaveManagerApprover", fields: [managerApprovedById], references: [id])
+  medicalProofReviewedBy      Employee?          @relation("LeaveMedicalProofReviewer", fields: [medicalProofReviewedById], references: [id])
+
+  @@index([employeeId])
+  @@index([status])
+  @@index([medicalProofStatus])
+}
+
+model PayrollRecord {
+  id         Int           @id @default(autoincrement())
+  employeeId Int
+  month      Int
+  year       Int
+  salary     Decimal       @db.Decimal(10, 2)
+  status     PayrollStatus @default(DRAFT)
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
+  employee   Employee      @relation(fields: [employeeId], references: [id])
+
+  @@unique([employeeId, month, year])
+  @@index([employeeId])
+}
+
+model OvertimeSession {
+  id              Int            @id @default(autoincrement())
+  employeeId      Int
+  date            DateTime
+  startTime       DateTime
+  endTime         DateTime?
+  duration        Int?
+  reason          String?
+  status          OvertimeStatus @default(ACTIVE)
+  verifiedBy      Int?
+  verifiedAt      DateTime?
+  rejectionReason String?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  employee        Employee       @relation(fields: [employeeId], references: [id])
+  verifier        Employee?      @relation("OvertimeVerifier", fields: [verifiedBy], references: [id])
+
+  @@unique([employeeId, date])
+  @@index([employeeId])
+  @@index([status])
+  @@index([date])
+}
+
+model Incentive {
+  id              Int             @id @default(autoincrement())
+  employeeId      Int
+  type            IncentiveType
+  amount          Decimal         @db.Decimal(10, 2)
+  reason          String
+  description     String?
+  month           Int
+  year            Int
+  status          IncentiveStatus @default(PENDING)
+  approvedBy      Int?
+  approvedAt      DateTime?
+  rejectionReason String?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  approver        Employee?       @relation("IncentiveApprover", fields: [approvedBy], references: [id])
+  employee        Employee        @relation(fields: [employeeId], references: [id])
+
+  @@index([employeeId])
+  @@index([status])
+  @@index([month, year])
+  @@index([type])
+}
+
+model CalendarException {
+  id          Int                   @id @default(autoincrement())
+  date        DateTime              @unique
+  type        CalendarExceptionType
+  name        String?
+  description String?
+  createdById Int
+  createdAt   DateTime              @default(now())
+  updatedAt   DateTime              @updatedAt
+
+  @@index([date])
+  @@index([type])
+}
+
+model Announcement {
+  id          Int      @id @default(autoincrement())
+  title       String
+  content     String
+  priority    String   @default("NORMAL")
+  createdById Int
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  createdBy   Employee @relation("AnnouncementCreator", fields: [createdById], references: [id])
+
+  @@index([createdById])
+  @@index([isActive])
+}
+
+model Notification {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  title     String
+  message   String
+  type      String
+  link      String?
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+}
+
+model AuditLog {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  action    String
+  entity    String
+  entityId  Int
+  oldData   Json?
+  newData   Json?
+  ipAddress String?
+  userAgent String?
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([entity, entityId])
+}
+
+model NotificationOutbox {
+  id        Int      @id @default(autoincrement())
+  type      String
+  payload   Json
+  status    String   @default("PENDING")
+  attempts  Int      @default(0)
+  lastError String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status])
+}
+
 enum RoleName {
   ADMIN
   HR
@@ -102,378 +494,4 @@ enum IncentiveStatus {
 enum CalendarExceptionType {
   HOLIDAY
   WORKING_SATURDAY
-}
-
-model Role {
-  id        Int      @id @default(autoincrement())
-  name      RoleName @unique
-  createdAt DateTime @default(now())
-  users     User[]
-}
-
-model User {
-  id           Int      @id @default(autoincrement())
-  email        String   @unique
-  passwordHash String
-  roleId       Int
-  isActive     Boolean  @default(true)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-  role         Role      @relation(fields: [roleId], references: [id])
-  employee     Employee?
-  googleId           String?  @unique
-  googleRefreshToken String?
-  isGoogleLinked     Boolean  @default(false)
-  pushSubscriptions  PushSubscription[]
-  notifications      Notification[]
-
-  @@index([roleId])
-}
-
-model PushSubscription {
-  id        Int      @id @default(autoincrement())
-  userId    Int
-  payload   Json     // Stores the full subscription object from browser
-  createdAt DateTime @default(now())
-
-  user      User     @relation(fields: [userId], references: [id])
-
-  @@index([userId])
-}
-
-model Department {
-  id        Int      @id @default(autoincrement())
-  name      String
-  code      String   @unique
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  employees Employee[]
-}
-
-model Employee {
-  id               Int              @id @default(autoincrement())
-  userId           Int              @unique
-  employeeCode     String           @unique
-  firstName        String
-  lastName         String
-  jobTitle         String?
-  phone            String?
-  annualPackageLpa Float?
-  grossMonthlySalary Float?
-  basicMonthlySalary Float?
-  isOnProbation    Boolean          @default(false)
-  probationEndDate DateTime?
-  departmentId     Int
-  managerId        Int?
-  joiningDate      DateTime
-  employmentStatus EmploymentStatus @default(ACTIVE)
-  isActive         Boolean          @default(true)
-  deletedAt        DateTime?
-  createdAt        DateTime         @default(now())
-  updatedAt        DateTime         @updatedAt
-
-  user           User           @relation(fields: [userId], references: [id])
-  department     Department     @relation(fields: [departmentId], references: [id])
-  manager        Employee?      @relation("EmployeeManager", fields: [managerId], references: [id])
-  teamMembers    Employee[]     @relation("EmployeeManager")
-  capabilities   EmployeeCapability[]
-  scopedTeamMembers EmployeeTeamLeadScope[] @relation("TeamLeadScopeLeader")
-  teamLeads      EmployeeTeamLeadScope[] @relation("TeamLeadScopeMember")
-  attendances    Attendance[]
-  breakSessions  BreakSession[]
-  attendanceRegularizationRequests AttendanceRegularizationRequest[] @relation("AttendanceRegularizationRequester")
-  reviewedAttendanceRegularizations AttendanceRegularizationRequest[] @relation("AttendanceRegularizationReviewer")
-  leaveBalances         LeaveBalance[]
-  leaveRequests         LeaveRequest[] @relation("LeaveRequester")
-  managerReviewedLeaves LeaveRequest[] @relation("LeaveManagerApprover")
-  hrReviewedLeaves      LeaveRequest[] @relation("LeaveHrApprover")
-  medicalProofReviewedLeaves LeaveRequest[] @relation("LeaveMedicalProofReviewer")
-  payrollRecords        PayrollRecord[]
-  overtimeSessions      OvertimeSession[]
-  verifiedOvertimeSessions OvertimeSession[] @relation("OvertimeVerifier")
-  incentives           Incentive[]
-  approvedIncentives   Incentive[] @relation("IncentiveApprover")
-  announcements        Announcement[] @relation("AnnouncementCreator")
-
-  @@index([departmentId])
-  @@index([managerId])
-}
-
-model EmployeeCapability {
-  id         Int                    @id @default(autoincrement())
-  employeeId Int
-  capability EmployeeCapabilityType
-  createdAt  DateTime               @default(now())
-  employee   Employee               @relation(fields: [employeeId], references: [id])
-
-  @@unique([employeeId, capability])
-  @@index([employeeId])
-}
-
-model EmployeeTeamLeadScope {
-  id           Int      @id @default(autoincrement())
-  teamLeaderId Int
-  employeeId   Int
-  createdAt    DateTime @default(now())
-  teamLeader   Employee @relation("TeamLeadScopeLeader", fields: [teamLeaderId], references: [id])
-  employee     Employee @relation("TeamLeadScopeMember", fields: [employeeId], references: [id])
-
-  @@unique([teamLeaderId, employeeId])
-  @@index([teamLeaderId])
-  @@index([employeeId])
-}
-
-model Attendance {
-  id             Int              @id @default(autoincrement())
-  employeeId     Int
-  attendanceDate DateTime
-  checkInTime    DateTime?
-  checkOutTime   DateTime?
-  workedMinutes  Int              @default(0)
-  status         AttendanceStatus @default(PRESENT)
-  isLate         Boolean          @default(false)
-  lateByMinutes  Int              @default(0)
-  breakSessions  BreakSession[]
-  todaysUpdate   String?
-  createdAt      DateTime         @default(now())
-  updatedAt      DateTime         @updatedAt
-  employee       Employee         @relation(fields: [employeeId], references: [id])
-
-  @@unique([employeeId, attendanceDate])
-  @@index([employeeId])
-  @@index([attendanceDate])
-}
-
-model BreakSession {
-  id             Int        @id @default(autoincrement())
-  attendanceId   Int
-  employeeId     Int
-  startTime      DateTime
-  endTime        DateTime?
-  durationMinutes Int       @default(0)
-  createdAt      DateTime   @default(now())
-  updatedAt      DateTime   @updatedAt
-  attendance     Attendance @relation(fields: [attendanceId], references: [id])
-  employee       Employee   @relation(fields: [employeeId], references: [id])
-
-  @@index([attendanceId])
-  @@index([employeeId])
-}
-
-model AttendanceRegularizationRequest {
-  id                   Int                            @id @default(autoincrement())
-  employeeId           Int
-  attendanceDate       DateTime
-  proposedCheckInTime  DateTime?
-  proposedCheckOutTime DateTime?
-  reason               String
-  status               AttendanceRegularizationStatus @default(PENDING)
-  reviewedById         Int?
-  reviewedAt           DateTime?
-  rejectionReason      String?
-  createdAt            DateTime                       @default(now())
-  updatedAt            DateTime                       @updatedAt
-
-  employee   Employee  @relation("AttendanceRegularizationRequester", fields: [employeeId], references: [id])
-  reviewedBy Employee? @relation("AttendanceRegularizationReviewer", fields: [reviewedById], references: [id])
-
-  @@index([employeeId])
-  @@index([status])
-}
-
-model LeaveType {
-  id                           Int                 @id @default(autoincrement())
-  name                         String              @unique
-  code                         String              @unique
-  defaultDaysPerYear           Int
-  allocationMode               LeaveAllocationMode @default(YEARLY)
-  quarterlyAllocationDays      Float?
-  carryForwardAllowed          Boolean             @default(false)
-  carryForwardCap              Float?
-  requiresAttachmentAfterDays  Float?
-  deductFullQuotaOnApproval    Boolean             @default(false)
-  maxUsagesPerYear             Int?
-  policyEffectiveFromYear      Int?
-  isActive                     Boolean             @default(true)
-  createdAt                    DateTime            @default(now())
-  balances                     LeaveBalance[]
-  requests                     LeaveRequest[]
-}
-
-model LeaveBalance {
-  id                 Int      @id @default(autoincrement())
-  employeeId         Int
-  leaveTypeId        Int
-  year               Int
-  allocatedDays      Float
-  usedDays           Float    @default(0)
-  remainingDays      Float
-  visibleDays        Float    @default(0)
-  carryForwardDays   Float    @default(0)
-  lastQuarterProcessed Int?
-  updatedAt          DateTime @updatedAt
-  employee           Employee  @relation(fields: [employeeId], references: [id])
-  leaveType          LeaveType @relation(fields: [leaveTypeId], references: [id])
-
-  @@unique([employeeId, leaveTypeId, year])
-}
-
-model LeaveRequest {
-  id               Int         @id @default(autoincrement())
-  employeeId       Int
-  leaveTypeId      Int
-  startDate        DateTime
-  endDate         DateTime
-  startDayDuration LeaveDurationType @default(FULL_DAY)
-  endDayDuration   LeaveDurationType @default(FULL_DAY)
-  totalDays        Float
-  paidDays         Float
-  unpaidDays       Float       @default(0)
-  isUnpaid         Boolean     @default(false)
-  deductedDays     Float?
-  fullQuotaDeducted Boolean    @default(false)
-  attachmentName   String?
-  attachmentPath   String?
-  attachmentMime   String?
-  medicalProofRequired Boolean @default(false)
-  medicalProofDueAt DateTime?
-  medicalProofSubmittedAt DateTime?
-  medicalProofStatus MedicalProofStatus @default(NOT_REQUIRED)
-  medicalProofReviewedAt DateTime?
-  medicalProofReviewedById Int?
-  medicalProofRejectionReason String?
-  reason           String
-  status           LeaveStatus        @default(PENDING)
-  managerApprovalStatus ApprovalStepStatus @default(PENDING)
-  managerApprovedById   Int?
-  managerApprovedAt     DateTime?
-  managerRejectionReason String?
-  hrApprovalStatus      ApprovalStepStatus @default(PENDING)
-  hrApprovedById        Int?
-  hrApprovedAt          DateTime?
-  hrRejectionReason     String?
-  createdAt        DateTime    @default(now())
-  updatedAt        DateTime    @updatedAt
-
-  employee          Employee  @relation("LeaveRequester", fields: [employeeId], references: [id])
-  leaveType         LeaveType @relation(fields: [leaveTypeId], references: [id])
-  managerApprovedBy Employee? @relation("LeaveManagerApprover", fields: [managerApprovedById], references: [id])
-  hrApprovedBy      Employee? @relation("LeaveHrApprover", fields: [hrApprovedById], references: [id])
-  medicalProofReviewedBy Employee? @relation("LeaveMedicalProofReviewer", fields: [medicalProofReviewedById], references: [id])
-
-  @@index([employeeId])
-  @@index([status])
-  @@index([medicalProofStatus])
-}
-
-model PayrollRecord {
-  id         Int           @id @default(autoincrement())
-  employeeId Int
-  month      Int
-  year       Int
-  salary     Decimal       @db.Decimal(10, 2)
-  status     PayrollStatus @default(DRAFT)
-  createdAt  DateTime      @default(now())
-  updatedAt  DateTime      @updatedAt
-  employee   Employee      @relation(fields: [employeeId], references: [id])
-
-  @@unique([employeeId, month, year])
-  @@index([employeeId])
-}
-
-model OvertimeSession {
-  id         Int            @id @default(autoincrement())
-  employeeId Int
-  date       DateTime
-  startTime  DateTime
-  endTime    DateTime?
-  duration   Int?           // minutes
-  reason     String?
-  status     OvertimeStatus @default(ACTIVE)
-  verifiedBy Int?
-  verifiedAt DateTime?
-  rejectionReason String?
-  createdAt  DateTime       @default(now())
-  updatedAt  DateTime       @updatedAt
-
-  employee Employee @relation(fields: [employeeId], references: [id])
-  verifier Employee? @relation("OvertimeVerifier", fields: [verifiedBy], references: [id])
-
-  @@unique([employeeId, date])
-  @@index([employeeId])
-  @@index([status])
-  @@index([date])
-}
-
-model Incentive {
-  id          Int             @id @default(autoincrement())
-  employeeId  Int
-  type        IncentiveType
-  amount      Decimal         @db.Decimal(10, 2)
-  reason      String
-  description String?
-  month       Int
-  year        Int
-  status      IncentiveStatus @default(PENDING)
-  approvedBy  Int?
-  approvedAt  DateTime?
-  rejectionReason String?
-  createdAt   DateTime        @default(now())
-  updatedAt   DateTime        @updatedAt
-
-  employee   Employee @relation(fields: [employeeId], references: [id])
-  approver   Employee? @relation("IncentiveApprover", fields: [approvedBy], references: [id])
-
-  @@index([employeeId])
-  @@index([status])
-  @@index([month, year])
-  @@index([type])
-}
-
-model CalendarException {
-  id          Int                   @id @default(autoincrement())
-  date        DateTime              @unique
-  type        CalendarExceptionType
-  name        String?
-  description String?
-  createdById Int
-  createdAt   DateTime              @default(now())
-  updatedAt   DateTime              @updatedAt
-
-  @@index([date])
-  @@index([type])
-}
-
-model Announcement {
-  id          Int      @id @default(autoincrement())
-  title       String
-  content     String
-  priority    String   @default("NORMAL")
-  createdById Int
-  isActive    Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  createdBy   Employee @relation("AnnouncementCreator", fields: [createdById], references: [id])
-
-  @@index([createdById])
-  @@index([isActive])
-}
-
-model Notification {
-  id          Int      @id @default(autoincrement())
-  userId      Int
-  title       String
-  message     String
-  type        String
-  link        String?
-  isRead      Boolean  @default(false)
-  createdAt   DateTime @default(now())
-
-  user        User     @relation(fields: [userId], references: [id])
-
-  @@index([userId])
-  @@index([isRead])
-  @@index([createdAt])
 }

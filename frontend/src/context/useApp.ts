@@ -1,5 +1,5 @@
 import { createContext, useContext } from "react";
-import type { Attendance, CalendarDay, LeaveRequest, Employee, Notification } from "../types";
+import type { Attendance, CalendarDay, LeaveRequest, Employee, Notification, CalendarException } from "../types";
 
 export type DashboardSummary = {
   pendingLeaves: number;

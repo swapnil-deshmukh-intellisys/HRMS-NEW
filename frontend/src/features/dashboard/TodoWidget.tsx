@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Plus, Trash2, Check, Circle, AlertCircle } from "lucide-react";
+import { Plus, Trash2, Check, AlertCircle } from "lucide-react";
 import { apiRequest } from "../../services/api";
 import Modal from "../../components/common/Modal";
 import toast from "react-hot-toast";

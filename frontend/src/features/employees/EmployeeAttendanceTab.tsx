@@ -34,7 +34,7 @@ function formatWorkedDuration(workedMinutes: number, checkOutTime?: string | nul
   return `${minutes}m`;
 }
 
-function getWorkedDurationLabel(record: Attendance) {
+function getWorkedDurationLabel(record: any) {
   if (record.status === "LEAVE") {
     return "-";
   }
@@ -144,7 +144,6 @@ export default function EmployeeAttendanceTab({ attendance, exceptions }: Employ
       const dayOfWeek = date.getDay();
       
       let status: any = "ABSENT";
-      let isOffDay = false;
       let label = "";
 
       if (exception) {
@@ -152,7 +151,6 @@ export default function EmployeeAttendanceTab({ attendance, exceptions }: Employ
         label = exception.name || "";
       } else if (dayOfWeek === 0 || dayOfWeek === 6) {
         status = "OFF";
-        isOffDay = true;
       }
 
       // If it's today and there's no check-in yet, don't mark as ABSENT.

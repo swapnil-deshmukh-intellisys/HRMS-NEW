@@ -6,7 +6,7 @@ import MessageCard from "../../components/common/MessageCard";
 import Modal from "../../components/common/Modal";
 import toast from "react-hot-toast";
 import { apiRequest } from "../../services/api";
-import type { Attendance, Department, Employee, LeaveBalance, LeaveRequest, PayrollRecord, Role } from "../../types";
+import type { Attendance, Department, Employee, LeaveBalance, LeaveRequest, PayrollRecord, Role, CalendarException } from "../../types";
 import EmployeeForm, { type EmployeeFormValues } from "./EmployeeForm";
 import EmployeeAttendanceTab from "./EmployeeAttendanceTab";
 import EmployeeLeavesTab from "./EmployeeLeavesTab";

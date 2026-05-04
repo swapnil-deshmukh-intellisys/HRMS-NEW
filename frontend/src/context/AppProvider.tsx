@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback, useMemo } from "react";
 import type { ReactNode } from "react";
 import { apiRequest } from "../services/api";
-import type { Role, Notification } from "../types";
+import type { Role, Notification, CalendarException } from "../types";
 import { ATTENDANCE_EVENT, getAttendanceUpdatedDetail } from "../components/common/attendanceQuickActionUtils";
 import { AppContext, type DashboardSummary, type AnalyticsData } from "./useApp";
 

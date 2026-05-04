@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback, useMemo } from "react";
 import type { ReactNode } from "react";
 import { apiRequest } from "../services/api";
-import type { Role, Notification } from "../types";
+import type { Role, Notification, CalendarException } from "../types";
 import { ATTENDANCE_EVENT, getAttendanceUpdatedDetail } from "../components/common/attendanceQuickActionUtils";
 import { AppContext, type DashboardSummary, type AnalyticsData } from "./useApp";
 
@@ -9,6 +9,7 @@ export function AppProvider({ children, token, role }: { children: ReactNode; to
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [announcements, setAnnouncements] = useState<any[]>([]);
+  const [calendarExceptions, setCalendarExceptions] = useState<CalendarException[]>([]);
   const [analyticsData, setAnalyticsData] = useState<AnalyticsData | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -26,6 +27,7 @@ export function AppProvider({ children, token, role }: { children: ReactNode; to
         setSummary(cachedData.summary);
         setNotifications(cachedData.notifications);
         setAnnouncements(cachedData.announcements || []);
+        setCalendarExceptions(cachedData.exceptions || []);
         // Clear the cache to ensure future "refreshSummary" calls actually hit the API
         (window as any).__HRMS_BOOTSTRAP_DATA__ = null;
         return;
@@ -35,11 +37,13 @@ export function AppProvider({ children, token, role }: { children: ReactNode; to
         summary: DashboardSummary;
         notifications: Notification[];
         announcements: any[];
+        exceptions: CalendarException[];
       }>("/system/bootstrap", { token });
       
       setSummary(response.data.summary);
       setNotifications(response.data.notifications);
       setAnnouncements(response.data.announcements || []);
+      setCalendarExceptions(response.data.exceptions || []);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load workspace data");
     } finally {
@@ -125,8 +129,9 @@ export function AppProvider({ children, token, role }: { children: ReactNode; to
     markNotificationAsRead,
     markAllNotificationsAsRead,
     analyticsData,
-    fetchAnalyticsData
-  }), [summary, notifications, announcements, loading, error, refreshSummary, markNotificationAsRead, markAllNotificationsAsRead, analyticsData, fetchAnalyticsData]);
+    fetchAnalyticsData,
+    calendarExceptions
+  }), [summary, notifications, announcements, loading, error, refreshSummary, markNotificationAsRead, markAllNotificationsAsRead, analyticsData, fetchAnalyticsData, calendarExceptions]);
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
 }

@@ -10,9 +10,10 @@ type TableProps = {
     title: string;
     description?: string;
   };
+  getRowClassName?: (rowIndex: number) => string;
 };
 
-export default function Table({ columns, rows, compact = false, onRowClick, emptyState }: TableProps) {
+export default function Table({ columns, rows, compact = false, onRowClick, emptyState, getRowClassName }: TableProps) {
   return (
     <div className={compact ? "table-wrap table-wrap--compact" : "table-wrap"}>
       <table className={compact ? "table table--compact" : "table"}>
@@ -29,7 +30,7 @@ export default function Table({ columns, rows, compact = false, onRowClick, empt
               <tr 
                 key={`row-${rowIndex}`} 
                 onClick={() => onRowClick?.(rowIndex)}
-                className={onRowClick ? "table-row--clickable" : ""}
+                className={`${onRowClick ? "table-row--clickable" : ""} ${getRowClassName?.(rowIndex) ?? ""}`}
               >
                 {row.map((value, columnIndex) => (
                   <td key={`cell-${rowIndex}-${columnIndex}`}>{value}</td>

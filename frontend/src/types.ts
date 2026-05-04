@@ -12,6 +12,23 @@ export type AuthLoginResponse = {
   user: SessionUser;
 };
 
+export type Client = {
+  id: number;
+  name: string;
+  code: string;
+  createdAt: string;
+};
+
+export type OutlookEmail = {
+  id: number;
+  name: string;
+  email: string;
+  clientId?: number | null;
+  client?: Client | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
 export type Department = {
   id: number;
   name: string;
@@ -82,6 +99,7 @@ export type Employee = {
     employee: Employee;
   }>;
   teamMembers?: Employee[];
+  outlookEmails?: OutlookEmail[];
 };
 
 export type LeaveType = {

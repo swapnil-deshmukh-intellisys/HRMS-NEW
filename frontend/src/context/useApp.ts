@@ -1,5 +1,5 @@
 import { createContext, useContext } from "react";
-import type { Attendance, CalendarDay, LeaveRequest, Employee, Notification } from "../types";
+import type { Attendance, CalendarDay, LeaveRequest, Employee, Notification, CalendarException } from "../types";
 
 export type DashboardSummary = {
   pendingLeaves: number;
@@ -35,6 +35,7 @@ export type AppContextType = {
   markAllNotificationsAsRead: () => Promise<void>;
   analyticsData: AnalyticsData | null;
   fetchAnalyticsData: (force?: boolean) => Promise<void>;
+  calendarExceptions: CalendarException[];
 };
 
 export const AppContext = createContext<AppContextType | undefined>(undefined);

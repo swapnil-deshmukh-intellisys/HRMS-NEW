@@ -1,4 +1,5 @@
 import "./EmployeeTable.css";
+import "../../components/common/Table.css";
 import { useEffect, useMemo, useState } from "react";
 import type { Employee } from "../../types";
 

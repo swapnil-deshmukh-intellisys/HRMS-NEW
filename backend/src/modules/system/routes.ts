@@ -25,6 +25,11 @@ router.get("/bootstrap", authenticate, async (request, response, next) => {
               include: {
                 department: true,
                 capabilities: true,
+                outlookEmails: {
+                  include: {
+                    client: true
+                  }
+                }
               }
             },
             scopedTeamMembers: {
@@ -33,6 +38,11 @@ router.get("/bootstrap", authenticate, async (request, response, next) => {
                   include: {
                     department: true,
                     capabilities: true,
+                    outlookEmails: {
+                      include: {
+                        client: true
+                      }
+                    }
                   }
                 }
               }
@@ -61,11 +71,17 @@ router.get("/bootstrap", authenticate, async (request, response, next) => {
       }
     });
 
-    // 4. Role-Specific Summary Logic
-    const [user, notifications, announcements] = await Promise.all([
+    // 4. Clients Registry
+    const clientsPromise = prisma.client.findMany({
+      orderBy: { name: "asc" }
+    });
+
+    // 5. Role-Specific Summary Logic
+    const [user, notifications, announcements, clients] = await Promise.all([
       userPromise,
       notificationsPromise,
       announcementsPromise,
+      clientsPromise,
     ]);
 
     let summary: any = {};
@@ -183,7 +199,20 @@ router.get("/bootstrap", authenticate, async (request, response, next) => {
       summary,
       notifications,
       announcements,
+      clients,
     });
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.get("/outlook-emails", authenticate, async (_request, response, next) => {
+  try {
+    const emails = await prisma.outlookEmail.findMany({
+      orderBy: { name: "asc" },
+      include: { client: true }
+    });
+    return sendSuccess(response, "Outlook emails fetched successfully", emails);
   } catch (error) {
     next(error);
   }

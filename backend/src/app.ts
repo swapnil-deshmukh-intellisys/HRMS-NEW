@@ -19,6 +19,7 @@ import announcementRoutes from "./modules/announcements/routes.js";
 import googleRoutes from "./modules/google/routes.js";
 import notificationRoutes from "./modules/notifications/routes.js";
 import systemRoutes from "./modules/system/routes.js";
+import todoRoutes from "./modules/todos/routes.js";
 
 export const app = express();
 app.set("trust proxy", 1); // Trust the first proxy (Render)
@@ -61,6 +62,7 @@ app.use("/api/announcements", announcementRoutes);
 app.use("/api/google", googleRoutes);
 app.use("/api/notifications", notificationRoutes);
 app.use("/api/system", systemRoutes);
+app.use("/api/todos", todoRoutes);
 app.use("/api", leaveRoutes);
 
 app.use(notFound);

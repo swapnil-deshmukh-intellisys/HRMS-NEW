@@ -9,6 +9,8 @@ import AnnouncementList from "./AnnouncementList";
 import WorkdayTimeline from "./WorkdayTimeline";
 import Modal from "../../components/common/Modal";
 import { useApp } from "../../context/AppContext";
+import TodoWidget from "./TodoWidget";
+
 
 
 
@@ -122,6 +124,11 @@ export default function ManagementDashboard({ token, role }: { token: string | n
           );
         })}
       </div>
+
+      <div className="grid cols-2 dashboard-grid" style={{ marginTop: 'var(--space-4)' }}>
+        <TodoWidget token={token} />
+      </div>
+
     </>
   );
 }

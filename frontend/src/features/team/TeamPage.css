@@ -59,6 +59,99 @@
     0 2px 8px rgba(15, 23, 42, 0.04);
 }
 
+.client-switcher {
+  display: inline-flex;
+  align-items: center;
+  background: #f1f5f9;
+  padding: 3px;
+  border-radius: 12px;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  height: 36px;
+  margin-left: auto;
+}
+
+.client-switcher-btn {
+  padding: 0 16px;
+  height: 30px;
+  border-radius: 9px;
+  border: none;
+  background: transparent;
+  font-size: 11px;
+  font-weight: 700;
+  color: #64748b;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.client-switcher-btn.active {
+  background: white;
+  color: var(--color-accent);
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.12);
+}
+
+.client-switch.team-page-tab--active {
+  background: white;
+  border-color: rgba(15, 23, 42, 0.1);
+  color: var(--color-accent);
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
+}
+
+.email-assign-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  cursor: pointer;
+  background: white;
+  transition: all 0.2s ease;
+  user-select: none;
+}
+
+.email-assign-card:hover {
+  border-color: var(--color-accent);
+  background: #f8fafc;
+}
+
+.email-assign-card--selected {
+  background: #f0f9ff;
+  border-color: #bae6fd;
+}
+
+.email-assign-checkbox {
+  width: 20px;
+  height: 20px;
+  border: 2px solid #cbd5e1;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: white;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.email-assign-card--selected .email-assign-checkbox {
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+}
+
+.check-mark {
+  color: white;
+  font-size: 12px;
+  font-weight: bold;
+}
+
+/* TEC Theme Accents */
+.project-icon-wrap--tec-industry {
+  background: linear-gradient(135deg, #059669, #10b981);
+  box-shadow: 0 8px 20px rgba(5, 150, 105, 0.25);
+}
+
 .team-page-tab {
   min-height: 32px;
   padding: 4px 12px;

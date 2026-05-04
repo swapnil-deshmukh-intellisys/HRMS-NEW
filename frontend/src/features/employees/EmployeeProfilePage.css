@@ -265,6 +265,45 @@
   gap: var(--space-3);
 }
 
+.status-pill--working-saturday {
+  background: #eef2ff;
+  color: #4f46e5;
+}
+
+/* Row Highlighting */
+.attendance-row--off {
+  background-color: #f1f5f9 !important; /* Slightly darker slate */
+}
+
+.attendance-row--holiday {
+  background-color: #dcfce7 !important; /* Slightly darker emerald */
+}
+
+.attendance-row--off td,
+.attendance-row--holiday td {
+  border-bottom-color: #e2e8f0;
+}
+
+.status-pill--scheduled {
+  background: #f1f5f9;
+  color: #64748b;
+}
+
+.status-pill--off {
+  background: #f1f5f9;
+  color: #64748b;
+}
+
+.status-pill--holiday {
+  background: #d1fae5;
+  color: #059669;
+}
+
+.attendance-warning-text {
+  color: #ef4444;
+  font-weight: 500;
+}
+
 @media (max-width: 1100px) {
   .employee-identity-panel__body {
     grid-template-columns: 1fr;

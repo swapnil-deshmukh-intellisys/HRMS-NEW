@@ -29,10 +29,28 @@ export function errorHandler(error: unknown, _request: Request, response: Respon
     });
   }
 
-  console.error(error);
+  // Handle Prisma errors
+  if (error && typeof error === 'object' && 'code' in error) {
+    const prismaError = error as { code: string; meta?: any; message: string };
+    
+    // P2002 is Unique Constraint Violation
+    if (prismaError.code === 'P2002') {
+      const field = prismaError.meta?.target?.[0] || 'field';
+      const message = `Duplicate entry: ${field} already exists.`;
+      console.error(`[Prisma Error P2002] ${message}`);
+      return response.status(409).json({
+        success: false,
+        message,
+      });
+    }
+    
+    console.error(`[Prisma Error ${prismaError.code}]`, prismaError);
+  } else {
+    console.error('[Unhandled Error]', error);
+  }
 
   return response.status(500).json({
     success: false,
-    message: "Internal server error",
+    message: error instanceof Error ? error.message : "Internal server error",
   });
 }

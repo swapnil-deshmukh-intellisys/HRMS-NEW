@@ -43,6 +43,10 @@ function getWorkedDurationLabel(record: Attendance) {
     return "Absent";
   }
 
+  if (record.status === "SCHEDULED") {
+    return "-";
+  }
+
   if (record.status === "HALF_DAY" && !record.checkInTime && !record.checkOutTime) {
     return "Half day";
   }
@@ -64,7 +68,7 @@ function renderWorkedDuration(record: Attendance) {
   return label;
 }
 
-function getStatusClass(status: Attendance["status"] | "OFF" | "HOLIDAY" | "WORKING_SATURDAY") {
+function getStatusClass(status: Attendance["status"] | "OFF" | "HOLIDAY" | "WORKING_SATURDAY" | "SCHEDULED") {
   const normalizedStatus = status === "WORKING_SATURDAY" ? "working-saturday" : status.toLowerCase().replace(/_/g, "-");
   return `status-pill status-pill--${normalizedStatus}`;
 }
@@ -74,6 +78,7 @@ function getStatusLabel(record: Attendance | { status: string; leaveTypeCode?: s
   if (status === "WORKING_SATURDAY") return "Working Saturday";
   if (status === "OFF") return "Off Day";
   if (status === "HOLIDAY") return "Public Holiday";
+  if (status === "SCHEDULED") return "Scheduled";
   
   const baseLabel = status === "HALF_DAY" ? "Half day" : status.charAt(0) + status.slice(1).toLowerCase();
 
@@ -148,6 +153,17 @@ export default function EmployeeAttendanceTab({ attendance, exceptions }: Employ
       } else if (dayOfWeek === 0 || dayOfWeek === 6) {
         status = "OFF";
         isOffDay = true;
+      }
+
+      // If it's today and there's no check-in yet, don't mark as ABSENT.
+      // We'll call it "SCHEDULED" for the UI.
+      const now = new Date();
+      const isActuallyToday = date.getFullYear() === now.getFullYear() &&
+                              date.getMonth() === now.getMonth() &&
+                              date.getDate() === now.getDate();
+                              
+      if (isActuallyToday && status === "ABSENT" && !existingRecord) {
+        status = "SCHEDULED";
       }
 
       // If there is an exception (Holiday/Working Saturday), it should take visual precedence 
@@ -278,7 +294,7 @@ export default function EmployeeAttendanceTab({ attendance, exceptions }: Employ
             const displayRecord = record || ({ 
               id: 0, 
               attendanceDate: date, 
-              status: isWorkingSaturday ? "ABSENT" : status,
+              status: status,
               checkInTime: null,
               checkOutTime: null,
               workedMinutes: 0

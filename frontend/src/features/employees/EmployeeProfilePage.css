@@ -284,6 +284,11 @@
   border-bottom-color: #e2e8f0;
 }
 
+.status-pill--scheduled {
+  background: #f1f5f9;
+  color: #64748b;
+}
+
 .status-pill--off {
   background: #f1f5f9;
   color: #64748b;

@@ -8,6 +8,7 @@ import AnnouncementForm from "./AnnouncementForm";
 import AnnouncementList from "./AnnouncementList";
 import WorkdayTimeline from "./WorkdayTimeline";
 import Modal from "../../components/common/Modal";
+import { useApp } from "../../context/AppContext";
 
 type DashboardData = Record<string, number | string | boolean | null | undefined | object>;
 
@@ -37,23 +38,12 @@ function getDashboardContent(role: Role) {
 
 export default function ManagementDashboard({ token, role }: { token: string | null; role: Role }) {
   const navigate = useNavigate();
-  const [data, setData] = useState<DashboardData>({});
-  const [loading, setLoading] = useState(true);
+  const { summary, loading } = useApp();
   const [announcementKey, setAnnouncementKey] = useState(0);
   const [isAnnouncementModalOpen, setAnnouncementModalOpen] = useState(false);
   const bannerContent = getDashboardContent(role);
 
-  useEffect(() => {
-    const endpoint = role === "MANAGER" ? "/dashboard/manager" : "/dashboard/hr";
-
-    setLoading(true);
-    apiRequest<DashboardData>(endpoint, { token })
-      .then((response) => {
-        setData(response.data);
-      })
-      .catch((requestError) => console.error(requestError instanceof Error ? requestError.message : "Failed to load management dashboard"))
-      .finally(() => setLoading(false));
-  }, [role, token]);
+  const data = summary || {};
 
   if (loading) {
     return (
@@ -89,11 +79,14 @@ export default function ManagementDashboard({ token, role }: { token: string | n
       </Modal>
 
       <div className="grid cols-2 dashboard-grid">
-        {Object.entries(data).map(([key, value]) => {
+        {Object.entries(data)
+          .filter(([key]) => !["attendanceToday", "currentEmployee", "leaveRequests", "isTeamLead"].includes(key))
+          .map(([key, value]) => {
           const getNavigationPath = () => {
             switch (key) {
               case "employees": return "/employees";
               case "pendingLeaves": return "/leaves";
+              case "teamPresentToday": return "/team";
               case "payrollCount": return "/payroll";
               case "departments": return "/departments";
               default: return null;
@@ -110,11 +103,20 @@ export default function ManagementDashboard({ token, role }: { token: string | n
               style={navigationPath ? { cursor: "pointer" } : undefined}
             >
               <p className="eyebrow">
-                {key === "teamCount" ? "Team members" : key === "pendingApprovals" ? "Pending approvals" : key === "pendingLeaves" ? "Pending leaves" : key === "employees" ? "Employees" : key === "departments" ? "Departments" : key === "payrollCount" ? "Payroll records" : key}
+                {key === "teamCount" ? "Team members" : 
+                 key === "pendingApprovals" ? "Correction requests" : 
+                 key === "pendingLeaves" ? "Leave requests" : 
+                 key === "teamPresentToday" ? "Team presence today" :
+                 key === "employees" ? "Employees" : 
+                 key === "departments" ? "Departments" : 
+                 key === "payrollCount" ? "Payroll records" : key}
               </p>
               <strong>{String(value ?? "-")}</strong>
               <p className="muted">
-                {key === "pendingApprovals" ? "Action needed soon" : key === "pendingLeaves" ? "Currently awaiting action" : "Live summary"}
+                {key === "pendingApprovals" ? "Review required" : 
+                 key === "pendingLeaves" ? "Awaiting your decision" : 
+                 key === "teamPresentToday" ? "Checked-in members" :
+                 "Live summary"}
               </p>
             </article>
           );

@@ -27,6 +27,7 @@ export type AnalyticsData = {
 export type AppContextType = {
   summary: DashboardSummary | null;
   notifications: Notification[];
+  announcements: any[];
   loading: boolean;
   error: string;
   refreshSummary: () => Promise<void>;

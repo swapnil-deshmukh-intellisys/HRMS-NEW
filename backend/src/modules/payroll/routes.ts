@@ -9,6 +9,7 @@ import { endOfDay, startOfDay } from "../../utils/dates.js";
 import { getCalendarDayStatus } from "../calendar/service.js";
 import { assertPayrollEditable, buildPayrollPreview } from "./service.js";
 import { calculateTotalPayrollWithIncentives } from "./incentive-service.js";
+import { createAuditLog } from "../../services/audit.js";
 
 type PayrollPreviewWithIncentives = Awaited<ReturnType<typeof buildPayrollPreview>>;
 
@@ -128,6 +129,16 @@ router.post("/", requireRoles("ADMIN", "HR"), validate(payrollSchema), async (re
       },
     });
 
+    await createAuditLog({
+      userId: request.user!.id,
+      action: "CREATE",
+      entity: "PayrollRecord",
+      entityId: payrollRecord.id,
+      newData: payrollRecord,
+      ipAddress: request.ip,
+      userAgent: request.get("user-agent"),
+    });
+
     return sendSuccess(response, "Payroll record created successfully", payrollRecord, 201);
   } catch (error) {
     next(error);
@@ -158,6 +169,17 @@ router.put("/:id", requireRoles("ADMIN", "HR"), validate(payrollSchema.partial()
       include: {
         employee: true,
       },
+    });
+
+    await createAuditLog({
+      userId: request.user!.id,
+      action: "UPDATE",
+      entity: "PayrollRecord",
+      entityId: updated.id,
+      oldData: existing,
+      newData: updated,
+      ipAddress: request.ip,
+      userAgent: request.get("user-agent"),
     });
 
     if (updated.status === "FINALIZED") {

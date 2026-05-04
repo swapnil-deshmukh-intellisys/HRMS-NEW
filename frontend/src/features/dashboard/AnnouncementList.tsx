@@ -1,7 +1,18 @@
 import { useEffect, useState, useCallback } from "react";
 import { Megaphone, X as CloseIcon, Clock, AlertCircle, ChevronDown, ChevronUp } from "lucide-react";
 import { apiRequest } from "../../services/api";
+import { useApp } from "../../context/AppContext";
 import "./Announcement.css";
+
+const isToday = (dateString: string) => {
+  const date = new Date(dateString);
+  const today = new Date();
+  return (
+    date.getDate() === today.getDate() &&
+    date.getMonth() === today.getMonth() &&
+    date.getFullYear() === today.getFullYear()
+  );
+};
 
 type Announcement = {
   id: number;
@@ -17,44 +28,41 @@ type Announcement = {
 };
 
 export default function AnnouncementList({ token, refreshSignal, onCreateClick }: { token?: string | null; refreshSignal?: number; onCreateClick?: () => void }) {
-  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { announcements: contextAnnouncements, loading: contextLoading } = useApp();
+  const [localAnnouncements, setLocalAnnouncements] = useState<Announcement[]>([]);
+  const [fetching, setFetching] = useState(false);
   const [isAllVisible, setIsAllVisible] = useState(false);
   const [isVisible, setIsVisible] = useState(true);
 
-  const isToday = (dateString: string) => {
-    const date = new Date(dateString);
-    const today = new Date();
-    return (
-      date.getDate() === today.getDate() &&
-      date.getMonth() === today.getMonth() &&
-      date.getFullYear() === today.getFullYear()
-    );
-  };
+  const announcements = localAnnouncements.length > 0 ? localAnnouncements : (contextAnnouncements as Announcement[]);
+  const loading = contextLoading && announcements.length === 0;
 
   const fetchAnnouncements = useCallback(async () => {
     try {
+      setFetching(true);
       const response = await apiRequest<Announcement[]>("/announcements", { token });
-      const data = response.data;
-      setAnnouncements(data);
-      
-      // Auto-collapse if no announcements from today
-      const hasToday = data.some(a => isToday(a.createdAt));
-      if (!hasToday) {
-        setIsVisible(false);
-      } else {
-        setIsVisible(true);
-      }
+      setLocalAnnouncements(response.data);
     } catch (err) {
       console.error("Failed to fetch announcements", err);
     } finally {
-      setLoading(false);
+      setFetching(false);
     }
   }, [token]);
 
   useEffect(() => {
-    fetchAnnouncements();
+    if (refreshSignal) {
+      fetchAnnouncements();
+    }
   }, [fetchAnnouncements, refreshSignal]);
+
+  useEffect(() => {
+    // Auto-collapse logic based on data
+    const data = announcements;
+    if (data.length > 0) {
+      const hasToday = data.some(a => isToday(a.createdAt));
+      setIsVisible(hasToday);
+    }
+  }, [announcements.length]); // Only re-run when length changes to avoid flickering
 
   if (loading) return null;
 

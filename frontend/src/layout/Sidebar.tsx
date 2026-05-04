@@ -30,7 +30,8 @@ function getNavItems(sessionUser: SessionUser): NavItem[] {
   items.push({ to: "/calendar", label: "Calendar", icon: Calendar });
   items.push({ to: "/attendance", label: "Attendance", icon: Clock3 });
   items.push({ to: "/leaves", label: "Leaves", icon: CalendarDays });
-  if (isTeamLead) {
+  const isManager = role === "MANAGER";
+  if (isTeamLead || isManager) {
     items.push({ to: "/team", label: "Team", icon: Users });
   }
   items.push({ to: "/payroll", label: "Payroll", icon: Wallet });

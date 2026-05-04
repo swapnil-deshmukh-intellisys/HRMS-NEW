@@ -60,6 +60,7 @@ router.post("/logout", authenticate, async (_request, response) => sendSuccess(r
 
 router.get("/me", authenticate, async (request, response, next) => {
   try {
+    const isDeep = request.query.deep === "true";
     const user = await prisma.user.findUnique({
       where: { id: request.user!.id },
       include: {
@@ -69,11 +70,13 @@ router.get("/me", authenticate, async (request, response, next) => {
             department: true,
             manager: true,
             capabilities: true,
-            scopedTeamMembers: {
-              include: {
-                employee: true,
+            ...(isDeep ? {
+              scopedTeamMembers: {
+                include: {
+                  employee: true,
+                },
               },
-            },
+            } : {}),
           },
         },
       },

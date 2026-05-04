@@ -81,6 +81,7 @@ export type Employee = {
   scopedTeamMembers?: Array<{
     employee: Employee;
   }>;
+  teamMembers?: Employee[];
 };
 
 export type LeaveType = {

@@ -16,8 +16,7 @@ type TeamPageProps = {
   currentEmployee: Employee | null;
 };
 
-type TeamTab = "ATTENDANCE" | "LEAVES";
-type TeamPrimaryTab = "PROJECTS" | "MEMBERS";
+type TeamTab = "PROJECTS" | "MEMBERS" | "ATTENDANCE" | "LEAVES";
 type VisibleMonth = {
   month: number;
   year: number;
@@ -62,8 +61,8 @@ function getCalendarDays({ month, year }: VisibleMonth) {
 
 export default function TeamPage({ token, role, currentEmployee }: TeamPageProps) {
   const today = toLocalDateString(new Date());
-  const [primaryTab, setPrimaryTab] = useState<TeamPrimaryTab>("PROJECTS");
-  const [teamTab, setTeamTab] = useState<TeamTab>("ATTENDANCE");
+  const [activeTab, setActiveTab] = useState<TeamTab>("PROJECTS");
+  const [projectCategory, setProjectCategory] = useState<"MAGAZINES" | "INDUSTRIES">("MAGAZINES");
   const [attendanceDate, setAttendanceDate] = useState(today);
   const [datePickerOpen, setDatePickerOpen] = useState(false);
   const [visibleMonth, setVisibleMonth] = useState<VisibleMonth>(() => getVisibleMonthFromDate(today));
@@ -74,7 +73,21 @@ export default function TeamPage({ token, role, currentEmployee }: TeamPageProps
   const [teamAttendanceFilter, setTeamAttendanceFilter] = useState<"" | "PRESENT" | "ABSENT" | "LEAVE" | "HALF_DAY">("");
   const [rejectionReason, setRejectionReason] = useState("");
   const isTeamLead = Boolean(currentEmployee?.capabilities?.some((capability) => capability.capability === "TEAM_LEAD"));
-  const teamMembers = useMemo(() => currentEmployee?.scopedTeamMembers?.map((item) => item.employee) ?? [], [currentEmployee?.scopedTeamMembers]);
+  const isManager = role === "MANAGER";
+  const canAccessTeam = isTeamLead || isManager;
+  const teamMembers = useMemo(() => {
+    const directReports = currentEmployee?.teamMembers ?? [];
+    const scopedReports = currentEmployee?.scopedTeamMembers?.map((item) => item.employee) ?? [];
+    
+    // Use a Map to filter out duplicates by ID
+    const memberMap = new Map();
+    [...directReports, ...scopedReports].forEach(member => {
+      if (member) memberMap.set(member.id, member);
+    });
+    
+    return Array.from(memberMap.values());
+  }, [currentEmployee?.teamMembers, currentEmployee?.scopedTeamMembers]);
+
   const teamMemberIds = useMemo(() => new Set(teamMembers.map((member) => member.id)), [teamMembers]);
   const calendarDays = useMemo(() => getCalendarDays(visibleMonth), [visibleMonth]);
   const currentMonthLabel = new Date(visibleMonth.year, visibleMonth.month, 1).toLocaleDateString("en-IN", {
@@ -83,7 +96,7 @@ export default function TeamPage({ token, role, currentEmployee }: TeamPageProps
   });
 
   useEffect(() => {
-    if (!isTeamLead || !token) {
+    if (!canAccessTeam || !token) {
       setLoading(false);
       return;
     }
@@ -234,10 +247,10 @@ export default function TeamPage({ token, role, currentEmployee }: TeamPageProps
     return toLocalDateString(new Date(record.attendanceDate)) === today ? "In progress" : "Checkout missing";
   }
 
-  if (role !== "EMPLOYEE" || !isTeamLead) {
+  if (!canAccessTeam) {
     return (
       <section className="stack">
-        <MessageCard title="Team workspace" tone="error" message="This page is available only for Team Leads." />
+        <MessageCard title="Team workspace" tone="error" message="This page is available only for Managers and Team Leads." />
       </section>
     );
   }
@@ -248,122 +261,174 @@ export default function TeamPage({ token, role, currentEmployee }: TeamPageProps
         <button
           type="button"
           role="tab"
-          aria-selected={primaryTab === "PROJECTS"}
-          className={`team-page-primary-tab ${primaryTab === "PROJECTS" ? "team-page-primary-tab--active" : ""}`.trim()}
-          onClick={() => setPrimaryTab("PROJECTS")}
+          aria-selected={activeTab === "PROJECTS"}
+          className={`team-page-primary-tab ${activeTab === "PROJECTS" ? "team-page-primary-tab--active" : ""}`.trim()}
+          onClick={() => setActiveTab("PROJECTS")}
         >
           Ongoing Projects
         </button>
         <button
           type="button"
           role="tab"
-          aria-selected={primaryTab === "MEMBERS"}
-          className={`team-page-primary-tab ${primaryTab === "MEMBERS" ? "team-page-primary-tab--active" : ""}`.trim()}
-          onClick={() => setPrimaryTab("MEMBERS")}
+          aria-selected={activeTab === "MEMBERS"}
+          className={`team-page-primary-tab ${activeTab === "MEMBERS" ? "team-page-primary-tab--active" : ""}`.trim()}
+          onClick={() => setActiveTab("MEMBERS")}
         >
-          Members
+          Team Members
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={activeTab === "ATTENDANCE"}
+          className={`team-page-primary-tab ${activeTab === "ATTENDANCE" ? "team-page-primary-tab--active" : ""}`.trim()}
+          onClick={() => setActiveTab("ATTENDANCE")}
+        >
+          Attendance
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={activeTab === "LEAVES"}
+          className={`team-page-primary-tab ${activeTab === "LEAVES" ? "team-page-primary-tab--active" : ""}`.trim()}
+          onClick={() => setActiveTab("LEAVES")}
+        >
+          Leaves
         </button>
       </div>
 
-      {primaryTab === "PROJECTS" ? (
-        <div className="card dense-table-card team-page-card">
-        <div className="team-page-header">
-            <div>
-              <h3>Projects overview</h3>
-              <p className="muted">This is a placeholder overview. Project tracking cards and delivery status will be added here.</p>
-            </div>
-          </div>
-          <div className="team-page-overview-grid">
-            <article className="team-page-overview-card">
-              <p className="eyebrow">Active projects</p>
-              <strong>04</strong>
-              <p className="muted">Dummy metrics for initial layout.</p>
-            </article>
-            <article className="team-page-overview-card">
-              <p className="eyebrow">Upcoming milestones</p>
-              <strong>07</strong>
-              <p className="muted">Dummy metrics for initial layout.</p>
-            </article>
-            <article className="team-page-overview-card">
-              <p className="eyebrow">At risk items</p>
-              <strong>02</strong>
-              <p className="muted">Dummy metrics for initial layout.</p>
-            </article>
-          </div>
-          <div className="team-page-overview-note">
-            <p className="eyebrow">Roadmap</p>
-            <p className="muted">
-              Next step: connect project entities, owner assignments, target dates, and progress percentages to replace this dummy overview.
-            </p>
-          </div>
-        </div>
-      ) : (
-        <>
-          <div className="card dense-table-card team-page-card">
-            <div className="team-page-header">
-              <div>
-                <h3>Team workspace</h3>
-                <p className="muted">View team members and switch between team attendance and leave records.</p>
-              </div>
-            </div>
-            <div className="table-wrap">
-              <table className="table table--dense">
-                <thead>
-                  <tr>
-                    <th>Team member</th>
-                    <th>Designation</th>
-                    <th>Employee code</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {teamMembers.length ? (
-                    teamMembers.map((member) => (
-                      <tr key={member.id}>
-                        <td>
-                          <span className="table-cell-primary">{`${member.firstName} ${member.lastName}`}</span>
-                        </td>
-                        <td>{member.jobTitle ?? "-"}</td>
-                        <td>{member.employeeCode}</td>
-                      </tr>
-                    ))
-                  ) : (
-                    <tr>
-                      <td colSpan={3}>
-                        <div className="table-empty-state">
-                          <strong>No team members assigned.</strong>
-                          <span>Assigned team members will appear here.</span>
-                        </div>
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
+      {activeTab === "PROJECTS" && (
+        <div className="stack">
+          <div className="team-page-tabs" role="tablist" aria-label="Project categories">
+            <button
+              type="button"
+              role="tab"
+              aria-selected={projectCategory === "MAGAZINES"}
+              className={`team-page-tab ${projectCategory === "MAGAZINES" ? "team-page-tab--active" : ""}`.trim()}
+              onClick={() => setProjectCategory("MAGAZINES")}
+            >
+              Magazines
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={projectCategory === "INDUSTRIES"}
+              className={`team-page-tab ${projectCategory === "INDUSTRIES" ? "team-page-tab--active" : ""}`.trim()}
+              onClick={() => setProjectCategory("INDUSTRIES")}
+            >
+              Industries
+            </button>
           </div>
 
-          <div className="card dense-table-card team-page-card">
-            <div className="team-page-header">
-              <div className="team-page-tabs" role="tablist" aria-label="Team data">
-                <button
-                  type="button"
-                  role="tab"
-                  aria-selected={teamTab === "ATTENDANCE"}
-                  className={`team-page-tab ${teamTab === "ATTENDANCE" ? "team-page-tab--active" : ""}`.trim()}
-                  onClick={() => setTeamTab("ATTENDANCE")}
-                >
-                  Attendance
-                </button>
-                <button
-                  type="button"
-                  role="tab"
-                  aria-selected={teamTab === "LEAVES"}
-                  className={`team-page-tab ${teamTab === "LEAVES" ? "team-page-tab--active" : ""}`.trim()}
-                  onClick={() => setTeamTab("LEAVES")}
-                >
-                  Leaves
+          {projectCategory === "MAGAZINES" ? (
+            <div className="card team-page-card">
+              <div className="team-page-header">
+                <div>
+                  <h3>Magazines</h3>
+                  <p className="muted">Active editorial and publication projects.</p>
+                </div>
+                <button type="button" className="secondary team-page-add-btn">
+                  <span className="add-icon">+</span>
+                  Add Magazine
                 </button>
               </div>
-          {teamTab === "ATTENDANCE" ? (
+              <div className="stack projects-stack">
+                {["Forbes", "Fortune", "Financial Times", "Business Today"].map((magazine) => (
+                  <article key={magazine} className="project-item-card project-item-card--stacked">
+                    <div className="project-icon-wrap">
+                      <span className="project-initial">{magazine[0]}</span>
+                    </div>
+                    <div className="project-info">
+                      <strong>{magazine}</strong>
+                      <span className="muted text-xs">Editorial Publication</span>
+                    </div>
+                    <div className="project-actions">
+                      <span className="status-pill status-pill--active">Active</span>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <div className="card team-page-card">
+              <div className="team-page-header">
+                <div>
+                  <h3>Industries</h3>
+                  <p className="muted">Key industry focus areas and sectors.</p>
+                </div>
+                <button type="button" className="secondary team-page-add-btn">
+                  <span className="add-icon">+</span>
+                  Add Industry
+                </button>
+              </div>
+              <div className="grid cols-5 projects-grid">
+                {["Tech", "Fashion", "Finance", "Health", "Real Estate"].map((industry) => (
+                  <article key={industry} className="project-item-card">
+                    <div className="project-icon-wrap project-icon-wrap--industry">
+                      <span className="project-initial">{industry[0]}</span>
+                    </div>
+                    <div className="project-info">
+                      <strong>{industry}</strong>
+                      <span className="status-pill status-pill--stable">Monitoring</span>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {activeTab === "MEMBERS" && (
+        <div className="card dense-table-card team-page-card">
+          <div className="team-page-header">
+            <div>
+              <h3>Team members</h3>
+              <p className="muted">Manage and view your direct and scoped team members.</p>
+            </div>
+          </div>
+          <div className="table-wrap">
+            <table className="table table--dense">
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Designation</th>
+                  <th>Employee code</th>
+                </tr>
+              </thead>
+              <tbody>
+                {teamMembers.length ? (
+                  teamMembers.map((member) => (
+                    <tr key={member.id}>
+                      <td>
+                        <span className="table-cell-primary">{`${member.firstName} ${member.lastName}`}</span>
+                      </td>
+                      <td>{member.jobTitle ?? "-"}</td>
+                      <td>{member.employeeCode}</td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan={3}>
+                      <div className="table-empty-state">
+                        <strong>No team members assigned.</strong>
+                        <span>Assigned team members will appear here.</span>
+                      </div>
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {activeTab === "ATTENDANCE" && (
+        <div className="card dense-table-card team-page-card">
+          <div className="team-page-header">
+            <div>
+              <h3>Team attendance</h3>
+              <p className="muted">Monitor daily check-ins and attendance statuses for your team.</p>
+            </div>
             <div className="team-page-attendance-controls">
               <label className="team-page-date-filter">
                 Date
@@ -375,7 +440,7 @@ export default function TeamPage({ token, role, currentEmployee }: TeamPageProps
                   >
                     <span>{formatDateLabel(attendanceDate)}</span>
                   </button>
-                  {datePickerOpen ? (
+                  {datePickerOpen && (
                     <div className="team-page-date-popover">
                       <div className="team-page-date-popover__header">
                         <button
@@ -438,7 +503,7 @@ export default function TeamPage({ token, role, currentEmployee }: TeamPageProps
                         })}
                       </div>
                     </div>
-                  ) : null}
+                  )}
                 </div>
               </label>
               <div className="team-page-overview-row">
@@ -468,56 +533,70 @@ export default function TeamPage({ token, role, currentEmployee }: TeamPageProps
                 </button>
               </div>
             </div>
-          ) : null}
-        </div>
-            {loading ? (
-              <div className="page-loading">
-                <span className="skeleton-line skeleton-line--title" />
-                <span className="skeleton-line skeleton-line--long" />
-                <span className="skeleton-line skeleton-line--long" />
-              </div>
-            ) : teamTab === "ATTENDANCE" ? (
-              <Table
-                compact
-                columns={["Employee", "Designation", "Date", "Check in", "Check out", "Worked duration", "Status"]}
-                rows={teamAttendanceRows.map((record) => [
-                  <span className="table-cell-primary" key={`team-attendance-name-${record.id}`}>
-                    {record.employee ? `${record.employee.firstName} ${record.employee.lastName}` : `Employee #${record.employeeId}`}
-                  </span>,
-                  record.employee?.jobTitle ?? "-",
-                  formatDateLabel(record.attendanceDate),
-                  formatAttendanceTime(record.checkInTime),
-                  formatAttendanceTime(record.checkOutTime),
-                  getWorkedDurationLabel(record),
-                  <span className={getStatusClass(record.status)} key={`team-attendance-status-${record.id}`}>
-                    {record.status}
-                  </span>,
-                ])}
-                emptyState={{
-                  title: "No team attendance records",
-                  description: "No attendance entries found for the selected date.",
-                }}
-              />
-            ) : (
-              <LeaveTable
-                leaves={teamLeaveRows}
-                role={role}
-                currentEmployeeId={currentEmployee?.id ?? null}
-                onApprove={(id) => {
-                  if (window.confirm("Are you sure you want to approve this team member's leave request? This will update the attendance records.")) {
-                    void approveLeave(id);
-                  }
-                }}
-                onReject={(id) => setConfirmAction({ type: "reject", leaveId: id })}
-                onCancel={(id) => {
-                  if (window.confirm("Are you sure you want to cancel this leave request?")) {
-                    void cancelLeave(id);
-                  }
-                }}
-              />
-            )}
           </div>
-        </>
+          {loading ? (
+            <div className="page-loading" style={{ padding: '20px' }}>
+              <span className="skeleton-line skeleton-line--title" />
+              <span className="skeleton-line skeleton-line--long" />
+            </div>
+          ) : (
+            <Table
+              compact
+              columns={["Employee", "Designation", "Date", "Check in", "Check out", "Worked", "Status"]}
+              rows={teamAttendanceRows.map((record) => [
+                <span className="table-cell-primary" key={record.id}>
+                  {record.employee ? `${record.employee.firstName} ${record.employee.lastName}` : `Employee #${record.employeeId}`}
+                </span>,
+                record.employee?.jobTitle ?? "-",
+                formatDateLabel(record.attendanceDate),
+                formatAttendanceTime(record.checkInTime),
+                formatAttendanceTime(record.checkOutTime),
+                getWorkedDurationLabel(record),
+                <span className={getStatusClass(record.status)} key={`status-${record.id}`}>
+                  {record.status}
+                </span>,
+              ])}
+              emptyState={{
+                title: "No attendance records",
+                description: "No entries found for the selected date.",
+              }}
+            />
+          )}
+        </div>
+      )}
+
+      {activeTab === "LEAVES" && (
+        <div className="card dense-table-card team-page-card">
+          <div className="team-page-header">
+            <div>
+              <h3>Leave requests</h3>
+              <p className="muted">Review and manage leave applications from your team.</p>
+            </div>
+          </div>
+          {loading ? (
+            <div className="page-loading" style={{ padding: '20px' }}>
+              <span className="skeleton-line skeleton-line--title" />
+              <span className="skeleton-line skeleton-line--long" />
+            </div>
+          ) : (
+            <LeaveTable
+              leaves={teamLeaveRows}
+              role={role}
+              currentEmployeeId={currentEmployee?.id ?? null}
+              onApprove={(id) => {
+                if (window.confirm("Approve this leave request?")) {
+                  void approveLeave(id);
+                }
+              }}
+              onReject={(id) => setConfirmAction({ type: "reject", leaveId: id })}
+              onCancel={(id) => {
+                if (window.confirm("Cancel this leave request?")) {
+                  void cancelLeave(id);
+                }
+              }}
+            />
+          )}
+        </div>
       )}
 
       <Modal

@@ -93,13 +93,21 @@ export function useAuth() {
 
     try {
       setLoadingSession(true);
-      const requestPromise = apiRequest<SessionUser>("/auth/me", { token });
+      const requestPromise = apiRequest<{
+        user: SessionUser;
+        summary: any;
+        notifications: any[];
+      }>("/system/bootstrap", { token });
       
       // Store in global map
       activeSessionRequests.set(token, requestPromise);
       
       const response = await requestPromise;
-      setSessionUser(response.data);
+      
+      // Store the bootstrap data globally so AppProvider can pick it up without re-fetching
+      (window as any).__HRMS_BOOTSTRAP_DATA__ = response.data;
+
+      setSessionUser(response.data.user);
       setSessionTimeout();
       retryCount.current = 0;
     } catch (error: any) {

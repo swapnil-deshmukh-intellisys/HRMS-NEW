@@ -18,6 +18,7 @@ import payrollRoutes from "./modules/payroll/routes.js";
 import announcementRoutes from "./modules/announcements/routes.js";
 import googleRoutes from "./modules/google/routes.js";
 import notificationRoutes from "./modules/notifications/routes.js";
+import systemRoutes from "./modules/system/routes.js";
 
 export const app = express();
 app.set("trust proxy", 1); // Trust the first proxy (Render)
@@ -60,6 +61,7 @@ app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/announcements", announcementRoutes);
 app.use("/api/google", googleRoutes);
 app.use("/api/notifications", notificationRoutes);
+app.use("/api/system", systemRoutes);
 
 app.use(notFound);
 app.use(errorHandler);

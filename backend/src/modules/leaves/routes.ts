@@ -1,3 +1,4 @@
+import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -9,6 +10,7 @@ import { prisma } from "../../config/prisma.js";
 import { authenticate, requireRoles } from "../../middleware/auth.js";
 import { validate } from "../../middleware/validate.js";
 import { AppError, sendSuccess } from "../../utils/api.js";
+import { addToOutbox } from "../../services/outbox.js";
 import { startOfDay } from "../../utils/dates.js";
 import { getFinancialQuarterForDate, getFinancialYearBounds, getFinancialYearForDate } from "../../utils/financial-year.js";
 import { getEmployeeLeaveBalanceByType, getEmployeeLeaveBalances, isPolicyActiveForYear } from "../../utils/leave-balance.js";
@@ -40,12 +42,11 @@ function countWords(value: string) {
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const uploadsDir = path.resolve(__dirname, "../../../uploads/leaves");
-fs.mkdirSync(uploadsDir, { recursive: true });
 
 function buildFilename(file: Express.Multer.File) {
   const extension = path.extname(file.originalname);
   const baseName = path.basename(file.originalname, extension).replace(/[^a-zA-Z0-9-_]/g, "_");
-  return `${Date.now()}-${baseName}${extension}`;
+  return `${crypto.randomUUID()}-${baseName}${extension}`;
 }
 
 const uploadStorage = multer.diskStorage({
@@ -392,15 +393,16 @@ router.post("/leaves", upload.single("attachment"), validate(applyLeaveSchema), 
         select: { userId: true }
       });
       if (manager) {
-        import("./../notifications/service.js").then(ns => {
-          ns.createNotification({
+        await addToOutbox({
+          type: "LEAVE_REQUESTED",
+          payload: {
             userId: manager.userId,
             title: "New Leave Request 📅",
             message: `${leaveRequest.employee.firstName} has requested leave for ${new Date(leaveRequest.startDate).toLocaleDateString()}.`,
             type: "LEAVE_REQUESTED",
             link: "/leaves",
             sendPush: true
-          }).catch(err => console.error("Failed to notify manager of leave:", err));
+          },
         });
       }
     }
@@ -789,16 +791,16 @@ async function managerApproveLeave(leaveId: number, actor: NonNullable<Express.R
     });
 
     if (employeeData) {
-      import("./../notifications/service.js").then(ns => {
-        // DB Notification
-        ns.createNotification({
+      await addToOutbox({
+        type: "LEAVE_APPROVED",
+        payload: {
           userId: employeeData.userId,
           title: "Leave Approved! ✅",
           message: `Your leave from ${finalLeave.startDate.toLocaleDateString()} to ${finalLeave.endDate.toLocaleDateString()} has been approved.`,
           type: "LEAVE_APPROVED",
           link: "/leaves",
           sendPush: true
-        }).catch(err => console.error("Failed to create leave approval notification:", err));
+        }
       });
     }
 

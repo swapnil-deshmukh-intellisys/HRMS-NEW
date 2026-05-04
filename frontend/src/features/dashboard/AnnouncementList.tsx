@@ -30,7 +30,6 @@ type Announcement = {
 export default function AnnouncementList({ token, refreshSignal, onCreateClick }: { token?: string | null; refreshSignal?: number; onCreateClick?: () => void }) {
   const { announcements: contextAnnouncements, loading: contextLoading } = useApp();
   const [localAnnouncements, setLocalAnnouncements] = useState<Announcement[]>([]);
-  const [fetching, setFetching] = useState(false);
   const [isAllVisible, setIsAllVisible] = useState(false);
   const [isVisible, setIsVisible] = useState(true);
 
@@ -39,13 +38,10 @@ export default function AnnouncementList({ token, refreshSignal, onCreateClick }
 
   const fetchAnnouncements = useCallback(async () => {
     try {
-      setFetching(true);
       const response = await apiRequest<Announcement[]>("/announcements", { token });
       setLocalAnnouncements(response.data);
     } catch (err) {
       console.error("Failed to fetch announcements", err);
-    } finally {
-      setFetching(false);
     }
   }, [token]);
 

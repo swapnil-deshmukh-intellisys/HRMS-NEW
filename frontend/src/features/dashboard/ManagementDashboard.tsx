@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { apiRequest } from "../../services/api";
+
 import type { Role } from "../../types";
 import DashboardHeroClocks from "./DashboardHeroClocks";
 import ThoughtOfTheDay from "./ThoughtOfTheDay";
@@ -10,7 +10,7 @@ import WorkdayTimeline from "./WorkdayTimeline";
 import Modal from "../../components/common/Modal";
 import { useApp } from "../../context/AppContext";
 
-type DashboardData = Record<string, number | string | boolean | null | undefined | object>;
+
 
 function getDashboardContent(role: Role) {
   if (role === "MANAGER") {

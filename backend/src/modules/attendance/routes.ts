@@ -911,7 +911,15 @@ router.get("/", requireRoles("ADMIN", "HR", "MANAGER", "EMPLOYEE"), async (reque
     const attendance = await prisma.attendance.findMany({
       where,
       include: {
-        employee: true,
+        employee: {
+          include: {
+            outlookEmails: {
+              include: {
+                client: true
+              }
+            }
+          }
+        },
       },
       orderBy: [{ attendanceDate: "desc" }, { createdAt: "desc" }],
     });

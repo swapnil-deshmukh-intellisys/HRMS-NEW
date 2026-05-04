@@ -72,7 +72,10 @@ router.get("/", requireRoles("ADMIN", "HR", "MANAGER"), async (request, response
         },
         skip,
         take: limit,
-        orderBy: { createdAt: "desc" },
+        orderBy: [
+          { firstName: "asc" },
+          { lastName: "asc" },
+        ],
       }),
       prisma.employee.count({ where }),
     ]);
@@ -99,6 +102,11 @@ router.get("/:id", async (request, response, next) => {
         scopedTeamMembers: {
           include: {
             employee: true,
+          },
+        },
+        outlookEmails: {
+          include: {
+            client: true,
           },
         },
       },
@@ -522,6 +530,38 @@ router.put("/:id/team-lead-config", requireRoles("ADMIN", "HR"), validate(teamLe
     });
 
     return sendSuccess(response, "Team lead configuration updated successfully", updatedEmployee);
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.put("/:id/outlook-emails", requireRoles("ADMIN", "HR", "MANAGER"), validate(z.object({ emailIds: z.array(z.number().int().positive()) })), async (request, response, next) => {
+  try {
+    const employeeId = Number(request.params.id);
+    const { emailIds } = request.body;
+
+    const employee = await prisma.employee.findUnique({
+      where: { id: employeeId },
+      select: { id: true, isActive: true },
+    });
+
+    if (!employee || !employee.isActive) {
+      throw new AppError("Employee not found", 404);
+    }
+
+    const updatedEmployee = await prisma.employee.update({
+      where: { id: employeeId },
+      data: {
+        outlookEmails: {
+          set: emailIds.map((id: number) => ({ id })),
+        },
+      },
+      include: {
+        outlookEmails: true,
+      },
+    });
+
+    return sendSuccess(response, "Outlook emails assigned successfully", updatedEmployee.outlookEmails);
   } catch (error) {
     next(error);
   }

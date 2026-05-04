@@ -55,6 +55,7 @@ export default function EmployeeProfilePage({ token, role, currentEmployeeId }: 
   const [payroll, setPayroll] = useState<PayrollRecord[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
+  const [localExceptions, setLocalExceptions] = useState<CalendarException[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<EmployeeProfileTabKey>(() => {
     const requestedTab = searchParams.get("tab");
@@ -83,12 +84,13 @@ export default function EmployeeProfilePage({ token, role, currentEmployeeId }: 
 
     try {
       setLoading(true);
-      const [employeeResponse, attendanceResponse, balancesResponse, leavesResponse, payrollResponse] = await Promise.all([
+      const [employeeResponse, attendanceResponse, balancesResponse, leavesResponse, payrollResponse, exceptionsResponse] = await Promise.all([
         apiRequest<Employee>(`/employees/${employeeId}`, { token }),
         apiRequest<Attendance[]>(`/attendance?employeeId=${employeeId}`, { token }),
         apiRequest<LeaveBalance[]>(`/leave-balances/me?employeeId=${employeeId}`, { token }),
         apiRequest<LeaveRequest[]>(`/leaves?employeeId=${employeeId}`, { token }),
         canViewPayroll ? apiRequest<PayrollRecord[]>(`/payroll?employeeId=${employeeId}`, { token }) : Promise.resolve({ data: [] as PayrollRecord[] }),
+        apiRequest<{ exceptions: CalendarException[] }>(`/calendar?month=${new Date().getMonth() + 1}&year=${new Date().getFullYear()}`, { token }),
       ]);
 
       setEmployee(employeeResponse.data);
@@ -96,6 +98,7 @@ export default function EmployeeProfilePage({ token, role, currentEmployeeId }: 
       setBalances(balancesResponse.data);
       setLeaves(leavesResponse.data);
       setPayroll(payrollResponse.data);
+      setLocalExceptions((exceptionsResponse as any).data.exceptions || []);
     } catch (requestError) {
       toast.error(requestError instanceof Error ? requestError.message : "Failed to load employee profile.");
     } finally {
@@ -302,7 +305,7 @@ export default function EmployeeProfilePage({ token, role, currentEmployeeId }: 
       />
       <EmployeeProfileTabs activeTab={activeTab} tabs={visibleTabs} onChange={setActiveTab} />
       {activeTab === "overview" ? <EmployeeOverviewTab employee={employee} token={token} /> : null}
-      {activeTab === "attendance" ? <EmployeeAttendanceTab attendance={attendance} /> : null}
+      {activeTab === "attendance" ? <EmployeeAttendanceTab attendance={attendance} exceptions={localExceptions} /> : null}
       {activeTab === "leaves" ? (
         <EmployeeLeavesTab balances={balances} leaves={leaves} role={role} viewerEmployeeId={currentEmployeeId} />
       ) : null}

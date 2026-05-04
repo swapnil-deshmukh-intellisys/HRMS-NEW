@@ -10,6 +10,8 @@ import { formatWorkedDuration, getAttendanceWidgetTitle } from "./dashboardUtils
 import type { Attendance } from "../../types";
 import { apiRequest } from "../../services/api";
 import { useState } from "react";
+import TodoWidget from "./TodoWidget";
+
 
 function getIndiaTimeGreeting() {
   const formatter = new Intl.DateTimeFormat("en-IN", {
@@ -168,6 +170,11 @@ export default function EmployeeDashboard({ token }: { token: string | null }) {
           </div>
         </article>
       </div>
+
+      <div className="grid cols-2 dashboard-grid" style={{ marginTop: 'var(--space-4)' }}>
+        <TodoWidget token={token} />
+      </div>
+
     </>
   );
 }

@@ -16,7 +16,7 @@ type TeamPageProps = {
   currentEmployee: Employee | null;
 };
 
-type TeamTab = "PROJECTS" | "MEMBERS" | "ATTENDANCE" | "LEAVES";
+type TeamTab = "PROJECTS" | "MEMBERS" | "ATTENDANCE" | "LEAVES" | "OUTLOOK";
 type VisibleMonth = {
   month: number;
   year: number;
@@ -62,6 +62,7 @@ function getCalendarDays({ month, year }: VisibleMonth) {
 export default function TeamPage({ token, role, currentEmployee }: TeamPageProps) {
   const today = toLocalDateString(new Date());
   const [activeTab, setActiveTab] = useState<TeamTab>("PROJECTS");
+  const [activeClientCode, setActiveClientCode] = useState<"TUT" | "TEC">("TUT");
   const [projectCategory, setProjectCategory] = useState<"MAGAZINES" | "INDUSTRIES">("MAGAZINES");
   const [attendanceDate, setAttendanceDate] = useState(today);
   const [datePickerOpen, setDatePickerOpen] = useState(false);
@@ -72,6 +73,9 @@ export default function TeamPage({ token, role, currentEmployee }: TeamPageProps
   const [confirmAction, setConfirmAction] = useState<{ type: "cancel" | "approve" | "reject"; leaveId: number } | null>(null);
   const [teamAttendanceFilter, setTeamAttendanceFilter] = useState<"" | "PRESENT" | "ABSENT" | "LEAVE" | "HALF_DAY">("");
   const [rejectionReason, setRejectionReason] = useState("");
+  const [outlookEmails, setOutlookEmails] = useState<any[]>([]);
+  const [isAssigningEmail, setIsAssigningEmail] = useState<Employee | null>(null);
+  const [selectedEmailIds, setSelectedEmailIds] = useState<number[]>([]);
   const isTeamLead = Boolean(currentEmployee?.capabilities?.some((capability) => capability.capability === "TEAM_LEAD"));
   const isManager = role === "MANAGER";
   const canAccessTeam = isTeamLead || isManager;
@@ -105,12 +109,14 @@ export default function TeamPage({ token, role, currentEmployee }: TeamPageProps
       try {
         setLoading(true);
         const attendancePath = attendanceDate ? `/attendance?date=${attendanceDate}` : "/attendance";
-        const [attendanceResponse, leaveResponse] = await Promise.all([
+        const [attendanceResponse, leaveResponse, emailsResponse] = await Promise.all([
           apiRequest<Attendance[]>(attendancePath, { token }),
           apiRequest<LeaveRequest[]>("/leaves", { token }),
+          apiRequest<any[]>("/system/outlook-emails", { token }),
         ]);
         setAttendance(attendanceResponse.data);
         setLeaves(leaveResponse.data);
+        setOutlookEmails(emailsResponse.data);
       } catch (requestError) {
         toast.error(requestError instanceof Error ? requestError.message : "Failed to load team data.");
       } finally {
@@ -294,29 +300,55 @@ export default function TeamPage({ token, role, currentEmployee }: TeamPageProps
         >
           Leaves
         </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={activeTab === "OUTLOOK"}
+          className={`team-page-primary-tab ${activeTab === "OUTLOOK" ? "team-page-primary-tab--active" : ""}`.trim()}
+          onClick={() => setActiveTab("OUTLOOK")}
+        >
+          Outlook Emails
+        </button>
       </div>
 
       {activeTab === "PROJECTS" && (
         <div className="stack">
-          <div className="team-page-tabs" role="tablist" aria-label="Project categories">
-            <button
-              type="button"
-              role="tab"
-              aria-selected={projectCategory === "MAGAZINES"}
-              className={`team-page-tab ${projectCategory === "MAGAZINES" ? "team-page-tab--active" : ""}`.trim()}
-              onClick={() => setProjectCategory("MAGAZINES")}
-            >
-              Magazines
-            </button>
-            <button
-              type="button"
-              role="tab"
-              aria-selected={projectCategory === "INDUSTRIES"}
-              className={`team-page-tab ${projectCategory === "INDUSTRIES" ? "team-page-tab--active" : ""}`.trim()}
-              onClick={() => setProjectCategory("INDUSTRIES")}
-            >
-              Industries
-            </button>
+          <div className="team-page-header" style={{ marginBottom: '-10px' }}>
+            <div className="team-page-tabs" role="tablist" aria-label="Project categories">
+              <button
+                type="button"
+                role="tab"
+                aria-selected={projectCategory === "MAGAZINES"}
+                className={`team-page-tab ${projectCategory === "MAGAZINES" ? "team-page-tab--active" : ""}`.trim()}
+                onClick={() => setProjectCategory("MAGAZINES")}
+              >
+                Magazines
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={projectCategory === "INDUSTRIES"}
+                className={`team-page-tab ${projectCategory === "INDUSTRIES" ? "team-page-tab--active" : ""}`.trim()}
+                onClick={() => setProjectCategory("INDUSTRIES")}
+              >
+                Industries
+              </button>
+            </div>
+
+            <div className="client-switcher">
+              <button 
+                className={`client-switcher-btn ${activeClientCode === "TUT" ? "active" : ""}`}
+                onClick={() => setActiveClientCode("TUT")}
+              >
+                TUT
+              </button>
+              <button 
+                className={`client-switcher-btn ${activeClientCode === "TEC" ? "active" : ""}`}
+                onClick={() => setActiveClientCode("TEC")}
+              >
+                TEC
+              </button>
+            </div>
           </div>
 
           {projectCategory === "MAGAZINES" ? (
@@ -332,14 +364,17 @@ export default function TeamPage({ token, role, currentEmployee }: TeamPageProps
                 </button>
               </div>
               <div className="stack projects-stack">
-                {["Forbes", "Fortune", "Financial Times", "Business Today"].map((magazine) => (
+                {(activeClientCode === "TUT" 
+                  ? ["Forbes", "Fortune", "Financial Times", "Business Today"]
+                  : ["Entrepreneur", "Wired", "HBR", "Fast Company"]
+                ).map((magazine) => (
                   <article key={magazine} className="project-item-card project-item-card--stacked">
-                    <div className="project-icon-wrap">
+                    <div className="project-icon-wrap" style={{ background: activeClientCode === "TEC" ? 'linear-gradient(135deg, #059669, #10b981)' : undefined }}>
                       <span className="project-initial">{magazine[0]}</span>
                     </div>
                     <div className="project-info">
                       <strong>{magazine}</strong>
-                      <span className="muted text-xs">Editorial Publication</span>
+                      <span className="muted text-xs">{activeClientCode === "TUT" ? "Editorial Publication" : "Innovation Digest"}</span>
                     </div>
                     <div className="project-actions">
                       <span className="status-pill status-pill--active">Active</span>
@@ -353,7 +388,7 @@ export default function TeamPage({ token, role, currentEmployee }: TeamPageProps
               <div className="team-page-header">
                 <div>
                   <h3>Industries</h3>
-                  <p className="muted">Key industry focus areas and sectors.</p>
+                  <p className="muted">Key industry focus areas and sectors for {activeClientCode}.</p>
                 </div>
                 <button type="button" className="secondary team-page-add-btn">
                   <span className="add-icon">+</span>
@@ -361,9 +396,12 @@ export default function TeamPage({ token, role, currentEmployee }: TeamPageProps
                 </button>
               </div>
               <div className="grid cols-5 projects-grid">
-                {["Tech", "Fashion", "Finance", "Health", "Real Estate"].map((industry) => (
+                {(activeClientCode === "TUT"
+                  ? ["Tech", "Fashion", "Finance", "Health", "Real Estate"]
+                  : ["Logistics", "Agri", "Manufacturing", "E-com", "Energy"]
+                ).map((industry) => (
                   <article key={industry} className="project-item-card">
-                    <div className="project-icon-wrap project-icon-wrap--industry">
+                    <div className={`project-icon-wrap ${activeClientCode === "TUT" ? "project-icon-wrap--industry" : "project-icon-wrap--tec-industry"}`}>
                       <span className="project-initial">{industry[0]}</span>
                     </div>
                     <div className="project-info">
@@ -599,6 +637,94 @@ export default function TeamPage({ token, role, currentEmployee }: TeamPageProps
         </div>
       )}
 
+      {activeTab === "OUTLOOK" && (
+        <div className="card dense-table-card team-page-card">
+          <div className="team-page-header">
+            <div>
+              <h3>Outlook Email Distribution</h3>
+              <p className="muted">Assigning shared identities for <strong>{activeClientCode === "TUT" ? "The Unicorn Times" : "Entrepreneurial Chronicles"}</strong>.</p>
+            </div>
+            <div className="client-switcher">
+              <button 
+                className={`client-switcher-btn ${activeClientCode === "TUT" ? "active" : ""}`}
+                onClick={() => setActiveClientCode("TUT")}
+              >
+                TUT
+              </button>
+              <button 
+                className={`client-switcher-btn ${activeClientCode === "TEC" ? "active" : ""}`}
+                onClick={() => setActiveClientCode("TEC")}
+              >
+                TEC
+              </button>
+            </div>
+          </div>
+          <div className="table-wrap">
+            <table className="table table--dense">
+              <thead>
+                <tr>
+                  <th>Employee</th>
+                  <th>Designation</th>
+                  <th>{activeClientCode} Assigned Email(s)</th>
+                  <th style={{ textAlign: 'right' }}>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {teamMembers.length ? (
+                  teamMembers.map((member) => {
+                    const clientEmails = member.outlookEmails?.filter((e: any) => e.client?.code === activeClientCode) ?? [];
+                    return (
+                      <tr key={member.id}>
+                        <td>
+                          <span className="table-cell-primary">{`${member.firstName} ${member.lastName}`}</span>
+                        </td>
+                        <td>{member.jobTitle ?? "-"}</td>
+                        <td>
+                          <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
+                            {clientEmails.length ? (
+                              clientEmails.map((email: any) => (
+                                <span key={email.id} className="status-pill" style={{ background: activeClientCode === 'TEC' ? '#ecfdf5' : '#f1f5f9', color: activeClientCode === 'TEC' ? '#065f46' : '#475569', fontSize: '11px' }}>
+                                  {email.name}
+                                </span>
+                              ))
+                            ) : (
+                              <span className="muted" style={{ fontSize: '11px' }}>No {activeClientCode} emails</span>
+                            )}
+                          </div>
+                        </td>
+                        <td style={{ textAlign: 'right' }}>
+                          <button 
+                            className="secondary small"
+                            onClick={() => {
+                              setIsAssigningEmail(member);
+                              // Only select IDs from the CURRENT client context to avoid clearing other client assignments if implemented differently
+                              // But our SET logic in backend replaces ALL. So we need to be careful.
+                              // Actually, the backend SET logic will replace EVERYTHING. 
+                              // We should probably keep ALL existing and just toggle current ones.
+                              setSelectedEmailIds(member.outlookEmails?.map((e: any) => e.id) ?? []);
+                            }}
+                          >
+                            Manage
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })
+                ) : (
+                  <tr>
+                    <td colSpan={4}>
+                      <div className="table-empty-state">
+                        <strong>No team members found.</strong>
+                      </div>
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
       <Modal
         open={confirmAction !== null}
         title="Reject leave"
@@ -642,6 +768,121 @@ export default function TeamPage({ token, role, currentEmployee }: TeamPageProps
               }}
             >
               Reject Request
+            </button>
+          </div>
+        </div>
+      </Modal>
+    <Modal
+        open={isAssigningEmail !== null}
+        title={`Assign Emails: ${isAssigningEmail?.firstName} ${isAssigningEmail?.lastName}`}
+        onClose={() => setIsAssigningEmail(null)}
+      >
+        <div className="stack" style={{ gap: '24px' }}>
+          {/* Assigned Section */}
+          <div>
+            <h4 style={{ fontSize: '13px', fontWeight: '700', marginBottom: '12px', color: 'var(--color-text-primary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#3b82f6' }}></span>
+              Currently Assigned ({activeClientCode})
+            </h4>
+            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', minHeight: '40px', padding: '12px', background: '#f8fafc', borderRadius: '10px', border: '1px dashed #cbd5e1' }}>
+              {selectedEmailIds.filter(id => outlookEmails.find(e => e.id === id)?.client?.code === activeClientCode).length > 0 ? (
+                selectedEmailIds
+                  .filter(id => outlookEmails.find(e => e.id === id)?.client?.code === activeClientCode)
+                  .map(id => {
+                    const email = outlookEmails.find(e => e.id === id);
+                    if (!email) return null;
+                    return (
+                        <div key={id} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 10px', background: 'white', border: '1px solid #e2e8f0', borderRadius: '6px', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}>
+                          <span style={{ fontSize: '12px', fontWeight: '600' }}>{email.name}</span>
+                          <button 
+                            style={{ 
+                              border: 'none', 
+                              background: '#fee2e2', 
+                              color: '#ef4444', 
+                              borderRadius: '4px', 
+                              width: '20px', 
+                              height: '20px', 
+                              minHeight: '0', 
+                              minWidth: '0', 
+                              display: 'flex', 
+                              alignItems: 'center', 
+                              justifyContent: 'center', 
+                              fontSize: '10px', 
+                              cursor: 'pointer', 
+                              padding: 0,
+                              flexShrink: 0,
+                              alignSelf: 'center'
+                            }}
+                            onClick={() => setSelectedEmailIds(prev => prev.filter(pId => pId !== id))}
+                            title="Remove assignment"
+                          >
+                            ✕
+                          </button>
+                        </div>
+                    );
+                  })
+              ) : (
+                <span className="muted" style={{ fontSize: '12px', fontStyle: 'italic' }}>No emails assigned for {activeClientCode} yet.</span>
+              )}
+            </div>
+          </div>
+
+          {/* Available Section */}
+          <div>
+            <h4 style={{ fontSize: '13px', fontWeight: '700', marginBottom: '12px', color: 'var(--color-text-primary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#e2e8f0' }}></span>
+              Available Identities
+            </h4>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', maxHeight: '300px', overflowY: 'auto', padding: '4px' }}>
+              {outlookEmails
+                .filter(e => e.client?.code === activeClientCode && !selectedEmailIds.includes(e.id))
+                .map((email) => (
+                  <div 
+                    key={email.id} 
+                    className="email-assign-card"
+                    onClick={() => {
+                      setSelectedEmailIds(prev => [...prev, email.id]);
+                    }}
+                  >
+                    <div className="email-assign-checkbox">
+                      {/* Always empty since we filter them out of this section if selected */}
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column' }}>
+                      <span style={{ fontWeight: '600', fontSize: '13px' }}>{email.name}</span>
+                      <span className="muted" style={{ fontSize: '11px' }}>{email.email}</span>
+                    </div>
+                  </div>
+                ))}
+              {outlookEmails.filter(e => e.client?.code === activeClientCode && !selectedEmailIds.includes(e.id)).length === 0 && (
+                <div className="muted" style={{ gridColumn: 'span 2', textAlign: 'center', padding: '20px', background: '#f1f5f9', borderRadius: '8px' }}>
+                  All available {activeClientCode} identities are already assigned.
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="button-row" style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end', marginTop: '10px' }}>
+            <button className="secondary" onClick={() => setIsAssigningEmail(null)}>Cancel</button>
+            <button 
+              className="primary" 
+              onClick={async () => {
+                if (!isAssigningEmail) return;
+                try {
+                  await apiRequest(`/employees/${isAssigningEmail.id}/outlook-emails`, {
+                    method: 'PUT',
+                    token,
+                    body: { emailIds: selectedEmailIds }
+                  });
+                  toast.success("Emails assigned successfully");
+                  setIsAssigningEmail(null);
+                  // Refresh the page data to show new assignments
+                  window.location.reload(); 
+                } catch (err) {
+                  toast.error("Failed to assign emails");
+                }
+              }}
+            >
+              Save Assignments
             </button>
           </div>
         </div>

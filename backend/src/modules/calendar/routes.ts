@@ -31,7 +31,8 @@ router.use(authenticate);
 
 function parseDateInput(value: string) {
   const [year, month, day] = value.split("-").map(Number);
-  return startOfDay(new Date(year, month - 1, day));
+  // We MUST use Date.UTC to prevent timezone shifts between server and DB
+  return new Date(Date.UTC(year, month - 1, day, 0, 0, 0, 0));
 }
 
 router.get("/", requireRoles("ADMIN", "HR", "MANAGER", "EMPLOYEE"), validate(calendarQuerySchema, "query"), async (request, response, next) => {

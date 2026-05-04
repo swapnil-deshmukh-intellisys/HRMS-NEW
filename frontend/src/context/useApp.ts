@@ -35,6 +35,7 @@ export type AppContextType = {
   markAllNotificationsAsRead: () => Promise<void>;
   analyticsData: AnalyticsData | null;
   fetchAnalyticsData: (force?: boolean) => Promise<void>;
+  calendarExceptions: CalendarException[];
 };
 
 export const AppContext = createContext<AppContextType | undefined>(undefined);

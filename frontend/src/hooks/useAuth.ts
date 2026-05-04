@@ -53,9 +53,16 @@ export function useAuth() {
   }, [token, updateLastActivity]);
 
   const setSessionTimeout = useCallback(() => {
-    const midnight = new Date();
-    midnight.setHours(23, 59, 59, 999);
-    localStorage.setItem(SESSION_TIMEOUT_KEY, midnight.getTime().toString());
+    const expiry = new Date();
+    expiry.setHours(23, 59, 59, 999);
+    
+    // 🌙 Late Night Logic: If we are within 1 hour of midnight, 
+    // set the expiry to tomorrow's midnight so the user isn't trapped in a warning loop.
+    if (expiry.getTime() - Date.now() < 60 * 60 * 1000) {
+      expiry.setDate(expiry.getDate() + 1);
+    }
+    
+    localStorage.setItem(SESSION_TIMEOUT_KEY, expiry.getTime().toString());
   }, []);
 
   const logout = useCallback(async () => {

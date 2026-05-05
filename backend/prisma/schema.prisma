@@ -75,6 +75,8 @@ model Employee {
   basicMonthlySalary                Float?
   isOnProbation                     Boolean                           @default(false)
   probationEndDate                  DateTime?
+  panCardNumber                     String?
+  dateOfBirth                       DateTime?
   announcements                     Announcement[]                    @relation("AnnouncementCreator")
   attendances                       Attendance[]
   attendanceRegularizationRequests  AttendanceRegularizationRequest[] @relation("AttendanceRegularizationRequester")

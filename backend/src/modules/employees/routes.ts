@@ -29,6 +29,8 @@ const employeeSchema = z.object({
   managerId: z.coerce.number().int().positive().nullable().optional(),
   joiningDate: z.string().datetime(),
   employmentStatus: z.nativeEnum(EmploymentStatus).default(EmploymentStatus.ACTIVE),
+  panCardNumber: z.string().optional().nullable(),
+  dateOfBirth: z.string().datetime().nullable().optional(),
 });
 
 const statusSchema = z.object({
@@ -84,6 +86,66 @@ router.get("/", requireRoles("ADMIN", "HR", "MANAGER"), async (request, response
       items: employees,
       pagination: { page, limit, total },
     });
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.get("/birthdays/upcoming", async (request, response, next) => {
+  try {
+    const employees = await prisma.employee.findMany({
+      where: { 
+        isActive: true,
+        dateOfBirth: { not: null }
+      },
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        dateOfBirth: true,
+        jobTitle: true,
+        department: { select: { name: true } }
+      }
+    });
+
+    const now = new Date();
+    const currentMonth = now.getMonth();
+    const currentDate = now.getDate();
+    const upcomingDays = 30;
+
+    const upcoming = employees.filter(emp => {
+      if (!emp.dateOfBirth) return false;
+      
+      const dob = new Date(emp.dateOfBirth);
+      const bMonth = dob.getMonth();
+      const bDate = dob.getDate();
+
+      // Create a date object for this year's birthday
+      const thisYearBirthday = new Date(now.getFullYear(), bMonth, bDate);
+      
+      // If birthday already passed this year, check next year's birthday
+      const nextBirthday = thisYearBirthday < new Date(now.getFullYear(), currentMonth, currentDate)
+        ? new Date(now.getFullYear() + 1, bMonth, bDate)
+        : thisYearBirthday;
+
+      const diffTime = nextBirthday.getTime() - now.getTime();
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+      return diffDays >= 0 && diffDays <= upcomingDays;
+    }).sort((a, b) => {
+      const dobA = new Date(a.dateOfBirth!);
+      const dobB = new Date(b.dateOfBirth!);
+      
+      const getNextBday = (dob: Date) => {
+        const t = new Date(now.getFullYear(), dob.getMonth(), dob.getDate());
+        if (t < new Date(now.getFullYear(), currentMonth, currentDate)) t.setFullYear(t.getFullYear() + 1);
+        return t.getTime();
+      };
+
+      return getNextBday(dobA) - getNextBday(dobB);
+    });
+
+    return sendSuccess(response, "Upcoming birthdays fetched successfully", upcoming);
   } catch (error) {
     next(error);
   }
@@ -173,6 +235,8 @@ router.post("/", requireRoles("ADMIN", "HR"), validate(employeeSchema), async (r
           managerId: employeeData.managerId,
           joiningDate: new Date(employeeData.joiningDate),
           employmentStatus: employeeData.employmentStatus,
+          panCardNumber: employeeData.panCardNumber,
+          dateOfBirth: employeeData.dateOfBirth ? new Date(employeeData.dateOfBirth) : null,
         },
         include: {
           user: { include: { role: true } },

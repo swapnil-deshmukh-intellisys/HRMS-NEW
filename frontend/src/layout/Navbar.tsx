@@ -26,6 +26,8 @@ export default function Navbar({ title, navOpen, onToggleNav, token, currentEmpl
   const { subscribeUser, isSubscribing } = usePushNotifications(token);
   const [searchTerm, setSearchTerm] = useState("");
   const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [isVisible, setIsVisible] = useState(true);
+  const [lastScrollY, setLastScrollY] = useState(0);
   const notificationsRef = useRef<HTMLDivElement | null>(null);
   const canSearchEmployees = role !== "EMPLOYEE";
 
@@ -47,8 +49,23 @@ export default function Navbar({ title, navOpen, onToggleNav, token, currentEmpl
   }, [notificationsOpen]);
 
   useEffect(() => {
-    if (!token) return;
-  }, [token]);
+    const handleScroll = () => {
+      const currentScrollY = window.scrollY;
+      
+      // Show if scrolling up, hide if scrolling down (and past a threshold)
+      if (currentScrollY > lastScrollY && currentScrollY > 100) {
+        setIsVisible(false);
+        setNotificationsOpen(false); // Close notifications if open and scrolling
+      } else {
+        setIsVisible(true);
+      }
+      
+      setLastScrollY(currentScrollY);
+    };
+
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, [lastScrollY]);
 
   function handleEmployeeSearchSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -67,7 +84,7 @@ export default function Navbar({ title, navOpen, onToggleNav, token, currentEmpl
   }
 
   return (
-    <div className="topbar">
+    <div className={`topbar ${!isVisible ? "topbar--hidden" : ""}`}>
       <div className="topbar-copy">
         <Button className="mobile-nav-toggle" variant="secondary" type="button" onClick={onToggleNav}>
           {navOpen ? "Close menu" : "Menu"}

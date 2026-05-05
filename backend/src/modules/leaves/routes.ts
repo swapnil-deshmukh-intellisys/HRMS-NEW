@@ -407,6 +407,26 @@ router.post("/leaves", upload.single("attachment"), validate(applyLeaveSchema), 
       }
     }
 
+    // Notify all HR users
+    const hrUsers = await prisma.user.findMany({
+      where: { role: { name: RoleName.HR } },
+      select: { id: true }
+    });
+
+    for (const hr of hrUsers) {
+      await addToOutbox({
+        type: "LEAVE_REQUESTED",
+        payload: {
+          userId: hr.id,
+          title: "New Leave Request (HR) 📅",
+          message: `${leaveRequest.employee.firstName} has requested leave for ${new Date(leaveRequest.startDate).toLocaleDateString()}.`,
+          type: "LEAVE_REQUESTED",
+          link: "/leaves",
+          sendPush: true
+        },
+      });
+    }
+
     return sendSuccess(response, "Leave request submitted successfully", leaveRequest, 201);
   } catch (error) {
     next(error);

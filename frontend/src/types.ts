@@ -77,6 +77,8 @@ export type Employee = {
   basicMonthlySalary?: number | null;
   isOnProbation?: boolean;
   probationEndDate?: string | null;
+  panCardNumber?: string | null;
+  dateOfBirth?: string | null;
   departmentId: number;
   managerId?: number | null;
   joiningDate: string;

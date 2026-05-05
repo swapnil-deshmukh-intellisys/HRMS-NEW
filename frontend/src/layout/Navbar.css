@@ -11,6 +11,11 @@
   padding: var(--space-3) var(--space-6);
   background: var(--color-surface-page);
   backdrop-filter: blur(14px);
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.topbar--hidden {
+  transform: translateY(-100%);
 }
 
 .topbar-copy {

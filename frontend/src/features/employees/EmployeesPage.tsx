@@ -92,6 +92,8 @@ export default function EmployeesPage({ token, role }: EmployeesPageProps) {
         departmentId: Number(formValues.departmentId),
         managerId: formValues.managerId ? Number(formValues.managerId) : null,
         joiningDate: serializeLocalDateTime(formValues.joiningDate),
+        panCardNumber: formValues.panCardNumber.trim() || null,
+        dateOfBirth: formValues.dateOfBirth ? `${formValues.dateOfBirth}T00:00:00.000Z` : null,
       };
 
       const response = await apiRequest<Employee>(editingEmployeeId ? `/employees/${editingEmployeeId}` : "/employees", {

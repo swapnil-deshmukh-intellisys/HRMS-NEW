@@ -41,6 +41,8 @@ function toEmployeeForm(employee: Employee): EmployeeFormValues {
     employmentStatus: employee.employmentStatus,
     isTeamLead: Boolean(employee.capabilities?.some((capability) => capability.capability === "TEAM_LEAD")),
     teamLeadScopeIds: employee.scopedTeamMembers?.map((item) => item.employee.id) ?? [],
+    panCardNumber: employee.panCardNumber ?? "",
+    dateOfBirth: employee.dateOfBirth ? formatStoredDateForInput(employee.dateOfBirth) : "",
   };
 }
 
@@ -202,6 +204,8 @@ export default function EmployeeProfilePage({ token, role, currentEmployeeId }: 
         departmentId: Number(formValues.departmentId),
         managerId: formValues.managerId ? Number(formValues.managerId) : null,
         joiningDate: serializeLocalDateTime(formValues.joiningDate),
+        panCardNumber: formValues.panCardNumber.trim() || null,
+        dateOfBirth: formValues.dateOfBirth ? `${formValues.dateOfBirth}T00:00:00.000Z` : null,
       };
 
       await apiRequest<Employee>(`/employees/${employee.id}`, {

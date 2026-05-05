@@ -40,7 +40,6 @@ const WorkdayTimeline: React.FC<WorkdayTimelineProps> = ({
 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const [progress, setProgress] = useState(0);
-  const [lateThresholdPct, setLateThresholdPct] = useState(0);
   const [checkInPct, setCheckInPct] = useState<number | null>(null);
   const [checkInLabel, setCheckInLabel] = useState<string>('');
   const [workedTime, setWorkedTime] = useState<{ hours: number; minutes: number } | null>(null);
@@ -81,11 +80,8 @@ const WorkdayTimeline: React.FC<WorkdayTimelineProps> = ({
 
       const totalMs = end.getTime() - start.getTime();
       const elapsedMs = now.getTime() - start.getTime();
-      const latePct = ((late.getTime() - start.getTime()) / totalMs) * 100;
-
       const pct = Math.max(0, Math.min(100, (elapsedMs / totalMs) * 100));
       setProgress(pct);
-      setLateThresholdPct(latePct);
       setIsShiftOver(now > end);
       setIsShiftPending(now < start);
 
@@ -190,168 +186,144 @@ const WorkdayTimeline: React.FC<WorkdayTimelineProps> = ({
   const statusClass = isShiftOver ? 'over' : isShiftPending ? 'pending' : checkInIsLate ? 'late' : 'active';
 
   return (
-    <div className={`wdt-premium-v2 ${isExpanded ? 'is-expanded' : 'is-collapsed'}`}>
-      {/* Dynamic Background Effects */}
+    <div className={`card wdt-premium-v2 ${isExpanded ? 'is-expanded' : 'is-collapsed'}`}>
       <div className="wdt-body-clipper">
         <div className="wdt-glass-shine" />
       </div>
       
-      {/* Minimal Sleek Header */}
-      <div className="wdt-header-minimal">
-        <div className="wdt-minimal-title">
-          <span className={`wdt-pulse-dot ${statusClass}`} />
-          <h2 className="wdt-title-sleek">Workday Progress</h2>
-          <span className="wdt-status-text">{statusLabel}</span>
-        </div>
-        <div className="wdt-minimal-meta">
-          {workedTime && (
-            <span className="wdt-time-compact">
-               {formatDuration(workedTime.hours, workedTime.minutes)} worked
-            </span>
-          )}
-        </div>
-      </div>
-
-      {/* The Central Gauge - Vibrant & Technical */}
-      <div className="wdt-gauge-area">
-        <div className="wdt-gauge-container">
-          <div 
-            className="wdt-main-rail"
-            onMouseMove={handleMouseMove}
-            onMouseLeave={() => setHoverText(null)}
-          >
-            <div className="wdt-rail-glass" />
-            
-            {/* Scheduled Reference Layer */}
-            {scheduledBreakPcts.map((b) => (
-              <div 
-                key={b.label}
-                className="wdt-ghost-window"
-                style={{ left: `${b.startPct}%`, width: `${b.endPct - b.startPct}%` }}
-              >
-                <div className="wdt-window-label">{b.label}</div>
-              </div>
-            ))}
-
-            {/* Progress Layers */}
-            <div 
-              className={`wdt-fill-worked ${checkInPct !== null && checkInIsLate ? 'is-segmented' : ''}`} 
-              style={{ 
-                left: `${checkInPct || 0}%`, 
-                width: `${Math.max(0, progress - (checkInPct || 0))}%` 
-              }}
-            >
-              <div className="wdt-fill-glow" />
-              {progress > 0 && progress < 100 && <div className="wdt-laser-head" />}
-            </div>
-
-            {checkInPct !== null && checkInIsLate && (
-              <div 
-                className="wdt-fill-late" 
-                style={{ width: `${checkInPct}%` }} 
-              />
+      {isExpanded && (
+        <div className="wdt-header-minimal">
+          <div className="wdt-minimal-title">
+            <span className={`wdt-pulse-dot ${statusClass}`} />
+            <h2 className="wdt-title-sleek">Workday Progress</h2>
+            <span className="wdt-status-text">{statusLabel}</span>
+          </div>
+          <div className="wdt-minimal-meta">
+            {workedTime && (
+              <span className="wdt-time-compact">
+                 {formatDuration(workedTime.hours, workedTime.minutes)} worked
+              </span>
             )}
+          </div>
+        </div>
+      )}
 
-            {/* Interactive Segments */}
-            {breakSessionsMapped.map((seg) => (
-              <div
-                key={seg.id}
-                className={`wdt-break-block ${seg.isOpen ? 'is-active' : ''}`}
-                style={{
-                  left: `${seg.startPct}%`,
-                  width: `${Math.max(1, seg.endPct - seg.startPct)}%`,
+      <div className="wdt-bar-interface-row">
+        <div className="wdt-gauge-area">
+          <div className="wdt-gauge-container">
+            <div 
+              className="wdt-main-rail"
+              onMouseMove={handleMouseMove}
+              onMouseLeave={() => setHoverText(null)}
+            >
+              <div className="wdt-rail-glass" />
+              
+              {scheduledBreakPcts.map((b) => (
+                <div 
+                  key={b.label}
+                  className="wdt-ghost-window"
+                  style={{ left: `${b.startPct}%`, width: `${b.endPct - b.startPct}%` }}
+                >
+                  {isExpanded && <div className="wdt-window-label">{b.label}</div>}
+                </div>
+              ))}
+
+              <div 
+                className={`wdt-fill-worked ${checkInPct !== null && checkInIsLate ? 'is-segmented' : ''}`} 
+                style={{ 
+                  left: `${checkInPct || 0}%`, 
+                  width: `${Math.max(0, progress - (checkInPct || 0))}%` 
                 }}
               >
-                <div className="wdt-break-inner" />
+                <div className="wdt-fill-glow" />
               </div>
-            ))}
 
-            {/* Pins - Conditional on Expansion */}
-            {isExpanded && (
-              <>
-                <div className="wdt-marker-late" style={{ left: `${lateThresholdPct}%` }}>
-                  <div className="wdt-marker-tooltip">Late Threshold: {format12h(lateThreshold)}</div>
+              {breakSessionsMapped.map((seg) => (
+                <div
+                  key={seg.id}
+                  className={`wdt-break-block ${seg.isOpen ? 'is-active' : ''}`}
+                  style={{
+                    left: `${seg.startPct}%`,
+                    width: `${Math.max(1, seg.endPct - seg.startPct)}%`,
+                  }}
+                >
+                  <div className="wdt-fill-glow" />
                 </div>
+              ))}
 
-                {checkInPct !== null && (
-                  <div className={`wdt-marker-checkin ${checkInIsLate ? 'is-late' : ''}`} style={{ left: `${checkInPct}%` }}>
-                    <div className="wdt-checkin-tag">Checked In: {checkInLabel}</div>
-                  </div>
-                )}
-              </>
+              {isExpanded && checkInPct !== null && (
+                <div className={`wdt-marker-checkin ${checkInIsLate ? 'is-late' : ''}`} style={{ left: `${checkInPct}%` }}>
+                  <div className="wdt-checkin-tag">Checked In: {checkInLabel}</div>
+                </div>
+              )}
+            </div>
+
+            {isExpanded && (
+              <div className="wdt-gauge-footer">
+                <span className="wdt-bound-label">{format12h(startTime)}</span>
+                <div className="wdt-gauge-steps">
+                  {Array.from({length: 8}).map((_, i) => <div key={i} className="wdt-step" />)}
+                </div>
+                <span className="wdt-bound-label">{format12h(endTime)}</span>
+              </div>
             )}
           </div>
-
-          <div className="wdt-gauge-footer">
-             <span className="wdt-bound-label">{format12h(startTime)}</span>
-             <div className="wdt-gauge-steps">
-               {Array.from({length: 8}).map((_, i) => <div key={i} className="wdt-step" />)}
-             </div>
-             <span className="wdt-bound-label">{format12h(endTime)}</span>
-          </div>
         </div>
+
+        <button className="wdt-toggle-icon-btn" onClick={() => setIsExpanded(!isExpanded)}>
+          {isExpanded ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+        </button>
       </div>
 
-      {/* Info Tiles - The HUD Interface */}
       {isExpanded && (
         <div className="wdt-hud-grid">
-           <div className="wdt-hud-tile">
+          <div className="wdt-hud-tile">
               <div className="wdt-tile-icon"><Timer size={18} /></div>
               <div className="wdt-tile-content">
-                 <span className="wdt-tile-title">Shift Window</span>
-                 <div className="wdt-tile-val">{format12h(startTime)} – {format12h(endTime)}</div>
-                 <div className="wdt-tile-sub">Threshold: {format12h(lateThreshold)}</div>
+                <span className="wdt-tile-title">Shift Window</span>
+                <div className="wdt-tile-val">{format12h(startTime)} – {format12h(endTime)}</div>
               </div>
-           </div>
+          </div>
 
-           <div className="wdt-hud-tile">
+          <div className="wdt-hud-tile">
               <div className="wdt-tile-icon"><Coffee size={18} /></div>
               <div className="wdt-tile-content">
-                 <span className="wdt-tile-title">Break Schedule</span>
-                 <div className="wdt-schedule-mini">
+                <span className="wdt-tile-title">Break Schedule</span>
+                <div className="wdt-schedule-mini">
                     {BREAK_SCHEDULE_DATA.map(b => (
                       <div key={b.label} className="wdt-mini-row">
                         <span>{b.label}</span>
                         <span className="bold">{b.display}</span>
                       </div>
                     ))}
-                 </div>
+                </div>
               </div>
-           </div>
+          </div>
 
-           <div className="wdt-hud-tile">
+          <div className="wdt-hud-tile">
               <div className="wdt-tile-icon"><Info size={18} /></div>
               <div className="wdt-tile-content">
-                 <span className="wdt-tile-title">Stats Today</span>
-                 <div className="wdt-stats-mini">
+                <span className="wdt-tile-title">Stats Today</span>
+                <div className="wdt-stats-mini">
                     <div className="wdt-stat-item">
-                       <span className="label">Breaks Took</span>
-                       <span className="val badge">{breakSessions.length}</span>
+                      <span className="label">Breaks Took</span>
+                      <span className="val badge">{breakSessions.length}</span>
                     </div>
                     <div className="wdt-stat-item">
-                       <span className="label">Work Status</span>
-                       <span className={`val accent-${statusClass}`}>{statusLabel}</span>
+                      <span className="label">Work Status</span>
+                      <span className={`val accent-${statusClass}`}>{statusLabel}</span>
                     </div>
-                 </div>
+                </div>
               </div>
-           </div>
+          </div>
         </div>
       )}
 
-      {/* Dynamic Hover Interaction (Collapsed Only) */}
       {!isExpanded && hoverText && (
         <div className="wdt-hover-bubble" style={{ left: `${hoverPos}%` }}>
           {hoverText}
         </div>
       )}
-
-      {/* Control Actions */}
-      <div className="wdt-actions-v2">
-        <button className="wdt-expand-btn" onClick={() => setIsExpanded(!isExpanded)}>
-          <span>{isExpanded ? 'Hide Details' : 'View Details'}</span>
-          {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-        </button>
-      </div>
     </div>
   );
 };

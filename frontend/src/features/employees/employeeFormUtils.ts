@@ -74,4 +74,6 @@ export const createInitialEmployeeForm = (): EmployeeFormValues => ({
   employmentStatus: "ACTIVE",
   isTeamLead: false,
   teamLeadScopeIds: [],
+  panCardNumber: "",
+  dateOfBirth: "",
 });

@@ -102,8 +102,14 @@ export default function EmployeeOverviewTab({ employee, token }: EmployeeOvervie
     { label: "Employment type", value: employee.employmentStatus === "ACTIVE" ? "Current employee" : "Restricted access" },
   ];
 
+  const personalDetails: DetailItem[] = [
+    { label: "Date of birth", value: employee.dateOfBirth ? formatDateLabel(employee.dateOfBirth) : "-" },
+    { label: "PAN Card No.", value: employee.panCardNumber ?? "-" },
+  ];
+
   const sections = [
     { title: "Employment", items: employmentDetails },
+    { title: "Personal Details", items: personalDetails },
     { title: "Reporting", items: reportingDetails },
     { title: "Compensation", items: compensationDetails },
   ];

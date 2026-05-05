@@ -44,6 +44,68 @@ async function broadcastBreakReminder(title: string, body: string) {
 }
 
 /**
+ * Sends a notification to all active users about a birthday
+ */
+async function notifyTodayBirthdays() {
+  try {
+    const nowInIst = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Kolkata" }));
+    const currentMonth = nowInIst.getMonth();
+    const currentDate = nowInIst.getDate();
+
+    // Find employees whose birthday is today
+    const birthdayEmployees = await prisma.employee.findMany({
+      where: { 
+        isActive: true,
+        dateOfBirth: { not: null }
+      },
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        dateOfBirth: true
+      }
+    });
+
+    const celebrants = birthdayEmployees.filter(emp => {
+      const dob = new Date(emp.dateOfBirth!);
+      return dob.getDate() === currentDate && dob.getMonth() === currentMonth;
+    });
+
+    if (celebrants.length === 0) return;
+
+    // Fetch all active users to notify
+    const allUsers = await prisma.user.findMany({
+      where: { isActive: true }
+    });
+
+    console.log(`[Scheduler] Broadcasting birthdays for: ${celebrants.map(c => c.firstName).join(", ")}`);
+
+    for (const celebrant of celebrants) {
+      const title = "🎂 Birthday Celebration!";
+      const body = `It's ${celebrant.firstName} ${celebrant.lastName}'s birthday today! Let's wish them a wonderful day! 🎉`;
+
+      for (const user of allUsers) {
+        try {
+          await sendPushNotification(
+            user.id,
+            title,
+            body,
+            { 
+              type: "BIRTHDAY_ALARM", 
+              url: `/employees/${celebrant.id}` 
+            }
+          );
+        } catch (err) {
+          console.error(`[Scheduler] Failed to send birthday alert to user ${user.id}:`, err);
+        }
+      }
+    }
+  } catch (error) {
+    console.error("[Scheduler] Birthday notification job failed:", error);
+  }
+}
+
+/**
  * Initializes all automated background tasks (Cron Jobs)
  */
 export function initScheduler() {
@@ -263,5 +325,13 @@ export function initScheduler() {
     }
   });
 
-  console.log("[Scheduler] Background tasks initialized (Attendance, Payroll, Break Reminders, & Outbox active).");
+  // 🎂 Daily Birthday Announcements: 10:15 AM IST daily
+  cron.schedule("15 10 * * *", async () => {
+    console.log("[Scheduler] Triggering 10:15 AM Birthday Notifications...");
+    await notifyTodayBirthdays();
+  }, {
+    timezone: "Asia/Kolkata"
+  });
+
+  console.log("[Scheduler] Background tasks initialized (Attendance, Payroll, Break Reminders, Outbox & Birthdays active).");
 }

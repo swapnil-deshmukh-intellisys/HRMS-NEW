@@ -22,6 +22,8 @@ export type EmployeeFormValues = {
   employmentStatus: "ACTIVE" | "INACTIVE" | "TERMINATED";
   isTeamLead: boolean;
   teamLeadScopeIds: number[];
+  panCardNumber: string;
+  dateOfBirth: string;
 };
 
 type EmployeeFormProps = {
@@ -105,6 +107,24 @@ export default function EmployeeForm({
           <label>
             Mobile number
             <input value={form.phone} onChange={(event) => onChange({ ...form, phone: event.target.value })} placeholder="+91 98765 43210" />
+          </label>
+          <label>
+            Date of birth
+            <input 
+              value={form.dateOfBirth} 
+              onChange={(event) => onChange({ ...form, dateOfBirth: event.target.value })} 
+              type="date" 
+              required 
+            />
+          </label>
+          <label>
+            PAN Card No.
+            <input 
+              value={form.panCardNumber} 
+              onChange={(event) => onChange({ ...form, panCardNumber: event.target.value })} 
+              placeholder="ABCDE1234F"
+              required 
+            />
           </label>
         </div>
 

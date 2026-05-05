@@ -807,7 +807,7 @@ async function managerApproveLeave(leaveId: number, actor: NonNullable<Express.R
     return finalLeave;
   }
 
-  return prisma.leaveRequest.update({
+  const updatedLeave = await prisma.leaveRequest.update({
     where: { id: leaveRequest.id },
     data: {
       managerApprovalStatus: ApprovalStepStatus.APPROVED,
@@ -823,6 +823,20 @@ async function managerApproveLeave(leaveId: number, actor: NonNullable<Express.R
       medicalProofReviewedBy: true,
     },
   });
+
+  // Notify employee that manager has approved
+  import("./../notifications/service.js").then(ns => {
+    ns.createNotification({
+      userId: updatedLeave.employee.userId,
+      title: "Manager Approved Leave ✅",
+      message: `Your manager has approved your leave request for ${new Date(updatedLeave.startDate).toLocaleDateString()}. It is now pending final HR approval.`,
+      type: "LEAVE_APPROVED",
+      link: "/leaves",
+      sendPush: true
+    }).catch(err => console.error("Failed to create manager leave approval notification:", err));
+  });
+
+  return updatedLeave;
 }
 
 async function managerRejectLeave(

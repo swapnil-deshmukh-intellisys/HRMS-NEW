@@ -11,6 +11,7 @@ const todoSchema = z.object({
   title: z.string().min(1),
   description: z.string().optional(),
   priority: z.enum(["LOW", "NORMAL", "HIGH"]).default("NORMAL"),
+  reminderTime: z.string().datetime().optional().nullable(),
 });
 
 const updateTodoSchema = z.object({
@@ -18,6 +19,7 @@ const updateTodoSchema = z.object({
   description: z.string().optional(),
   isCompleted: z.boolean().optional(),
   priority: z.enum(["LOW", "NORMAL", "HIGH"]).optional(),
+  reminderTime: z.string().datetime().optional().nullable(),
 });
 
 // Get all todos for current user

@@ -52,7 +52,7 @@ export default function LeavesPage({ token, role, currentEmployeeId }: LeavesPag
     // 1. First, determine which leaves this user should even see in this page
     // For Managers and Employees: show only their OWN leaves
     // For HR and Admin: show all leaves for management
-    const visibleLeaves = (role === "HR" || role === "ADMIN")
+    const visibleLeaves = (role === "HR" || role === "ADMIN" || role === "MANAGER")
       ? leaves
       : leaves.filter(leave => leave.employee.id === currentEmployeeId);
 
@@ -61,8 +61,13 @@ export default function LeavesPage({ token, role, currentEmployeeId }: LeavesPag
       return visibleLeaves.filter(leave => {
         if (role === "HR" || role === "ADMIN") {
           return leave.status === "PENDING" && leave.hrApprovalStatus === "PENDING";
+        } else if (role === "MANAGER") {
+          // Managers see their own pending leaves OR their team's pending manager-approval leaves
+          const isOwnLeave = leave.employee.id === currentEmployeeId;
+          const isTeamLeavePending = leave.employee.managerId === currentEmployeeId && leave.managerApprovalStatus === "PENDING";
+          return leave.status === "PENDING" && (isOwnLeave || isTeamLeavePending);
         } else {
-          // For everyone else, just their own pending leaves
+          // For regular employees, just their own pending leaves
           return leave.status === "PENDING";
         }
       });
@@ -75,13 +80,17 @@ export default function LeavesPage({ token, role, currentEmployeeId }: LeavesPag
 
   // Get pending leaves count for badge (independent of active tab)
   const getPendingLeavesCount = () => {
-    const visibleLeaves = (role === "HR" || role === "ADMIN")
+    const visibleLeaves = (role === "HR" || role === "ADMIN" || role === "MANAGER")
       ? leaves
       : leaves.filter(leave => leave.employee.id === currentEmployeeId);
 
     return visibleLeaves.filter(leave => {
       if (role === "HR" || role === "ADMIN") {
         return leave.status === "PENDING" && leave.hrApprovalStatus === "PENDING";
+      } else if (role === "MANAGER") {
+        const isOwnLeave = leave.employee.id === currentEmployeeId;
+        const isTeamLeavePending = leave.employee.managerId === currentEmployeeId && leave.managerApprovalStatus === "PENDING";
+        return leave.status === "PENDING" && (isOwnLeave || isTeamLeavePending);
       } else {
         return leave.status === "PENDING";
       }
@@ -326,7 +335,7 @@ export default function LeavesPage({ token, role, currentEmployeeId }: LeavesPag
             >
               <span>All</span>
               <span className="leaves-page-tab__count">
-                {(role === "HR" || role === "ADMIN")
+                {(role === "HR" || role === "ADMIN" || role === "MANAGER")
                   ? leaves.length
                   : leaves.filter(l => l.employee.id === currentEmployeeId).length}
               </span>

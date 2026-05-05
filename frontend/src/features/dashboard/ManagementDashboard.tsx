@@ -73,9 +73,10 @@ export default function ManagementDashboard({ token, role }: { token: string | n
           </div>
           <AnnouncementList token={token} refreshSignal={announcementKey} onCreateClick={() => setAnnouncementModalOpen(true)} />
           <DashboardHeroClocks />
-          <WorkdayTimeline />
         </div>
       </article>
+
+      <WorkdayTimeline checkInTime={summary?.attendanceToday?.checkInTime ?? null} token={token} />
 
       <Modal open={isAnnouncementModalOpen} onClose={() => setAnnouncementModalOpen(false)}>
         <AnnouncementForm token={token} onCreated={() => { setAnnouncementKey(k => k + 1); setAnnouncementModalOpen(false); }} />

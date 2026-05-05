@@ -1,4 +1,5 @@
 import Table from "../../components/common/Table";
+import Modal from "../../components/common/Modal";
 import type { Attendance, CalendarException } from "../../types";
 import { formatAttendanceTime, formatDateLabel, formatWeekday, isToday } from "../../utils/format";
 import EmployeeAttendanceBreakdownChart from "./charts/EmployeeAttendanceBreakdownChart";
@@ -94,6 +95,7 @@ export default function EmployeeAttendanceTab({ attendance, exceptions }: Employ
   const calendarExceptions = exceptions || globalExceptions;
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+  const [selectedUpdate, setSelectedUpdate] = useState<string | null>(null);
 
   const months = [
     "January", "February", "March", "April", "May", "June",
@@ -306,7 +308,27 @@ export default function EmployeeAttendanceTab({ attendance, exceptions }: Employ
               displayRecord.status === "LEAVE" ? "-" : formatAttendanceTime(displayRecord.checkInTime),
               displayRecord.status === "LEAVE" ? "-" : formatAttendanceTime(displayRecord.checkOutTime),
               renderWorkedDuration(displayRecord),
-              <span key={`update-${date}`} className="muted" style={{ fontSize: '12px', maxWidth: '180px', display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={displayRecord.todaysUpdate ?? ""}>
+              <span 
+                key={`update-${date}`} 
+                className="muted" 
+                style={{ 
+                  fontSize: '12px', 
+                  maxWidth: '180px', 
+                  display: 'block', 
+                  overflow: 'hidden', 
+                  textOverflow: 'ellipsis', 
+                  whiteSpace: 'nowrap',
+                  cursor: displayRecord.todaysUpdate ? 'pointer' : 'default',
+                  textDecoration: displayRecord.todaysUpdate ? 'underline' : 'none',
+                  textDecorationStyle: 'dotted'
+                }} 
+                title={displayRecord.todaysUpdate ? "Click to view full update" : ""}
+                onClick={() => {
+                  if (displayRecord.todaysUpdate) {
+                    setSelectedUpdate(displayRecord.todaysUpdate);
+                  }
+                }}
+              >
                 {displayRecord.todaysUpdate || (isWorkingSaturday ? "Working Weekend" : "-")}
               </span>,
               <div className="table-cell-stack" key={`status-${date}`}>
@@ -322,6 +344,25 @@ export default function EmployeeAttendanceTab({ attendance, exceptions }: Employ
         <EmployeeAttendanceBreakdownChart attendance={attendance} />
         <EmployeeWorkedHoursChart attendance={attendance} />
       </div>
+
+      <Modal open={!!selectedUpdate} title="Today's update" onClose={() => setSelectedUpdate(null)}>
+        <div className="stack" style={{ padding: '4px 0' }}>
+          <p style={{ 
+            fontSize: '15px', 
+            lineHeight: '1.6', 
+            color: 'var(--color-text-default)',
+            whiteSpace: 'pre-wrap',
+            wordBreak: 'break-word'
+          }}>
+            {selectedUpdate}
+          </p>
+          <div className="button-row" style={{ marginTop: '16px', justifyContent: 'flex-end' }}>
+            <button className="secondary" onClick={() => setSelectedUpdate(null)}>
+              Close
+            </button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }

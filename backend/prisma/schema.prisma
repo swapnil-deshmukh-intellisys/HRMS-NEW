@@ -137,6 +137,7 @@ model Attendance {
   checkOutTime   DateTime?
   workedMinutes  Int              @default(0)
   status         AttendanceStatus @default(PRESENT)
+  todaysUpdate   String?
   createdAt      DateTime         @default(now())
   updatedAt      DateTime         @updatedAt
   isLate         Boolean          @default(false)

@@ -255,7 +255,7 @@ export default function CalendarPage({ token, role }: CalendarPageProps) {
                           </div>
                         ) : null}
 
-                        {canManageCalendar && day.exception?.type === "HOLIDAY" ? (
+                        {canManageCalendar && day.exception ? (
                           <button type="button" className="secondary calendar-day-card__remove calendar-action-button" onClick={() => handleRemoveException(day.exception!.id)}>
                             Remove
                           </button>

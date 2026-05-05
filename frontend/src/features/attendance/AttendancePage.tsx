@@ -84,6 +84,7 @@ export default function AttendancePage({ token, role, currentEmployeeId, current
     proposedCheckOutTime: "",
     reason: "",
   });
+  const [selectedUpdate, setSelectedUpdate] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const isTeamLead = Boolean(currentEmployee?.capabilities?.some((capability) => capability.capability === "TEAM_LEAD"));
   const canManageOthers = role !== "EMPLOYEE" || isTeamLead;
@@ -652,7 +653,28 @@ export default function AttendancePage({ token, role, currentEmployeeId, current
                   formatAttendanceTime(record.checkInTime),
                   formatAttendanceTime(record.checkOutTime),
                   renderWorkedDuration(record),
-                  <span key={`update-${record.id}`} className="muted" style={{ fontSize: '12px', maxWidth: '180px', display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={record.todaysUpdate ?? ""}>
+                  <span 
+                    key={`update-${record.id}`} 
+                    className="muted" 
+                    style={{ 
+                      fontSize: '12px', 
+                      maxWidth: '180px', 
+                      display: 'block', 
+                      overflow: 'hidden', 
+                      textOverflow: 'ellipsis', 
+                      whiteSpace: 'nowrap',
+                      cursor: record.todaysUpdate ? 'pointer' : 'default',
+                      textDecoration: record.todaysUpdate ? 'underline' : 'none',
+                      textDecorationStyle: 'dotted'
+                    }} 
+                    title={record.todaysUpdate ? "Click to view full update" : ""}
+                    onClick={(e) => {
+                      if (record.todaysUpdate) {
+                        e.stopPropagation();
+                        setSelectedUpdate(record.todaysUpdate);
+                      }
+                    }}
+                  >
                     {record.todaysUpdate || "-"}
                   </span>,
                   <div className="table-cell-stack" key={`status-${record.id}`}>
@@ -775,6 +797,25 @@ export default function AttendancePage({ token, role, currentEmployeeId, current
               }}
             >
               Finalize selected day
+            </button>
+          </div>
+        </div>
+      </Modal>
+
+      <Modal open={!!selectedUpdate} title="Today's update" onClose={() => setSelectedUpdate(null)}>
+        <div className="stack" style={{ padding: '4px 0' }}>
+          <p style={{ 
+            fontSize: '15px', 
+            lineHeight: '1.6', 
+            color: 'var(--color-text-default)',
+            whiteSpace: 'pre-wrap',
+            wordBreak: 'break-word'
+          }}>
+            {selectedUpdate}
+          </p>
+          <div className="button-row" style={{ marginTop: '16px', justifyContent: 'flex-end' }}>
+            <button className="secondary" onClick={() => setSelectedUpdate(null)}>
+              Close
             </button>
           </div>
         </div>

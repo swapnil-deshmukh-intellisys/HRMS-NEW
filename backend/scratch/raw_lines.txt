@@ -1,0 +1,10 @@
+    where: {
+      userId: { in: allHrUsers.map(u => u.id) },
+      link: { contains: `id=${result.id}` },
+      type: "LEAVE_REQUESTED"
+    }
+  });
+
+  return result;
+}
+

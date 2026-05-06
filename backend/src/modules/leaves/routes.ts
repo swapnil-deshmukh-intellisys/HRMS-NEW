@@ -6,6 +6,8 @@ import { ApprovalStepStatus, LeaveDurationType, LeaveStatus, RoleName } from "@p
 import { Router } from "express";
 import multer, { type FileFilterCallback, type StorageEngine } from "multer";
 import { z } from "zod";
+import { formatInTimeZone } from 'date-fns-tz';
+import { TIMEZONE } from "../../utils/dates.js";
 import { prisma } from "../../config/prisma.js";
 import { authenticate, requireRoles } from "../../middleware/auth.js";
 import { validate } from "../../middleware/validate.js";
@@ -398,7 +400,7 @@ router.post("/leaves", upload.single("attachment"), validate(applyLeaveSchema), 
           payload: {
             userId: manager.userId,
             title: "New Leave Request 📅",
-            message: `${leaveRequest.employee.firstName} has requested leave for ${new Date(leaveRequest.startDate).toLocaleDateString()}.`,
+            message: `${leaveRequest.employee.firstName} has requested leave for ${formatInTimeZone(leaveRequest.startDate, TIMEZONE, 'dd MMM yyyy')}.`,
             type: "LEAVE_REQUESTED",
             link: `/leaves?id=${leaveRequest.id}`,
             sendPush: true
@@ -419,7 +421,7 @@ router.post("/leaves", upload.single("attachment"), validate(applyLeaveSchema), 
         payload: {
           userId: hr.id,
           title: "New Leave Request (HR) 📅",
-          message: `${leaveRequest.employee.firstName} has requested leave for ${new Date(leaveRequest.startDate).toLocaleDateString()}.`,
+          message: `${leaveRequest.employee.firstName} has requested leave for ${formatInTimeZone(leaveRequest.startDate, TIMEZONE, 'dd MMM yyyy')}.`,
           type: "LEAVE_REQUESTED",
           link: `/leaves?id=${leaveRequest.id}`,
           sendPush: true
@@ -800,7 +802,7 @@ async function managerApproveLeave(leaveId: number, actor: NonNullable<Express.R
 
     // Notify on Google Chat
     void sendTeamNotification(
-      `✅ *Leave Approved*\n*Employee:* ${finalLeave.employee.firstName} ${finalLeave.employee.lastName}\n*Type:* ${finalLeave.leaveType.name}\n*Dates:* ${finalLeave.startDate.toLocaleDateString()} to ${finalLeave.endDate.toLocaleDateString()}\n*Reason:* ${finalLeave.reason}`,
+      `✅ *Leave Approved*\n*Employee:* ${finalLeave.employee.firstName} ${finalLeave.employee.lastName}\n*Type:* ${finalLeave.leaveType.name}\n*Dates:* ${formatInTimeZone(finalLeave.startDate, TIMEZONE, 'dd MMM yyyy')} to ${formatInTimeZone(finalLeave.endDate, TIMEZONE, 'dd MMM yyyy')}\n*Reason:* ${finalLeave.reason}`,
       actor.id
     );
 
@@ -828,8 +830,16 @@ async function managerApproveLeave(leaveId: number, actor: NonNullable<Express.R
     await prisma.notification.deleteMany({
       where: {
         userId: actor.id,
-        link: { contains: `id=${finalLeave.id}` },
-        type: "LEAVE_REQUESTED"
+        type: "LEAVE_REQUESTED",
+        OR: [
+          { link: { contains: `id=${finalLeave.id}` } },
+          { 
+            AND: [
+              { link: "/leaves" },
+              { message: { contains: finalLeave.employee.firstName } }
+            ]
+          }
+        ]
       }
     });
 
@@ -869,8 +879,16 @@ async function managerApproveLeave(leaveId: number, actor: NonNullable<Express.R
   await prisma.notification.deleteMany({
     where: {
       userId: actor.id,
-      link: { contains: `id=${updatedLeave.id}` },
-      type: "LEAVE_REQUESTED"
+      type: "LEAVE_REQUESTED",
+      OR: [
+        { link: { contains: `id=${updatedLeave.id}` } },
+        { 
+          AND: [
+            { link: "/leaves" },
+            { message: { contains: updatedLeave.employee.firstName } }
+          ]
+        }
+      ]
     }
   });
 
@@ -928,8 +946,16 @@ async function managerRejectLeave(
   await prisma.notification.deleteMany({
     where: {
       userId: actor.id,
-      link: { contains: `id=${result.id}` },
-      type: "LEAVE_REQUESTED"
+      type: "LEAVE_REQUESTED",
+      OR: [
+        { link: { contains: `id=${result.id}` } },
+        { 
+          AND: [
+            { link: "/leaves" },
+            { message: { contains: result.employee.firstName } }
+          ]
+        }
+      ]
     }
   });
 
@@ -964,12 +990,24 @@ async function hrApproveLeave(leaveId: number, actor: NonNullable<Express.Reques
       actor.id
     );
 
-    // Auto-dismiss the "New Request" notification for HR who just approved
+    // Auto-dismiss the "New Request" notification for all HR users
+    const allHrUsers = await prisma.user.findMany({
+      where: { role: { name: RoleName.HR } },
+      select: { id: true }
+    });
     await prisma.notification.deleteMany({
       where: {
-        userId: actor.id,
-        link: { contains: `id=${finalLeave.id}` },
-        type: "LEAVE_REQUESTED"
+        userId: { in: allHrUsers.map(u => u.id) },
+        type: "LEAVE_REQUESTED",
+        OR: [
+          { link: { contains: `id=${finalLeave.id}` } },
+          { 
+            AND: [
+              { link: "/leaves" },
+              { message: { contains: finalLeave.employee.firstName } }
+            ]
+          }
+        ]
       }
     });
 
@@ -1005,12 +1043,24 @@ async function hrApproveLeave(leaveId: number, actor: NonNullable<Express.Reques
     }).catch(err => console.error("Failed to create leave approval notification:", err));
   });
 
-  // Auto-dismiss the "New Request" notification for HR who just approved
+  // Auto-dismiss the "New Request" notification for all HR users
+  const allHrUsers = await prisma.user.findMany({
+    where: { role: { name: RoleName.HR } },
+    select: { id: true }
+  });
   await prisma.notification.deleteMany({
     where: {
-      userId: actor.id,
-      link: { contains: `id=${result.id}` },
-      type: "LEAVE_REQUESTED"
+      userId: { in: allHrUsers.map(u => u.id) },
+      type: "LEAVE_REQUESTED",
+      OR: [
+        { link: { contains: `id=${result.id}` } },
+        { 
+          AND: [
+            { link: "/leaves" },
+            { message: { contains: result.employee.firstName } }
+          ]
+        }
+      ]
     }
   });
 
@@ -1061,12 +1111,24 @@ async function hrRejectLeave(
     }).catch(err => console.error("Failed to create leave rejection notification:", err));
   });
 
-  // Auto-dismiss the "New Request" notification for HR who just rejected
+  // Auto-dismiss the "New Request" notification for all HR users
+  const allHrUsers = await prisma.user.findMany({
+    where: { role: { name: RoleName.HR } },
+    select: { id: true }
+  });
   await prisma.notification.deleteMany({
     where: {
-      userId: actor.id,
-      link: { contains: `id=${result.id}` },
-      type: "LEAVE_REQUESTED"
+      userId: { in: allHrUsers.map(u => u.id) },
+      type: "LEAVE_REQUESTED",
+      OR: [
+        { link: { contains: `id=${result.id}` } },
+        { 
+          AND: [
+            { link: "/leaves" },
+            { message: { contains: result.employee.firstName } }
+          ]
+        }
+      ]
     }
   });
 
@@ -1100,7 +1162,11 @@ async function cancelLeave(leaveId: number, actor: NonNullable<Express.Request["
   // Clean up notifications related to this leave
   await prisma.notification.deleteMany({
     where: {
-      link: { contains: `id=${leaveId}` }
+      type: "LEAVE_REQUESTED",
+      OR: [
+        { link: { contains: `id=${leaveId}` } },
+        { link: "/leaves" } // Cover generic links in case of cancellation
+      ]
     }
   });
 

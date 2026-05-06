@@ -1,20 +1,16 @@
+import { formatInTimeZone, toZonedTime } from 'date-fns-tz';
+
+const TIMEZONE = 'Asia/Kolkata';
+
 export function formatDate(value?: string | null) {
   return value
-    ? new Date(value).toLocaleDateString(undefined, {
-        day: "numeric",
-        month: "short",
-        year: "numeric",
-      })
+    ? formatInTimeZone(new Date(value), TIMEZONE, 'd MMM yyyy')
     : "-";
 }
 
 export function formatDateLabel(value?: string | null) {
   return value
-    ? new Date(value).toLocaleDateString(undefined, {
-        day: "numeric",
-        month: "short",
-        year: "numeric",
-      })
+    ? formatInTimeZone(new Date(value), TIMEZONE, 'd MMM yyyy')
     : "-";
 }
 
@@ -23,8 +19,8 @@ export function isToday(value?: string | null) {
     return false;
   }
 
-  const date = new Date(value);
-  const today = new Date();
+  const date = toZonedTime(new Date(value), TIMEZONE);
+  const today = toZonedTime(new Date(), TIMEZONE);
 
   return (
     date.getFullYear() === today.getFullYear() &&
@@ -35,43 +31,25 @@ export function isToday(value?: string | null) {
 
 export function formatWeekday(value?: string | null) {
   return value
-    ? new Date(value).toLocaleDateString(undefined, {
-        weekday: "long",
-      })
+    ? formatInTimeZone(new Date(value), TIMEZONE, 'EEEE')
     : "-";
 }
 
 export function formatDateTime(value?: string | null) {
   return value
-    ? new Date(value).toLocaleString(undefined, {
-        day: "numeric",
-        month: "short",
-        year: "numeric",
-        hour: "numeric",
-        minute: "2-digit",
-        hour12: true,
-      })
+    ? formatInTimeZone(new Date(value), TIMEZONE, 'd MMM yyyy, h:mm a')
     : "-";
 }
 
 export function formatTime(value?: string | null) {
   return value
-    ? new Date(value).toLocaleTimeString(undefined, {
-        hour: "numeric",
-        minute: "2-digit",
-        hour12: true,
-      })
+    ? formatInTimeZone(new Date(value), TIMEZONE, 'h:mm a')
     : "-";
 }
 
 export function formatAttendanceTime(value?: string | null) {
   return value
-    ? new Date(value).toLocaleTimeString("en-IN", {
-        hour: "numeric",
-        minute: "2-digit",
-        hour12: true,
-        timeZone: "Asia/Kolkata",
-      })
+    ? formatInTimeZone(new Date(value), TIMEZONE, 'h:mm a')
     : "-";
 }
 

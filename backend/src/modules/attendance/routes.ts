@@ -1,5 +1,7 @@
 import { AttendanceRegularizationStatus, AttendanceStatus, LeaveStatus } from "@prisma/client";
 import { Router } from "express";
+import { toZonedTime, fromZonedTime, formatInTimeZone } from 'date-fns-tz';
+import { TIMEZONE } from "../../utils/dates.js";
 import { z } from "zod";
 import { prisma } from "../../config/prisma.js";
 import { authenticate, requireRoles } from "../../middleware/auth.js";
@@ -252,15 +254,18 @@ router.post("/check-in", validate(attendanceSchema), async (request, response, n
     const checkInTime = new Date();
 
     // --- Late Mark Logic ---
-    // Grace period ends at 10:10 AM. Any check-in after this is marked late.
+    // Grace period ends at 10:10 AM IST. Any check-in after this is marked late.
+    const TIMEZONE = 'Asia/Kolkata';
     const LATE_THRESHOLD_HOUR = 10;
     const LATE_THRESHOLD_MINUTE = 10;
-    const thresholdTime = new Date(checkInTime);
+    
+    const thresholdTime = toZonedTime(checkInTime, TIMEZONE);
     thresholdTime.setHours(LATE_THRESHOLD_HOUR, LATE_THRESHOLD_MINUTE, 0, 0);
+    const thresholdInUTC = fromZonedTime(thresholdTime, TIMEZONE);
 
-    const isLate = checkInTime > thresholdTime;
+    const isLate = checkInTime > thresholdInUTC;
     const lateByMinutes = isLate
-      ? Math.floor((checkInTime.getTime() - thresholdTime.getTime()) / 60000)
+      ? Math.floor((checkInTime.getTime() - thresholdInUTC.getTime()) / 60000)
       : 0;
     // -------------------------
 
@@ -609,7 +614,7 @@ router.post(
             ns.createNotification({
               userId: manager.userId,
               title: "Correction Request 🕒",
-              message: `${regularizationRequest.employee.firstName} requested a correction for ${regularizationRequest.attendanceDate.toLocaleDateString()}.`,
+              message: `${regularizationRequest.employee.firstName} requested a correction for ${formatInTimeZone(regularizationRequest.attendanceDate, TIMEZONE, 'dd MMM yyyy')}.`,
               type: "ATTENDANCE_REGULARIZATION_REQUESTED",
               link: "/attendance/requests",
               sendPush: true
@@ -799,8 +804,8 @@ router.post(
             userId: updatedRequest.employee.userId,
             title: isApproved ? "Attendance Corrected! ✅" : "Correction Rejected ❌",
             message: isApproved
-              ? `Your attendance correction for ${updatedRequest.attendanceDate.toLocaleDateString()} has been approved.`
-              : `Your attendance correction for ${updatedRequest.attendanceDate.toLocaleDateString()} was rejected.`,
+              ? `Your attendance correction for ${formatInTimeZone(updatedRequest.attendanceDate, TIMEZONE, 'dd MMM yyyy')} has been approved.`
+              : `Your attendance correction for ${formatInTimeZone(updatedRequest.attendanceDate, TIMEZONE, 'dd MMM yyyy')} was rejected.`,
             type: isApproved ? "ATTENDANCE_CORRECTION_APPROVED" : "ATTENDANCE_CORRECTION_REJECTED",
             link: "/attendance/requests",
             sendPush: true

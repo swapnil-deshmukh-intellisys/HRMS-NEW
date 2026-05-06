@@ -92,9 +92,19 @@ export async function createNotification(params: {
   return notification;
 }
 
-export async function getUserNotifications(userId: number, limit = 50) {
+export async function getUserNotifications(userId: number, limit = 100) {
+  const sevenDaysAgo = new Date();
+  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+  sevenDaysAgo.setHours(0, 0, 0, 0);
+
   return prisma.notification.findMany({
-    where: { userId },
+    where: {
+      userId,
+      OR: [
+        { isRead: false },
+        { createdAt: { gte: sevenDaysAgo } }
+      ]
+    },
     orderBy: { createdAt: "desc" },
     take: limit,
   });

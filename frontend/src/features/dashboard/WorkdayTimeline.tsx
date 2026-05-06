@@ -190,7 +190,7 @@ const WorkdayTimeline: React.FC<WorkdayTimelineProps> = ({
       <div className="wdt-body-clipper">
         <div className="wdt-glass-shine" />
       </div>
-      
+
       {isExpanded && (
         <div className="wdt-header-minimal">
           <div className="wdt-minimal-title">
@@ -201,7 +201,7 @@ const WorkdayTimeline: React.FC<WorkdayTimelineProps> = ({
           <div className="wdt-minimal-meta">
             {workedTime && (
               <span className="wdt-time-compact">
-                 {formatDuration(workedTime.hours, workedTime.minutes)} worked
+                {formatDuration(workedTime.hours, workedTime.minutes)} worked
               </span>
             )}
           </div>
@@ -211,15 +211,15 @@ const WorkdayTimeline: React.FC<WorkdayTimelineProps> = ({
       <div className="wdt-bar-interface-row">
         <div className="wdt-gauge-area">
           <div className="wdt-gauge-container">
-            <div 
+            <div
               className="wdt-main-rail"
               onMouseMove={handleMouseMove}
               onMouseLeave={() => setHoverText(null)}
             >
               <div className="wdt-rail-glass" />
-              
+
               {scheduledBreakPcts.map((b) => (
-                <div 
+                <div
                   key={b.label}
                   className="wdt-ghost-window"
                   style={{ left: `${b.startPct}%`, width: `${b.endPct - b.startPct}%` }}
@@ -228,11 +228,11 @@ const WorkdayTimeline: React.FC<WorkdayTimelineProps> = ({
                 </div>
               ))}
 
-              <div 
-                className={`wdt-fill-worked ${checkInPct !== null && checkInIsLate ? 'is-segmented' : ''}`} 
-                style={{ 
-                  left: `${checkInPct || 0}%`, 
-                  width: `${Math.max(0, progress - (checkInPct || 0))}%` 
+              <div
+                className={`wdt-fill-worked ${checkInPct !== null && checkInIsLate ? 'is-segmented' : ''}`}
+                style={{
+                  left: `${checkInPct || 0}%`,
+                  width: `${Math.max(0, progress - (checkInPct || 0))}%`
                 }}
               >
                 <div className="wdt-fill-glow" />
@@ -262,7 +262,7 @@ const WorkdayTimeline: React.FC<WorkdayTimelineProps> = ({
               <div className="wdt-gauge-footer">
                 <span className="wdt-bound-label">{format12h(startTime)}</span>
                 <div className="wdt-gauge-steps">
-                  {Array.from({length: 8}).map((_, i) => <div key={i} className="wdt-step" />)}
+                  {Array.from({ length: 8 }).map((_, i) => <div key={i} className="wdt-step" />)}
                 </div>
                 <span className="wdt-bound-label">{format12h(endTime)}</span>
               </div>
@@ -278,43 +278,43 @@ const WorkdayTimeline: React.FC<WorkdayTimelineProps> = ({
       {isExpanded && (
         <div className="wdt-hud-grid">
           <div className="wdt-hud-tile">
-              <div className="wdt-tile-icon"><Timer size={18} /></div>
-              <div className="wdt-tile-content">
-                <span className="wdt-tile-title">Shift Window</span>
-                <div className="wdt-tile-val">{format12h(startTime)} – {format12h(endTime)}</div>
-              </div>
+            <div className="wdt-tile-icon"><Timer size={18} /></div>
+            <div className="wdt-tile-content">
+              <span className="wdt-tile-title">Shift Window</span>
+              <div className="wdt-tile-val">{format12h(startTime)} – {format12h(endTime)}</div>
+            </div>
           </div>
 
           <div className="wdt-hud-tile">
-              <div className="wdt-tile-icon"><Coffee size={18} /></div>
-              <div className="wdt-tile-content">
-                <span className="wdt-tile-title">Break Schedule</span>
-                <div className="wdt-schedule-mini">
-                    {BREAK_SCHEDULE_DATA.map(b => (
-                      <div key={b.label} className="wdt-mini-row">
-                        <span>{b.label}</span>
-                        <span className="bold">{b.display}</span>
-                      </div>
-                    ))}
-                </div>
+            <div className="wdt-tile-icon"><Coffee size={18} /></div>
+            <div className="wdt-tile-content">
+              <span className="wdt-tile-title">Break Schedule</span>
+              <div className="wdt-schedule-mini">
+                {BREAK_SCHEDULE_DATA.map(b => (
+                  <div key={b.label} className="wdt-mini-row">
+                    <span>{b.label}</span>
+                    <span className="bold">{b.display}</span>
+                  </div>
+                ))}
               </div>
+            </div>
           </div>
 
           <div className="wdt-hud-tile">
-              <div className="wdt-tile-icon"><Info size={18} /></div>
-              <div className="wdt-tile-content">
-                <span className="wdt-tile-title">Stats Today</span>
-                <div className="wdt-stats-mini">
-                    <div className="wdt-stat-item">
-                      <span className="label">Breaks Took</span>
-                      <span className="val badge">{breakSessions.length}</span>
-                    </div>
-                    <div className="wdt-stat-item">
-                      <span className="label">Work Status</span>
-                      <span className={`val accent-${statusClass}`}>{statusLabel}</span>
-                    </div>
+            <div className="wdt-tile-icon"><Info size={18} /></div>
+            <div className="wdt-tile-content">
+              <span className="wdt-tile-title">Stats Today</span>
+              <div className="wdt-stats-mini">
+                <div className="wdt-stat-item">
+                  <span className="label">Breaks Took</span>
+                  <span className="val badge">{breakSessions.length}</span>
+                </div>
+                <div className="wdt-stat-item">
+                  <span className="label">Work Status</span>
+                  <span className={`val accent-${statusClass}`}>{statusLabel}</span>
                 </div>
               </div>
+            </div>
           </div>
         </div>
       )}

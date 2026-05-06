@@ -1,13 +1,22 @@
-export function startOfDay(value: Date) {
-  const date = new Date(value);
-  date.setHours(0, 0, 0, 0);
-  return date;
+import { formatInTimeZone, toDate, fromZonedTime, toZonedTime } from 'date-fns-tz';
+import { startOfDay as fnsStartOfDay, endOfDay as fnsEndOfDay } from 'date-fns';
+
+export const TIMEZONE = 'Asia/Kolkata';
+
+export function startOfDay(value: Date | string | number) {
+  const zonedDate = toZonedTime(new Date(value), TIMEZONE);
+  const start = fnsStartOfDay(zonedDate);
+  return fromZonedTime(start, TIMEZONE);
 }
 
-export function endOfDay(value: Date) {
-  const date = new Date(value);
-  date.setHours(23, 59, 59, 999);
-  return date;
+export function endOfDay(value: Date | string | number) {
+  const zonedDate = toZonedTime(new Date(value), TIMEZONE);
+  const end = fnsEndOfDay(zonedDate);
+  return fromZonedTime(end, TIMEZONE);
+}
+
+export function getCurrentTimeInIST() {
+  return toZonedTime(new Date(), TIMEZONE);
 }
 
 export function calculateLeaveDays(startDate: Date, endDate: Date) {

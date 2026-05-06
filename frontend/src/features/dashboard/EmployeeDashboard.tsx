@@ -15,7 +15,7 @@ export default function EmployeeDashboard({ token }: { token: string | null }) {
   const navigate = useNavigate();
   const { summary } = useApp();
   const [isStartingMeet, setIsStartingMeet] = useState(false);
-  
+
   const attendanceToday = summary?.attendanceToday ?? null;
   const currentEmployee = summary?.currentEmployee ?? null;
 
@@ -97,9 +97,9 @@ export default function EmployeeDashboard({ token }: { token: string | null }) {
             </div>
           </div>
           <div className="dashboard-card-actions">
-            <button 
-              className="button button--secondary dashboard-card-link" 
-              onClick={handleStartMeet} 
+            <button
+              className="button button--secondary dashboard-card-link"
+              onClick={handleStartMeet}
               disabled={isStartingMeet}
               style={{ display: "flex", alignItems: "center", gap: "8px" }}
             >

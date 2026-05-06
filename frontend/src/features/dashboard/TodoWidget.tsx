@@ -121,12 +121,12 @@ export default function TodoWidget({ token }: { token: string | null }) {
     setSubmitting(true);
     try {
       const combinedDateTime = newTodo.reminderTime 
-        ? `${newTodo.reminderDate}T${newTodo.reminderTime}` 
+        ? new Date(`${newTodo.reminderDate}T${newTodo.reminderTime}`).toISOString() 
         : null;
 
       const payload = {
         title: newTodo.title,
-        description: newTodo.description,
+        description: newTodo.description || null,
         priority: newTodo.priority,
         reminderTime: combinedDateTime
       };

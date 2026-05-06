@@ -133,8 +133,22 @@ export default function EmployeeAttendanceTab({ attendance, exceptions }: Employ
     dates.reverse();
 
     return dates.map(date => {
-      const dateStr = date.toISOString().split('T')[0];
-      const existingRecord = attendance.find(a => a.attendanceDate.startsWith(dateStr));
+      // Build YYYY-MM-DD from LOCAL date parts to avoid toISOString() UTC conversion
+      // which shifts IST dates back by one day (IST midnight = previous day in UTC)
+      const y = date.getFullYear();
+      const mo = String(date.getMonth() + 1).padStart(2, '0');
+      const d = String(date.getDate()).padStart(2, '0');
+      const dateStr = `${y}-${mo}-${d}`;
+
+      // Match attendance records by extracting local date parts from the UTC ISO string
+      // (safe because app is exclusively used in IST, so browser local = IST)
+      const existingRecord = attendance.find(a => {
+        const rec = new Date(a.attendanceDate);
+        const ry = rec.getFullYear();
+        const rm = String(rec.getMonth() + 1).padStart(2, '0');
+        const rd = String(rec.getDate()).padStart(2, '0');
+        return `${ry}-${rm}-${rd}` === dateStr;
+      });
       
       // Use robust local date comparison for exceptions to avoid timezone shifts
       const exception = calendarExceptions.find(ex => {

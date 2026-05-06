@@ -1,6 +1,6 @@
 import cron from "node-cron";
 import { prisma } from "./prisma.js";
-import { startOfDay, endOfDay } from "../utils/dates.js";
+import { startOfDay, endOfDay, getCurrentTimeInIST } from "../utils/dates.js";
 import { 
   finalizeAttendanceForDate, 
   buildApprovedLeaveWhereForAttendanceDate, 
@@ -48,7 +48,7 @@ async function broadcastBreakReminder(title: string, body: string) {
  */
 async function notifyTodayBirthdays() {
   try {
-    const nowInIst = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Kolkata" }));
+    const nowInIst = getCurrentTimeInIST();
     const currentMonth = nowInIst.getMonth();
     const currentDate = nowInIst.getDate();
 
@@ -135,7 +135,7 @@ export function initScheduler() {
   // Runs at midnight to finalize the PREVIOUS day's records.
   cron.schedule("0 0 * * *", async () => {
     // Correctly get yesterday's date in IST regardless of server environment
-    const nowInIst = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Kolkata" }));
+    const nowInIst = getCurrentTimeInIST();
     const yesterday = new Date(nowInIst);
     yesterday.setDate(yesterday.getDate() - 1);
     
@@ -245,7 +245,7 @@ export function initScheduler() {
   // 💰 Automated Monthly Payroll Generation: 12:00 AM on the 1st of every month
   // Generates draft payroll records for the previous month.
   cron.schedule("0 0 1 * *", async () => {
-    const nowInIst = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Kolkata" }));
+    const nowInIst = getCurrentTimeInIST();
     
     // Get the previous month and year
     let targetMonth = nowInIst.getMonth(); // getMonth() is 0-indexed, so this IS the previous month (0=Jan, 11=Dec)

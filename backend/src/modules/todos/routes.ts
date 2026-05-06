@@ -9,14 +9,14 @@ const router = Router();
 
 const todoSchema = z.object({
   title: z.string().min(1),
-  description: z.string().optional(),
+  description: z.string().optional().nullable(),
   priority: z.enum(["LOW", "NORMAL", "HIGH"]).default("NORMAL"),
   reminderTime: z.string().datetime().optional().nullable(),
 });
 
 const updateTodoSchema = z.object({
   title: z.string().min(1).optional(),
-  description: z.string().optional(),
+  description: z.string().optional().nullable(),
   isCompleted: z.boolean().optional(),
   priority: z.enum(["LOW", "NORMAL", "HIGH"]).optional(),
   reminderTime: z.string().datetime().optional().nullable(),

@@ -1,5 +1,7 @@
 import { AttendanceStatus, LeaveDurationType, LeaveStatus } from "@prisma/client";
 import { endOfDay, startOfDay } from "../../utils/dates.js";
+import { toZonedTime, fromZonedTime, formatInTimeZone } from 'date-fns-tz';
+import { TIMEZONE } from "../../utils/dates.js";
 
 type ActiveEmployee = {
   id: number;
@@ -27,7 +29,9 @@ export function parseAttendanceDateInput(date?: string) {
   }
 
   const [, year, month, day] = match;
-  return startOfDay(new Date(Number(year), Number(month) - 1, Number(day)));
+  // Use Asia/Kolkata for all calculations
+  const dateStr = `${year}-${month}-${day} 00:00:00`;
+  return fromZonedTime(dateStr, TIMEZONE);
 }
 
 export function combineAttendanceDateAndTime(attendanceDate: Date, time?: string | null) {
@@ -42,9 +46,12 @@ export function combineAttendanceDateAndTime(attendanceDate: Date, time?: string
   }
 
   const [, hours, minutes] = match;
-  const combined = startOfDay(attendanceDate);
-  combined.setHours(Number(hours), Number(minutes), 0, 0);
-  return combined;
+  
+  // Get the date part in IST to ensure we combine with the correct calendar day
+  const datePart = formatInTimeZone(attendanceDate, TIMEZONE, 'yyyy-MM-dd');
+  const dateTimeStr = `${datePart} ${hours}:${minutes}:00`;
+  
+  return fromZonedTime(dateTimeStr, TIMEZONE);
 }
 
 export function calculateWorkedMinutes(checkInTime?: Date | null, checkOutTime?: Date | null) {

@@ -11,6 +11,7 @@ import Modal from "../../components/common/Modal";
 import { useApp } from "../../context/AppContext";
 import TodoWidget from "./TodoWidget";
 import BirthdayCelebrations from "./BirthdayCelebrations";
+import TeamOnLeaveWidget from "./TeamOnLeaveWidget";
 
 
 
@@ -86,48 +87,49 @@ export default function ManagementDashboard({ token, role }: { token: string | n
         {Object.entries(data)
           .filter(([key]) => !["attendanceToday", "currentEmployee", "leaveRequests", "isTeamLead"].includes(key))
           .map(([key, value]) => {
-          const getNavigationPath = () => {
-            switch (key) {
-              case "employees": return "/employees";
-              case "pendingLeaves": return "/leaves";
-              case "teamPresentToday": return "/team";
-              case "payrollCount": return "/payroll";
-              case "departments": return "/departments";
-              default: return null;
-            }
-          };
+            const getNavigationPath = () => {
+              switch (key) {
+                case "employees": return "/employees";
+                case "pendingLeaves": return "/leaves";
+                case "teamPresentToday": return "/team";
+                case "payrollCount": return "/payroll";
+                case "departments": return "/departments";
+                default: return null;
+              }
+            };
 
-          const navigationPath = getNavigationPath();
-          
-          return (
-            <article 
-              key={key} 
-              className={`card metric-card metric-card--${typeof value === "object" ? "status" : "numeric"}${navigationPath ? " metric-card--clickable" : ""}`}
-              onClick={navigationPath ? () => navigate(navigationPath) : undefined}
-              style={navigationPath ? { cursor: "pointer" } : undefined}
-            >
-              <p className="eyebrow">
-                {key === "teamCount" ? "Team members" : 
-                 key === "pendingApprovals" ? "Correction requests" : 
-                 key === "pendingLeaves" ? "Leave requests" : 
-                 key === "teamPresentToday" ? "Team presence today" :
-                 key === "employees" ? "Employees" : 
-                 key === "departments" ? "Departments" : 
-                 key === "payrollCount" ? "Payroll records" : key}
-              </p>
-              <strong>{String(value ?? "-")}</strong>
-              <p className="muted">
-                {key === "pendingApprovals" ? "Review required" : 
-                 key === "pendingLeaves" ? "Awaiting your decision" : 
-                 key === "teamPresentToday" ? "Checked-in members" :
-                 "Live summary"}
-              </p>
-            </article>
-          );
-        })}
+            const navigationPath = getNavigationPath();
+
+            return (
+              <article
+                key={key}
+                className={`card metric-card metric-card--${typeof value === "object" ? "status" : "numeric"}${navigationPath ? " metric-card--clickable" : ""}`}
+                onClick={navigationPath ? () => navigate(navigationPath) : undefined}
+                style={navigationPath ? { cursor: "pointer" } : undefined}
+              >
+                <p className="eyebrow">
+                  {key === "teamCount" ? "Team members" :
+                    key === "pendingApprovals" ? "Correction requests" :
+                      key === "pendingLeaves" ? "Leave requests" :
+                        key === "teamPresentToday" ? "Team presence today" :
+                          key === "employees" ? "Employees" :
+                            key === "departments" ? "Departments" :
+                              key === "payrollCount" ? "Payroll records" : key}
+                </p>
+                <strong>{String(value ?? "-")}</strong>
+                <p className="muted">
+                  {key === "pendingApprovals" ? "Review required" :
+                    key === "pendingLeaves" ? "Awaiting your decision" :
+                      key === "teamPresentToday" ? "Checked-in members" :
+                        "Live summary"}
+                </p>
+              </article>
+            );
+          })}
       </div>
 
-      <div className="grid cols-2 dashboard-grid">
+      <div className="grid cols-3 dashboard-grid">
+        <TeamOnLeaveWidget />
         <TodoWidget token={token} />
         <BirthdayCelebrations token={token} />
       </div>

@@ -162,6 +162,7 @@ export default function Navbar({ title, navOpen, onToggleNav, token, currentEmpl
               {!notificationsLoading && !notificationsError ? (
                 notifications.length ? (
                   <div className="topbar-notification-list">
+                    <div className="topbar-notification-list__label">Last 7 days activity</div>
                     {notifications.map((item) => (
                       <button
                         key={item.id}

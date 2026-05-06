@@ -107,19 +107,19 @@ async function getAttendanceTodayForEmployee(employeeId: number, today: Date) {
     attendanceTodayRecord ??
     (approvedLeaveToday
       ? {
-          id: 0,
-          employeeId,
-          attendanceDate: today,
-          checkInTime: null,
-          checkOutTime: null,
-          workedMinutes: 0,
-          status:
-            getApprovedLeaveAttendanceStatusForDate(approvedLeaveToday, today) === AttendanceStatus.HALF_DAY
-              ? AttendanceStatus.HALF_DAY
-              : AttendanceStatus.LEAVE,
-          leaveTypeCode: approvedLeaveToday.leaveType.code,
-          leaveTypeName: approvedLeaveToday.leaveType.name,
-        }
+        id: 0,
+        employeeId,
+        attendanceDate: today,
+        checkInTime: null,
+        checkOutTime: null,
+        workedMinutes: 0,
+        status:
+          getApprovedLeaveAttendanceStatusForDate(approvedLeaveToday, today) === AttendanceStatus.HALF_DAY
+            ? AttendanceStatus.HALF_DAY
+            : AttendanceStatus.LEAVE,
+        leaveTypeCode: approvedLeaveToday.leaveType.code,
+        leaveTypeName: approvedLeaveToday.leaveType.name,
+      }
       : null)
   );
 }
@@ -130,7 +130,7 @@ async function getEmployeeDashboardSharedData(employeeId: number, today: Date) {
   const isTeamLead = employeeId ? await hasEmployeeCapability(prisma, employeeId, "TEAM_LEAD") : false;
   const scopedEmployeeIds = isTeamLead && employeeId ? await getScopedEmployeeIdsForTeamLead(prisma, employeeId) : [];
 
-  const [attendanceToday, pendingLeaves, payrollCount, scopedTeamCount, pendingTeamLeaves, currentEmployee, leaveBalances, leaveRequests] =
+  const [attendanceToday, pendingLeaves, payrollCount, scopedTeamCount, pendingTeamLeaves, currentEmployee, leaveBalances, leaveRequests, teamOnLeaveToday] =
     await Promise.all([
       getAttendanceTodayForEmployee(employeeId, today),
       prisma.leaveRequest.count({
@@ -240,6 +240,29 @@ async function getEmployeeDashboardSharedData(employeeId: number, today: Date) {
         },
         take: 100,
       }),
+      scopedEmployeeIds.length
+        ? prisma.leaveRequest.findMany({
+            where: {
+              employeeId: { in: scopedEmployeeIds },
+              status: LeaveStatus.APPROVED,
+              startDate: { lte: endOfDay(today) },
+              endDate: { gte: startOfDay(today) },
+            },
+            include: {
+              employee: {
+                select: {
+                  firstName: true,
+                  lastName: true,
+                },
+              },
+              leaveType: {
+                select: {
+                  name: true,
+                },
+              },
+            },
+          })
+        : Promise.resolve([]),
     ]);
 
   return {
@@ -252,6 +275,7 @@ async function getEmployeeDashboardSharedData(employeeId: number, today: Date) {
     currentEmployee,
     leaveBalances,
     leaveRequests,
+    teamOnLeaveToday,
   };
 }
 
@@ -262,7 +286,7 @@ router.get("/employee-summary", requireRoles("EMPLOYEE", "MANAGER", "HR", "ADMIN
     const role = request.user?.role;
 
     if (role === "HR" || role === "ADMIN") {
-      const [pendingLeaves, payrollCount, pendingCorrectionRequests, pendingIncentiveApprovals] = await Promise.all([
+      const [pendingLeaves, payrollCount, pendingCorrectionRequests, pendingIncentiveApprovals, teamOnLeaveToday] = await Promise.all([
         prisma.leaveRequest.count({
           where:
             role === "HR"
@@ -281,6 +305,26 @@ router.get("/employee-summary", requireRoles("EMPLOYEE", "MANAGER", "HR", "ADMIN
         prisma.incentive.count({
           where: { status: IncentiveStatus.PENDING },
         }),
+        prisma.leaveRequest.findMany({
+          where: {
+            status: LeaveStatus.APPROVED,
+            startDate: { lte: endOfDay(today) },
+            endDate: { gte: startOfDay(today) },
+          },
+          include: {
+            employee: {
+              select: {
+                firstName: true,
+                lastName: true,
+              },
+            },
+            leaveType: {
+              select: {
+                name: true,
+              },
+            },
+          },
+        }),
       ]);
 
       return sendSuccess(response, "Employee dashboard summary fetched successfully", {
@@ -291,6 +335,7 @@ router.get("/employee-summary", requireRoles("EMPLOYEE", "MANAGER", "HR", "ADMIN
         isTeamLead: false,
         pendingCorrectionRequests,
         pendingIncentiveApprovals,
+        teamOnLeaveToday,
       });
     }
 
@@ -298,22 +343,22 @@ router.get("/employee-summary", requireRoles("EMPLOYEE", "MANAGER", "HR", "ADMIN
     const pendingCorrectionRequests =
       role === "MANAGER" && employeeId
         ? await prisma.attendanceRegularizationRequest.count({
-            where: {
-              status: AttendanceRegularizationStatus.PENDING,
-              employee: {
-                managerId: employeeId,
-              },
-              NOT: {
-                employeeId,
-              },
+          where: {
+            status: AttendanceRegularizationStatus.PENDING,
+            employee: {
+              managerId: employeeId,
             },
-          })
-        : await prisma.attendanceRegularizationRequest.count({
-            where: {
-              status: AttendanceRegularizationStatus.PENDING,
+            NOT: {
               employeeId,
             },
-          });
+          },
+        })
+        : await prisma.attendanceRegularizationRequest.count({
+          where: {
+            status: AttendanceRegularizationStatus.PENDING,
+            employeeId,
+          },
+        });
 
     return sendSuccess(response, "Employee dashboard summary fetched successfully", {
       ...summary,
@@ -415,12 +460,12 @@ router.get("/hr", requireRoles("HR", "ADMIN"), async (request, response, next) =
         where:
           role === "HR"
             ? {
-                status: LeaveStatus.PENDING,
-                hrApprovalStatus: ApprovalStepStatus.PENDING,
-              }
+              status: LeaveStatus.PENDING,
+              hrApprovalStatus: ApprovalStepStatus.PENDING,
+            }
             : {
-                status: LeaveStatus.PENDING,
-              },
+              status: LeaveStatus.PENDING,
+            },
       }),
       prisma.payrollRecord.count(),
       prisma.department.count({ where: { isActive: true } }),

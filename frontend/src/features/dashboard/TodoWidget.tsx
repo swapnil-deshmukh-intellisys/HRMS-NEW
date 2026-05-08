@@ -70,13 +70,26 @@ export default function TodoWidget({ token }: { token: string | null }) {
         if (diffMins === 5 && diffMs > 0) {
           toast(`Reminder: "${todo.title}" is due in 5 minutes!`, {
             icon: '⏰',
-            duration: 60000, // Show for a minute
+            duration: 60000,
           });
           
-          // Also try browser notification if permitted
           if (Notification.permission === "granted") {
             new Notification("Task Reminder", {
               body: `"${todo.title}" starts in 5 minutes!`,
+              icon: "/favicon.ico"
+            });
+          }
+        }
+
+        // Notify at the exact deadline (0 minutes remaining)
+        if (diffMins === 0 && diffMs > 0) {
+          toast.success(`Deadline Reached: "${todo.title}" is due NOW!`, {
+            duration: 60000,
+          });
+
+          if (Notification.permission === "granted") {
+            new Notification("Deadline Reached", {
+              body: `"${todo.title}" is due now!`,
               icon: "/favicon.ico"
             });
           }

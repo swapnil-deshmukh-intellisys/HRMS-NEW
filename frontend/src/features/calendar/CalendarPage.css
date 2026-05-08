@@ -234,6 +234,54 @@
   padding-top: var(--space-2);
 }
 
+.saturday-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+
+.saturday-opt {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  border: 1px solid var(--color-border-default);
+  background: white;
+  cursor: pointer;
+  transition: all var(--transition-normal);
+}
+
+.saturday-opt:hover {
+  border-color: var(--color-accent);
+  background: var(--color-surface-hover);
+  transform: translateY(-2px);
+}
+
+.saturday-opt.active {
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+  color: white;
+  box-shadow: 0 4px 12px rgba(38, 146, 142, 0.3);
+}
+
+.sat-date {
+  font-size: var(--text-md);
+  font-weight: var(--fw-bold);
+  line-height: 1;
+}
+
+.sat-month {
+  font-size: 10px;
+  text-transform: uppercase;
+  font-weight: var(--fw-bold);
+  opacity: 0.8;
+  margin-top: 2px;
+}
+
 .calendar-form label {
   display: flex;
   flex-direction: column;

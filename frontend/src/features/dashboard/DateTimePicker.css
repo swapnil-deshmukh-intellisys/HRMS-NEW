@@ -19,7 +19,7 @@
 
 .current-month-label {
   font-weight: 800;
-  color: #26928e;
+  color: var(--color-accent);
   font-size: 14px;
   letter-spacing: 0.05em;
 }
@@ -27,7 +27,7 @@
 .nav-btn {
   background: #f8f9fa !important;
   border: 1px solid #e9ecef !important;
-  color: #26928e !important;
+  color: var(--color-accent) !important;
   cursor: pointer;
   width: 32px !important;
   height: 32px !important;
@@ -46,13 +46,13 @@
 }
 
 .nav-btn:hover {
-  background: #26928e !important;
+  background: var(--color-accent) !important;
   color: white !important;
 }
 
 .nav-btn svg {
-  color: #26928e !important;
-  stroke: #26928e !important;
+  color: var(--color-accent) !important;
+  stroke: var(--color-accent) !important;
   display: block;
 }
 
@@ -109,8 +109,8 @@
 
 
 .calendar-day:hover:not(.selected) {
-  background: #f0fdfd;
-  color: #26928e;
+  background: var(--color-accent-soft);
+  color: var(--color-accent);
 }
 
 .calendar-day.inactive {
@@ -118,9 +118,9 @@
 }
 
 .calendar-day.selected {
-  background: #26928e;
+  background: var(--color-accent);
   color: white;
-  box-shadow: 0 2px 8px rgba(38, 146, 142, 0.3);
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.3);
 }
 
 .time-picker-footer {
@@ -238,9 +238,9 @@
 }
 
 .ampm-toggle button.active {
-  background: #26928e;
+  background: var(--color-accent);
   color: white;
-  box-shadow: 0 2px 4px rgba(38, 146, 142, 0.2);
+  box-shadow: 0 2px 4px rgba(37, 99, 235, 0.2);
 }
 
 

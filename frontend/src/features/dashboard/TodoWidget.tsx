@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { Plus, Trash2, Check, ListTodo, CheckCircle, Calendar, Clock } from "lucide-react";
 import { apiRequest } from "../../services/api";
 import Modal from "../../components/common/Modal";
@@ -37,6 +37,18 @@ export default function TodoWidget({ token }: { token: string | null }) {
   const [submitting, setSubmitting] = useState(false);
   const [completingTodoId, setCompletingTodoId] = useState<number | null>(null);
   const [todoToConfirm, setTodoToConfirm] = useState<Todo | null>(null);
+  const pickerRef = useRef<HTMLDivElement>(null);
+
+  // Click-away listener for date picker
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (isPickerOpen && pickerRef.current && !pickerRef.current.contains(event.target as Node)) {
+        setPickerOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [isPickerOpen]);
 
   useEffect(() => {
     fetchTodos();
@@ -323,7 +335,7 @@ export default function TodoWidget({ token }: { token: string | null }) {
                 </button>
               ))}
             </div>
-          </div>          <div className="reminder-section">
+          </div>          <div className="reminder-section" ref={pickerRef}>
             <label className="section-label">Set Reminder</label>
             
             <div 
@@ -341,14 +353,12 @@ export default function TodoWidget({ token }: { token: string | null }) {
               </div>
             </div>
 
-            {isPickerOpen && (
-              <div className="picker-popover">
-                <DateTimePicker 
-                  value={newTodo.reminder}
-                  onChange={date => setNewTodo(prev => ({ ...prev, reminder: date }))}
-                />
-              </div>
-            )}
+            <div className={`picker-popover ${isPickerOpen ? 'active' : ''}`}>
+              <DateTimePicker 
+                value={newTodo.reminder}
+                onChange={date => setNewTodo(prev => ({ ...prev, reminder: date }))}
+              />
+            </div>
             
             <div className="quick-time-chips">
               <button type="button" onClick={() => {

@@ -12,11 +12,11 @@ export type CalendarExceptionRecord = {
 export type CalendarDayStatus = "WORKING" | "OFF" | "HOLIDAY" | "WORKING_SATURDAY";
 
 export function isSunday(date: Date) {
-  return startOfDay(date).getDay() === 0;
+  return date.getUTCDay() === 0;
 }
 
 export function isSaturday(date: Date) {
-  return startOfDay(date).getDay() === 6;
+  return date.getUTCDay() === 6;
 }
 
 export function getCalendarExceptionForDate(date: Date, exceptions: CalendarExceptionRecord[]) {
@@ -78,8 +78,8 @@ export function buildMonthCalendarDays(params: {
   leaves?: CalendarLeaveRecord[];
 }) {
   const { year, month, exceptions, leaves = [] } = params;
-  const firstDay = new Date(year, month - 1, 1);
-  const lastDay = endOfDay(new Date(year, month, 0));
+  const firstDay = new Date(Date.UTC(year, month - 1, 1));
+  const lastDay = new Date(Date.UTC(year, month, 0, 23, 59, 59, 999));
   const days: Array<{
     date: Date;
     dayNumber: number;
@@ -105,15 +105,15 @@ export function buildMonthCalendarDays(params: {
 
     days.push({
       date: new Date(cursor),
-      dayNumber: cursor.getDate(),
-      weekday: cursor.getDay(),
+      dayNumber: cursor.getUTCDate(),
+      weekday: cursor.getUTCDay(),
       status: result.status,
       isWorkingDay: result.isWorkingDay,
       isPaidDay: result.isPaidDay,
       exception: result.exception,
       leaves: dayLeaves,
     });
-    cursor.setDate(cursor.getDate() + 1);
+    cursor.setUTCDate(cursor.getUTCDate() + 1);
   }
 
   return days;

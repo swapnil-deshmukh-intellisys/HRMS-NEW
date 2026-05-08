@@ -427,7 +427,8 @@ router.get("/employee", requireRoles("EMPLOYEE", "MANAGER", "HR", "ADMIN"), asyn
 router.get("/manager", requireRoles("MANAGER", "HR", "ADMIN"), async (request, response, next) => {
   try {
     const managerId = request.user?.employeeId ?? 0;
-    const [teamCount, pendingApprovals] = await Promise.all([
+    const today = startOfDay(new Date());
+    const [teamCount, pendingApprovals, teamOnLeaveToday] = await Promise.all([
       prisma.employee.count({
         where: {
           managerId,
@@ -440,11 +441,24 @@ router.get("/manager", requireRoles("MANAGER", "HR", "ADMIN"), async (request, r
           employee: { managerId },
         },
       }),
+      prisma.leaveRequest.findMany({
+        where: {
+          status: LeaveStatus.APPROVED,
+          employee: { managerId },
+          startDate: { lte: endOfDay(today) },
+          endDate: { gte: startOfDay(today) },
+        },
+        include: {
+          employee: { select: { firstName: true, lastName: true } },
+          leaveType: { select: { name: true } },
+        },
+      }),
     ]);
 
     return sendSuccess(response, "Manager dashboard fetched successfully", {
       teamCount,
       pendingApprovals,
+      teamOnLeaveToday,
     });
   } catch (error) {
     next(error);
@@ -454,7 +468,8 @@ router.get("/manager", requireRoles("MANAGER", "HR", "ADMIN"), async (request, r
 router.get("/hr", requireRoles("HR", "ADMIN"), async (request, response, next) => {
   try {
     const role = request.user?.role;
-    const [employees, pendingLeaves, payrollCount, departments] = await Promise.all([
+    const today = startOfDay(new Date());
+    const [employees, pendingLeaves, payrollCount, departments, teamOnLeaveToday] = await Promise.all([
       prisma.employee.count({ where: { isActive: true } }),
       prisma.leaveRequest.count({
         where:
@@ -469,6 +484,17 @@ router.get("/hr", requireRoles("HR", "ADMIN"), async (request, response, next) =
       }),
       prisma.payrollRecord.count(),
       prisma.department.count({ where: { isActive: true } }),
+      prisma.leaveRequest.findMany({
+        where: {
+          status: LeaveStatus.APPROVED,
+          startDate: { lte: endOfDay(today) },
+          endDate: { gte: startOfDay(today) },
+        },
+        include: {
+          employee: { select: { firstName: true, lastName: true } },
+          leaveType: { select: { name: true } },
+        },
+      }),
     ]);
 
     return sendSuccess(response, "HR dashboard fetched successfully", {
@@ -476,6 +502,7 @@ router.get("/hr", requireRoles("HR", "ADMIN"), async (request, response, next) =
       pendingLeaves,
       payrollCount,
       departments,
+      teamOnLeaveToday,
     });
   } catch (error) {
     next(error);

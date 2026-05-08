@@ -39,8 +39,8 @@ router.get("/", requireRoles("ADMIN", "HR", "MANAGER", "EMPLOYEE"), validate(cal
   try {
     const month = Number(request.query.month);
     const year = Number(request.query.year);
-    const monthStart = startOfDay(new Date(year, month - 1, 1));
-    const monthEnd = startOfDay(new Date(year, month, 0));
+    const monthStart = new Date(Date.UTC(year, month - 1, 1, 0, 0, 0, 0));
+    const monthEnd = new Date(Date.UTC(year, month, 0, 23, 59, 59, 999));
 
     const [exceptions, approvedLeaves] = await Promise.all([
       prisma.calendarException.findMany({

@@ -85,7 +85,7 @@ export default function ManagementDashboard({ token, role }: { token: string | n
 
       <div className="grid cols-2 dashboard-grid">
         {Object.entries(data)
-          .filter(([key]) => !["attendanceToday", "currentEmployee", "leaveRequests", "isTeamLead"].includes(key))
+          .filter(([key]) => !["attendanceToday", "currentEmployee", "leaveRequests", "isTeamLead", "teamOnLeaveToday"].includes(key))
           .map(([key, value]) => {
             const getNavigationPath = () => {
               switch (key) {

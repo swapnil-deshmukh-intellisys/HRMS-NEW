@@ -51,7 +51,7 @@ export default function Navbar({ title, navOpen, onToggleNav, token, currentEmpl
   useEffect(() => {
     const handleScroll = () => {
       const currentScrollY = window.scrollY;
-      
+
       // Show if scrolling up, hide if scrolling down (and past a threshold)
       if (currentScrollY > lastScrollY && currentScrollY > 100) {
         setIsVisible(false);
@@ -59,7 +59,7 @@ export default function Navbar({ title, navOpen, onToggleNav, token, currentEmpl
       } else {
         setIsVisible(true);
       }
-      
+
       setLastScrollY(currentScrollY);
     };
 
@@ -134,12 +134,17 @@ export default function Navbar({ title, navOpen, onToggleNav, token, currentEmpl
               <div className="topbar-notification-popover__header">
                 <strong>Notifications</strong>
                 <div className="topbar-notification-popover__actions">
-                  <button type="button" className="secondary" onClick={() => void markAllNotificationsAsRead()} disabled={totalUnreadCount === 0}>
+                  <button 
+                    type="button" 
+                    className="text-action-btn" 
+                    onClick={() => void markAllNotificationsAsRead()} 
+                    disabled={totalUnreadCount === 0}
+                  >
                     Mark all read
                   </button>
                   <button 
                     type="button" 
-                    className="secondary" 
+                    className="text-action-btn" 
                     onClick={async () => {
                       try {
                         await subscribeUser();
@@ -150,10 +155,15 @@ export default function Navbar({ title, navOpen, onToggleNav, token, currentEmpl
                     }} 
                     disabled={isSubscribing}
                   >
-                    {isSubscribing ? "Enabling..." : "Desktop Alerts"}
+                    {isSubscribing ? "Enabling..." : "Alerts"}
                   </button>
-                  <button type="button" className="secondary" onClick={() => void refreshSummary()} disabled={notificationsLoading}>
-                    Refresh
+                  <button 
+                    type="button" 
+                    className="text-action-btn" 
+                    onClick={() => void refreshSummary()} 
+                    disabled={notificationsLoading}
+                  >
+                    {notificationsLoading ? "..." : "Refresh"}
                   </button>
                 </div>
               </div>

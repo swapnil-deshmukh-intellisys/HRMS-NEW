@@ -11,6 +11,13 @@ export default defineConfig({
     environment: "jsdom",
     css: true,
     globals: true,
+    coverage: {
+      reporter: ['text', 'json', 'html'],
+      thresholds: {
+        statements: 70,
+        branches: 60,
+      }
+    }
   },
   build: {
     rollupOptions: {

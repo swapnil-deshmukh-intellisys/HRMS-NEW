@@ -73,11 +73,12 @@ export default function EmployeeDashboard({ token }: { token: string | null }) {
         {/* Workspace Widget */}
         <article className="card metric-card metric-card--project">
           <div className="metric-card-header">
-            <div className="stack gap-1">
+            <div className="stack" style={{ gap: '4px' }}>
               <span className="eyebrow eyebrow--purple">My Workspace</span>
-              <strong>{currentEmployee?.department ? `${currentEmployee.department.name} Team` : "Global Hub"}</strong>
+              <h3 style={{ margin: 0 }}>
+                {currentEmployee?.department ? `${currentEmployee.department.name} Team` : "Global Hub"}
+              </h3>
             </div>
-            <div className="dashboard-card-icon">🏢</div>
           </div>
           <div className="stack gap-1">
             <p className="muted" style={{ margin: 0 }}>
@@ -106,9 +107,7 @@ export default function EmployeeDashboard({ token }: { token: string | null }) {
               <Video size={16} />
               {isStartingMeet ? "Connecting..." : "Instant Meet"}
             </button>
-            <button className="button button--ghost dashboard-card-link" onClick={() => navigate("/analytics")}>
-              Analytics
-            </button>
+
           </div>
         </article>
 

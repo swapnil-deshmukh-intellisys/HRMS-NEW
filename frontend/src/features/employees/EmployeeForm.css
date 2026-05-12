@@ -159,11 +159,54 @@
 
 .tl-scope-list {
   grid-column: 1 / -1;
-  background: #f1f5f9;
+  background: #f8fafc;
   padding: 16px;
-  border-radius: 10px;
-  max-height: 250px;
+  border-radius: 12px;
+  max-height: 280px;
   overflow-y: auto;
+  border: 1px solid #e2e8f0;
+}
+
+.tl-scope-list__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.tl-scope-list__header p {
+  margin-bottom: 0 !important;
+}
+
+.tl-scope-list__controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.text-btn {
+  background: none !important;
+  border: none !important;
+  padding: 0 !important;
+  color: var(--color-accent) !important;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  cursor: pointer !important;
+  box-shadow: none !important;
+  height: auto !important;
+  min-width: auto !important;
+}
+
+.text-btn:hover {
+  text-decoration: underline !important;
+  transform: none !important;
+}
+
+.divider {
+  color: #cbd5e1;
+  font-size: 10px;
 }
 
 .employee-form-card .button-row {
@@ -199,4 +242,21 @@
 .employee-form-card .button-row button:hover:not(:disabled) {
   transform: translateY(-1px);
   filter: brightness(1.05);
+}
+
+.tl-scope-search {
+  height: 28px !important;
+  padding: 0 8px !important;
+  font-size: 11px !important;
+  border-radius: 6px !important;
+  border: 1px solid #cbd5e1 !important;
+  width: 120px !important;
+  background: white !important;
+  font-weight: 400 !important;
+}
+
+.tl-scope-search:focus {
+  border-color: var(--color-accent) !important;
+  box-shadow: 0 0 0 2px var(--color-accent-soft) !important;
+  outline: none !important;
 }

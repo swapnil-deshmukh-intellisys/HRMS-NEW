@@ -1,4 +1,4 @@
-import { MessageCircle } from "lucide-react";
+
 import "./EmployeeProfileHeader.css";
 import Button from "../../components/common/Button";
 import type { Employee, Role } from "../../types";
@@ -66,16 +66,29 @@ export default function EmployeeProfileHeader({ employee, role, onEdit, onToggle
       </div>
       <div className="employee-profile-header__actions">
         {employee.user?.email && (
-          <a 
-            href={`https://chat.google.com/dm/${employee.user.email}`} 
-            target="_blank" 
-            rel="noopener noreferrer" 
-            className="button secondary sm meet-btn"
-            style={{ display: "inline-flex", alignItems: "center", gap: "8px", textDecoration: "none" }}
-          >
-            <MessageCircle size={16} />
-            Chat
-          </a>
+            <a 
+              href={`https://chat.google.com/dm/${employee.user.email}`} 
+              target="_blank" 
+              rel="noopener noreferrer" 
+              className="button secondary sm meet-btn"
+              style={{ 
+                display: "flex", 
+                alignItems: "center", 
+                justifyContent: "center", 
+                gap: "8px", 
+                textDecoration: "none",
+                width: "100%",
+                minHeight: "50px",
+                borderRadius: "14px"
+              }}
+            >
+              <img 
+                src="/assets/images/google-chat-icon.jpg" 
+                alt="Google Chat" 
+                style={{ width: "24px", height: "24px", objectFit: "contain" }} 
+              />
+              Chat
+            </a>
         )}
         {canManageEmployee ? (
           <>

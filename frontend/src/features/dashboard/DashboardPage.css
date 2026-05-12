@@ -167,10 +167,10 @@
 .metric-card {
   display: flex;
   flex-direction: column;
-  gap: var(--space-2);
+  gap: var(--space-3);
   min-height: 120px;
-  padding: var(--space-4);
-  background: rgba(254, 254, 254, 0.98);
+  padding: var(--space-5);
+  background: var(--color-surface-panel);
 }
 
 .metric-card .dashboard-inline-row {
@@ -244,11 +244,9 @@
 }
 
 .metric-card--project {
-  gap: var(--space-3);
-  border-left: 4px solid #cbd5e1;
-  background: linear-gradient(135deg, #ffffff 0%, #f9faff 100%);
-  box-shadow: none;
-  transition: transform var(--transition-normal), box-shadow var(--transition-normal);
+  gap: var(--space-4);
+  background: var(--color-surface-panel) !important;
+  box-shadow: var(--shadow-md) !important;
 }
 
 .metric-card--project:hover {
@@ -305,10 +303,30 @@
 
 .attendance-widget-meta {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: var(--space-3);
-  padding-top: var(--space-2);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-4);
+  padding-top: var(--space-4);
   border-top: 1px solid var(--color-border-subtle);
+  margin-top: auto;
+}
+
+.table-cell-stack {
+  display: grid;
+  gap: 2px;
+}
+
+.table-cell-primary {
+  color: var(--color-text-strong);
+  font-weight: 700;
+  font-size: var(--text-sm);
+}
+
+.table-cell-secondary {
+  color: var(--color-text-secondary);
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
 }
 
 .dashboard-attendance-note {

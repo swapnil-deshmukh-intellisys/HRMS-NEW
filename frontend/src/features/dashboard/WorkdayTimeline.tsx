@@ -81,7 +81,7 @@ const WorkdayTimeline: React.FC<WorkdayTimelineProps> = ({
       const totalMs = end.getTime() - start.getTime();
       const elapsedMs = now.getTime() - start.getTime();
       const pct = Math.max(0, Math.min(100, (elapsedMs / totalMs) * 100));
-      setProgress(pct);
+      setProgress(checkInTime ? pct : 0);
       setIsShiftOver(now > end);
       setIsShiftPending(now < start);
 
@@ -217,43 +217,69 @@ const WorkdayTimeline: React.FC<WorkdayTimelineProps> = ({
               onMouseLeave={() => setHoverText(null)}
             >
               <div className="wdt-rail-glass" />
+              
+              <div className="wdt-rail-content">
+                {checkInPct !== null && checkInIsLate && (
+                  <div 
+                    className="wdt-fill-late" 
+                    style={{ width: `${checkInPct}%` }}
+                  >
+                    <div className="wdt-fill-glow" />
+                  </div>
+                )}
 
-              {scheduledBreakPcts.map((b) => (
+                {scheduledBreakPcts.map((b) => (
+                  <div
+                    key={b.label}
+                    className="wdt-ghost-window"
+                    style={{ left: `${b.startPct}%`, width: `${b.endPct - b.startPct}%` }}
+                  >
+                    {isExpanded && <div className="wdt-window-label">{b.label}</div>}
+                  </div>
+                ))}
+
                 <div
-                  key={b.label}
-                  className="wdt-ghost-window"
-                  style={{ left: `${b.startPct}%`, width: `${b.endPct - b.startPct}%` }}
-                >
-                  {isExpanded && <div className="wdt-window-label">{b.label}</div>}
-                </div>
-              ))}
-
-              <div
-                className={`wdt-fill-worked ${checkInPct !== null && checkInIsLate ? 'is-segmented' : ''}`}
-                style={{
-                  left: `${checkInPct || 0}%`,
-                  width: `${Math.max(0, progress - (checkInPct || 0))}%`
-                }}
-              >
-                <div className="wdt-fill-glow" />
-              </div>
-
-              {breakSessionsMapped.map((seg) => (
-                <div
-                  key={seg.id}
-                  className={`wdt-break-block ${seg.isOpen ? 'is-active' : ''}`}
+                  className={`wdt-fill-worked ${checkInPct !== null && checkInIsLate ? 'is-segmented' : ''}`}
                   style={{
-                    left: `${seg.startPct}%`,
-                    width: `${Math.max(1, seg.endPct - seg.startPct)}%`,
+                    left: `${checkInPct || 0}%`,
+                    width: `${Math.max(0, progress - (checkInPct || 0))}%`
                   }}
                 >
                   <div className="wdt-fill-glow" />
                 </div>
-              ))}
+
+                {breakSessionsMapped.map((seg) => (
+                  <div
+                    key={seg.id}
+                    className={`wdt-break-block ${seg.isOpen ? 'is-active' : ''}`}
+                    style={{
+                      left: `${seg.startPct}%`,
+                      width: `${Math.max(1, seg.endPct - seg.startPct)}%`,
+                    }}
+                  >
+                    <div className="wdt-fill-glow" />
+                  </div>
+                ))}
+              </div>
 
               {isExpanded && checkInPct !== null && (
                 <div className={`wdt-marker-checkin ${checkInIsLate ? 'is-late' : ''}`} style={{ left: `${checkInPct}%` }}>
-                  <div className="wdt-checkin-tag">Checked In: {checkInLabel}</div>
+                  <div 
+                    className="wdt-checkin-tag"
+                    style={{
+                      left: checkInPct < 10 ? '0' : checkInPct > 90 ? 'auto' : '50%',
+                      right: checkInPct > 90 ? '0' : 'auto',
+                      transform: checkInPct < 10 ? 'translateX(0)' : checkInPct > 90 ? 'translateX(0)' : 'translateX(-50%)'
+                    }}
+                  >
+                    Checked In: {checkInLabel}
+                  </div>
+                </div>
+              )}
+
+              {!isExpanded && hoverText && (
+                <div className="wdt-hover-bubble" style={{ left: `${hoverPos}%` }}>
+                  {hoverText}
                 </div>
               )}
             </div>
@@ -306,22 +332,16 @@ const WorkdayTimeline: React.FC<WorkdayTimelineProps> = ({
               <span className="wdt-tile-title">Stats Today</span>
               <div className="wdt-stats-mini">
                 <div className="wdt-stat-item">
-                  <span className="label">Breaks Took</span>
-                  <span className="val badge">{breakSessions.length}</span>
+                  <span className="label">Check In</span>
+                  <span className="val">{checkInLabel || '--:--'}</span>
                 </div>
                 <div className="wdt-stat-item">
-                  <span className="label">Work Status</span>
-                  <span className={`val accent-${statusClass}`}>{statusLabel}</span>
+                  <span className="label">Breaks Took</span>
+                  <span className="val badge">{breakSessions.length}</span>
                 </div>
               </div>
             </div>
           </div>
-        </div>
-      )}
-
-      {!isExpanded && hoverText && (
-        <div className="wdt-hover-bubble" style={{ left: `${hoverPos}%` }}>
-          {hoverText}
         </div>
       )}
     </div>

@@ -1,5 +1,6 @@
 import "./TeamPage.css";
 import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import MessageCard from "../../components/common/MessageCard";
 import Table from "../../components/common/Table";
 import { apiRequest } from "../../services/api";
@@ -60,10 +61,35 @@ function getCalendarDays({ month, year }: VisibleMonth) {
 }
 
 export default function TeamPage({ token, role, currentEmployee }: TeamPageProps) {
+  const [searchParams, setSearchParams] = useSearchParams();
   const today = toLocalDateString(new Date());
-  const [activeTab, setActiveTab] = useState<TeamTab>("PROJECTS");
-  const [activeClientCode, setActiveClientCode] = useState<"TUT" | "TEC">("TUT");
-  const [projectCategory, setProjectCategory] = useState<"MAGAZINES" | "INDUSTRIES">("MAGAZINES");
+
+  // Derive state from URL search params
+  const activeTab = (searchParams.get("tab") as TeamTab) || "PROJECTS";
+  const activeClientCode = (searchParams.get("client") as "TUT" | "TEC") || "TUT";
+  const projectCategory = (searchParams.get("category") as "MAGAZINES" | "INDUSTRIES") || "MAGAZINES";
+
+  const setActiveTab = (tab: TeamTab) => {
+    setSearchParams(prev => {
+      prev.set("tab", tab);
+      return prev;
+    });
+  };
+
+  const setActiveClientCode = (client: "TUT" | "TEC") => {
+    setSearchParams(prev => {
+      prev.set("client", client);
+      return prev;
+    });
+  };
+
+  const setProjectCategory = (category: "MAGAZINES" | "INDUSTRIES") => {
+    setSearchParams(prev => {
+      prev.set("category", category);
+      return prev;
+    });
+  };
+
   const [attendanceDate, setAttendanceDate] = useState(today);
   const [datePickerOpen, setDatePickerOpen] = useState(false);
   const [visibleMonth, setVisibleMonth] = useState<VisibleMonth>(() => getVisibleMonthFromDate(today));

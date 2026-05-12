@@ -202,9 +202,15 @@
   transition: height var(--transition-normal);
 }
 
-.is-collapsed .wdt-main-rail {
-  height: 5px;
+.wdt-rail-content {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  overflow: hidden;
+  z-index: 1;
 }
+
+
 
 .wdt-rail-glass {
   position: absolute;
@@ -351,16 +357,17 @@
 .wdt-checkin-tag {
   position: absolute;
   bottom: -24px;
-  left: 50%;
-  transform: translateX(-50%);
-  background: rgba(25, 25, 25, 0.6);
+  background: rgba(15, 23, 42, 0.8);
   backdrop-filter: blur(12px);
   padding: 4px 12px;
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 99px;
   font-size: 11px;
   font-weight: 700;
   white-space: nowrap;
+  color: #fff;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  z-index: 100;
 }
 
 .wdt-marker-checkin.is-late {
@@ -549,7 +556,7 @@
 /* ── Hover Interaction (Collapsed) ────────────── */
 .wdt-hover-bubble {
   position: absolute;
-  top: 100px;
+  bottom: calc(100% + 12px);
   transform: translateX(-50%);
   background: #fff;
   color: #000;

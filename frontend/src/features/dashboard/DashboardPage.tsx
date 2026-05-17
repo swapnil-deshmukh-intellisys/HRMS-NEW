@@ -5,8 +5,8 @@ import type { Role } from "../../types";
 import { useApp } from "../../context/AppContext";
 import MessageCard from "../../components/common/MessageCard";
 
-const EmployeeDashboard = lazy(() => import("./EmployeeDashboard"));
-const ManagementDashboard = lazy(() => import("./ManagementDashboard"));
+import EmployeeDashboard from "./EmployeeDashboard";
+import ManagementDashboard from "./ManagementDashboard";
 
 type DashboardPageProps = {
   token: string | null;

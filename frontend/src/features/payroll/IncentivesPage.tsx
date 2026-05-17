@@ -2,6 +2,7 @@ import "./IncentivesPage.css";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import { apiRequest } from "../../services/api";
+import { formatDate } from "../../utils/format";
 import type { Employee, Incentive, IncentiveType, IncentiveStatus, IncentiveSummary, Role } from "../../types";
 import Modal from "../../components/common/Modal";
 
@@ -567,7 +568,7 @@ function IncentivesPage({ token, role }: IncentivesPageProps) {
                         {incentive.statusDisplay || incentive.status}
                       </span>
                     </td>
-                    <td>{new Date(incentive.createdAt).toLocaleDateString()}</td>
+                    <td>{formatDate(incentive.createdAt)}</td>
                     {canReviewIncentive ? (
                       <td>
                         {incentive.status === "PENDING" ? (

@@ -1,5 +1,6 @@
 import { CalendarExceptionType } from "@prisma/client";
-import { endOfDay, startOfDay } from "../../utils/dates.js";
+import { toZonedTime } from 'date-fns-tz';
+import { endOfDay, startOfDay, TIMEZONE } from "../../utils/dates.js";
 
 export type CalendarExceptionRecord = {
   id: number;
@@ -12,11 +13,11 @@ export type CalendarExceptionRecord = {
 export type CalendarDayStatus = "WORKING" | "OFF" | "HOLIDAY" | "WORKING_SATURDAY";
 
 export function isSunday(date: Date) {
-  return date.getUTCDay() === 0;
+  return toZonedTime(date, TIMEZONE).getDay() === 0;
 }
 
 export function isSaturday(date: Date) {
-  return date.getUTCDay() === 6;
+  return toZonedTime(date, TIMEZONE).getDay() === 6;
 }
 
 export function getCalendarExceptionForDate(date: Date, exceptions: CalendarExceptionRecord[]) {
@@ -79,7 +80,7 @@ export function buildMonthCalendarDays(params: {
 }) {
   const { year, month, exceptions, leaves = [] } = params;
   const firstDay = new Date(Date.UTC(year, month - 1, 1));
-  const lastDay = new Date(Date.UTC(year, month, 0, 23, 59, 59, 999));
+  const lastDay = endOfDay(new Date(Date.UTC(year, month, 0)));
   const days: Array<{
     date: Date;
     dayNumber: number;
@@ -94,6 +95,7 @@ export function buildMonthCalendarDays(params: {
   const cursor = startOfDay(firstDay);
 
   while (cursor <= lastDay) {
+    const istCursor = toZonedTime(cursor, TIMEZONE);
     const result = getCalendarDayStatus(cursor, exceptions);
     
     // Find leaves that overlap with this date
@@ -105,8 +107,8 @@ export function buildMonthCalendarDays(params: {
 
     days.push({
       date: new Date(cursor),
-      dayNumber: cursor.getUTCDate(),
-      weekday: cursor.getUTCDay(),
+      dayNumber: istCursor.getDate(),
+      weekday: istCursor.getDay(),
       status: result.status,
       isWorkingDay: result.isWorkingDay,
       isPaidDay: result.isPaidDay,

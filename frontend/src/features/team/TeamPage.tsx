@@ -5,7 +5,7 @@ import MessageCard from "../../components/common/MessageCard";
 import Table from "../../components/common/Table";
 import { apiRequest } from "../../services/api";
 import type { Attendance, Employee, LeaveRequest, Role } from "../../types";
-import { formatAttendanceTime, formatDateLabel } from "../../utils/format";
+import { formatAttendanceTime, formatDateLabel, formatInTimeZone } from "../../utils/format";
 import LeaveTable from "../leaves/LeaveTable";
 import Modal from "../../components/common/Modal";
 import toast from "react-hot-toast";
@@ -24,10 +24,7 @@ type VisibleMonth = {
 };
 
 function toLocalDateString(value: Date) {
-  const year = value.getFullYear();
-  const month = String(value.getMonth() + 1).padStart(2, "0");
-  const day = String(value.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
+  return formatInTimeZone(value, 'Asia/Kolkata', 'yyyy-MM-dd');
 }
 
 function parseLocalDateString(value: string) {
@@ -120,10 +117,7 @@ export default function TeamPage({ token, role, currentEmployee }: TeamPageProps
 
   const teamMemberIds = useMemo(() => new Set(teamMembers.map((member) => member.id)), [teamMembers]);
   const calendarDays = useMemo(() => getCalendarDays(visibleMonth), [visibleMonth]);
-  const currentMonthLabel = new Date(visibleMonth.year, visibleMonth.month, 1).toLocaleDateString("en-IN", {
-    month: "long",
-    year: "numeric",
-  });
+  const currentMonthLabel = formatInTimeZone(new Date(visibleMonth.year, visibleMonth.month, 1), 'Asia/Kolkata', 'MMMM yyyy');
 
   useEffect(() => {
     if (!canAccessTeam || !token) {

@@ -8,6 +8,7 @@ import BreakQuickAction from "../components/common/BreakQuickAction";
 import Button from "../components/common/Button";
 import type { Role } from "../types";
 import { useApp } from "../context/AppContext";
+import { formatDateTime } from "../utils/format";
 import { usePushNotifications } from "../hooks/usePushNotifications";
 
 type NavbarProps = {
@@ -195,7 +196,7 @@ export default function Navbar({ title, navOpen, onToggleNav, token, currentEmpl
                           </span>
                           <span className="topbar-notification-item__desc">{item.message}</span>
                           <span className="topbar-notification-item__time">
-                            {new Date(item.createdAt).toLocaleDateString()} {new Date(item.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            {formatDateTime(item.createdAt)}
                           </span>
                         </div>
                       </button>

@@ -1,9 +1,14 @@
+import { toZonedTime } from 'date-fns-tz';
+import { TIMEZONE } from './dates.js';
+
 export function getFinancialYearForDate(date: Date) {
-  return date.getMonth() >= 3 ? date.getFullYear() : date.getFullYear() - 1;
+  const istDate = toZonedTime(date, TIMEZONE);
+  return istDate.getMonth() >= 3 ? istDate.getFullYear() : istDate.getFullYear() - 1;
 }
 
 export function getFinancialQuarterForDate(date: Date) {
-  const month = date.getMonth();
+  const istDate = toZonedTime(date, TIMEZONE);
+  const month = istDate.getMonth();
 
   if (month >= 3 && month <= 5) {
     return 1;

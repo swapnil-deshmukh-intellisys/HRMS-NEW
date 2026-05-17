@@ -2,6 +2,8 @@ import { useEffect, useState, useCallback } from "react";
 import { Megaphone, X as CloseIcon, Clock, AlertCircle, ChevronDown, ChevronUp } from "lucide-react";
 import { apiRequest } from "../../services/api";
 import { useApp } from "../../context/AppContext";
+import { formatDateTime } from "../../utils/format";
+import type { Announcement } from "../../types";
 import "./Announcement.css";
 
 const isToday = (dateString: string) => {
@@ -192,7 +194,7 @@ function AnnouncementItem({ announcement, isLatest, children, onHide }: { announ
           <span className="priority-tag">{announcement.priority}</span>
           <span className="bullet">•</span>
           <span className="time-tag">
-            <Clock size={12} /> {new Date(announcement.createdAt).toLocaleDateString([], { weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric' })} at {new Date(announcement.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true })}
+            <Clock size={12} /> {formatDateTime(announcement.createdAt)}
           </span>
           {onHide && (
             <button 

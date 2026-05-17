@@ -7,13 +7,12 @@ import { Router } from "express";
 import multer, { type FileFilterCallback, type StorageEngine } from "multer";
 import { z } from "zod";
 import { formatInTimeZone } from 'date-fns-tz';
-import { TIMEZONE } from "../../utils/dates.js";
 import { prisma } from "../../config/prisma.js";
 import { authenticate, requireRoles } from "../../middleware/auth.js";
 import { validate } from "../../middleware/validate.js";
 import { AppError, sendSuccess } from "../../utils/api.js";
 import { addToOutbox } from "../../services/outbox.js";
-import { startOfDay } from "../../utils/dates.js";
+import { endOfDay, startOfDay, TIMEZONE } from "../../utils/dates.js";
 import { getFinancialQuarterForDate, getFinancialYearBounds, getFinancialYearForDate } from "../../utils/financial-year.js";
 import { getEmployeeLeaveBalanceByType, getEmployeeLeaveBalances, isPolicyActiveForYear } from "../../utils/leave-balance.js";
 import { canTeamLeadAccessEmployee, getScopedEmployeeIdsForTeamLead, hasEmployeeCapability } from "../../utils/team-lead.js";
@@ -818,7 +817,7 @@ async function managerApproveLeave(leaveId: number, actor: NonNullable<Express.R
         payload: {
           userId: employeeData.userId,
           title: "Leave Approved! ✅",
-          message: `Your leave from ${finalLeave.startDate.toLocaleDateString()} to ${finalLeave.endDate.toLocaleDateString()} has been approved.`,
+          message: `Your leave from ${formatInTimeZone(finalLeave.startDate, TIMEZONE, 'dd MMM yyyy')} to ${formatInTimeZone(finalLeave.endDate, TIMEZONE, 'dd MMM yyyy')} has been approved.`,
           type: "LEAVE_APPROVED",
           link: `/leaves?id=${finalLeave.id}`,
           sendPush: true
@@ -868,7 +867,7 @@ async function managerApproveLeave(leaveId: number, actor: NonNullable<Express.R
     ns.createNotification({
       userId: updatedLeave.employee.userId,
       title: "Manager Approved Leave ✅",
-      message: `Your manager has approved your leave request for ${new Date(updatedLeave.startDate).toLocaleDateString()}. It is now pending final HR approval.`,
+      message: `Your manager has approved your leave request for ${formatInTimeZone(updatedLeave.startDate, TIMEZONE, 'dd MMM yyyy')}. It is now pending final HR approval.`,
       type: "LEAVE_APPROVED",
       link: `/leaves?id=${updatedLeave.id}`,
       sendPush: true
@@ -935,7 +934,7 @@ async function managerRejectLeave(
     ns.createNotification({
       userId: result.employee.userId,
       title: "Leave Rejected ❌",
-      message: `Your leave request for ${result.startDate.toLocaleDateString()} has been rejected by your manager.`,
+      message: `Your leave request for ${formatInTimeZone(result.startDate, TIMEZONE, 'dd MMM yyyy')} has been rejected by your manager.`,
       type: "LEAVE_REJECTED",
       link: `/leaves?id=${result.id}`,
       sendPush: true
@@ -986,7 +985,7 @@ async function hrApproveLeave(leaveId: number, actor: NonNullable<Express.Reques
 
     // Notify on Google Chat
     void sendTeamNotification(
-      `✅ *Leave Approved*\n*Employee:* ${finalLeave.employee.firstName} ${finalLeave.employee.lastName}\n*Type:* ${finalLeave.leaveType.name}\n*Dates:* ${finalLeave.startDate.toLocaleDateString()} to ${finalLeave.endDate.toLocaleDateString()}\n*Reason:* ${finalLeave.reason}`,
+      `✅ *Leave Approved*\n*Employee:* ${finalLeave.employee.firstName} ${finalLeave.employee.lastName}\n*Type:* ${finalLeave.leaveType.name}\n*Dates:* ${formatInTimeZone(finalLeave.startDate, TIMEZONE, 'dd MMM yyyy')} to ${formatInTimeZone(finalLeave.endDate, TIMEZONE, 'dd MMM yyyy')}\n*Reason:* ${finalLeave.reason}`,
       actor.id
     );
 
@@ -1036,7 +1035,7 @@ async function hrApproveLeave(leaveId: number, actor: NonNullable<Express.Reques
     ns.createNotification({
       userId: result.employee.userId,
       title: "Leave Approved! ✅",
-      message: `Your leave request for ${result.startDate.toLocaleDateString()} has been approved by HR.`,
+      message: `Your leave request for ${formatInTimeZone(result.startDate, TIMEZONE, 'dd MMM yyyy')} has been approved by HR.`,
       type: "LEAVE_APPROVED",
       link: `/leaves?id=${result.id}`,
       sendPush: true
@@ -1104,7 +1103,7 @@ async function hrRejectLeave(
     ns.createNotification({
       userId: result.employee.userId,
       title: "Leave Rejected ❌",
-      message: `Your leave request for ${result.startDate.toLocaleDateString()} has been rejected by HR.`,
+      message: `Your leave request for ${formatInTimeZone(result.startDate, TIMEZONE, 'dd MMM yyyy')} has been rejected by HR.`,
       type: "LEAVE_REJECTED",
       link: `/leaves?id=${result.id}`,
       sendPush: true

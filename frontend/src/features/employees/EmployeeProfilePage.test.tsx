@@ -11,10 +11,11 @@ describe("EmployeeProfilePage", () => {
     const employee = createEmployee({ id: 5, firstName: "Ava", lastName: "Stone" });
 
     mockApiRoutes([
-      { path: "/employees/5", data: employee },
-      { path: "/attendance?employeeId=5", data: [createAttendance({ employeeId: 5, employee })] },
-      { path: "/leave-balances/me?employeeId=5", data: [createLeaveBalance()] },
-      { path: "/leaves?employeeId=5", data: [createLeaveRequest({ employee })] },
+      { path: /\/employees\/5$/, data: employee },
+      { path: /\/attendance/, data: [createAttendance({ employeeId: 5, employee })] },
+      { path: /\/leave-balances\/me/, data: [createLeaveBalance()] },
+      { path: /\/leaves/, data: [createLeaveRequest({ employee })] },
+      { path: /\/calendar/, data: { exceptions: [] } },
     ]);
 
     renderWithRoute(
@@ -23,8 +24,9 @@ describe("EmployeeProfilePage", () => {
     );
 
     expect(await screen.findByText("Ava Stone")).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: /overview/i })).toBeInTheDocument();
+    expect(await screen.findByRole("tab", { name: /overview/i })).toBeInTheDocument();
     expect(screen.queryByRole("tab", { name: /payroll/i })).not.toBeInTheDocument();
-    expect(screen.getByText("Leave allocation")).toBeInTheDocument();
+    expect(await screen.findByText("Employee details")).toBeInTheDocument();
+    expect(screen.getByText("Integrations")).toBeInTheDocument();
   });
 });

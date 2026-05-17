@@ -5,7 +5,8 @@ import { prisma } from "../../config/prisma.js";
 import { authenticate, requireRoles } from "../../middleware/auth.js";
 import { validate } from "../../middleware/validate.js";
 import { AppError, sendSuccess } from "../../utils/api.js";
-import { endOfDay, startOfDay } from "../../utils/dates.js";
+import { endOfDay, startOfDay, TIMEZONE } from "../../utils/dates.js";
+import { formatInTimeZone } from 'date-fns-tz';
 import { getCalendarDayStatus } from "../calendar/service.js";
 import { assertPayrollEditable, buildPayrollPreview } from "./service.js";
 import { calculateTotalPayrollWithIncentives } from "./incentive-service.js";
@@ -187,7 +188,7 @@ router.put("/:id", requireRoles("ADMIN", "HR"), validate(payrollSchema.partial()
         ns.createNotification({
           userId: updated.employee.userId,
           title: "Payslip Ready! 🧾",
-          message: `Your payslip for ${new Date(updated.year, updated.month - 1).toLocaleDateString("en-IN", { month: "long", year: "numeric" })} is now available.`,
+          message: `Your payslip for ${formatInTimeZone(new Date(updated.year, updated.month - 1, 1), TIMEZONE, 'MMMM yyyy')} is now available.`,
           type: "PAYROLL_FINALIZED",
           link: "/payroll",
           sendPush: true

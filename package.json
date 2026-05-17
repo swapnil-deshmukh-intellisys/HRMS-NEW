@@ -18,5 +18,10 @@
     "test:e2e": "npm --workspace e2e run test",
     "test:e2e:smoke": "npm --workspace e2e run test:smoke",
     "test:e2e:api": "npm --workspace e2e run test:api"
+  },
+  "devDependencies": {
+    "@vitest/coverage-v8": "^1.6.1",
+    "jsdom": "^24.1.3",
+    "vitest": "^1.6.1"
   }
 }

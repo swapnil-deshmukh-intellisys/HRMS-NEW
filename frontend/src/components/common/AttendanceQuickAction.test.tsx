@@ -74,6 +74,11 @@ describe("AttendanceQuickAction", () => {
 
     const user = userEvent.setup();
     await user.click(await screen.findByRole("button", { name: /finish today's attendance/i }));
+    
+    // Type manual update text to pass validation
+    const textarea = screen.getByLabelText(/Manual Update/i);
+    await user.type(textarea, "Did some work today.");
+    
     await user.click(screen.getByRole("button", { name: /finalize & out/i }));
 
     await waitFor(() => expect(screen.getByRole("button", { name: /attendance completed for today/i })).toBeDisabled());
@@ -108,7 +113,7 @@ describe("AttendanceQuickAction", () => {
 
       if (url.includes("/attendance/check-out") && method === "POST") {
         return Promise.resolve(
-          createApiResponse(null, 403, "Attendance marking is available only on desktop or laptop devices."),
+          createApiResponse(null, 400, "Attendance marking is available only on desktop or laptop devices."),
         );
       }
 
@@ -123,6 +128,11 @@ describe("AttendanceQuickAction", () => {
 
     const user = userEvent.setup();
     await user.click(await screen.findByRole("button", { name: /finish today's attendance/i }));
+    
+    // Type manual update text to pass validation
+    const textarea = screen.getByLabelText(/Manual Update/i);
+    await user.type(textarea, "Did some work today.");
+    
     await user.click(screen.getByRole("button", { name: /finalize & out/i }));
 
     expect(await screen.findByRole("alert")).toHaveTextContent("Attendance marking is available only on desktop or laptop devices.");

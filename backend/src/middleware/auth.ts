@@ -34,8 +34,12 @@ export async function authenticate(request: Request, _response: Response, next: 
     };
 
     next();
-  } catch (error) {
-    next(error);
+  } catch (error: any) {
+    if (error?.name === "JsonWebTokenError" || error?.name === "TokenExpiredError") {
+      next(new AppError("Session expired. Please login again.", 401));
+    } else {
+      next(error);
+    }
   }
 }
 

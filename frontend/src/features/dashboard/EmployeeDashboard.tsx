@@ -1,5 +1,4 @@
 import { Video } from "lucide-react";
-import { useNavigate } from "react-router-dom";
 import { useApp } from "../../context/AppContext";
 import DashboardHeroClocks from "./DashboardHeroClocks";
 import ThoughtOfTheDay from "./ThoughtOfTheDay";
@@ -12,7 +11,6 @@ import BirthdayCelebrations from "./BirthdayCelebrations";
 
 
 export default function EmployeeDashboard({ token }: { token: string | null }) {
-  const navigate = useNavigate();
   const { summary } = useApp();
   const [isStartingMeet, setIsStartingMeet] = useState(false);
 

@@ -1,6 +1,6 @@
 import "./DashboardPage.css";
 import "./BirthdayMode.css";
-import { lazy, Suspense } from "react";
+import { Suspense } from "react";
 import type { Role } from "../../types";
 import { useApp } from "../../context/AppContext";
 import MessageCard from "../../components/common/MessageCard";

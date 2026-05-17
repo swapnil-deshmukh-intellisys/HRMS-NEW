@@ -3,7 +3,6 @@ import { Megaphone, X as CloseIcon, Clock, AlertCircle, ChevronDown, ChevronUp }
 import { apiRequest } from "../../services/api";
 import { useApp } from "../../context/AppContext";
 import { formatDateTime } from "../../utils/format";
-import type { Announcement } from "../../types";
 import "./Announcement.css";
 
 const isToday = (dateString: string) => {

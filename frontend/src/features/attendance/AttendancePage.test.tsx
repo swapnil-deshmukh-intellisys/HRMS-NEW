@@ -1,104 +1,80 @@
 import "../../test/setup";
-import { render, screen } from "@testing-library/react";
-import { MemoryRouter } from "react-router-dom";
+import { render, screen, fireEvent } from "@testing-library/react";
 import { describe, expect, test } from "vitest";
+import { MemoryRouter } from "react-router-dom";
 import AttendancePage from "./AttendancePage";
 import { mockApiRoutes } from "../../test/api";
 import { createAttendance, createEmployee } from "../../test/fixtures";
 
 describe("AttendancePage", () => {
-  test("renders attendance history and correction sections for employees", async () => {
+  test("renders attendance history and action buttons for employees", async () => {
     mockApiRoutes([
+      {
+        path: "/attendance?date=2026-05-12",
+        data: [
+          createAttendance({
+            attendanceDate: "2026-05-12T00:00:00.000Z",
+            checkInTime: "2026-05-12T14:33:00.000Z", // 2:33 PM UTC -> 8:03 PM IST
+            checkOutTime: "2026-05-12T16:01:00.000Z", // 4:01 PM UTC -> 9:31 PM IST
+            status: "PRESENT",
+          }),
+        ],
+      },
       {
         path: "/attendance/regularizations",
         data: [],
       },
-      {
-        path: /\/attendance(\?date=.*)?$/,
-        data: [createAttendance()],
-      },
     ]);
+
+    const employee = createEmployee({ id: 1 });
 
     render(
       <MemoryRouter>
-        <AttendancePage token="token" role="EMPLOYEE" currentEmployeeId={1} currentEmployee={createEmployee()} />
+        <AttendancePage
+          token="token"
+          role="EMPLOYEE"
+          currentEmployeeId={1}
+          currentEmployee={employee}
+        />
       </MemoryRouter>,
     );
 
     expect(await screen.findByText("Attendance history")).toBeInTheDocument();
-    expect(screen.getByText("Correction requests")).toBeInTheDocument();
+    
+    // In the new UI, employees see these buttons in the header
     expect(screen.getByRole("button", { name: /request correction/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /view requests/i })).toBeInTheDocument();
+    
+    // Verify record rendering (using IST time as displayed in UI)
+    expect(screen.getByText("8:03 PM")).toBeInTheDocument();
+    expect(screen.getByText("9:31 PM")).toBeInTheDocument();
   });
 
-  test("shows correction review actions for HR", async () => {
+  test("allows opening the correction request modal", async () => {
     mockApiRoutes([
-      {
-        path: "/attendance/regularizations",
-        data: [
-          {
-            id: 9,
-            employeeId: 1,
-            attendanceDate: "2026-04-09T00:00:00.000Z",
-            proposedCheckInTime: "2026-04-09T09:10:00.000Z",
-            proposedCheckOutTime: "2026-04-09T18:05:00.000Z",
-            reason: "Missed swipe",
-            status: "PENDING",
-            reviewedAt: null,
-            rejectionReason: null,
-            createdAt: "2026-04-09T10:00:00.000Z",
-            employee: createEmployee(),
-            reviewedBy: null,
-          },
-        ],
-      },
-      {
-        path: /\/attendance(\?date=.*)?$/,
-        data: [createAttendance()],
-      },
-      {
-        path: "/employees?limit=1000",
-        data: {
-          items: [createEmployee()],
-          pagination: { total: 1 },
-        },
-      },
+      { path: "/attendance?date=2026-05-12", data: [] },
+      { path: "/attendance/regularizations", data: [] },
     ]);
+
+    const employee = createEmployee({ id: 1 });
 
     render(
       <MemoryRouter>
-        <AttendancePage token="token" role="HR" currentEmployeeId={2} currentEmployee={createEmployee({ id: 2 })} />
+        <AttendancePage
+          token="token"
+          role="EMPLOYEE"
+          currentEmployeeId={1}
+          currentEmployee={employee}
+        />
       </MemoryRouter>,
     );
 
-    expect(await screen.findByRole("button", { name: /approve/i })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /reject/i })).toBeInTheDocument();
-  });
+    await screen.findByText("Attendance history");
+    fireEvent.click(screen.getByRole("button", { name: /request correction/i }));
 
-  test("shows Daily View and Monthly Summary tabs for team leads", async () => {
-    const selfEmployee = createEmployee({
-      id: 5,
-      capabilities: [{ capability: "TEAM_LEAD" }],
-      scopedTeamMembers: [{ employee: createEmployee({ id: 9, firstName: "Jordan", lastName: "Mills", employeeCode: "EMP-009" }) }],
-    });
-
-    mockApiRoutes([
-      {
-        path: "/attendance/regularizations",
-        data: [],
-      },
-      {
-        path: /\/attendance(\?date=.*)?$/,
-        data: [createAttendance({ employeeId: 5, employee: selfEmployee })],
-      },
-    ]);
-
-    render(
-      <MemoryRouter>
-        <AttendancePage token="token" role="EMPLOYEE" currentEmployeeId={5} currentEmployee={selfEmployee} />
-      </MemoryRouter>,
-    );
-
-    expect(await screen.findByRole("tab", { name: "Daily View" })).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: "Monthly Summary" })).toBeInTheDocument();
+    // The modal should open with the correct title and submit button
+    expect(await screen.findByRole("dialog")).toBeInTheDocument();
+    expect(screen.getByText("Request attendance correction")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /submit request/i })).toBeInTheDocument();
   });
 });

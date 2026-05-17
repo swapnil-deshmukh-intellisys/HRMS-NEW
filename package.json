@@ -4,7 +4,8 @@
   "version": "1.0.0",
   "workspaces": [
     "backend",
-    "frontend"
+    "frontend",
+    "e2e"
   ],
   "scripts": {
     "dev:backend": "npm --workspace backend run dev",
@@ -13,6 +14,14 @@
     "lint": "npm --workspace backend run lint && npm --workspace frontend run lint",
     "test": "npm --workspace backend run test && npm --workspace frontend run test",
     "test:backend": "npm --workspace backend run test",
-    "test:frontend": "npm --workspace frontend run test"
+    "test:frontend": "npm --workspace frontend run test",
+    "test:e2e": "npm --workspace e2e run test",
+    "test:e2e:smoke": "npm --workspace e2e run test:smoke",
+    "test:e2e:api": "npm --workspace e2e run test:api"
+  },
+  "devDependencies": {
+    "@vitest/coverage-v8": "^1.6.1",
+    "jsdom": "^24.1.3",
+    "vitest": "^1.6.1"
   }
 }

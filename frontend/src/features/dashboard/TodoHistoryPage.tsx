@@ -1,7 +1,7 @@
 import "./TodoHistoryPage.css";
 import { useEffect, useState, useMemo } from "react";
 import { apiRequest } from "../../services/api";
-import { Trash2, Calendar, Search } from "lucide-react";
+import { Trash2, Calendar, Search, CheckCircle } from "lucide-react";
 import toast from "react-hot-toast";
 
 type Todo = {
@@ -124,6 +124,7 @@ export default function TodoHistoryPage({ token }: { token: string | null }) {
                 <table className="history-table">
                   <thead>
                     <tr>
+                      <th>Status</th>
                       <th>Date</th>
                       <th>Day</th>
                       <th>Task Detail</th>
@@ -138,6 +139,9 @@ export default function TodoHistoryPage({ token }: { token: string | null }) {
                         const dateObj = new Date(todo.updatedAt);
                         return (
                           <tr key={todo.id}>
+                            <td className="status-cell">
+                              <CheckCircle size={18} className="completed-mark-icon" />
+                            </td>
                             <td className="date-cell">
                               {dateObj.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
                             </td>

@@ -1,13 +1,15 @@
 import "../../test/setup";
-import { render, screen, within } from "@testing-library/react";
+import { render, screen, within, fireEvent } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, test } from "vitest";
+import { MemoryRouter } from "react-router-dom";
+import { Toaster } from "react-hot-toast";
 import LeavesPage from "./LeavesPage";
 import { mockApiRoutes } from "../../test/api";
-import { createLeaveBalance, createLeaveRequest, createLeaveType } from "../../test/fixtures";
+import { createLeaveBalance, createLeaveRequest, createLeaveType, createEmployee } from "../../test/fixtures";
 
-const validLeaveReason =
-  "I need planned leave to attend important family responsibilities, complete travel arrangements, support a medical appointment, manage documentation tasks, and return with work fully handed over to the team in advance.";
+// Exactly 26 words to pass validation
+const validLeaveReason = "I am requesting a planned leave to attend to important family responsibilities and complete necessary personal documentation tasks. I will ensure all my work is properly handed over.";
 
 describe("LeavesPage", () => {
   test("renders leave requests with manager and HR approval bars", async () => {
@@ -15,20 +17,24 @@ describe("LeavesPage", () => {
       managerApprovalStatus: "PENDING",
       hrApprovalStatus: "REJECTED",
       hrRejectionReason: "Need clarification",
+      employee: createEmployee({ id: 1 }),
+      status: "PENDING"
     });
 
     mockApiRoutes([
       { path: "/leave-balances/me", data: [createLeaveBalance()] },
-      { path: "/leaves/me", data: [leave] },
+      { path: "/leaves", data: [leave], method: "GET" },
       { path: "/leave-types", data: [createLeaveType()] },
     ]);
 
     const { container } = render(
-      <LeavesPage
-        token="token"
-        role="EMPLOYEE"
-        currentEmployeeId={1}
-      />,
+      <MemoryRouter>
+        <LeavesPage
+          token="token"
+          role="EMPLOYEE"
+          currentEmployeeId={1}
+        />
+      </MemoryRouter>,
     );
 
     expect(await screen.findByText("Leave requests")).toBeInTheDocument();
@@ -40,10 +46,9 @@ describe("LeavesPage", () => {
 
   test("surfaces duplicate overlap errors from leave submission", async () => {
     const user = userEvent.setup();
-
     mockApiRoutes([
       { path: "/leave-balances/me", data: [createLeaveBalance()] },
-      { path: "/leaves/me", data: [] },
+      { path: "/leaves", data: [], method: "GET" },
       { path: "/leave-types", data: [createLeaveType()] },
       {
         path: "/leaves",
@@ -54,21 +59,34 @@ describe("LeavesPage", () => {
     ]);
 
     render(
-      <LeavesPage
-        token="token"
-        role="EMPLOYEE"
-        currentEmployeeId={1}
-      />,
+      <MemoryRouter>
+        <Toaster />
+        <LeavesPage
+          token="token"
+          role="EMPLOYEE"
+          currentEmployeeId={1}
+        />
+      </MemoryRouter>,
     );
 
     await screen.findByText("Leave requests");
-    await user.click(screen.getByRole("button", { name: /apply for leave/i }));
-    await user.click(screen.getByRole("button", { name: /select leave type/i }));
-    await user.click(screen.getByRole("option", { name: /casual leave/i }));
-    await user.type(screen.getByLabelText(/reason/i), validLeaveReason);
-    await user.click(screen.getByRole("button", { name: /submit leave request/i }));
+    fireEvent.click(screen.getByRole("button", { name: /apply for leave/i }));
+    
+    const typeBtn = await screen.findByRole("button", { name: /select leave type/i });
+    fireEvent.click(typeBtn);
+    fireEvent.click(await screen.findByRole("option", { name: /casual leave/i }));
+    
+    const reasonInput = screen.getByLabelText(/reason/i);
+    fireEvent.change(reasonInput, { target: { value: validLeaveReason } });
+    
+    const submitBtn = screen.getByRole("button", { name: /submit leave request/i });
+    // Ensure the button is not disabled (meaning validation passed)
+    expect(submitBtn).not.toBeDisabled();
+    
+    await user.click(submitBtn);
 
-    expect(await screen.findByText("Overlapping leave request already exists")).toBeInTheDocument();
+    // With Toaster present, the error message from toast.error should appear in the DOM
+    expect(await screen.findByText("Overlapping leave request already exists", {}, { timeout: 8000 })).toBeInTheDocument();
   });
 
   test("shows medical proof actions for approved long sick leave", async () => {
@@ -78,24 +96,32 @@ describe("LeavesPage", () => {
       medicalProofRequired: true,
       medicalProofStatus: "PENDING_UPLOAD",
       medicalProofDueAt: "2026-04-12T10:00:00.000Z",
+      employee: createEmployee({ id: 1 })
     });
 
     mockApiRoutes([
       { path: "/leave-balances/me", data: [createLeaveBalance()] },
-      { path: "/leaves/me", data: [leave] },
+      { path: "/leaves", data: [leave], method: "GET" },
       { path: "/leave-types", data: [createLeaveType()] },
     ]);
 
     render(
-      <LeavesPage
-        token="token"
-        role="EMPLOYEE"
-        currentEmployeeId={1}
-      />,
+      <MemoryRouter>
+        <LeavesPage
+          token="token"
+          role="EMPLOYEE"
+          currentEmployeeId={1}
+        />
+      </MemoryRouter>,
     );
 
     await screen.findByText("Leave requests");
-    await userEvent.click(screen.getByRole("button", { name: /^view$/i }));
+    
+    const allTab = await screen.findByRole("button", { name: /all/i });
+    fireEvent.click(allTab);
+
+    const viewBtn = await screen.findByRole("button", { name: /^view$/i });
+    fireEvent.click(viewBtn);
 
     expect(await screen.findByText(/proof upload pending/i)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /upload proof/i })).toBeInTheDocument();

@@ -48,6 +48,7 @@ export default function EmployeeForm({
   onCancelEdit,
 }: EmployeeFormProps) {
   const [showPassword, setShowPassword] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
   const managerOptions = employees.filter((employee) => employee.user?.role.name === "MANAGER");
   const compensationPreview = useMemo(() => calculateCompensationPreview(form.annualPackageLpa), [form.annualPackageLpa]);
 
@@ -61,7 +62,7 @@ export default function EmployeeForm({
   return (
     <form className="stack compact-form employee-form-card" onSubmit={onSubmit}>
       <fieldset className="employee-form-fieldset" disabled={isSubmitting}>
-        
+
         <div className="employee-form-group">
           <h3 className="employee-form-group-title">Account Access</h3>
           <p className="muted" style={{ gridColumn: '1 / -1', marginTop: '-12px' }}>
@@ -110,20 +111,20 @@ export default function EmployeeForm({
           </label>
           <label>
             Date of birth
-            <input 
-              value={form.dateOfBirth} 
-              onChange={(event) => onChange({ ...form, dateOfBirth: event.target.value })} 
-              type="date" 
-              required 
+            <input
+              value={form.dateOfBirth}
+              onChange={(event) => onChange({ ...form, dateOfBirth: event.target.value })}
+              type="date"
+              required
             />
           </label>
           <label>
             PAN Card No.
-            <input 
-              value={form.panCardNumber} 
-              onChange={(event) => onChange({ ...form, panCardNumber: event.target.value })} 
+            <input
+              value={form.panCardNumber}
+              onChange={(event) => onChange({ ...form, panCardNumber: event.target.value })}
               placeholder="ABCDE1234F"
-              required 
+              required
             />
           </label>
         </div>
@@ -263,30 +264,83 @@ export default function EmployeeForm({
           </label>
           {form.isTeamLead ? (
             <div className="stack tl-scope-list">
-              <p className="muted" style={{ marginBottom: '8px', fontSize: '12px' }}>Select team members in scope:</p>
+              <div className="tl-scope-list__header">
+                <p className="muted" style={{ marginBottom: '8px', fontSize: '12px' }}>Select team members in scope:</p>
+                <div className="tl-scope-list__controls">
+                  <input
+                    type="text"
+                    placeholder="Search..."
+                    className="tl-scope-search"
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                  />
+                  <button
+                    type="button"
+                    className="text-btn"
+                    onClick={() => {
+                      const eligibleIds = employees
+                        .filter(e => e.id !== editingEmployeeId && e.isActive && e.user?.role.name === "EMPLOYEE")
+                        .map(e => e.id);
+                      onChange({ ...form, teamLeadScopeIds: eligibleIds });
+                    }}
+                  >
+                    Select All
+                  </button>
+                  <span className="divider">|</span>
+                  <button
+                    type="button"
+                    className="text-btn"
+                    onClick={() => onChange({ ...form, teamLeadScopeIds: [] })}
+                  >
+                    Deselect All
+                  </button>
+                </div>
+              </div>
+
               <div className="employee-form-group">
-                {employees
-                  .filter(
-                    (employee) =>
-                      employee.id !== editingEmployeeId && employee.isActive && employee.user?.role.name === "EMPLOYEE",
-                  )
-                  .map((employee) => (
+                {(() => {
+                  const eligibleEmployees = employees
+                    .filter(
+                      (employee) => {
+                        const matchesSearch = `${employee.firstName} ${employee.lastName}`.toLowerCase().includes(searchTerm.toLowerCase());
+                        return employee.id !== editingEmployeeId &&
+                          employee.isActive &&
+                          employee.user?.role.name === "EMPLOYEE" &&
+                          matchesSearch;
+                      }
+                    )
+                    .sort((a, b) => {
+                      const nameA = `${a.firstName} ${a.lastName}`.toLowerCase();
+                      const nameB = `${b.firstName} ${b.lastName}`.toLowerCase();
+                      return nameA.localeCompare(nameB);
+                    });
+
+                  if (eligibleEmployees.length === 0) {
+                    return <p className="muted" style={{ gridColumn: '1 / -1', padding: '12px', textAlign: 'center' }}>No eligible employees found.</p>;
+                  }
+
+                  return eligibleEmployees.map((employee) => (
                     <label key={employee.id} className="checkbox-row">
                       <input
-                        checked={form.teamLeadScopeIds.includes(employee.id)}
+                        checked={form.teamLeadScopeIds.some(id => Number(id) === Number(employee.id))}
                         type="checkbox"
-                        onChange={(event) =>
+                        onChange={(event) => {
+                          const currentIds = form.teamLeadScopeIds.map(id => Number(id));
+                          const targetId = Number(employee.id);
+
+                          const nextIds = event.target.checked
+                            ? [...new Set([...currentIds, targetId])]
+                            : currentIds.filter((id) => id !== targetId);
+
                           onChange({
                             ...form,
-                            teamLeadScopeIds: event.target.checked
-                              ? [...form.teamLeadScopeIds, employee.id]
-                              : form.teamLeadScopeIds.filter((id) => id !== employee.id),
-                          })
-                        }
+                            teamLeadScopeIds: nextIds,
+                          });
+                        }}
                       />
                       <span>{`${employee.firstName} ${employee.lastName}`}</span>
                     </label>
-                  ))}
+                  ));
+                })()}
               </div>
             </div>
           ) : null}

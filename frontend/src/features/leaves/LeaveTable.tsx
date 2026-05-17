@@ -72,35 +72,37 @@ export default function LeaveTable({
   function renderActions(leave: LeaveRequest) {
     const isPending = leave.status === "PENDING";
     
-    // For personal leaves, only allow cancellation of pending requests
-    if (isPending && leave.managerApprovalStatus === "PENDING" && leave.employee.id === currentEmployeeId && onCancel) {
-      return (
-        <button className="secondary leave-action-button" onClick={() => onCancel(leave.id)}>
-          Cancel
+    return (
+      <Fragment>
+        <button 
+          className="secondary leave-action-button" 
+          onClick={() => toggleExpanded(leave.id)}
+          type="button"
+        >
+          {isExpanded(leave.id) ? "Hide" : "View"}
         </button>
-      );
-    }
-
-    // Role-based review actions
-    if (isPending) {
-      const isManagerReview = role === "MANAGER" && leave.employee.managerId === currentEmployeeId && leave.managerApprovalStatus === "PENDING";
-      const isHrReview = (role === "HR" || role === "ADMIN") && leave.hrApprovalStatus === "PENDING";
-
-      if ((isManagerReview || isHrReview) && onApprove && onReject) {
-        return (
+        {isPending && leave.managerApprovalStatus === "PENDING" && leave.employee.id === currentEmployeeId && onCancel && (
+          <button className="secondary leave-action-button" onClick={() => onCancel(leave.id)}>
+            Cancel
+          </button>
+        )}
+        {isPending && (
           <Fragment>
-            <button onClick={() => onApprove(leave.id)}>
-              Approve
-            </button>
-            <button className="secondary" onClick={() => onReject(leave.id)}>
-              Reject
-            </button>
+            {(role === "MANAGER" && leave.employee.managerId === currentEmployeeId && leave.managerApprovalStatus === "PENDING") ||
+             ((role === "HR" || role === "ADMIN") && leave.hrApprovalStatus === "PENDING") ? (
+              <Fragment>
+                <button onClick={() => onApprove?.(leave.id)}>
+                  Approve
+                </button>
+                <button className="secondary" onClick={() => onReject?.(leave.id)}>
+                  Reject
+                </button>
+              </Fragment>
+            ) : null}
           </Fragment>
-        );
-      }
-    }
-
-    return <span className="leave-action-placeholder">-</span>;
+        )}
+      </Fragment>
+    );
   }
 
   function renderStatusProgress(leave: LeaveRequest) {
@@ -231,170 +233,170 @@ export default function LeaveTable({
 
                     return (
                       <Fragment key={leave.id}>
-                    <tr 
-                      className={`expandable-row-trigger leave-request-row ${expanded ? "expanded-row-trigger leave-request-row--expanded" : ""}`}
-                      onClick={(e) => {
-                        const target = e.target as HTMLElement;
-                        if (target.closest("button")) return;
-                        toggleExpanded(leave.id);
-                      }}
-                    >
-                      <td>
-                        <span className="table-cell-primary">{`${leave.employee.firstName} ${leave.employee.lastName}`}</span>
-                      </td>
-                      <td>
-                        <span className="table-cell-primary">{leave.leaveType.code}</span>
-                      </td>
-                      <td>{formatLeaveRange(leave)}</td>
-                      <td>
-                        <div className="table-cell-stack">
-                          <span className="table-cell-primary">{formatLeaveDays(leave.totalDays)}</span>
-                          <span className="table-cell-secondary">{getDurationLabel(leave)}</span>
-                        </div>
-                      </td>
-                      <td>
-                        {renderStatusProgress(leave)}
-                      </td>
-                      <td>
-                        <div className="button-row row-actions leave-table-actions">{renderActions(leave)}</div>
-                      </td>
-                      <td>
-                        <ChevronDown className={`expandable-row-icon ${expanded ? "expanded" : ""}`} />
-                      </td>
-                    </tr>
-                    {expanded ? (
-                      <tr className="expanded-row-content">
-                        <td colSpan={7}>
-                          <div className="expanded-details-container">
-                            <div className="expanded-details-grid">
-                              
-                              <div className="detail-block" style={{ gridColumn: "span 2" }}>
-                                <span className="table-cell-secondary">Reason</span>
-                                <span className="table-cell-primary" style={{ whiteSpace: "pre-wrap" }}>{leave.reason || "No reason provided"}</span>
-                              </div>
-
-                              <div className="detail-block">
-                                <span className="table-cell-secondary">Approval Progress</span>
-                                <div className="leave-progress" style={{ marginTop: '4px' }}>
-                                  <div className={getStepClass(leave.managerApprovalStatus)}>
-                                    <span className="leave-step__label">Manager</span>
-                                    <span className="leave-step__value">{leave.managerApprovalStatus}</span>
-                                  </div>
-                                  <div className={getStepClass(leave.hrApprovalStatus)}>
-                                    <span className="leave-step__label">HR</span>
-                                    <span className="leave-step__value">{leave.hrApprovalStatus}</span>
-                                  </div>
-                                </div>
-                              </div>
-
-                              <div className="detail-block">
-                                <span className="table-cell-secondary">Leave specifics</span>
-                                <span className="table-cell-primary">{leave.leaveType.name}</span>
-                                <span className="table-cell-primary" style={{ fontSize: '13px', marginTop: '2px' }}>
-                                  {formatLeaveRange(leave)}
-                                </span>
-                                <span className="table-cell-secondary" style={{ fontSize: '12px' }}>
-                                  {`${formatLeaveDays(leave.paidDays)} Paid / ${formatLeaveDays(leave.unpaidDays)} Unpaid`}
-                                </span>
-                              </div>
-
-                              {leave.attachmentPath ? (
-                                <div className="detail-block">
-                                  <span className="table-cell-secondary">Attachment</span>
-                                  <a
-                                    className="table-cell-primary leave-request-details__link"
-                                    href={getFileUrl(leave.attachmentPath) ?? "#"}
-                                    target="_blank"
-                                    rel="noreferrer"
-                                    style={{ color: "var(--color-accent)", textDecoration: "underline" }}
-                                  >
-                                    {leave.attachmentName ?? "View attachment"}
-                                  </a>
-                                </div>
-                              ) : null}
-
-                              {(leave.hrApprovalStatus === "REJECTED" && leave.hrRejectionReason) || 
-                               (leave.managerApprovalStatus === "REJECTED" && leave.managerRejectionReason) ? (
-                                <div className="detail-block" style={{ gridColumn: "span 2" }}>
-                                  <span className="table-cell-secondary error-text">Rejection Remarks</span>
-                                  {leave.managerApprovalStatus === "REJECTED" ? (
-                                    <span className="attendance-warning-text">Manager: {leave.managerRejectionReason}</span>
-                                  ) : null}
-                                  {leave.hrApprovalStatus === "REJECTED" ? (
-                                    <span className="attendance-warning-text">HR: {leave.hrRejectionReason}</span>
-                                  ) : null}
-                                </div>
-                              ) : null}
-
-                              {leave.medicalProofRequired ? (
-                                <div className="detail-block" style={{ gridColumn: "span 3" }}>
-                                  <span className="table-cell-secondary">Medical Proof Requirement</span>
-                                  <div style={{ display: "flex", gap: "16px", alignItems: "center", marginTop: "4px" }}>
-                                    <span className="table-cell-primary">{getMedicalProofStatusLabel(leave)}</span>
-                                    {leave.medicalProofDueAt ? (
-                                      <span className="table-cell-secondary" style={{ fontSize: '12px' }}>Due: {formatDateTime(leave.medicalProofDueAt)}</span>
-                                    ) : null}
-                                  </div>
-                                  
-                                  {leave.medicalProofRejectionReason ? (
-                                    <span className="attendance-warning-text" style={{ marginTop: "4px" }}>{leave.medicalProofRejectionReason}</span>
-                                  ) : null}
-
-                                  {canUploadMedicalProof(leave) ? (
-                                    <div className="button-row row-actions" style={{ marginTop: "8px" }}>
-                                      <input
-                                        type="file"
-                                        accept=".pdf,application/pdf"
-                                        style={{ maxWidth: "200px" }}
-                                        onChange={(event) =>
-                                          setMedicalProofFiles((current) => ({
-                                            ...current,
-                                            [leave.id]: event.target.files?.[0] ?? null,
-                                          }))
-                                        }
-                                      />
-                                      <button
-                                        type="button"
-                                        disabled={!medicalProofFiles[leave.id]}
-                                        onClick={() => {
-                                          const file = medicalProofFiles[leave.id];
-                                          if (!file || !onUploadMedicalProof) return;
-                                          void onUploadMedicalProof(leave.id, file);
-                                        }}
-                                      >
-                                        Upload proof
-                                      </button>
-                                    </div>
-                                  ) : null}
-
-                                  {canHrReviewMedicalProof(leave) ? (
-                                    <div className="button-row row-actions" style={{ marginTop: "8px" }}>
-                                      <button
-                                        type="button"
-                                        onClick={() => onReviewMedicalProof?.(leave.id, "approve")}
-                                      >
-                                        Verify proof
-                                      </button>
-                                      <button
-                                        type="button"
-                                        className="secondary"
-                                        onClick={() => onReviewMedicalProof?.(leave.id, "reject")}
-                                      >
-                                        Reject proof
-                                      </button>
-                                    </div>
-                                  ) : null}
-                                </div>
-                              ) : null}
-
+                        <tr 
+                          className={`expandable-row-trigger leave-request-row ${expanded ? "expanded-row-trigger leave-request-row--expanded" : ""}`}
+                          onClick={(e) => {
+                            const target = e.target as HTMLElement;
+                            if (target.closest("button")) return;
+                            toggleExpanded(leave.id);
+                          }}
+                        >
+                          <td>
+                            <span className="table-cell-primary">{`${leave.employee.firstName} ${leave.employee.lastName}`}</span>
+                          </td>
+                          <td>
+                            <span className="table-cell-primary">{leave.leaveType.code}</span>
+                          </td>
+                          <td>{formatLeaveRange(leave)}</td>
+                          <td>
+                            <div className="table-cell-stack">
+                              <span className="table-cell-primary">{formatLeaveDays(leave.totalDays)}</span>
+                              <span className="table-cell-secondary">{getDurationLabel(leave)}</span>
                             </div>
-                          </div>
-                        </td>
-                      </tr>
-                    ) : null}
-                  </Fragment>
-                );
-              })}
+                          </td>
+                          <td>
+                            {renderStatusProgress(leave)}
+                          </td>
+                          <td>
+                            <div className="button-row row-actions leave-table-actions">{renderActions(leave)}</div>
+                          </td>
+                          <td>
+                            <ChevronDown className={`expandable-row-icon ${expanded ? "expanded" : ""}`} />
+                          </td>
+                        </tr>
+                        {expanded ? (
+                          <tr className="expanded-row-content">
+                            <td colSpan={7}>
+                              <div className="expanded-details-container">
+                                <div className="expanded-details-grid">
+                                  
+                                  <div className="detail-block" style={{ gridColumn: "span 2" }}>
+                                    <span className="table-cell-secondary">Reason</span>
+                                    <span className="table-cell-primary" style={{ whiteSpace: "pre-wrap" }}>{leave.reason || "No reason provided"}</span>
+                                  </div>
+
+                                  <div className="detail-block">
+                                    <span className="table-cell-secondary">Approval Progress</span>
+                                    <div className="leave-progress" style={{ marginTop: '4px' }}>
+                                      <div className={getStepClass(leave.managerApprovalStatus)}>
+                                        <span className="leave-step__label">Manager</span>
+                                        <span className="leave-step__value">{leave.managerApprovalStatus}</span>
+                                      </div>
+                                      <div className={getStepClass(leave.hrApprovalStatus)}>
+                                        <span className="leave-step__label">HR</span>
+                                        <span className="leave-step__value">{leave.hrApprovalStatus}</span>
+                                      </div>
+                                    </div>
+                                  </div>
+
+                                  <div className="detail-block">
+                                    <span className="table-cell-secondary">Leave specifics</span>
+                                    <span className="table-cell-primary">{leave.leaveType.name}</span>
+                                    <span className="table-cell-primary" style={{ fontSize: '13px', marginTop: '2px' }}>
+                                      {formatLeaveRange(leave)}
+                                    </span>
+                                    <span className="table-cell-secondary" style={{ fontSize: '12px' }}>
+                                      {`${formatLeaveDays(leave.paidDays)} Paid / ${formatLeaveDays(leave.unpaidDays)} Unpaid`}
+                                    </span>
+                                  </div>
+
+                                  {leave.attachmentPath ? (
+                                    <div className="detail-block">
+                                      <span className="table-cell-secondary">Attachment</span>
+                                      <a
+                                        className="table-cell-primary leave-request-details__link"
+                                        href={getFileUrl(leave.attachmentPath) ?? "#"}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        style={{ color: "var(--color-accent)", textDecoration: "underline" }}
+                                      >
+                                        {leave.attachmentName ?? "View attachment"}
+                                      </a>
+                                    </div>
+                                  ) : null}
+
+                                  {(leave.hrApprovalStatus === "REJECTED" && leave.hrRejectionReason) || 
+                                   (leave.managerApprovalStatus === "REJECTED" && leave.managerRejectionReason) ? (
+                                    <div className="detail-block" style={{ gridColumn: "span 2" }}>
+                                      <span className="table-cell-secondary error-text">Rejection Remarks</span>
+                                      {leave.managerApprovalStatus === "REJECTED" ? (
+                                        <span className="attendance-warning-text">Manager: {leave.managerRejectionReason}</span>
+                                      ) : null}
+                                      {leave.hrApprovalStatus === "REJECTED" ? (
+                                        <span className="attendance-warning-text">HR: {leave.hrRejectionReason}</span>
+                                      ) : null}
+                                    </div>
+                                  ) : null}
+
+                                  {leave.medicalProofRequired ? (
+                                    <div className="detail-block" style={{ gridColumn: "span 3" }}>
+                                      <span className="table-cell-secondary">Medical Proof Requirement</span>
+                                      <div style={{ display: "flex", gap: "16px", alignItems: "center", marginTop: "4px" }}>
+                                        <span className="table-cell-primary">{getMedicalProofStatusLabel(leave)}</span>
+                                        {leave.medicalProofDueAt ? (
+                                          <span className="table-cell-secondary" style={{ fontSize: '12px' }}>Due: {formatDateTime(leave.medicalProofDueAt)}</span>
+                                        ) : null}
+                                      </div>
+                                      
+                                      {leave.medicalProofRejectionReason ? (
+                                        <span className="attendance-warning-text" style={{ marginTop: "4px" }}>{leave.medicalProofRejectionReason}</span>
+                                      ) : null}
+
+                                      {canUploadMedicalProof(leave) ? (
+                                        <div className="button-row row-actions" style={{ marginTop: "8px" }}>
+                                          <input
+                                            type="file"
+                                            accept=".pdf,application/pdf"
+                                            style={{ maxWidth: "200px" }}
+                                            onChange={(event) =>
+                                              setMedicalProofFiles((current) => ({
+                                                ...current,
+                                                [leave.id]: event.target.files?.[0] ?? null,
+                                              }))
+                                            }
+                                          />
+                                          <button
+                                            type="button"
+                                            disabled={!medicalProofFiles[leave.id]}
+                                            onClick={() => {
+                                              const file = medicalProofFiles[leave.id];
+                                              if (!file || !onUploadMedicalProof) return;
+                                              void onUploadMedicalProof(leave.id, file);
+                                            }}
+                                          >
+                                            Upload proof
+                                          </button>
+                                        </div>
+                                      ) : null}
+
+                                      {canHrReviewMedicalProof(leave) ? (
+                                        <div className="button-row row-actions" style={{ marginTop: "8px" }}>
+                                          <button
+                                            type="button"
+                                            onClick={() => onReviewMedicalProof?.(leave.id, "approve")}
+                                          >
+                                            Verify proof
+                                          </button>
+                                          <button
+                                            type="button"
+                                            className="secondary"
+                                            onClick={() => onReviewMedicalProof?.(leave.id, "reject")}
+                                          >
+                                            Reject proof
+                                          </button>
+                                        </div>
+                                      ) : null}
+                                    </div>
+                                  ) : null}
+
+                                </div>
+                              </div>
+                            </td>
+                          </tr>
+                        ) : null}
+                      </Fragment>
+                    );
+                  })}
                 </Fragment>
               ))}
             </tbody>

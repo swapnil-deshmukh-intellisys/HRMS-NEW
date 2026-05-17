@@ -1,5 +1,5 @@
 import "./Sidebar.css";
-import { BarChart3, Building2, Calendar, CalendarDays, Clock3, Gift, Home, Users, Wallet, UserRound, type LucideIcon } from "lucide-react";
+import { Building2, Calendar, CalendarDays, Clock3, Gift, Home, Users, Wallet, UserRound, type LucideIcon } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import type { SessionUser } from "../types";
 
@@ -19,8 +19,8 @@ function getNavItems(sessionUser: SessionUser): NavItem[] {
   const role = sessionUser.role;
   const isTeamLead = Boolean(sessionUser.employee?.capabilities?.some((capability) => capability.capability === "TEAM_LEAD"));
   const items: NavItem[] = [{ to: "/", label: "Dashboard", icon: Home }];
-  
-  items.push({ to: "/analytics", label: "Analytics", icon: BarChart3 });
+
+
 
   if (role !== "EMPLOYEE") {
     items.push({ to: "/departments", label: "Departments", icon: Building2 });
@@ -83,7 +83,7 @@ export default function Sidebar({ sessionUser, navOpen, onNavigate }: SidebarPro
               to={item.to}
               onClick={onNavigate}
             >
-              <item.icon size={18} strokeWidth={2} />
+              <item.icon size={16} strokeWidth={2} />
               <span className="nav-link-label">{item.label}</span>
             </Link>
           ))}

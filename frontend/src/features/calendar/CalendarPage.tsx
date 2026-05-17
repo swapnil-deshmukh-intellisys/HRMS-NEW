@@ -160,8 +160,12 @@ export default function CalendarPage({ token, role }: CalendarPageProps) {
     setHolidayModalOpen(true);
   }
 
+  const monthSaturdays = useMemo(() => {
+    return days.filter(day => day.weekday === 6);
+  }, [days]);
+
   function openWorkingSaturdayModal() {
-    const firstSaturday = days.find((day) => day.weekday === 6);
+    const firstSaturday = monthSaturdays[0];
     setWorkingSaturdayForm((current) => ({
       ...current,
       date: current.date || (firstSaturday ? toDateInputValue(visibleMonth.year, visibleMonth.month, firstSaturday.dayNumber) : ""),
@@ -300,14 +304,24 @@ export default function CalendarPage({ token, role }: CalendarPageProps) {
       </Modal>
       <Modal open={workingSaturdayModalOpen} title="Mark Saturday as working" onClose={() => setWorkingSaturdayModalOpen(false)}>
         <div className="stack calendar-form">
-          <label>
-            Saturday date
-            <input
-              type="date"
-              value={workingSaturdayForm.date}
-              onChange={(event) => setWorkingSaturdayForm((current) => ({ ...current, date: event.target.value }))}
-            />
-          </label>
+          <div className="section-label" style={{ marginBottom: 'var(--space-2)' }}>Select Saturday</div>
+          <div className="saturday-grid">
+            {monthSaturdays.map(sat => {
+              const isoDate = toDateInputValue(visibleMonth.year, visibleMonth.month, sat.dayNumber);
+              const isSelected = workingSaturdayForm.date === isoDate;
+              return (
+                <button
+                  key={isoDate}
+                  type="button"
+                  className={`saturday-opt ${isSelected ? 'active' : ''}`}
+                  onClick={() => setWorkingSaturdayForm(prev => ({ ...prev, date: isoDate }))}
+                >
+                  <span className="sat-date">{sat.dayNumber}</span>
+                  <span className="sat-month">{formatMonthTitle(visibleMonth.year, visibleMonth.month).split(' ')[0]}</span>
+                </button>
+              );
+            })}
+          </div>
           <label>
             Note
             <input value={workingSaturdayForm.name} onChange={(event) => setWorkingSaturdayForm((current) => ({ ...current, name: event.target.value }))} />

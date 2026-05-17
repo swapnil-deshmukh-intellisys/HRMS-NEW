@@ -4,6 +4,7 @@ import { apiRequest } from "../../services/api";
 import type { Attendance } from "../../types";
 import { ATTENDANCE_EVENT, dispatchAttendanceUpdated, getAttendanceUpdatedDetail, getSelfAttendanceActionState } from "./attendanceQuickActionUtils";
 import { formatAttendanceTime } from "../../utils/format";
+import { FileText, ShieldCheck, Check } from "lucide-react";
 import { useAuth } from "../../hooks/useAuth";
 import Modal from "./Modal";
 
@@ -31,10 +32,66 @@ export default function AttendanceQuickAction({
   const [actionError, setActionError] = useState("");
   const [now, setNow] = useState(() => Date.now());
   const [showCheckoutModal, setShowCheckoutModal] = useState(false);
+  const [assignedEmails, setAssignedEmails] = useState<any[]>([]);
+  const [fetchingEmails, setFetchingEmails] = useState(false);
   const [todaysUpdateInput, setTodaysUpdateInput] = useState("");
+  const [useSupportUpdate, setUseSupportUpdate] = useState(false);
+  const [useManualUpdate, setUseManualUpdate] = useState(true);
+  const [supportData, setSupportData] = useState({
+    dataExtracted: "",
+    emailsSent: "",
+    outlookMetrics: {} as Record<number, string> // Map of emailId -> metric value/note
+  });
   const latestLoadRequestRef = useRef(0);
   const attendanceVersionRef = useRef(0);
   const { refreshSession, updateLastActivity } = useAuth();
+
+  const fetchAssignedEmails = useCallback(async () => {
+    if (!currentEmployeeId || !token) return;
+    
+    try {
+      setFetchingEmails(true);
+      const response = await apiRequest<any>(`/employees/${currentEmployeeId}`, { token });
+      const allEmails = response.data.outlookEmails || [];
+      
+      // Filter for TEC and TUT clients
+      const filtered = allEmails.filter((item: any) => {
+        const clientCode = item.client?.code?.toUpperCase();
+        const clientName = item.client?.name?.toUpperCase();
+        return clientCode === "TEC" || clientCode === "TUT" || 
+               clientName?.includes("TEC") || clientName?.includes("TUT");
+      });
+      
+      setAssignedEmails(filtered);
+      
+      // Initialize metrics for each assigned email
+      const initialMetrics: Record<number, string> = {};
+      filtered.forEach((email: any) => {
+        initialMetrics[email.id] = "";
+      });
+      setSupportData(prev => ({ ...prev, outlookMetrics: initialMetrics }));
+    } catch (err) {
+      console.error("Failed to fetch assigned emails:", err);
+    } finally {
+      setFetchingEmails(false);
+    }
+  }, [currentEmployeeId, token]);
+
+  useEffect(() => {
+    if (showCheckoutModal) {
+      void fetchAssignedEmails();
+    }
+  }, [showCheckoutModal, fetchAssignedEmails]);
+
+  const handleOutlookMetricChange = (emailId: number, value: string) => {
+    setSupportData(prev => ({
+      ...prev,
+      outlookMetrics: {
+        ...prev.outlookMetrics,
+        [emailId]: value
+      }
+    }));
+  };
 
   const syncAttendanceState = useCallback(
     (nextAttendance: Attendance | null) => {
@@ -147,13 +204,49 @@ export default function AttendanceQuickAction({
 
   async function handleCheckoutSubmit(event: React.FormEvent) {
     event.preventDefault();
-    if (!todaysUpdateInput.trim()) {
-      setActionError("Please provide an update on what you worked on today.");
+    
+    if (!useSupportUpdate && !useManualUpdate) {
+      setActionError("Please select at least one update method.");
       return;
     }
-    await submitAction({ todaysUpdate: todaysUpdateInput });
+
+    if (useManualUpdate && !todaysUpdateInput.trim()) {
+      setActionError("Please provide your daily update text.");
+      return;
+    }
+
+    if (useSupportUpdate && (!supportData.dataExtracted || !supportData.emailsSent)) {
+      setActionError("Please provide all required support metrics.");
+      return;
+    }
+
+    let finalUpdate = "";
+    
+    if (useSupportUpdate) {
+      const metricLines = assignedEmails.map(email => {
+        const val = supportData.outlookMetrics[email.id];
+        return `${email.name} (${email.client?.code || 'N/A'}): ${val || 'No update'}`;
+      }).join(", ");
+      
+      finalUpdate += `[SUPPORT UPDATE] Data Extracted: ${supportData.dataExtracted} | Emails: ${supportData.emailsSent} | Outlook Details: [${metricLines}]\n`;
+    }
+
+    if (useManualUpdate) {
+      finalUpdate += todaysUpdateInput.trim();
+    }
+
+    await submitAction({ todaysUpdate: finalUpdate.trim() });
+    
     setShowCheckoutModal(false);
     setTodaysUpdateInput("");
+    setUseSupportUpdate(false);
+    setUseManualUpdate(true);
+    setAssignedEmails([]);
+    setSupportData({
+      dataExtracted: "",
+      emailsSent: "",
+      outlookMetrics: {}
+    });
   }
 
   async function submitAction(body: Record<string, any> = {}) {
@@ -242,29 +335,96 @@ export default function AttendanceQuickAction({
         className="checkout-modal"
       >
         <form onSubmit={handleCheckoutSubmit} className="stack">
-          <p className="muted" style={{ fontSize: '14px', marginBottom: '8px' }}>
-            Great job today! Please briefly mention what you worked on before checking out.
-          </p>
-          <label>
-            Today's Update
-            <textarea
-              value={todaysUpdateInput}
-              onChange={(e) => setTodaysUpdateInput(e.target.value)}
-              placeholder="e.g. Worked on the dashboard refactoring and fixed 3 bugs in the attendance module."
-              required
-              rows={4}
-              style={{ 
-                resize: 'none',
-                padding: '12px',
-                borderRadius: '12px',
-                border: '1.5px solid var(--color-border-default)',
-                fontSize: '14px',
-                lineHeight: '1.6',
-                background: 'rgba(255, 255, 255, 0.5)'
-              }}
-              autoFocus
-            />
-          </label>
+          <div className="checkout-choice-grid">
+            <div 
+              className={`checkout-choice-card ${useSupportUpdate ? 'active' : ''}`}
+              onClick={() => setUseSupportUpdate(!useSupportUpdate)}
+            >
+              <div className="choice-header">
+                <span className="choice-title">Support Update</span>
+                {useSupportUpdate ? <Check size={16} color="var(--color-accent)" /> : <ShieldCheck size={16} color="var(--color-text-secondary)" />}
+              </div>
+              <p className="choice-desc">Structured metrics for data extraction and email support.</p>
+            </div>
+
+            <div 
+              className={`checkout-choice-card ${useManualUpdate ? 'active' : ''}`}
+              onClick={() => setUseManualUpdate(!useManualUpdate)}
+            >
+              <div className="choice-header">
+                <span className="choice-title">Write Your Own</span>
+                {useManualUpdate ? <Check size={16} color="var(--color-accent)" /> : <FileText size={16} color="var(--color-text-secondary)" />}
+              </div>
+              <p className="choice-desc">Free-form text update for general tasks and activities.</p>
+            </div>
+          </div>
+
+          {useSupportUpdate && (
+            <div className="support-metrics-section">
+              <div className="metrics-row">
+                <label>
+                  Data Extracted
+                  <input 
+                    type="number" 
+                    placeholder="0"
+                    value={supportData.dataExtracted}
+                    onChange={e => setSupportData(prev => ({ ...prev, dataExtracted: e.target.value }))}
+                  />
+                </label>
+                <label>
+                  Emails Sent
+                  <input 
+                    type="number" 
+                    placeholder="0"
+                    value={supportData.emailsSent}
+                    onChange={e => setSupportData(prev => ({ ...prev, emailsSent: e.target.value }))}
+                  />
+                </label>
+              </div>
+
+              {fetchingEmails ? (
+                <div className="muted" style={{ fontSize: '12px' }}>Loading assigned Outlook IDs...</div>
+              ) : assignedEmails.length > 0 ? (
+                <>
+                  <div className="section-label" style={{ marginTop: '4px', fontSize: '11px', color: 'var(--color-text-secondary)' }}>
+                    Assigned Outlook IDs (TEC/TUT)
+                  </div>
+                  <div className="outlook-ids-container">
+                    {assignedEmails.map((email) => (
+                      <div key={email.id} className="outlook-id-input-field">
+                        <label>{email.name} <span style={{ opacity: 0.6 }}>({email.client?.code})</span></label>
+                        <input 
+                          type="text" 
+                          placeholder="Update for this ID"
+                          value={supportData.outlookMetrics[email.id] || ""}
+                          onChange={e => handleOutlookMetricChange(email.id, e.target.value)}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </>
+              ) : (
+                <div className="muted" style={{ fontSize: '12px', fontStyle: 'italic' }}>
+                  No Outlook IDs from TEC/TUT assigned to you.
+                </div>
+              )}
+            </div>
+          )}
+
+          {useManualUpdate && (
+            <label>
+              Manual Update
+              <textarea
+                value={todaysUpdateInput}
+                onChange={(e) => setTodaysUpdateInput(e.target.value)}
+                placeholder="Briefly mention other tasks you performed..."
+                required={!useSupportUpdate}
+                rows={useSupportUpdate ? 3 : 5}
+                style={{ resize: 'none' }}
+              />
+            </label>
+          )}
+
           <div className="button-row" style={{ marginTop: '8px', justifyContent: 'flex-end', display: 'flex', gap: '12px' }}>
             <button
               type="button"

@@ -2,6 +2,7 @@ import { Router } from "express";
 import { prisma } from "../../config/prisma.js";
 import { authenticate } from "../../middleware/auth.js";
 import { sendSuccess } from "../../utils/api.js";
+import { endOfDay, startOfDay } from "../../utils/dates.js";
 
 const router = Router();
 
@@ -85,8 +86,7 @@ router.get("/bootstrap", authenticate, async (request, response, next) => {
     ]);
 
     let summary: any = {};
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    const today = startOfDay(new Date());
 
     if (role === "ADMIN" || role === "HR") {
       const [
@@ -116,6 +116,17 @@ router.get("/bootstrap", authenticate, async (request, response, next) => {
         pendingLeaves,
         pendingCorrectionRequests: pendingRegs,
         pendingIncentiveApprovals: pendingIncentives,
+        teamOnLeaveToday: await prisma.leaveRequest.findMany({
+          where: {
+            status: "APPROVED",
+            startDate: { lte: endOfDay(today) },
+            endDate: { gte: startOfDay(today) },
+          },
+          include: {
+            employee: { select: { firstName: true, lastName: true } },
+            leaveType: { select: { name: true } },
+          },
+        }),
       };
     } else if (role === "MANAGER" && employeeId) {
       const [teamCount, pendingLeaves, pendingRegs, attendanceToday, teamPresentToday] = await Promise.all([
@@ -156,6 +167,18 @@ router.get("/bootstrap", authenticate, async (request, response, next) => {
         pendingApprovals: pendingRegs,
         attendanceToday,
         teamPresentToday,
+        teamOnLeaveToday: await prisma.leaveRequest.findMany({
+          where: {
+            status: "APPROVED",
+            employee: { managerId: employeeId },
+            startDate: { lte: endOfDay(today) },
+            endDate: { gte: startOfDay(today) },
+          },
+          include: {
+            employee: { select: { firstName: true, lastName: true } },
+            leaveType: { select: { name: true } },
+          },
+        }),
       };
     } else if (employeeId) {
       // Regular Employee
@@ -181,6 +204,18 @@ router.get("/bootstrap", authenticate, async (request, response, next) => {
         attendanceToday,
         scopedTeamCount,
         pendingTeamLeaves,
+        teamOnLeaveToday: await prisma.leaveRequest.findMany({
+          where: {
+            status: "APPROVED",
+            employee: { teamLeads: { some: { teamLeaderId: employeeId } } },
+            startDate: { lte: endOfDay(today) },
+            endDate: { gte: startOfDay(today) },
+          },
+          include: {
+            employee: { select: { firstName: true, lastName: true } },
+            leaveType: { select: { name: true } },
+          },
+        }),
       };
     }
 

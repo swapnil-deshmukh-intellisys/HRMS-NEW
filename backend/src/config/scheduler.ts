@@ -1,6 +1,7 @@
 import cron from "node-cron";
+import { toZonedTime } from 'date-fns-tz';
 import { prisma } from "./prisma.js";
-import { startOfDay, endOfDay, getCurrentTimeInIST } from "../utils/dates.js";
+import { startOfDay, endOfDay, getCurrentTimeInIST, TIMEZONE } from "../utils/dates.js";
 import { 
   finalizeAttendanceForDate, 
   buildApprovedLeaveWhereForAttendanceDate, 
@@ -67,7 +68,7 @@ async function notifyTodayBirthdays() {
     });
 
     const celebrants = birthdayEmployees.filter(emp => {
-      const dob = new Date(emp.dateOfBirth!);
+      const dob = toZonedTime(new Date(emp.dateOfBirth!), TIMEZONE);
       return dob.getDate() === currentDate && dob.getMonth() === currentMonth;
     });
 

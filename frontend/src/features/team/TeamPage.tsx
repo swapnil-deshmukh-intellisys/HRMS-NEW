@@ -1,10 +1,11 @@
 import "./TeamPage.css";
 import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import MessageCard from "../../components/common/MessageCard";
 import Table from "../../components/common/Table";
 import { apiRequest } from "../../services/api";
 import type { Attendance, Employee, LeaveRequest, Role } from "../../types";
-import { formatAttendanceTime, formatDateLabel } from "../../utils/format";
+import { formatAttendanceTime, formatDateLabel, formatInTimeZone } from "../../utils/format";
 import LeaveTable from "../leaves/LeaveTable";
 import Modal from "../../components/common/Modal";
 import toast from "react-hot-toast";
@@ -23,10 +24,7 @@ type VisibleMonth = {
 };
 
 function toLocalDateString(value: Date) {
-  const year = value.getFullYear();
-  const month = String(value.getMonth() + 1).padStart(2, "0");
-  const day = String(value.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
+  return formatInTimeZone(value, 'Asia/Kolkata', 'yyyy-MM-dd');
 }
 
 function parseLocalDateString(value: string) {
@@ -60,10 +58,35 @@ function getCalendarDays({ month, year }: VisibleMonth) {
 }
 
 export default function TeamPage({ token, role, currentEmployee }: TeamPageProps) {
+  const [searchParams, setSearchParams] = useSearchParams();
   const today = toLocalDateString(new Date());
-  const [activeTab, setActiveTab] = useState<TeamTab>("PROJECTS");
-  const [activeClientCode, setActiveClientCode] = useState<"TUT" | "TEC">("TUT");
-  const [projectCategory, setProjectCategory] = useState<"MAGAZINES" | "INDUSTRIES">("MAGAZINES");
+
+  // Derive state from URL search params
+  const activeTab = (searchParams.get("tab") as TeamTab) || "PROJECTS";
+  const activeClientCode = (searchParams.get("client") as "TUT" | "TEC") || "TUT";
+  const projectCategory = (searchParams.get("category") as "MAGAZINES" | "INDUSTRIES") || "MAGAZINES";
+
+  const setActiveTab = (tab: TeamTab) => {
+    setSearchParams(prev => {
+      prev.set("tab", tab);
+      return prev;
+    });
+  };
+
+  const setActiveClientCode = (client: "TUT" | "TEC") => {
+    setSearchParams(prev => {
+      prev.set("client", client);
+      return prev;
+    });
+  };
+
+  const setProjectCategory = (category: "MAGAZINES" | "INDUSTRIES") => {
+    setSearchParams(prev => {
+      prev.set("category", category);
+      return prev;
+    });
+  };
+
   const [attendanceDate, setAttendanceDate] = useState(today);
   const [datePickerOpen, setDatePickerOpen] = useState(false);
   const [visibleMonth, setVisibleMonth] = useState<VisibleMonth>(() => getVisibleMonthFromDate(today));
@@ -94,10 +117,7 @@ export default function TeamPage({ token, role, currentEmployee }: TeamPageProps
 
   const teamMemberIds = useMemo(() => new Set(teamMembers.map((member) => member.id)), [teamMembers]);
   const calendarDays = useMemo(() => getCalendarDays(visibleMonth), [visibleMonth]);
-  const currentMonthLabel = new Date(visibleMonth.year, visibleMonth.month, 1).toLocaleDateString("en-IN", {
-    month: "long",
-    year: "numeric",
-  });
+  const currentMonthLabel = formatInTimeZone(new Date(visibleMonth.year, visibleMonth.month, 1), 'Asia/Kolkata', 'MMMM yyyy');
 
   useEffect(() => {
     if (!canAccessTeam || !token) {

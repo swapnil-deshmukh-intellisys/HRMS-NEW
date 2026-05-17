@@ -1,5 +1,6 @@
 import "./LeavesPage.css";
 import { useCallback, useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import type { FormEvent } from "react";
 import toast from "react-hot-toast";
 import Modal from "../../components/common/Modal";
@@ -33,6 +34,7 @@ function formatLocalIsoDate(date: Date) {
 }
 
 export default function LeavesPage({ token, role, currentEmployeeId }: LeavesPageProps) {
+  const navigate = useNavigate();
   const [leaveTypes, setLeaveTypes] = useState<LeaveType[]>([]);
   const [balances, setBalances] = useState<LeaveBalance[]>([]);
   const [leaves, setLeaves] = useState<LeaveRequest[]>([]);
@@ -301,6 +303,9 @@ export default function LeavesPage({ token, role, currentEmployeeId }: LeavesPag
               <p className="muted">Track and manage your time off applications.</p>
             </div>
             <div className="button-row row-actions leaves-page-actions">
+              <button type="button" className="secondary leaves-page-balance-button" onClick={() => navigate('/calendar')}>
+                View team calendar
+              </button>
               <button type="button" className="secondary leaves-page-balance-button" onClick={() => setLeaveBalancesOpen(true)}>
                 View leave balances
               </button>

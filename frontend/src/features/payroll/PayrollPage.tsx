@@ -459,7 +459,7 @@ export default function PayrollPage({ token, role }: PayrollPageProps) {
                 <div class="info-section">
                   <h3>Pay Details</h3>
                   <div class="info-item"><span class="info-label">Employee Code</span> <span class="info-value">EM-00${data.employee.id}</span></div>
-                  <div class="info-item"><span class="info-label">Joining Date</span> <span class="info-value">${new Date(data.employee.joiningDate).toLocaleDateString()}</span></div>
+                  <div className="info-item"><span className="info-label">Joining Date</span> <span className="info-value">{formatDate(data.employee.joiningDate)}</span></div>
                   <div class="info-item"><span class="info-label">Days Payable</span> <span class="info-value">${30 - data.deductibleDays} / 30</span></div>
                 </div>
               </div>
@@ -592,7 +592,7 @@ export default function PayrollPage({ token, role }: PayrollPageProps) {
                   <span className="table-cell-secondary">Monthly Net Salary</span>
                   <strong>₹{previewTargetNet.toLocaleString()}</strong>
                 </div>
-                {preview.employee.isOnProbation ? (
+                {preview.employee?.isOnProbation ? (
                   <span className="payroll-preview-tag">Probation (50% Pay)</span>
                 ) : null}
               </div>
@@ -630,7 +630,7 @@ export default function PayrollPage({ token, role }: PayrollPageProps) {
                   <dt>Professional Tax (PT)</dt>
                   <dd>₹{Number(preview.pt ?? 0).toLocaleString()}</dd>
                 </div>
-                {preview.employee.isOnProbation ? (
+                {preview.employee?.isOnProbation ? (
                   <div className="payroll-preview-panel__metric">
                     <dt>Before probation</dt>
                     <dd>₹{Number(preview.finalSalaryBeforeProbation ?? 0).toLocaleString()}</dd>

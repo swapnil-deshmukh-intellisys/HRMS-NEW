@@ -141,6 +141,16 @@
   border-bottom: none;
 }
 
+.status-cell {
+  width: 40px;
+  text-align: center;
+}
+
+.completed-mark-icon {
+  color: #10b981; /* Emerald-500 */
+  filter: drop-shadow(0 2px 4px rgba(16, 185, 129, 0.2));
+}
+
 .date-cell {
   font-weight: var(--fw-medium);
   color: var(--color-text-strong);

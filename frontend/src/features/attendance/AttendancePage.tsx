@@ -7,7 +7,7 @@ import Table from "../../components/common/Table";
 import { ATTENDANCE_EVENT } from "../../components/common/attendanceQuickActionUtils";
 import { apiRequest } from "../../services/api";
 import type { Attendance, AttendanceRegularizationRequest, Employee, Role } from "../../types";
-import { formatAttendanceTime, formatDateLabel, formatWeekday, isToday } from "../../utils/format";
+import { formatAttendanceTime, formatDateLabel, formatInTimeZone, formatWeekday, isToday } from "../../utils/format";
 
 type AttendancePageProps = {
   token: string | null;
@@ -95,10 +95,8 @@ export default function AttendancePage({ token, role, currentEmployeeId, current
   const activeOverviewFilter = filterStatus === "HALF_DAY" ? "PRESENT" : filterStatus;
   const navigate = useNavigate();
   const calendarDays = useMemo(() => getCalendarDays(visibleMonth), [visibleMonth]);
-  const currentMonthLabel = new Date(visibleMonth.year, visibleMonth.month, 1).toLocaleDateString("en-IN", {
-    month: "long",
-    year: "numeric",
-  });
+  const currentMonthLabel = formatInTimeZone(new Date(visibleMonth.year, visibleMonth.month, 1), 'Asia/Kolkata', 'MMMM yyyy');
+
   function getWorkedDurationLabel(record: AttendanceListRow) {
     if (record.status === "LEAVE") {
       return "-";
@@ -712,7 +710,7 @@ export default function AttendancePage({ token, role, currentEmployeeId, current
             compact
             columns={["Month", "Present", "Half day", "Absent", "Leave", "Total records"]}
             rows={monthlySummaryRows.map((row) => [
-              `${new Date(row.year, row.month - 1, 1).toLocaleDateString("en-IN", { month: "long", year: "numeric" })}`,
+              `${formatInTimeZone(new Date(row.year, row.month - 1, 1), 'Asia/Kolkata', 'MMMM yyyy')}`,
               String(row.present),
               String(row.halfDay),
               String(row.absent),

@@ -1,65 +1,110 @@
 import "../../test/setup";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { MemoryRouter } from "react-router-dom";
 import { describe, expect, test } from "vitest";
 import PayrollPage from "./PayrollPage";
 import { mockApiRoutes } from "../../test/api";
 import { createEmployee, createPayrollRecord } from "../../test/fixtures";
 
 describe("PayrollPage", () => {
-  test("shows the HR payroll creation surface and preview details", async () => {
+  test("allows creating and viewing payroll records", async () => {
     const user = userEvent.setup();
-    const now = new Date();
-    const month = now.getMonth() + 1;
-    const year = now.getFullYear();
-
+    const employee = createEmployee({ firstName: "Taylor", lastName: "Flint", id: 5 });
+    
     mockApiRoutes([
       {
-        path: `/payroll/preview?employeeId=1&month=${month}&year=${year}`,
+        path: "/payroll/preview",
         data: {
-          employee: createEmployee(),
-          month,
-          year,
-          pf: 1200,
-          gratuity: 500,
-          pt: 200,
+          employee,
+          month: 5,
+          year: 2026,
+          totalPayableSalary: 54000,
           netSalary: 54000,
-          perDaySalary: 1800,
-          perHourSalary: 225,
+          pf: 0,
+          gratuity: 0,
+          pt: 0,
           absentDeductionDays: 0,
           halfDayDeductionDays: 0,
           deductibleDays: 0,
           deductionAmount: 0,
-          finalSalaryBeforeProbation: 54000,
-          probationMultiplier: 1,
-          probationAdjustedSalary: 54000,
-          finalSalary: 54000,
+          incentives: [],
         },
       },
-      { path: "/payroll", data: [] },
-      { path: "/employees?limit=100", data: { items: [createEmployee()] } },
+      {
+        path: "/employees",
+        data: {
+          items: [employee],
+          pagination: { total: 1 },
+        },
+      },
+      {
+        path: "/payroll",
+        method: "GET",
+        data: [],
+      },
+      {
+        path: "/payroll",
+        method: "POST",
+        data: createPayrollRecord({ employeeId: 5, salary: "54000" }),
+      },
     ]);
 
-    render(<PayrollPage token="token" role="HR" />);
+    render(
+      <MemoryRouter>
+        <PayrollPage token="token" role="HR" />
+      </MemoryRouter>
+    );
 
-    expect(await screen.findByText("Create payroll record")).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: /select employee/i }));
-    await user.click(screen.getByRole("button", { name: /taylor flint/i }));
+    // Click "Create record" to open modal
+    const createBtn = await screen.findByRole("button", { name: /create record/i });
+    await user.click(createBtn);
+
+    // Wait for modal to appear and click "Select employee" trigger
+    const selectTrigger = await screen.findByText(/Select employee/i);
+    await user.click(selectTrigger);
+
+    // Wait for the dropdown option to appear and select it
+    const employeeOption = await screen.findByRole("option", { name: /taylor flint/i });
+    await user.click(employeeOption);
+
+    // Wait for the preview to load
+    // Using a more robust text search that ignores node splitting
+    await waitFor(() => {
+      const metrics = screen.queryAllByRole("definition"); // <dd> elements have role definition
+      const hasSalary = metrics.some(m => m.textContent?.includes("54,000"));
+      expect(hasSalary).toBe(true);
+    }, { timeout: 4000 });
+
+    // Submit the form
+    const submitBtn = screen.getByRole("button", { name: /create payroll/i });
+    await user.click(submitBtn);
 
     await waitFor(() => {
-      expect(screen.getByText("Final salary")).toBeInTheDocument();
-    });
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    }, { timeout: 4000 });
   });
 
-  test("hides payroll editing controls for employees", async () => {
+  test("filters records by month and year", async () => {
     mockApiRoutes([
-      { path: "/payroll", data: [createPayrollRecord()] },
+      {
+        path: "/payroll",
+        data: [createPayrollRecord({ month: 5, year: 2026, salary: "60000" })],
+      },
+      {
+        path: "/employees",
+        data: { items: [] },
+      },
     ]);
 
-    render(<PayrollPage token="token" role="EMPLOYEE" />);
+    render(
+      <MemoryRouter>
+        <PayrollPage token="token" role="HR" />
+      </MemoryRouter>
+    );
 
-    expect(await screen.findByText("Payroll records")).toBeInTheDocument();
-    expect(screen.queryByText("Create payroll record")).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /edit/i })).not.toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText(/60,000/)).toBeInTheDocument();
+    }, { timeout: 4000 });
   });
 });

@@ -129,3 +129,114 @@
   font-size: var(--text-xs);
   white-space: normal;
 }
+
+/* Checkout Modal Enhancements */
+.checkout-modal .stack {
+  gap: var(--space-4);
+}
+
+.checkout-choice-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-3);
+  margin-bottom: var(--space-2);
+}
+
+.checkout-choice-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 16px;
+  background: white;
+  border: 2px solid var(--color-border-default);
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  user-select: none;
+}
+
+.checkout-choice-card:hover {
+  border-color: var(--color-accent-soft);
+  background: var(--color-surface-hover);
+}
+
+.checkout-choice-card.active {
+  border-color: var(--color-accent);
+  background: var(--color-accent-soft);
+}
+
+.choice-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.choice-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--color-text-strong);
+}
+
+.choice-desc {
+  font-size: 11px;
+  color: var(--color-text-secondary);
+  line-height: 1.4;
+}
+
+.support-metrics-section {
+  background: var(--color-surface-hover);
+  border: 1.5px solid var(--color-border-default);
+  border-radius: 12px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.metrics-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.outlook-ids-container {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.outlook-id-input-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.outlook-id-input-field label {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--color-text-secondary);
+}
+
+.checkout-modal input, 
+.checkout-modal textarea {
+  background: white !important;
+  border: 1.5px solid var(--color-border-default) !important;
+  border-radius: 8px !important;
+  padding: 10px 12px !important;
+  font-size: 14px !important;
+  transition: border-color 0.2s !important;
+}
+
+.checkout-modal input:focus, 
+.checkout-modal textarea:focus {
+  border-color: var(--color-accent) !important;
+  outline: none;
+}

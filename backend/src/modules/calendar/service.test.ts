@@ -4,14 +4,14 @@ import { CalendarExceptionType } from "@prisma/client";
 import { buildMonthCalendarDays, getCalendarDayStatus, shouldDeductSalaryForDate } from "./service.js";
 
 test("getCalendarDayStatus marks sunday as off by default", () => {
-  const result = getCalendarDayStatus(new Date(2026, 2, 29), []);
+  const result = getCalendarDayStatus(new Date(Date.UTC(2026, 2, 29)), []);
 
   assert.equal(result.status, "OFF");
   assert.equal(result.isWorkingDay, false);
 });
 
 test("getCalendarDayStatus marks saturday as working when overridden", () => {
-  const saturday = new Date(2026, 2, 28);
+  const saturday = new Date(Date.UTC(2026, 2, 28));
   const result = getCalendarDayStatus(saturday, [
     {
       id: 1,
@@ -27,7 +27,7 @@ test("getCalendarDayStatus marks saturday as working when overridden", () => {
 });
 
 test("getCalendarDayStatus marks holiday as non-working paid day", () => {
-  const holiday = new Date(2026, 2, 30);
+  const holiday = new Date(Date.UTC(2026, 2, 30));
   const result = getCalendarDayStatus(holiday, [
     {
       id: 2,
@@ -50,14 +50,14 @@ test("buildMonthCalendarDays derives month day statuses from exceptions", () => 
     exceptions: [
       {
         id: 1,
-        date: new Date(2026, 2, 14),
+        date: new Date(Date.UTC(2026, 2, 14)),
         type: CalendarExceptionType.WORKING_SATURDAY,
         name: "Working Saturday",
         description: null,
       },
       {
         id: 2,
-        date: new Date(2026, 2, 23),
+        date: new Date(Date.UTC(2026, 2, 23)),
         type: CalendarExceptionType.HOLIDAY,
         name: "Special holiday",
         description: null,

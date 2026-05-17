@@ -4,64 +4,97 @@ import { MemoryRouter } from "react-router-dom";
 import { describe, expect, test } from "vitest";
 import DashboardPage from "./DashboardPage";
 import { mockApiRoutes } from "../../test/api";
-import { createAttendance, createEmployee } from "../../test/fixtures";
-import { AppProvider } from "../../context/AppContext";
+import { AppProvider } from "../../context/AppProvider";
 
 describe("DashboardPage", () => {
-  test("renders the employee dashboard summary and timezone widgets", async () => {
+  test("renders welcome message and dashboard widgets for employees", async () => {
     mockApiRoutes([
       {
-        path: "/dashboard/employee-summary",
+        path: "/system/bootstrap",
         data: {
-          attendanceToday: createAttendance(),
-          pendingLeaves: 1,
-          payrollCount: 2,
-          isTeamLead: false,
-          scopedTeamCount: 0,
-          pendingTeamLeaves: 0,
-          currentEmployee: createEmployee(),
-          leaveBalances: [],
-          leaveRequests: [],
+          summary: {
+            currentEmployee: { firstName: "Taylor", department: { name: "Engineering" } },
+            attendanceToday: { status: "PRESENT" },
+            employees: 1,
+            pendingLeaves: 0,
+            teamPresentToday: 1,
+            scopedTeamCount: 5,
+          },
+          notifications: [],
+          announcements: [
+            {
+              id: 1,
+              title: "System Update",
+              content: "The new dashboard is live.",
+              priority: "NORMAL",
+              createdAt: new Date().toISOString(),
+              createdBy: { firstName: "Admin", lastName: "User", jobTitle: "HR" }
+            }
+          ],
+          exceptions: [],
         },
       },
+      { path: "/todos", data: [] },
+      { path: "/employees/birthdays/upcoming", data: [] }
     ]);
 
     render(
-      <MemoryRouter>
-        <AppProvider token="token" role="EMPLOYEE">
+      <AppProvider token="token" role="EMPLOYEE">
+        <MemoryRouter>
           <DashboardPage token="token" role="EMPLOYEE" />
-        </AppProvider>
-      </MemoryRouter>,
+        </MemoryRouter>
+      </AppProvider>
     );
 
-    expect(await screen.findByText("Attendance today")).toBeInTheDocument();
-    expect(screen.getByText("Good morning")).toBeInTheDocument();
-    expect(screen.getByText("Kolkata, Asia")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /open attendance/i })).toBeInTheDocument();
+    // Wait for hydration by checking for the welcome greeting
+    expect(await screen.findByText(/Taylor/i)).toBeInTheDocument();
+    
+    // Check for core dashboard elements using stable labels
+    expect(screen.getByText(/System Update/i)).toBeInTheDocument();
+    expect(screen.getByText(/My Workspace/i)).toBeInTheDocument();
+    expect(screen.getByText(/Engineering Team/i)).toBeInTheDocument();
   });
 
-  test("renders the summary dashboard for admin users", async () => {
+  test("renders HR dashboard view with stats", async () => {
     mockApiRoutes([
       {
-        path: "/dashboard/hr",
+        path: "/system/bootstrap",
         data: {
-          employees: 42,
-          departments: 6,
-          pendingLeaves: 3,
+          summary: {
+            currentEmployee: { firstName: "Admin" },
+            employees: 50,
+            payrollCount: 12,
+            pendingLeaves: 5,
+            departments: 4,
+          },
+          notifications: [],
+          announcements: [],
+          exceptions: [],
         },
       },
+      { path: "/todos", data: [] },
+      { path: "/employees/birthdays/upcoming", data: [] }
     ]);
 
     render(
-      <MemoryRouter>
-        <AppProvider token="token" role="ADMIN">
-          <DashboardPage token="token" role="ADMIN" />
-        </AppProvider>
-      </MemoryRouter>,
+      <AppProvider token="token" role="HR">
+        <MemoryRouter>
+          <DashboardPage token="token" role="HR" />
+        </MemoryRouter>
+      </AppProvider>
     );
 
-    expect(await screen.findByText("Operations command center")).toBeInTheDocument();
-    expect(screen.getByText("Open detailed analytics")).toBeInTheDocument();
-    expect(screen.getByText("42")).toBeInTheDocument();
+    // HR dashboard specific banner content
+    expect(await screen.findByText(/HR operations/i)).toBeInTheDocument();
+    expect(screen.getByText(/Workforce in motion/i)).toBeInTheDocument();
+    
+    // Check for stats in the dashboard grid
+    expect(await screen.findByText("50")).toBeInTheDocument();
+    expect(screen.getByText("Employees")).toBeInTheDocument();
+    
+    // Use specific selector for "12" to avoid collision with analog clock numbers
+    const payrollValue = screen.getAllByText("12").find(el => el.tagName === "STRONG");
+    expect(payrollValue).toBeInTheDocument();
+    expect(screen.getByText("Payroll records")).toBeInTheDocument();
   });
 });

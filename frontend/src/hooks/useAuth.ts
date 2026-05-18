@@ -85,11 +85,13 @@ export function useAuth() {
 
   const fetchSession = useCallback(async (isRetry = false) => {
     if (!token) return;
+    const tokenBeingVerified = token;
 
     // Use global request cache to prevent redundant calls from multiple components
     if (activeSessionRequests.has(token) && !isRetry) {
       try {
         const response = await activeSessionRequests.get(token);
+        if (localStorage.getItem(TOKEN_KEY) !== tokenBeingVerified) return;
         setSessionUser(response.data);
         setLoadingSession(false);
         return;
@@ -111,6 +113,11 @@ export function useAuth() {
       
       const response = await requestPromise;
       
+      if (localStorage.getItem(TOKEN_KEY) !== tokenBeingVerified) {
+        console.warn("Discarding auth check result: token has changed since request started.");
+        return;
+      }
+      
       // Store the bootstrap data globally so AppProvider can pick it up without re-fetching
       (window as any).__HRMS_BOOTSTRAP_DATA__ = response.data;
 
@@ -118,6 +125,11 @@ export function useAuth() {
       setSessionTimeout();
       retryCount.current = 0;
     } catch (error: any) {
+      if (localStorage.getItem(TOKEN_KEY) !== tokenBeingVerified) {
+        console.warn("Discarding auth check failure: token has changed since request started.");
+        return;
+      }
+
       const isServerError = error.message?.includes('500') || error.status === 500;
       
       if (isServerError && retryCount.current < 2) {
@@ -129,7 +141,7 @@ export function useAuth() {
         logout();
       }
     } finally {
-      activeSessionRequests.delete(token); // Cleanup when done
+      activeSessionRequests.delete(tokenBeingVerified); // Cleanup when done
       setLoadingSession(false);
     }
   }, [token, logout, setSessionTimeout]);

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import bcrypt from "bcryptjs";
+import bcrypt from "bcrypt";
 import { AppError } from "../../utils/api.js";
 import { loginUser } from "./service.js";
 

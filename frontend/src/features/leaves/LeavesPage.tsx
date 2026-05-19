@@ -579,8 +579,8 @@ export default function LeavesPage({ token, role, currentEmployeeId }: LeavesPag
                 },
                 {
                   title: "🕒 Same-Day Cutoff Time",
-                  summary: "Same-day leave requests must be submitted before 2:00 PM.",
-                  detail: "Applying for present-day leave is restricted and blocked after 2:00 PM (the half-shift milestone) to prevent operational bottlenecks and ensure predictability for the team."
+                  summary: "Same-day leave requests must be submitted before 1:30 PM.",
+                  detail: "Applying for present-day leave is restricted and blocked after 1:30 PM (the half-shift milestone) to prevent operational bottlenecks and ensure predictability for the team."
                 },
                 {
                   title: "📅 Quarterly Allocation Rule",

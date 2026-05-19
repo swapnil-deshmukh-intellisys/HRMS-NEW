@@ -32,9 +32,9 @@ function format12h(timeStr: string): string {
 }
 
 const WorkdayTimeline: React.FC<WorkdayTimelineProps> = ({
-  startTime = "10:00",
-  endTime = "19:00",
-  lateThreshold = "10:10",
+  startTime = "09:00",
+  endTime = "18:00",
+  lateThreshold = "09:10",
   checkInTime = null,
   token = null,
 }) => {

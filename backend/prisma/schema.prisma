@@ -100,6 +100,10 @@ model Employee {
   verifiedOvertimeSessions          OvertimeSession[]                 @relation("OvertimeVerifier")
   payrollRecords                    PayrollRecord[]
   outlookEmails                     OutlookEmail[]                    @relation("EmployeeOutlookEmails")
+  createdManagerTasks               ManagerTask[]                     @relation("ManagerTaskCreator")
+  assignedManagerTasks              ManagerTask[]                     @relation("ManagerTaskAssignee")
+  completedManagerTasks             ManagerTask[]                     @relation("ManagerTaskCompleter")
+  generalTaskCompletions            GeneralTaskCompletion[]
 
   @@index([departmentId])
   @@index([managerId])
@@ -534,3 +538,40 @@ model Client {
   emails    OutlookEmail[]
   createdAt DateTime       @default(now())
 }
+
+model ManagerTask {
+  id            Int       @id @default(autoincrement())
+  title         String
+  description   String?
+  creatorId     Int
+  employeeId    Int?      // Null if general task visible to all
+  isCompleted   Boolean   @default(false)
+  completedAt   DateTime?
+  completedById Int?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  creator     Employee  @relation("ManagerTaskCreator", fields: [creatorId], references: [id], onDelete: Cascade)
+  employee    Employee? @relation("ManagerTaskAssignee", fields: [employeeId], references: [id], onDelete: Cascade)
+  completedBy Employee? @relation("ManagerTaskCompleter", fields: [completedById], references: [id], onDelete: SetNull)
+  completions GeneralTaskCompletion[]
+
+  @@index([creatorId])
+  @@index([employeeId])
+  @@index([completedById])
+}
+
+model GeneralTaskCompletion {
+  id          Int         @id @default(autoincrement())
+  taskId      Int
+  employeeId  Int
+  completedAt DateTime    @default(now())
+
+  task        ManagerTask @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  employee    Employee    @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@unique([taskId, employeeId])
+  @@index([taskId])
+  @@index([employeeId])
+}
+

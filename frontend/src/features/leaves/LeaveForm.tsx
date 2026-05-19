@@ -2,7 +2,6 @@ import "./LeaveForm.css";
 import { Check, ChevronDown } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import type { LeaveBalance, LeaveType } from "../../types";
-import DateRangePicker from "./DateRangePicker";
 import { countWords, LEAVE_REASON_MAX_WORDS, LEAVE_REASON_MIN_WORDS } from "./reasonValidation";
 import { formatLeaveDays } from "../../utils/format";
 
@@ -26,8 +25,32 @@ type LeaveFormProps = {
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
 };
 
+function formatLocalIsoDate(date: Date) {
+  const year = date.getFullYear();
+  const month = `${date.getMonth() + 1}`.padStart(2, "0");
+  const day = `${date.getDate()}`.padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function getMinSelectableDate() {
+  const now = new Date();
+  const currentHour = now.getHours();
+  if (currentHour >= 14) {
+    const tomorrow = new Date(now);
+    tomorrow.setDate(now.getDate() + 1);
+    return formatLocalIsoDate(tomorrow);
+  }
+  return formatLocalIsoDate(now);
+}
+
 export default function LeaveForm({ form, attachmentName, leaveTypes, balances, isSubmitting = false, onChange, onAttachmentChange, onSubmit }: LeaveFormProps) {
-  const isSingleDay = form.startDate && form.endDate && form.startDate === form.endDate;
+  const [isMultipleDays, setIsMultipleDays] = useState(() => form.startDate !== form.endDate);
+
+  useEffect(() => {
+    setIsMultipleDays(form.startDate !== form.endDate);
+  }, [form.startDate, form.endDate]);
+
+  const isSingleDay = !isMultipleDays;
   const reasonWordCount = useMemo(() => countWords(form.reason), [form.reason]);
   const [leaveTypeMenuOpen, setLeaveTypeMenuOpen] = useState(false);
   const [showAllLeaveTypes, setShowAllLeaveTypes] = useState(false);
@@ -206,11 +229,139 @@ export default function LeaveForm({ form, attachmentName, leaveTypes, balances, 
           </div>
         ) : null}
       </div>
-      <DateRangePicker
-        startDate={form.startDate}
-        endDate={form.endDate}
-        onChange={({ startDate, endDate }) => onChange({ ...form, startDate, endDate })}
-      />
+      <div className="leave-duration-type-selector" style={{
+        display: "flex",
+        background: "var(--color-surface-secondary)",
+        padding: "6px",
+        borderRadius: "var(--radius-md)",
+        border: "1.5px solid var(--color-border-default)",
+        gap: "6px",
+        marginTop: "4px"
+      }}>
+        <button
+          type="button"
+          disabled={isSubmitting}
+          onClick={() => {
+            setIsMultipleDays(false);
+            onChange({ ...form, endDate: form.startDate, endDayDuration: form.startDayDuration });
+          }}
+          style={{
+            flex: 1,
+            padding: "10px 14px",
+            borderRadius: "var(--radius-sm)",
+            border: "none",
+            fontSize: "var(--text-xs)",
+            fontWeight: "var(--fw-bold)",
+            cursor: "pointer",
+            background: !isMultipleDays ? "var(--color-accent)" : "transparent",
+            color: !isMultipleDays ? "white" : "var(--color-text-secondary)",
+            boxShadow: !isMultipleDays ? "var(--shadow-sm)" : "none",
+            transition: "all var(--transition-fast)"
+          }}
+        >
+          One Day Leave
+        </button>
+        <button
+          type="button"
+          disabled={isSubmitting}
+          onClick={() => {
+            setIsMultipleDays(true);
+          }}
+          style={{
+            flex: 1,
+            padding: "10px 14px",
+            borderRadius: "var(--radius-sm)",
+            border: "none",
+            fontSize: "var(--text-xs)",
+            fontWeight: "var(--fw-bold)",
+            cursor: "pointer",
+            background: isMultipleDays ? "var(--color-accent)" : "transparent",
+            color: isMultipleDays ? "white" : "var(--color-text-secondary)",
+            boxShadow: isMultipleDays ? "var(--shadow-sm)" : "none",
+            transition: "all var(--transition-fast)"
+          }}
+        >
+          Multiple Days Leave
+        </button>
+      </div>
+
+      {isMultipleDays ? (
+        <div className="grid cols-2" style={{ gap: "16px" }}>
+          <label className="date-range-picker__label">
+            Start date
+            <input 
+              type="date" 
+              className="leave-form-card__select"
+              value={form.startDate}
+              disabled={isSubmitting}
+              min={getMinSelectableDate()}
+              onChange={(e) => {
+                const selectedDate = e.target.value;
+                let nextEnd = form.endDate;
+                if (selectedDate > form.endDate) {
+                  nextEnd = selectedDate;
+                }
+                onChange({ ...form, startDate: selectedDate, endDate: nextEnd });
+              }}
+              style={{
+                width: "100%",
+                boxSizing: "border-box",
+                padding: "12px var(--space-3)",
+                borderRadius: "var(--radius-md)",
+                border: "1.5px solid var(--color-border-default)",
+                fontSize: "var(--text-sm)",
+                fontFamily: "var(--font-primary)"
+              }}
+            />
+          </label>
+          <label className="date-range-picker__label">
+            End date
+            <input 
+              type="date" 
+              className="leave-form-card__select"
+              value={form.endDate}
+              disabled={isSubmitting}
+              min={form.startDate || getMinSelectableDate()}
+              onChange={(e) => {
+                onChange({ ...form, endDate: e.target.value });
+              }}
+              style={{
+                width: "100%",
+                boxSizing: "border-box",
+                padding: "12px var(--space-3)",
+                borderRadius: "var(--radius-md)",
+                border: "1.5px solid var(--color-border-default)",
+                fontSize: "var(--text-sm)",
+                fontFamily: "var(--font-primary)"
+              }}
+            />
+          </label>
+        </div>
+      ) : (
+        <label className="date-range-picker__label">
+          Leave date
+          <input 
+            type="date" 
+            className="leave-form-card__select"
+            value={form.startDate}
+            disabled={isSubmitting}
+            min={getMinSelectableDate()}
+            onChange={(e) => {
+              const selectedDate = e.target.value;
+              onChange({ ...form, startDate: selectedDate, endDate: selectedDate });
+            }}
+            style={{
+              width: "100%",
+              boxSizing: "border-box",
+              padding: "12px var(--space-3)",
+              borderRadius: "var(--radius-md)",
+              border: "1.5px solid var(--color-border-default)",
+              fontSize: "var(--text-sm)",
+              fontFamily: "var(--font-primary)"
+            }}
+          />
+        </label>
+      )}
       {isSingleDay ? (
         <label>
           Duration

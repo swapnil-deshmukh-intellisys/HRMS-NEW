@@ -2,6 +2,7 @@ import "./LeaveTable.css";
 import "../../components/common/Table.css";
 import { Calendar, ChevronDown } from "lucide-react";
 import { Fragment, useState } from "react";
+import toast from "react-hot-toast";
 import { getFileUrl } from "../../services/api";
 import type { LeaveRequest, Role } from "../../types";
 import { formatDateLabel, formatDateTime, formatLeaveDays } from "../../utils/format";
@@ -29,6 +30,66 @@ export default function LeaveTable({
 }: LeaveTableProps) {
   const [expandedLeaveIds, setExpandedLeaveIds] = useState<number[]>([]);
   const [medicalProofFiles, setMedicalProofFiles] = useState<Record<number, File | null>>({});
+  const [processingIds, setProcessingIds] = useState<Record<string, boolean>>({});
+
+  const setProcessing = (key: string, val: boolean) => {
+    setProcessingIds((prev) => ({ ...prev, [key]: val }));
+  };
+
+  const handleCancel = async (id: number) => {
+    if (!onCancel) return;
+    const key = `cancel-${id}`;
+    setProcessing(key, true);
+    try {
+      await onCancel(id);
+    } finally {
+      setProcessing(key, false);
+    }
+  };
+
+  const handleApprove = async (id: number) => {
+    if (!onApprove) return;
+    const key = `approve-${id}`;
+    setProcessing(key, true);
+    try {
+      await onApprove(id);
+    } finally {
+      setProcessing(key, false);
+    }
+  };
+
+  const handleReject = async (id: number) => {
+    if (!onReject) return;
+    const key = `reject-${id}`;
+    setProcessing(key, true);
+    try {
+      await onReject(id);
+    } finally {
+      setProcessing(key, false);
+    }
+  };
+
+  const handleUploadProof = async (id: number, file: File) => {
+    if (!onUploadMedicalProof) return;
+    const key = `upload-${id}`;
+    setProcessing(key, true);
+    try {
+      await onUploadMedicalProof(id, file);
+    } finally {
+      setProcessing(key, false);
+    }
+  };
+
+  const handleReviewProof = async (id: number, action: "approve" | "reject") => {
+    if (!onReviewMedicalProof) return;
+    const key = `review-${action}-${id}`;
+    setProcessing(key, true);
+    try {
+      await onReviewMedicalProof(id, action);
+    } finally {
+      setProcessing(key, false);
+    }
+  };
 
   function getDurationLabel(leave: LeaveRequest) {
     const sameDay = formatDateLabel(leave.startDate) === formatDateLabel(leave.endDate);
@@ -82,7 +143,11 @@ export default function LeaveTable({
           {isExpanded(leave.id) ? "Hide" : "View"}
         </button>
         {isPending && leave.managerApprovalStatus === "PENDING" && leave.employee.id === currentEmployeeId && onCancel && (
-          <button className="secondary leave-action-button" onClick={() => onCancel(leave.id)}>
+          <button
+            className={`secondary leave-action-button ${processingIds[`cancel-${leave.id}`] ? "button-loading" : ""}`}
+            disabled={processingIds[`cancel-${leave.id}`]}
+            onClick={() => handleCancel(leave.id)}
+          >
             Cancel
           </button>
         )}
@@ -91,14 +156,61 @@ export default function LeaveTable({
             {(role === "MANAGER" && leave.employee.managerId === currentEmployeeId && leave.managerApprovalStatus === "PENDING") ||
              ((role === "HR" || role === "ADMIN") && leave.hrApprovalStatus === "PENDING") ? (
               <Fragment>
-                <button onClick={() => onApprove?.(leave.id)}>
+                <button
+                  className={processingIds[`approve-${leave.id}`] ? "button-loading" : ""}
+                  disabled={processingIds[`approve-${leave.id}`]}
+                  onClick={() => handleApprove(leave.id)}
+                >
                   Approve
                 </button>
-                <button className="secondary" onClick={() => onReject?.(leave.id)}>
+                <button
+                  className={`secondary ${processingIds[`reject-${leave.id}`] ? "button-loading" : ""}`}
+                  disabled={processingIds[`reject-${leave.id}`]}
+                  onClick={() => handleReject(leave.id)}
+                >
                   Reject
                 </button>
               </Fragment>
             ) : null}
+          </Fragment>
+        )}
+        {canUploadMedicalProof(leave) && (
+          <Fragment>
+            <input
+              type="file"
+              id={`action-upload-${leave.id}`}
+              accept=".pdf,application/pdf,.png,image/png,.jpg,.jpeg,image/jpeg"
+              style={{ display: "none" }}
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) {
+                  if (file.size > 200 * 1024) {
+                    toast.error("File size must be less than 200 KB");
+                    e.target.value = ""; // clear selection
+                    return;
+                  }
+                  void handleUploadProof(leave.id, file);
+                }
+              }}
+            />
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "4px" }}>
+              <button
+                type="button"
+                className={`leave-action-button ${processingIds[`upload-${leave.id}`] ? "button-loading" : ""}`}
+                disabled={processingIds[`upload-${leave.id}`]}
+                onClick={() => document.getElementById(`action-upload-${leave.id}`)?.click()}
+                style={{
+                  background: "linear-gradient(135deg, #f59e0b, #d97706)",
+                  border: "none",
+                  color: "#ffffff"
+                }}
+              >
+                Upload Proof
+              </button>
+              <span style={{ fontSize: "11px", color: "var(--color-text-secondary)", fontWeight: "normal" }}>
+                (Max 200 KB)
+              </span>
+            </div>
           </Fragment>
         )}
       </Fragment>
@@ -106,6 +218,75 @@ export default function LeaveTable({
   }
 
   function renderStatusProgress(leave: LeaveRequest) {
+    if (leave.status === "APPROVED" && leave.medicalProofRequired) {
+      if (leave.medicalProofStatus === "PENDING_UPLOAD") {
+        return (
+          <div className="leave-status-progress" title="Proof upload is required within 24 hours">
+            <span style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "4px",
+              padding: "4px 8px",
+              borderRadius: "999px",
+              fontSize: "11px",
+              fontWeight: "700",
+              color: "#d97706",
+              background: "#fef3c7",
+              border: "1.5px solid #f59e0b",
+              textTransform: "uppercase",
+              letterSpacing: "0.03em"
+            }}>
+              ⚠️ Pending Proof
+            </span>
+          </div>
+        );
+      }
+      if (leave.medicalProofStatus === "PENDING_HR_REVIEW") {
+        return (
+          <div className="leave-status-progress" title="Proof uploaded, waiting for HR review">
+            <span style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "4px",
+              padding: "4px 8px",
+              borderRadius: "999px",
+              fontSize: "11px",
+              fontWeight: "700",
+              color: "#2563eb",
+              background: "#dbeafe",
+              border: "1.5px solid #3b82f6",
+              textTransform: "uppercase",
+              letterSpacing: "0.03em"
+            }}>
+              ⌛ Proof Review
+            </span>
+          </div>
+        );
+      }
+      if (leave.medicalProofStatus === "APPROVED") {
+        return (
+          <div className="leave-status-progress" title="Approved and medical proof verified">
+            <span style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "4px",
+              padding: "4px 8px",
+              borderRadius: "999px",
+              fontSize: "11px",
+              fontWeight: "700",
+              color: "#16a34a",
+              background: "#dcfce7",
+              border: "1.5px solid #22c55e",
+              textTransform: "uppercase",
+              letterSpacing: "0.03em"
+            }}>
+              ✅ Verified
+            </span>
+          </div>
+        );
+      }
+    }
+
     return (
       <div className="leave-status-progress" title={`Manager: ${leave.managerApprovalStatus}, HR: ${leave.hrApprovalStatus}`}>
         <div className="leave-status-progress__track" aria-hidden="true">
@@ -343,44 +524,69 @@ export default function LeaveTable({
                                       ) : null}
 
                                       {canUploadMedicalProof(leave) ? (
-                                        <div className="button-row row-actions" style={{ marginTop: "8px" }}>
+                                        <div className="button-row row-actions" style={{ marginTop: "8px", alignItems: "center" }}>
                                           <input
                                             type="file"
-                                            accept=".pdf,application/pdf"
+                                            accept=".pdf,application/pdf,.png,image/png,.jpg,.jpeg,image/jpeg"
                                             style={{ maxWidth: "200px" }}
-                                            onChange={(event) =>
+                                            onChange={(event) => {
+                                              const file = event.target.files?.[0] ?? null;
+                                              if (file && file.size > 200 * 1024) {
+                                                toast.error("File size must be less than 200 KB");
+                                                event.target.value = ""; // clear selection
+                                                setMedicalProofFiles((current) => ({
+                                                  ...current,
+                                                  [leave.id]: null,
+                                                }));
+                                                return;
+                                              }
                                               setMedicalProofFiles((current) => ({
                                                 ...current,
-                                                [leave.id]: event.target.files?.[0] ?? null,
-                                              }))
-                                            }
+                                                [leave.id]: file,
+                                              }));
+                                            }}
                                           />
                                           <button
                                             type="button"
-                                            disabled={!medicalProofFiles[leave.id]}
+                                            className={processingIds[`upload-${leave.id}`] ? "button-loading" : ""}
+                                            disabled={!medicalProofFiles[leave.id] || processingIds[`upload-${leave.id}`]}
                                             onClick={() => {
                                               const file = medicalProofFiles[leave.id];
-                                              if (!file || !onUploadMedicalProof) return;
-                                              void onUploadMedicalProof(leave.id, file);
+                                              if (!file) return;
+                                              void handleUploadProof(leave.id, file);
                                             }}
                                           >
                                             Upload proof
                                           </button>
+                                          <span style={{ fontSize: "11px", color: "var(--color-text-secondary)" }}>(Max 200 KB)</span>
                                         </div>
                                       ) : null}
 
                                       {canHrReviewMedicalProof(leave) ? (
-                                        <div className="button-row row-actions" style={{ marginTop: "8px" }}>
+                                        <div style={{ display: "flex", gap: "12px", marginTop: "8px" }}>
                                           <button
                                             type="button"
-                                            onClick={() => onReviewMedicalProof?.(leave.id, "approve")}
+                                            className={processingIds[`review-approve-${leave.id}`] ? "button-loading" : ""}
+                                            disabled={processingIds[`review-approve-${leave.id}`] || processingIds[`review-reject-${leave.id}`]}
+                                            onClick={() => handleReviewProof(leave.id, "approve")}
+                                            style={{
+                                              background: "linear-gradient(135deg, #10b981, #059669)",
+                                              border: "none",
+                                              color: "#ffffff"
+                                            }}
                                           >
                                             Verify proof
                                           </button>
                                           <button
                                             type="button"
-                                            className="secondary"
-                                            onClick={() => onReviewMedicalProof?.(leave.id, "reject")}
+                                            className={processingIds[`review-reject-${leave.id}`] ? "button-loading" : ""}
+                                            disabled={processingIds[`review-approve-${leave.id}`] || processingIds[`review-reject-${leave.id}`]}
+                                            onClick={() => handleReviewProof(leave.id, "reject")}
+                                            style={{
+                                              background: "linear-gradient(135deg, #ef4444, #dc2626)",
+                                              border: "none",
+                                              color: "#ffffff"
+                                            }}
                                           >
                                             Reject proof
                                           </button>

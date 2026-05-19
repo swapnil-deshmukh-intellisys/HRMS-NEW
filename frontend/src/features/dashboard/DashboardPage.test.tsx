@@ -35,7 +35,8 @@ describe("DashboardPage", () => {
         },
       },
       { path: "/todos", data: [] },
-      { path: "/employees/birthdays/upcoming", data: [] }
+      { path: "/employees/birthdays/upcoming", data: [] },
+      { path: "/tasks", data: [] }
     ]);
 
     render(
@@ -51,8 +52,8 @@ describe("DashboardPage", () => {
     
     // Check for core dashboard elements using stable labels
     expect(screen.getByText(/System Update/i)).toBeInTheDocument();
-    expect(screen.getByText(/My Workspace/i)).toBeInTheDocument();
-    expect(screen.getByText(/Engineering Team/i)).toBeInTheDocument();
+    expect(screen.getByText(/Today's Tasks/i)).toBeInTheDocument();
+    expect(screen.getByText(/Assigned to You/i)).toBeInTheDocument();
   });
 
   test("renders HR dashboard view with stats", async () => {

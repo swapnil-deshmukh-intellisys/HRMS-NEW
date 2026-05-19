@@ -17,14 +17,25 @@ type LeavesPageProps = {
   currentEmployeeId: number | null;
 };
 
-const initialLeaveForm = (): LeaveFormValues => ({
-  leaveTypeId: "",
-  startDate: formatLocalIsoDate(new Date()),
-  endDate: formatLocalIsoDate(new Date()),
-  startDayDuration: "FULL_DAY",
-  endDayDuration: "FULL_DAY",
-  reason: "",
-});
+const initialLeaveForm = (): LeaveFormValues => {
+  const now = new Date();
+  const currentHour = now.getHours();
+  let defaultDate = now;
+  if (currentHour >= 14) {
+    const tomorrow = new Date(now);
+    tomorrow.setDate(now.getDate() + 1);
+    defaultDate = tomorrow;
+  }
+  const dateStr = formatLocalIsoDate(defaultDate);
+  return {
+    leaveTypeId: "",
+    startDate: dateStr,
+    endDate: dateStr,
+    startDayDuration: "FULL_DAY",
+    endDayDuration: "FULL_DAY",
+    reason: "",
+  };
+};
 
 function formatLocalIsoDate(date: Date) {
   const year = date.getFullYear();
@@ -47,6 +58,7 @@ export default function LeavesPage({ token, role, currentEmployeeId }: LeavesPag
   const [confirmAction, setConfirmAction] = useState<{ type: "cancel" | "approve" | "reject"; leaveId: number } | null>(null);
   const [rejectionReason, setRejectionReason] = useState("");
   const [activeTab, setActiveTab] = useState<"pending" | "all">("pending");
+  const [expandedPolicyIndex, setExpandedPolicyIndex] = useState<number | null>(null);
   const summaryBalances = balances.filter((balance) => !balance.leaveType.deductFullQuotaOnApproval);
 
   // Filter leaves based on role and active tab
@@ -61,16 +73,23 @@ export default function LeavesPage({ token, role, currentEmployeeId }: LeavesPag
     // 2. Then filter by the active tab
     if (activeTab === "pending") {
       return visibleLeaves.filter(leave => {
+        const isOwnLeave = leave.employee.id === currentEmployeeId;
+        const isApprovedButPendingProof = leave.status === "APPROVED" && leave.medicalProofRequired && 
+          (leave.medicalProofStatus === "PENDING_UPLOAD" || leave.medicalProofStatus === "PENDING_HR_REVIEW");
+
         if (role === "HR" || role === "ADMIN") {
-          return leave.status === "PENDING" && leave.hrApprovalStatus === "PENDING";
+          // HR/Admin pending: requests needing HR approval OR approved requests needing HR medical proof review
+          const needsHrApproval = leave.status === "PENDING" && leave.hrApprovalStatus === "PENDING";
+          const needsHrProofReview = leave.status === "APPROVED" && leave.medicalProofRequired && leave.medicalProofStatus === "PENDING_HR_REVIEW";
+          return needsHrApproval || needsHrProofReview;
         } else if (role === "MANAGER") {
-          // Managers see their own pending leaves OR their team's pending manager-approval leaves
-          const isOwnLeave = leave.employee.id === currentEmployeeId;
-          const isTeamLeavePending = leave.employee.managerId === currentEmployeeId && leave.managerApprovalStatus === "PENDING";
-          return leave.status === "PENDING" && (isOwnLeave || isTeamLeavePending);
+          // Managers see their own pending leaves/approved needing proof OR their team's pending manager-approval leaves
+          const isOwnPendingOrNeedingProof = isOwnLeave && (leave.status === "PENDING" || isApprovedButPendingProof);
+          const isTeamLeavePending = leave.employee.managerId === currentEmployeeId && leave.status === "PENDING" && leave.managerApprovalStatus === "PENDING";
+          return isOwnPendingOrNeedingProof || isTeamLeavePending;
         } else {
-          // For regular employees, just their own pending leaves
-          return leave.status === "PENDING";
+          // For regular employees: their own pending leaves OR approved leaves needing proof
+          return isOwnLeave && (leave.status === "PENDING" || isApprovedButPendingProof);
         }
       });
     }
@@ -87,14 +106,20 @@ export default function LeavesPage({ token, role, currentEmployeeId }: LeavesPag
       : leaves.filter(leave => leave.employee.id === currentEmployeeId);
 
     return visibleLeaves.filter(leave => {
+      const isOwnLeave = leave.employee.id === currentEmployeeId;
+      const isApprovedButPendingProof = leave.status === "APPROVED" && leave.medicalProofRequired && 
+        (leave.medicalProofStatus === "PENDING_UPLOAD" || leave.medicalProofStatus === "PENDING_HR_REVIEW");
+
       if (role === "HR" || role === "ADMIN") {
-        return leave.status === "PENDING" && leave.hrApprovalStatus === "PENDING";
+        const needsHrApproval = leave.status === "PENDING" && leave.hrApprovalStatus === "PENDING";
+        const needsHrProofReview = leave.status === "APPROVED" && leave.medicalProofRequired && leave.medicalProofStatus === "PENDING_HR_REVIEW";
+        return needsHrApproval || needsHrProofReview;
       } else if (role === "MANAGER") {
-        const isOwnLeave = leave.employee.id === currentEmployeeId;
-        const isTeamLeavePending = leave.employee.managerId === currentEmployeeId && leave.managerApprovalStatus === "PENDING";
-        return leave.status === "PENDING" && (isOwnLeave || isTeamLeavePending);
+        const isOwnPendingOrNeedingProof = isOwnLeave && (leave.status === "PENDING" || isApprovedButPendingProof);
+        const isTeamLeavePending = leave.employee.managerId === currentEmployeeId && leave.status === "PENDING" && leave.managerApprovalStatus === "PENDING";
+        return isOwnPendingOrNeedingProof || isTeamLeavePending;
       } else {
-        return leave.status === "PENDING";
+        return isOwnLeave && (leave.status === "PENDING" || isApprovedButPendingProof);
       }
     }).length;
   };
@@ -110,13 +135,79 @@ export default function LeavesPage({ token, role, currentEmployeeId }: LeavesPag
           ? "Q3 · Oct to Dec"
           : "Q4 · Jan to Mar";
 
+  const getPreviousQuarterInfo = () => {
+    const currentMonth = today.getMonth(); // 0-indexed
+    const currentYear = today.getFullYear();
+
+    if (currentMonth >= 3 && currentMonth <= 5) {
+      return {
+        label: "Q4 · Jan to Mar",
+        months: [0, 1, 2],
+        year: currentYear,
+      };
+    } else if (currentMonth >= 6 && currentMonth <= 8) {
+      return {
+        label: "Q1 · Apr to Jun",
+        months: [3, 4, 5],
+        year: currentYear,
+      };
+    } else if (currentMonth >= 9 && currentMonth <= 11) {
+      return {
+        label: "Q2 · Jul to Sep",
+        months: [6, 7, 8],
+        year: currentYear,
+      };
+    } else {
+      return {
+        label: "Q3 · Oct to Dec",
+        months: [9, 10, 11],
+        year: currentYear - 1,
+      };
+    }
+  };
+
+  const getPreviousQuarterStats = () => {
+    const prevQ = getPreviousQuarterInfo();
+    const ownApprovedLeaves = leaves.filter(
+      (leave) =>
+        leave.employee.id === currentEmployeeId &&
+        leave.status === "APPROVED"
+    );
+
+    const prevQLeaves = ownApprovedLeaves.filter((leave) => {
+      const sDate = new Date(leave.startDate);
+      return sDate.getFullYear() === prevQ.year && prevQ.months.includes(sDate.getMonth());
+    });
+
+    let totalPaid = 0;
+    let totalUnpaid = 0;
+
+    for (const leave of prevQLeaves) {
+      totalPaid += leave.paidDays;
+      totalUnpaid += leave.unpaidDays;
+    }
+
+    const totalTaken = totalPaid + totalUnpaid;
+    const exceeded = totalUnpaid > 0;
+
+    return {
+      label: prevQ.label,
+      totalTaken,
+      totalPaid,
+      totalUnpaid,
+      exceeded,
+    };
+  };
+
+  const prevStats = getPreviousQuarterStats();
+
   const loadLeaveTypes = useCallback(async () => {
     if (leaveTypes.length) {
       return;
     }
 
     const response = await apiRequest<LeaveType[]>("/leave-types", { token });
-    setLeaveTypes(response.data);
+    setLeaveTypes(response.data.filter((t) => t.code !== "EL"));
   }, [leaveTypes.length, token]);
 
   const reloadData = useCallback(async (options?: { showPageLoader?: boolean }) => {
@@ -131,7 +222,7 @@ export default function LeavesPage({ token, role, currentEmployeeId }: LeavesPag
         apiRequest<LeaveRequest[]>("/leaves", { token }),
       ]);
 
-      setBalances(balancesResponse.data);
+      setBalances(balancesResponse.data.filter((b) => b.leaveType.code !== "EL"));
       setLeaves(leavesResponse.data);
     } catch (requestError) {
       toast.error(requestError instanceof Error ? requestError.message : "Failed to load leave information.");
@@ -156,10 +247,21 @@ export default function LeavesPage({ token, role, currentEmployeeId }: LeavesPag
     event.preventDefault();
     try {
       setSubmittingLeave(true);
-      const todayIso = formatLocalIsoDate(new Date());
+      const now = new Date();
+      const currentHour = now.getHours();
+      let minDate = formatLocalIsoDate(now);
+      if (currentHour >= 14) {
+        const tomorrow = new Date(now);
+        tomorrow.setDate(now.getDate() + 1);
+        minDate = formatLocalIsoDate(tomorrow);
+      }
 
-      if (form.startDate < todayIso || form.endDate < todayIso) {
-        toast.error("Leave dates cannot be in the past.");
+      if (form.startDate < minDate || form.endDate < minDate) {
+        if (currentHour >= 14 && (form.startDate === formatLocalIsoDate(now) || form.endDate === formatLocalIsoDate(now))) {
+          toast.error("Present day leave application is blocked after 2:00 PM.");
+        } else {
+          toast.error("Leave dates cannot be in the past.");
+        }
         return;
       }
 
@@ -397,9 +499,42 @@ export default function LeavesPage({ token, role, currentEmployeeId }: LeavesPag
               <p className="muted">
                 Live balance for the current financial year. Paid leave is shown here based on your latest approved requests.
               </p>
-              <div className="leave-balance-quarter-indicator">
-                <span className="leave-balance-quarter-indicator__label">Current quarter</span>
-                <strong>{currentQuarterLabel}</strong>
+              <div style={{ display: "flex", gap: "16px", flexWrap: "wrap", marginTop: "16px" }}>
+                {/* Current Quarter Card */}
+                <div className="leave-balance-quarter-indicator">
+                  <span className="leave-balance-quarter-indicator__label">Current quarter</span>
+                  <strong>{currentQuarterLabel}</strong>
+                  <span className="leave-balance-quarter-indicator__subtext">Active Allocation</span>
+                </div>
+
+                {/* Previous Quarter Card */}
+                <div 
+                  className="leave-balance-quarter-indicator"
+                  style={prevStats.exceeded ? {
+                    background: "rgba(239, 68, 68, 0.22)",
+                    border: "1px solid rgba(239, 68, 68, 0.45)",
+                    boxShadow: "0 4px 12px rgba(239, 68, 68, 0.12)",
+                  } : undefined}
+                >
+                  <span 
+                    className="leave-balance-quarter-indicator__label"
+                    style={prevStats.exceeded ? { color: "#ff9c9c" } : undefined}
+                  >
+                    Previous Quarter ({prevStats.label.split(" · ")[0]})
+                  </span>
+                  <strong style={prevStats.exceeded ? { color: "#ffccd2" } : undefined}>
+                    {prevStats.totalTaken} {prevStats.totalTaken === 1 ? "day" : "days"} taken
+                  </strong>
+                  <span 
+                    className="leave-balance-quarter-indicator__subtext"
+                    style={{ color: prevStats.exceeded ? "#ffb3b8" : "rgba(255, 255, 255, 0.6)" }}
+                  >
+                    {prevStats.exceeded 
+                      ? `Exceeded! (${prevStats.totalUnpaid} unpaid)`
+                      : "Within quarterly quota"
+                    }
+                  </span>
+                </div>
               </div>
             </div>
           </section>
@@ -427,13 +562,110 @@ export default function LeavesPage({ token, role, currentEmployeeId }: LeavesPag
             )}
           </section>
 
-          <aside className="leave-policy-note leave-policy-note--premium">
-            <p className="eyebrow">Policy snapshot</p>
-            <ul className="leave-policy-note__list">
-              <li>Sandwich leave is not allowed.</li>
-              <li>Manager and HR approval are required.</li>
-              <li>Apply through HRMS or official email only.</li>
-            </ul>
+          <aside className="leave-policy-note leave-policy-note--premium" style={{ display: "flex", flexDirection: "column", gap: "12px", border: "1px solid rgba(148, 163, 184, 0.16)" }}>
+            <p className="eyebrow" style={{ margin: 0, color: "var(--color-text-secondary)", marginBottom: "4px" }}>Policy snapshot</p>
+            
+            <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+              {[
+                {
+                  title: "🥪 Sandwich Leave Rule",
+                  summary: "Sandwich leave is not allowed.",
+                  detail: "If an official weekend or holiday falls directly between two approved leave days (e.g., Friday and Monday), those intermediate weekend/holiday days will also be deducted as leaves from your balance."
+                },
+                {
+                  title: "🤒 Sick Leave Proof Submission",
+                  summary: "Medical proof must be uploaded within 24 hours of approval.",
+                  detail: "Sick Leave requests spanning 2 or more days require uploading a valid medical certificate within a strict 24-hour deadline of being approved. If not uploaded within 24 hours, the leave automatically converts to Casual Leave, or Unpaid Leave if your CL balances are exhausted."
+                },
+                {
+                  title: "🕒 Same-Day Cutoff Time",
+                  summary: "Same-day leave requests must be submitted before 2:00 PM.",
+                  detail: "Applying for present-day leave is restricted and blocked after 2:00 PM (the half-shift milestone) to prevent operational bottlenecks and ensure predictability for the team."
+                },
+                {
+                  title: "📅 Quarterly Allocation Rule",
+                  summary: "Casual and Sick Leaves are credited on a quarterly basis.",
+                  detail: "Casual Leaves (CL) and Sick Leaves (SL) are credited quarterly (3 CL and 2 SL per quarter). Exceeding the current credited balance converts the extra days to Unpaid Leaves."
+                },
+                {
+                  title: "⚙️ Approval Workflow",
+                  summary: "Both Manager and HR approvals are required.",
+                  detail: "All leave requests must be approved by both your direct manager and the HR department. The leave is not fully authorized until both roles have submitted their approvals."
+                }
+              ].map((policy, index) => {
+                const isExpanded = expandedPolicyIndex === index;
+                return (
+                  <div 
+                    key={index} 
+                    style={{ 
+                      background: "rgba(148, 163, 184, 0.05)", 
+                      borderRadius: "12px", 
+                      padding: "12px", 
+                      border: isExpanded ? "1px solid var(--color-primary)" : "1px solid rgba(148, 163, 184, 0.1)",
+                      transition: "all 0.2s ease"
+                    }}
+                  >
+                    <div 
+                      onClick={() => setExpandedPolicyIndex(isExpanded ? null : index)}
+                      style={{ 
+                        display: "flex", 
+                        justifyContent: "space-between", 
+                        alignItems: "center", 
+                        cursor: "pointer",
+                        userSelect: "none"
+                      }}
+                    >
+                      <div style={{ display: "flex", flexDirection: "column", gap: "4px", flex: 1 }}>
+                        <span style={{ fontSize: "13px", fontWeight: 700, color: "var(--color-text-strong)", letterSpacing: "0.01em" }}>
+                          {policy.title}
+                        </span>
+                        <span style={{ fontSize: "12px", color: "var(--color-text-secondary)", lineHeight: "1.3" }}>
+                          {policy.summary}
+                        </span>
+                      </div>
+                      <div style={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        width: "24px",
+                        height: "24px",
+                        marginLeft: "12px"
+                      }}>
+                        <span 
+                          style={{ 
+                            fontSize: "12px", 
+                            color: "var(--color-primary)", 
+                            fontWeight: 700,
+                            transform: isExpanded ? "rotate(180deg)" : "rotate(0deg)",
+                            transition: "transform 0.2s ease",
+                            display: "inline-block"
+                          }}
+                        >
+                          ▼
+                        </span>
+                      </div>
+                    </div>
+
+                    {isExpanded && (
+                      <div 
+                        style={{ 
+                          marginTop: "12px", 
+                          borderTop: "1px dashed rgba(148, 163, 184, 0.4)", 
+                          paddingTop: "12px",
+                          fontSize: "12px",
+                          fontWeight: 500,
+                          color: "var(--color-text-secondary)",
+                          lineHeight: "1.5",
+                          animation: "fadeIn 0.2s ease"
+                        }}
+                      >
+                        {policy.detail}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
           </aside>
         </div>
       </Modal>

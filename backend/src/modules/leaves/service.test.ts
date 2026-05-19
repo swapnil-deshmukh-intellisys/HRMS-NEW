@@ -58,15 +58,15 @@ test("buildLeaveOverlapWhere includes pending and approved statuses", () => {
   assert.equal(where.employeeId, 1);
 });
 
-test("requiresMedicalProof only applies to sick leave above two days", () => {
+test("requiresMedicalProof only applies to sick leave requests", () => {
   assert.equal(requiresMedicalProof("SL", 3), true);
-  assert.equal(requiresMedicalProof("sl", 2), false);
+  assert.equal(requiresMedicalProof("sl", 2), true);
   assert.equal(requiresMedicalProof("CL", 4), false);
 });
 
-test("getMedicalProofDueAt adds two days", () => {
+test("getMedicalProofDueAt adds 24 hours (1 day)", () => {
   const dueAt = getMedicalProofDueAt(new Date("2026-04-10T09:00:00.000Z"));
-  assert.equal(dueAt.toISOString(), "2026-04-12T09:00:00.000Z");
+  assert.equal(dueAt.toISOString(), "2026-04-11T09:00:00.000Z");
 });
 
 test("createLeaveRequestForEmployee rejects overlap", async () => {
@@ -340,7 +340,7 @@ test("createLeaveRequestForEmployee marks long sick leave as medical-proof requi
   assert.ok((created as { medicalProofDueAt: Date | null }).medicalProofDueAt instanceof Date);
 });
 
-test("createLeaveRequestForEmployee does not require proof for two-day sick leave", async () => {
+test("createLeaveRequestForEmployee requires proof for two-day sick leave", async () => {
   const created = await createLeaveRequestForEmployee(
     {
       actor: { id: 1, role: "EMPLOYEE", employeeId: 99, email: "user@test.com" },
@@ -368,8 +368,8 @@ test("createLeaveRequestForEmployee does not require proof for two-day sick leav
     }),
   );
 
-  assert.equal((created as { medicalProofRequired: boolean }).medicalProofRequired, false);
-  assert.equal((created as { medicalProofStatus: string }).medicalProofStatus, "NOT_REQUIRED");
+  assert.equal((created as { medicalProofRequired: boolean }).medicalProofRequired, true);
+  assert.equal((created as { medicalProofStatus: string }).medicalProofStatus, "PENDING_UPLOAD");
 });
 
 test("createLeaveRequestForEmployee blocks repeated one-time yearly leave", async () => {

@@ -40,7 +40,7 @@ export default function AttendanceQuickAction({
   const [supportData, setSupportData] = useState({
     dataExtracted: "",
     emailsSent: "",
-    outlookMetrics: {} as Record<number, string> // Map of emailId -> metric value/note
+    outlookMetrics: {} as Record<number, { dataExtracted: string; mailsCount: string }>
   });
   const latestLoadRequestRef = useRef(0);
   const attendanceVersionRef = useRef(0);
@@ -65,9 +65,9 @@ export default function AttendanceQuickAction({
       setAssignedEmails(filtered);
       
       // Initialize metrics for each assigned email
-      const initialMetrics: Record<number, string> = {};
+      const initialMetrics: Record<number, { dataExtracted: string; mailsCount: string }> = {};
       filtered.forEach((email: any) => {
-        initialMetrics[email.id] = "";
+        initialMetrics[email.id] = { dataExtracted: "", mailsCount: "" };
       });
       setSupportData(prev => ({ ...prev, outlookMetrics: initialMetrics }));
     } catch (err) {
@@ -83,12 +83,15 @@ export default function AttendanceQuickAction({
     }
   }, [showCheckoutModal, fetchAssignedEmails]);
 
-  const handleOutlookMetricChange = (emailId: number, value: string) => {
+  const handleOutlookMetricChange = (emailId: number, field: 'dataExtracted' | 'mailsCount', value: string) => {
     setSupportData(prev => ({
       ...prev,
       outlookMetrics: {
         ...prev.outlookMetrics,
-        [emailId]: value
+        [emailId]: {
+          ...((prev.outlookMetrics[emailId] as any) || { dataExtracted: "", mailsCount: "" }),
+          [field]: value
+        }
       }
     }));
   };
@@ -215,20 +218,39 @@ export default function AttendanceQuickAction({
       return;
     }
 
-    if (useSupportUpdate && (!supportData.dataExtracted || !supportData.emailsSent)) {
-      setActionError("Please provide all required support metrics.");
-      return;
+    if (useSupportUpdate) {
+      if (assignedEmails.length === 0) {
+        if (!supportData.dataExtracted || !supportData.emailsSent) {
+          setActionError("Please provide all required support metrics.");
+          return;
+        }
+      } else {
+        const hasSomeValue = assignedEmails.some(email => {
+          const metric = supportData.outlookMetrics[email.id];
+          return metric && (metric.dataExtracted.trim() || metric.mailsCount.trim());
+        });
+        if (!hasSomeValue) {
+          setActionError("Please provide support metrics for at least one Outlook ID.");
+          return;
+        }
+      }
     }
 
     let finalUpdate = "";
     
     if (useSupportUpdate) {
-      const metricLines = assignedEmails.map(email => {
-        const val = supportData.outlookMetrics[email.id];
-        return `${email.name} (${email.client?.code || 'N/A'}): ${val || 'No update'}`;
-      }).join(", ");
-      
-      finalUpdate += `[SUPPORT UPDATE] Data Extracted: ${supportData.dataExtracted} | Emails: ${supportData.emailsSent} | Outlook Details: [${metricLines}]\n`;
+      if (assignedEmails.length > 0) {
+        const metricLines = assignedEmails.map(email => {
+          const metric = supportData.outlookMetrics[email.id] || { dataExtracted: "", mailsCount: "" };
+          const dataStr = metric.dataExtracted.trim() ? `Data: ${metric.dataExtracted}` : "Data: 0";
+          const mailsStr = metric.mailsCount.trim() ? `Mails: ${metric.mailsCount}` : "Mails: 0";
+          return `${email.name} (${email.client?.code || 'N/A'}): ${dataStr}, ${mailsStr}`;
+        }).join(", ");
+        
+        finalUpdate += `[SUPPORT UPDATE] Outlook Details: [${metricLines}]\n`;
+      } else {
+        finalUpdate += `[SUPPORT UPDATE] Data Extracted: ${supportData.dataExtracted} | Emails Sent: ${supportData.emailsSent}\n`;
+      }
     }
 
     if (useManualUpdate) {
@@ -361,26 +383,28 @@ export default function AttendanceQuickAction({
 
           {useSupportUpdate && (
             <div className="support-metrics-section">
-              <div className="metrics-row">
-                <label>
-                  Data Extracted
-                  <input 
-                    type="number" 
-                    placeholder="0"
-                    value={supportData.dataExtracted}
-                    onChange={e => setSupportData(prev => ({ ...prev, dataExtracted: e.target.value }))}
-                  />
-                </label>
-                <label>
-                  Emails Sent
-                  <input 
-                    type="number" 
-                    placeholder="0"
-                    value={supportData.emailsSent}
-                    onChange={e => setSupportData(prev => ({ ...prev, emailsSent: e.target.value }))}
-                  />
-                </label>
-              </div>
+              {!fetchingEmails && assignedEmails.length === 0 && (
+                <div className="metrics-row">
+                  <label>
+                    Data Extracted
+                    <input 
+                      type="number" 
+                      placeholder="0"
+                      value={supportData.dataExtracted}
+                      onChange={e => setSupportData(prev => ({ ...prev, dataExtracted: e.target.value }))}
+                    />
+                  </label>
+                  <label>
+                    Emails Sent
+                    <input 
+                      type="number" 
+                      placeholder="0"
+                      value={supportData.emailsSent}
+                      onChange={e => setSupportData(prev => ({ ...prev, emailsSent: e.target.value }))}
+                    />
+                  </label>
+                </div>
+              )}
 
               {fetchingEmails ? (
                 <div className="muted" style={{ fontSize: '12px' }}>Loading assigned Outlook IDs...</div>
@@ -389,16 +413,40 @@ export default function AttendanceQuickAction({
                   <div className="section-label" style={{ marginTop: '4px', fontSize: '11px', color: 'var(--color-text-secondary)' }}>
                     Assigned Outlook IDs (TEC/TUT)
                   </div>
-                  <div className="outlook-ids-container">
+                  <div className="outlook-ids-container" style={{ gridTemplateColumns: '1fr' }}>
                     {assignedEmails.map((email) => (
-                      <div key={email.id} className="outlook-id-input-field">
-                        <label>{email.name} <span style={{ opacity: 0.6 }}>({email.client?.code})</span></label>
-                        <input 
-                          type="text" 
-                          placeholder="Update for this ID"
-                          value={supportData.outlookMetrics[email.id] || ""}
-                          onChange={e => handleOutlookMetricChange(email.id, e.target.value)}
-                        />
+                      <div key={email.id} className="outlook-id-subcard" style={{
+                        background: 'white',
+                        border: '1.5px solid var(--color-border-default)',
+                        borderRadius: '10px',
+                        padding: '12px',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '8px'
+                      }}>
+                        <div style={{ fontSize: '12px', fontWeight: '800', color: 'var(--color-text-strong)' }}>
+                          {email.name} <span style={{ opacity: 0.6 }}>({email.client?.code})</span>
+                        </div>
+                        <div className="metrics-row" style={{ gap: '12px' }}>
+                          <label style={{ fontSize: '11px', fontWeight: '700' }}>
+                            Data Extracted
+                            <input 
+                              type="number" 
+                              placeholder="0"
+                              value={supportData.outlookMetrics[email.id]?.dataExtracted || ""}
+                              onChange={e => handleOutlookMetricChange(email.id, 'dataExtracted', e.target.value)}
+                            />
+                          </label>
+                          <label style={{ fontSize: '11px', fontWeight: '700' }}>
+                            Mails Count
+                            <input 
+                              type="number" 
+                              placeholder="0"
+                              value={supportData.outlookMetrics[email.id]?.mailsCount || ""}
+                              onChange={e => handleOutlookMetricChange(email.id, 'mailsCount', e.target.value)}
+                            />
+                          </label>
+                        </div>
                       </div>
                     ))}
                   </div>

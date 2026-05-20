@@ -6,7 +6,7 @@ function pad(value: number) {
 
 export function createDefaultJoiningDateInput() {
   const now = new Date();
-  return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}T10:00`;
+  return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}T09:00`;
 }
 
 export function serializeLocalDateTime(value: string) {

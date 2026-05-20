@@ -118,7 +118,7 @@ label {
   line-height: 1.35;
 }
 
-input,
+input:not([type="checkbox"]):not([type="radio"]),
 select,
 textarea {
   width: 100%;
@@ -134,6 +134,16 @@ textarea {
   transition:
     border-color var(--transition-fast),
     box-shadow var(--transition-fast);
+}
+
+input[type="checkbox"],
+input[type="radio"] {
+  width: auto;
+  min-height: auto;
+  padding: 0;
+  margin: 0;
+  cursor: pointer;
+  accent-color: var(--color-accent);
 }
 
 input::placeholder,
@@ -163,7 +173,7 @@ input[type="time"]::-webkit-calendar-picker-indicator {
   cursor: pointer;
 }
 
-input:focus,
+input:not([type="checkbox"]):not([type="radio"]):focus,
 select:focus,
 textarea:focus {
   border-color: var(--color-accent);

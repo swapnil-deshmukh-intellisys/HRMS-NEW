@@ -97,7 +97,7 @@ export default function EmployeeProfilePage({ token, role, currentEmployeeId }: 
 
       setEmployee(employeeResponse.data);
       setAttendance(attendanceResponse.data);
-      setBalances(balancesResponse.data);
+      setBalances(balancesResponse.data.filter((b) => b.leaveType.code !== "EL"));
       setLeaves(leavesResponse.data);
       setPayroll(payrollResponse.data);
       setLocalExceptions((exceptionsResponse as any).data.exceptions || []);

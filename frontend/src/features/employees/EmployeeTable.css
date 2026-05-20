@@ -48,16 +48,20 @@
   padding-right: 20px;
 }
 
+.employee-directory-col--sr {
+  width: 8%;
+}
+
 .employee-directory-col--name {
-  width: 34%;
+  width: 30%;
 }
 
 .employee-directory-col--code {
-  width: 14%;
+  width: 12%;
 }
 
 .employee-directory-col--department {
-  width: 22%;
+  width: 20%;
 }
 
 .employee-directory-col--role {
@@ -66,6 +70,13 @@
 
 .employee-directory-col--status {
   width: 16%;
+}
+
+.employee-sr-no {
+  font-family: var(--font-mono);
+  color: var(--color-text-secondary);
+  font-size: var(--text-sm);
+  font-weight: 500;
 }
 
 .employee-directory-table .table td {
@@ -175,14 +186,14 @@
 }
 
 .employee-directory-search input {
-  min-height: 0;
+  min-height: 0 !important;
   height: 100%;
-  border: none;
-  background: transparent;
-  box-shadow: none;
+  border: none !important;
+  background: transparent !important;
+  box-shadow: none !important;
   width: 100%;
   min-width: 0;
-  padding: 0;
+  padding: 0 !important;
   color: var(--color-text-strong);
   font-weight: var(--fw-regular);
   line-height: 1.2;
@@ -199,7 +210,10 @@
 }
 
 .employee-directory-search input:focus {
-  outline: none;
+  border-color: transparent !important;
+  box-shadow: none !important;
+  background: transparent !important;
+  outline: none !important;
 }
 
 .employee-directory-search input::placeholder {

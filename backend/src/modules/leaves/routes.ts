@@ -25,6 +25,7 @@ import {
   hasAttendanceConflict,
   MEDICAL_PROOF_WINDOW_DAYS,
   SICK_LEAVE_CODE,
+  getMedicalProofDueAt,
 } from "./service.js";
 import { getCalendarDayStatus } from "../calendar/service.js";
 import { syncLeaveToGoogleCalendar, sendTeamNotification } from "../google/service.js";
@@ -93,11 +94,12 @@ const upload = multer({
 const medicalProofUpload = multer({
   storage: uploadStorage,
   limits: {
-    fileSize: 5 * 1024 * 1024,
+    fileSize: 200 * 1024, // 200 KB limit
   },
   fileFilter: (_request: Express.Request, file: Express.Multer.File, callback: FileFilterCallback) => {
-    if (file.mimetype !== "application/pdf") {
-      callback(new AppError("Only PDF medical proof is allowed", 400));
+    const allowedTypes = ["application/pdf", "image/jpeg", "image/jpg", "image/png"];
+    if (!allowedTypes.includes(file.mimetype)) {
+      callback(new AppError("Only PDF, JPEG, JPG, and PNG medical proofs are allowed", 400));
       return;
     }
 
@@ -646,6 +648,7 @@ async function finalizeApprovedLeave(
       deductedDays,
       fullQuotaDeducted: policyActive && leaveRequest.leaveType.deductFullQuotaOnApproval,
       medicalProofStatus: leaveRequest.medicalProofRequired ? leaveRequest.medicalProofStatus : MEDICAL_PROOF_STATUS.NOT_REQUIRED,
+      medicalProofDueAt: leaveRequest.medicalProofRequired ? getMedicalProofDueAt(new Date()) : null,
       ...(actor.role === "HR"
         ? {
           hrApprovedById: actor.employeeId,
@@ -723,15 +726,56 @@ async function convertLeaveToUnpaid(
   proofStatus: typeof MEDICAL_PROOF_STATUS.REJECTED | typeof MEDICAL_PROOF_STATUS.EXPIRED,
   proofReview: { reviewedById?: number | null; rejectionReason?: string | null } = {},
 ) {
+  // Restore the SL balance first (since it was deducted as SL on approval)
   await restoreLeaveBalanceForUnpaidConversion(transaction, leaveRequest);
+
+  // Find the CL leave type
+  const clLeaveType = await transaction.leaveType.findFirst({
+    where: { code: "CL", isActive: true }
+  });
+
+  const currentDate = new Date();
+  const year = getFinancialYearForDate(leaveRequest.startDate);
+
+  let clDeducted = 0;
+  let unpaidDeducted = leaveRequest.totalDays;
+  let targetLeaveTypeId = leaveRequest.leaveTypeId; // Fallback to same if CL not found
+
+  if (clLeaveType) {
+    // Check CL balance
+    const clBalance = await getEmployeeLeaveBalanceByType(
+      transaction,
+      leaveRequest.employeeId,
+      clLeaveType.id,
+      year,
+      currentDate,
+    );
+
+    if (clBalance && clBalance.remainingDays > 0) {
+      clDeducted = Math.min(clBalance.remainingDays, leaveRequest.totalDays);
+      unpaidDeducted = leaveRequest.totalDays - clDeducted;
+      targetLeaveTypeId = clLeaveType.id;
+
+      // Deduct from CL balance
+      await transaction.leaveBalance.update({
+        where: { id: clBalance.id },
+        data: {
+          usedDays: clBalance.usedDays + clDeducted,
+          remainingDays: clBalance.remainingDays - clDeducted,
+          visibleDays: clBalance.visibleDays - clDeducted,
+        } as never,
+      });
+    }
+  }
 
   return transaction.leaveRequest.update({
     where: { id: leaveRequest.id },
     data: {
-      paidDays: 0,
-      unpaidDays: leaveRequest.totalDays,
-      isUnpaid: true,
-      deductedDays: 0,
+      leaveTypeId: targetLeaveTypeId,
+      paidDays: clDeducted,
+      unpaidDays: unpaidDeducted,
+      isUnpaid: unpaidDeducted > 0,
+      deductedDays: clDeducted,
       fullQuotaDeducted: false,
       medicalProofStatus: proofStatus,
       medicalProofReviewedAt: proofStatus === MEDICAL_PROOF_STATUS.EXPIRED ? null : new Date(),
@@ -812,17 +856,31 @@ async function managerApproveLeave(leaveId: number, actor: NonNullable<Express.R
     });
 
     if (employeeData) {
-      await addToOutbox({
-        type: "LEAVE_APPROVED",
-        payload: {
-          userId: employeeData.userId,
-          title: "Leave Approved! ✅",
-          message: `Your leave from ${formatInTimeZone(finalLeave.startDate, TIMEZONE, 'dd MMM yyyy')} to ${formatInTimeZone(finalLeave.endDate, TIMEZONE, 'dd MMM yyyy')} has been approved.`,
+      if (finalLeave.medicalProofRequired) {
+        await addToOutbox({
+          type: "LEAVE_PROOF_REMINDER",
+          payload: {
+            userId: employeeData.userId,
+            title: "Upload Medical Proof Reminder ⚠️",
+            message: `Your Sick Leave request has been approved. Please upload your medical proof within 24 hours to avoid conversion to Casual or Unpaid leave.`,
+            type: "LEAVE_PROOF_REMINDER",
+            link: `/leaves?id=${finalLeave.id}`,
+            sendPush: true
+          }
+        });
+      } else {
+        await addToOutbox({
           type: "LEAVE_APPROVED",
-          link: `/leaves?id=${finalLeave.id}`,
-          sendPush: true
-        }
-      });
+          payload: {
+            userId: employeeData.userId,
+            title: "Leave Approved! ✅",
+            message: `Your leave from ${formatInTimeZone(finalLeave.startDate, TIMEZONE, 'dd MMM yyyy')} to ${formatInTimeZone(finalLeave.endDate, TIMEZONE, 'dd MMM yyyy')} has been approved.`,
+            type: "LEAVE_APPROVED",
+            link: `/leaves?id=${finalLeave.id}`,
+            sendPush: true
+          }
+        });
+      }
     }
 
     // Auto-dismiss the "New Request" notification for the manager who just approved
@@ -1010,6 +1068,40 @@ async function hrApproveLeave(leaveId: number, actor: NonNullable<Express.Reques
       }
     });
 
+    // Push notification to User
+    const employeeData = await prisma.employee.findUnique({
+      where: { id: finalLeave.employeeId },
+      select: { userId: true }
+    });
+
+    if (employeeData) {
+      if (finalLeave.medicalProofRequired) {
+        await addToOutbox({
+          type: "LEAVE_PROOF_REMINDER",
+          payload: {
+            userId: employeeData.userId,
+            title: "Upload Medical Proof Reminder ⚠️",
+            message: `Your Sick Leave request has been approved. Please upload your medical proof within 24 hours to avoid conversion to Casual or Unpaid leave.`,
+            type: "LEAVE_PROOF_REMINDER",
+            link: `/leaves?id=${finalLeave.id}`,
+            sendPush: true
+          }
+        });
+      } else {
+        await addToOutbox({
+          type: "LEAVE_APPROVED",
+          payload: {
+            userId: employeeData.userId,
+            title: "Leave Approved! ✅",
+            message: `Your leave from ${formatInTimeZone(finalLeave.startDate, TIMEZONE, 'dd MMM yyyy')} to ${formatInTimeZone(finalLeave.endDate, TIMEZONE, 'dd MMM yyyy')} has been approved.`,
+            type: "LEAVE_APPROVED",
+            link: `/leaves?id=${finalLeave.id}`,
+            sendPush: true
+          }
+        });
+      }
+    }
+
     return finalLeave;
   }
 
@@ -1196,7 +1288,7 @@ async function uploadMedicalProof(
     throw new AppError("Medical proof PDF is required", 400);
   }
 
-  return prisma.leaveRequest.update({
+  const updatedRequest = await prisma.leaveRequest.update({
     where: { id: leaveRequest.id },
     data: {
       attachmentName: file.originalname,
@@ -1216,6 +1308,30 @@ async function uploadMedicalProof(
       medicalProofReviewedBy: true,
     },
   });
+
+  // Notify HR users
+  try {
+    const hrUsers = await prisma.user.findMany({
+      where: { role: { name: RoleName.HR }, isActive: true },
+      select: { id: true }
+    });
+
+    const { createNotification } = await import("../notifications/service.js");
+    for (const hr of hrUsers) {
+      await createNotification({
+        userId: hr.id,
+        title: "Medical Proof Uploaded 📄",
+        message: `${updatedRequest.employee.firstName} ${updatedRequest.employee.lastName} has uploaded medical proof for Sick Leave. Please review.`,
+        type: "LEAVE_PROOF_UPLOADED",
+        link: `/leaves?id=${updatedRequest.id}`,
+        sendPush: true,
+      }).catch(e => console.error(`Failed to notify HR user ${hr.id} of proof upload:`, e));
+    }
+  } catch (err) {
+    console.error("Failed to notify HR users of proof upload:", err);
+  }
+
+  return updatedRequest;
 }
 
 async function approveMedicalProof(leaveId: number, actor: NonNullable<Express.Request["user"]>) {

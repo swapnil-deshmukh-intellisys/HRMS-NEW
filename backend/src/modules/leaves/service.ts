@@ -62,8 +62,8 @@ type LeaveCreationDeps = {
 };
 
 export const SICK_LEAVE_CODE = "SL";
-export const MEDICAL_PROOF_THRESHOLD_DAYS = 2;
-export const MEDICAL_PROOF_WINDOW_DAYS = 2;
+export const MEDICAL_PROOF_THRESHOLD_DAYS = 0;
+export const MEDICAL_PROOF_WINDOW_DAYS = 1;
 export const MEDICAL_PROOF_STATUS = {
   NOT_REQUIRED: "NOT_REQUIRED",
   PENDING_UPLOAD: "PENDING_UPLOAD",

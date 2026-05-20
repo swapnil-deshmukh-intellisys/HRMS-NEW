@@ -124,6 +124,6 @@ describe("LeavesPage", () => {
     fireEvent.click(viewBtn);
 
     expect(await screen.findByText(/proof upload pending/i)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /upload proof/i })).toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: /upload proof/i })[0]).toBeInTheDocument();
   });
 });

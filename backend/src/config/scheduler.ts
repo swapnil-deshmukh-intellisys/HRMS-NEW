@@ -107,6 +107,66 @@ async function notifyTodayBirthdays() {
 }
 
 /**
+ * Checks for approved leaves with approaching medical proof deadlines (due in less than 1 hour)
+ * and sends a warning notification if not already sent.
+ */
+async function processMedicalProof1HourWarnings() {
+  try {
+    const now = new Date();
+    // One hour from now plus a safety buffer of 5 minutes (due in <= 1h5m)
+    const warningBuffer = new Date(now.getTime() + 65 * 60 * 1000);
+
+    const approachingLeaves = await prisma.leaveRequest.findMany({
+      where: {
+        status: "APPROVED",
+        medicalProofRequired: true,
+        medicalProofStatus: "PENDING_UPLOAD",
+        medicalProofDueAt: {
+          gt: now,
+          lte: warningBuffer,
+        },
+      },
+      include: {
+        employee: {
+          select: {
+            userId: true,
+            firstName: true,
+          }
+        }
+      }
+    });
+
+    for (const leave of approachingLeaves) {
+      if (!leave.employee.userId) continue;
+
+      // Check if a warning was already sent to avoid duplicate notifications
+      const existingWarning = await prisma.notification.findFirst({
+        where: {
+          userId: leave.employee.userId,
+          type: "LEAVE_PROOF_WARNING_1H",
+          link: { contains: `id=${leave.id}` }
+        }
+      });
+
+      if (!existingWarning) {
+        const { createNotification } = await import("../modules/notifications/service.js");
+        await createNotification({
+          userId: leave.employee.userId,
+          title: "Medical Proof Due in 1 Hour! ⚠️",
+          message: `Your medical proof for the Sick Leave is due in less than 1 hour. Please upload it now to avoid automatic conversion to Casual or Unpaid leave.`,
+          type: "LEAVE_PROOF_WARNING_1H",
+          link: `/leaves?id=${leave.id}`,
+          sendPush: true,
+        });
+        console.log(`[Scheduler] Sent 1-hour medical proof warning for leave request ID ${leave.id}`);
+      }
+    }
+  } catch (error) {
+    console.error("[Scheduler] Medical proof warning job failed:", error);
+  }
+}
+
+/**
  * Initializes all automated background tasks (Cron Jobs)
  */
 export function initScheduler() {
@@ -334,5 +394,14 @@ export function initScheduler() {
     timezone: "Asia/Kolkata"
   });
 
-  console.log("[Scheduler] Background tasks initialized (Attendance, Payroll, Break Reminders, Outbox & Birthdays active).");
+  // 🕒 Medical Proof 1-Hour Warning Check: Run every minute
+  cron.schedule("* * * * *", async () => {
+    try {
+      await processMedicalProof1HourWarnings();
+    } catch (err) {
+      console.error("[Scheduler] Medical proof warning check failed:", err);
+    }
+  });
+
+  console.log("[Scheduler] Background tasks initialized (Attendance, Payroll, Break Reminders, Outbox, Birthdays & Medical Proof Approaching Warnings active).");
 }

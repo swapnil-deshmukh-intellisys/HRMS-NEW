@@ -1,4 +1,6 @@
 import { useState } from "react";
+import "./EmployeeOverviewTab.css";
+import { Briefcase, User, Users, Wallet, Link2, Bell, Calendar, Shield, ChevronRight } from "lucide-react";
 import type { Employee } from "../../types";
 import { formatDateLabel } from "../../utils/format";
 import { apiRequest } from "../../services/api";
@@ -12,6 +14,14 @@ type EmployeeOverviewTabProps = {
 type DetailItem = {
   label: string;
   value: string;
+  accent?: boolean;
+};
+
+const sectionIcons: Record<string, React.ReactNode> = {
+  Employment: <Briefcase size={18} />,
+  "Personal Details": <User size={18} />,
+  Reporting: <Users size={18} />,
+  Compensation: <Wallet size={18} />,
 };
 
 export default function EmployeeOverviewTab({ employee, token }: EmployeeOverviewTabProps) {
@@ -81,29 +91,29 @@ export default function EmployeeOverviewTab({ employee, token }: EmployeeOvervie
   };
 
   const compensationDetails: DetailItem[] = [
-    { label: "Package (LPA)", value: employee.annualPackageLpa != null ? numberFormatter.format(employee.annualPackageLpa) : "-" },
-    { label: "Gross monthly", value: employee.grossMonthlySalary != null ? numberFormatter.format(employee.grossMonthlySalary) : "-" },
-    { label: "Basic monthly", value: employee.basicMonthlySalary != null ? numberFormatter.format(employee.basicMonthlySalary) : "-" },
+    { label: "Annual Package", value: employee.annualPackageLpa != null ? "₹" + numberFormatter.format(employee.annualPackageLpa) : "-", accent: true },
+    { label: "Gross Monthly", value: employee.grossMonthlySalary != null ? "₹ " + numberFormatter.format(employee.grossMonthlySalary) : "-" },
+    { label: "Basic Monthly", value: employee.basicMonthlySalary != null ? "₹ " + numberFormatter.format(employee.basicMonthlySalary) : "-" },
     { label: "Probation", value: employee.isOnProbation ? "On probation" : "Not on probation" },
-    { label: "Probation end", value: employee.probationEndDate ? formatDateLabel(employee.probationEndDate) : "-" },
+    { label: "Probation End", value: employee.probationEndDate ? formatDateLabel(employee.probationEndDate) : "-" },
   ];
 
   const employmentDetails: DetailItem[] = [
     { label: "Department", value: employee.department?.name ?? "-" },
     { label: "Role", value: employee.user?.role.name ?? "-" },
-    { label: "Joining date", value: formatDateLabel(employee.joiningDate) },
-    { label: "Employment status", value: employee.employmentStatus },
-    { label: "Workspace access", value: employee.isActive ? "Active" : "Inactive" },
+    { label: "Joining Date", value: formatDateLabel(employee.joiningDate) },
+    { label: "Employment Status", value: employee.employmentStatus },
+    { label: "Workspace Access", value: employee.isActive ? "Active" : "Inactive" },
   ];
 
   const reportingDetails: DetailItem[] = [
     { label: "Manager", value: employee.manager ? `${employee.manager.firstName} ${employee.manager.lastName}` : "-" },
-    { label: "Department code", value: employee.department?.code ?? "-" },
-    { label: "Employment type", value: employee.employmentStatus === "ACTIVE" ? "Current employee" : "Restricted access" },
+    { label: "Department Code", value: employee.department?.code ?? "-" },
+    { label: "Employment Type", value: employee.employmentStatus === "ACTIVE" ? "Current employee" : "Restricted access" },
   ];
 
   const personalDetails: DetailItem[] = [
-    { label: "Date of birth", value: employee.dateOfBirth ? formatDateLabel(employee.dateOfBirth) : "-" },
+    { label: "Date of Birth", value: employee.dateOfBirth ? formatDateLabel(employee.dateOfBirth) : "-" },
     { label: "PAN Card No.", value: employee.panCardNumber ?? "-" },
   ];
 
@@ -114,67 +124,95 @@ export default function EmployeeOverviewTab({ employee, token }: EmployeeOvervie
     { title: "Compensation", items: compensationDetails },
   ];
 
+  const isGoogleLinked = employee.user?.isGoogleLinked;
+
   return (
-    <div className="card employee-profile-section">
-      <div className="employee-overview-header">
-        <div>
-          <p className="eyebrow">Overview</p>
-          <h3>Employee details</h3>
-        </div>
-      </div>
-      <div className="employee-overview-sections">
+    <div className="overview-tab">
+      <div className="overview-tab__grid">
         {sections.map((section) => (
-          <section key={section.title} className="employee-detail-section">
-            <h4>{section.title}</h4>
-            <div className="employee-detail-list">
+          <section key={section.title} className="overview-section-card">
+            <div className="overview-section-card__header">
+              <div className="overview-section-card__icon">
+                {sectionIcons[section.title]}
+              </div>
+              <h4>{section.title}</h4>
+            </div>
+            <div className="overview-detail-list">
               {section.items.map((item) => (
-                <div key={item.label} className="employee-detail-row">
-                  <span className="employee-detail-row__label">{item.label}</span>
-                  <strong className="employee-detail-row__value">{item.value}</strong>
+                <div key={item.label} className={`overview-detail-row${item.accent ? " overview-detail-row--accent" : ""}`}>
+                  <span className="overview-detail-row__label">{item.label}</span>
+                  <span className="overview-detail-row__value">{item.value}</span>
                 </div>
               ))}
             </div>
           </section>
         ))}
-
-        <section className="employee-detail-section">
-          <h4>Integrations</h4>
-          <div className="integration-card google-workspace">
-             <div className="integration-meta">
-                <strong>Google Workspace</strong>
-                <p>{employee.user?.isGoogleLinked ? `Linked to ${employee.user.googleEmail || "Workspace Group"}` : "Unlinked - Connect to sync Calendar & Meet"}</p>
-             </div>
-             <div className="integration-controls">
-               {employee.user?.isGoogleLinked ? (
-                 <>
-                   <button className="secondary sm" onClick={handleSyncHolidays} disabled={isSyncingHolidays}>
-                     {isSyncingHolidays ? "Syncing..." : "Sync Schedule"}
-                   </button>
-                   <button className="secondary danger sm" onClick={handleUnlinkGoogle} disabled={isConnecting}>
-                     Disconnect
-                   </button>
-                 </>
-               ) : (
-                 <button className="primary sm" onClick={handleConnectGoogle} disabled={isConnecting}>
-                   {isConnecting ? "Connecting..." : "Connect Google"}
-                 </button>
-               )}
-             </div>
-          </div>
-
-          <div className="integration-card desktop-notifications">
-             <div className="integration-meta">
-                <strong>Desktop Notifications</strong>
-                <p>Receive background alerts for leave status, announcements, and more even when the app is closed.</p>
-             </div>
-             <div className="integration-controls">
-                <button className="primary sm" onClick={handleEnableNotifications} disabled={isSubscribing}>
-                   {isSubscribing ? "Enabling..." : "Enable on this device"}
-                </button>
-             </div>
-          </div>
-        </section>
       </div>
+
+      <section className="overview-integrations">
+        <div className="overview-integrations__header">
+          <div className="overview-section-card__icon">
+            <Link2 size={18} />
+          </div>
+          <h4>Integrations & Connectivity</h4>
+        </div>
+        <div className="overview-integrations__grid">
+          <div className={`overview-integration-tile${isGoogleLinked ? " overview-integration-tile--connected" : ""}`}>
+            <div className="overview-integration-tile__icon google">
+              <Calendar size={20} />
+            </div>
+            <div className="overview-integration-tile__content">
+              <div className="overview-integration-tile__header">
+                <strong>Google Workspace</strong>
+                <span className={`overview-integration-status${isGoogleLinked ? " connected" : ""}`}>
+                  <span className="overview-integration-status__dot" />
+                  {isGoogleLinked ? "Connected" : "Not connected"}
+                </span>
+              </div>
+              <p>{isGoogleLinked ? `Linked to ${employee.user?.googleEmail || "Workspace"}` : "Connect to sync Calendar & Meet"}</p>
+            </div>
+            <div className="overview-integration-tile__actions">
+              {isGoogleLinked ? (
+                <>
+                  <button className="overview-integration-btn" onClick={handleSyncHolidays} disabled={isSyncingHolidays}>
+                    {isSyncingHolidays ? "Syncing..." : "Sync Schedule"}
+                  </button>
+                  <button className="overview-integration-btn overview-integration-btn--danger" onClick={handleUnlinkGoogle} disabled={isConnecting}>
+                    Disconnect
+                  </button>
+                </>
+              ) : (
+                <button className="overview-integration-btn overview-integration-btn--primary" onClick={handleConnectGoogle} disabled={isConnecting}>
+                  {isConnecting ? "Connecting..." : "Connect"}
+                  <ChevronRight size={14} />
+                </button>
+              )}
+            </div>
+          </div>
+
+          <div className="overview-integration-tile">
+            <div className="overview-integration-tile__icon notifications">
+              <Bell size={20} />
+            </div>
+            <div className="overview-integration-tile__content">
+              <div className="overview-integration-tile__header">
+                <strong>Desktop Notifications</strong>
+                <span className="overview-integration-status">
+                  <Shield size={12} />
+                  Browser permission
+                </span>
+              </div>
+              <p>Receive background alerts for leave status, announcements, and more.</p>
+            </div>
+            <div className="overview-integration-tile__actions">
+              <button className="overview-integration-btn overview-integration-btn--primary" onClick={handleEnableNotifications} disabled={isSubscribing}>
+                {isSubscribing ? "Enabling..." : "Enable"}
+                <ChevronRight size={14} />
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
     </div>
   );
 }

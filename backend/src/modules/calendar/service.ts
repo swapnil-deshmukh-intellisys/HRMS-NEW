@@ -98,12 +98,14 @@ export function buildMonthCalendarDays(params: {
     const istCursor = toZonedTime(cursor, TIMEZONE);
     const result = getCalendarDayStatus(cursor, exceptions);
     
-    // Find leaves that overlap with this date
-    const dayLeaves = leaves.filter(leave => {
-      const leaveStart = startOfDay(leave.startDate);
-      const leaveEnd = startOfDay(leave.endDate);
-      return cursor >= leaveStart && cursor <= leaveEnd;
-    });
+    // Find leaves that overlap with this date (only for working days)
+    const dayLeaves = result.isWorkingDay
+      ? leaves.filter(leave => {
+          const leaveStart = startOfDay(leave.startDate);
+          const leaveEnd = startOfDay(leave.endDate);
+          return cursor >= leaveStart && cursor <= leaveEnd;
+        })
+      : [];
 
     days.push({
       date: new Date(cursor),

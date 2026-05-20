@@ -41,7 +41,7 @@ export default function AnnouncementForm({ token, onCreated }: { token: string |
   };
 
   return (
-    <article className="card broadcast-studio-card">
+    <div className="broadcast-studio-form-container">
       <div className="broadcast-studio__aura" />
       
       <div className="announcement-form-header">
@@ -58,27 +58,27 @@ export default function AnnouncementForm({ token, onCreated }: { token: string |
       <form onSubmit={handleSubmit} className="announcement-form">
         <div className="broadcast-input-group">
           <div className="broadcast-input-wrapper">
+             <label className="broadcast-input-label">Headline</label>
              <input
                type="text"
                className="broadcast-input broadcast-input--title"
-               placeholder="Announcement Headline"
+               placeholder="Enter announcement headline..."
                value={title}
                onChange={(e) => setTitle(e.target.value)}
                required
              />
-             <div className="broadcast-input-line" />
           </div>
 
           <div className="broadcast-input-wrapper">
+             <label className="broadcast-input-label">Message Details</label>
              <textarea
                className="broadcast-input broadcast-input--content"
-               placeholder="Write your message here... (Markdown supported)"
+               placeholder="Write your announcement details here... (Markdown is supported)"
                value={content}
                onChange={(e) => setContent(e.target.value)}
                required
-               rows={4}
+               rows={5}
              />
-             <div className="broadcast-input-line" />
           </div>
         </div>
 
@@ -135,12 +135,12 @@ export default function AnnouncementForm({ token, onCreated }: { token: string |
           </div>
         )}
         {success && (
-          <div className="broadcast-success" style={{ marginTop: '20px', background: '#ecfdf5', color: '#059669', padding: '12px 16px', borderRadius: '12px', fontSize: '13px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '10px', border: '1px solid #d1fae5', animation: 'slideDown 0.3s ease-out' }}>
+          <div className="broadcast-success">
              <CheckCircle2 size={16} />
              <span>Announcement published successfully!</span>
           </div>
         )}
       </form>
-    </article>
+    </div>
   );
 }

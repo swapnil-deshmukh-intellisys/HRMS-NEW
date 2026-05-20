@@ -16,9 +16,14 @@
   color: #0f172a;
   font-family: var(--font-primary);
   overflow: visible;
+  z-index: 10; /* Lower than .dashboard-hero (z-index 20) by default to let dropdowns render on top */
   transition: all var(--transition-normal);
   border: 1px solid var(--color-border-subtle) !important;
   box-shadow: var(--shadow-sm);
+}
+
+.wdt-premium-v2:hover {
+  z-index: 25; /* Elevate above .dashboard-hero during hover to show tooltip */
 }
 
 .wdt-body-clipper {

@@ -9,6 +9,7 @@ import { formatAttendanceTime, formatDateLabel, formatInTimeZone } from "../../u
 import LeaveTable from "../leaves/LeaveTable";
 import Modal from "../../components/common/Modal";
 import toast from "react-hot-toast";
+import { useAuth } from "../../hooks/useAuth";
 
 type TeamPageProps = {
   token: string | null;
@@ -99,6 +100,9 @@ export default function TeamPage({ token, role, currentEmployee }: TeamPageProps
   const [outlookEmails, setOutlookEmails] = useState<any[]>([]);
   const [isAssigningEmail, setIsAssigningEmail] = useState<Employee | null>(null);
   const [selectedEmailIds, setSelectedEmailIds] = useState<number[]>([]);
+  const [isSavingEmails, setIsSavingEmails] = useState(false);
+  const { refreshSession } = useAuth();
+  
   const isTeamLead = Boolean(currentEmployee?.capabilities?.some((capability) => capability.capability === "TEAM_LEAD"));
   const isManager = role === "MANAGER";
   const canAccessTeam = isTeamLead || isManager;
@@ -882,27 +886,44 @@ export default function TeamPage({ token, role, currentEmployee }: TeamPageProps
           </div>
 
           <div className="button-row" style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end', marginTop: '10px' }}>
-            <button className="secondary" onClick={() => setIsAssigningEmail(null)}>Cancel</button>
+            <button 
+              className="secondary" 
+              disabled={isSavingEmails}
+              onClick={() => setIsAssigningEmail(null)}
+            >
+              Cancel
+            </button>
             <button 
               className="primary" 
+              disabled={isSavingEmails}
               onClick={async () => {
                 if (!isAssigningEmail) return;
                 try {
+                  setIsSavingEmails(true);
                   await apiRequest(`/employees/${isAssigningEmail.id}/outlook-emails`, {
                     method: 'PUT',
                     token,
                     body: { emailIds: selectedEmailIds }
                   });
                   toast.success("Emails assigned successfully");
+                  
+                  // Gracefully refresh the data without a full page reload!
+                  const emailsResponse = await apiRequest<any[]>("/system/outlook-emails", { token });
+                  setOutlookEmails(emailsResponse.data);
+                  
+                  if (refreshSession) {
+                    await refreshSession();
+                  }
+                  
                   setIsAssigningEmail(null);
-                  // Refresh the page data to show new assignments
-                  window.location.reload(); 
                 } catch (err) {
                   toast.error("Failed to assign emails");
+                } finally {
+                  setIsSavingEmails(false);
                 }
               }}
             >
-              Save Assignments
+              {isSavingEmails ? "Saving..." : "Save Assignments"}
             </button>
           </div>
         </div>

@@ -8,6 +8,48 @@ import { loginUser } from "./service.js";
 
 const router = Router();
 
+const DEEP_USER_INCLUDE = {
+  role: true,
+  employee: {
+    include: {
+      department: true,
+      manager: true,
+      capabilities: true,
+      outlookEmails: {
+        include: {
+          client: true,
+        },
+      },
+      teamMembers: {
+        include: {
+          department: true,
+          capabilities: true,
+          outlookEmails: {
+            include: {
+              client: true,
+            },
+          },
+        },
+      },
+      scopedTeamMembers: {
+        include: {
+          employee: {
+            include: {
+              department: true,
+              capabilities: true,
+              outlookEmails: {
+                include: {
+                  client: true,
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+  },
+};
+
 const loginSchema = z.object({
   email: z.string().email(),
   password: z.string().min(6),
@@ -23,14 +65,7 @@ router.post("/login", validate(loginSchema), async (request, response, next) => 
         findUserByEmail: (userEmail) =>
           prisma.user.findUnique({
             where: { email: userEmail },
-            include: {
-              role: true,
-              employee: {
-                include: {
-                  capabilities: true,
-                },
-              },
-            },
+            include: DEEP_USER_INCLUDE,
           }),
       },
     );
@@ -40,6 +75,9 @@ router.post("/login", validate(loginSchema), async (request, response, next) => 
       user: loginResult.user,
     });
   } catch (error) {
+    if (error instanceof Error && (error.message.includes("Can't reach database server") || error.message.includes("invocation"))) {
+      return next(new AppError("Database connection failed. Please check your internet connection and try again.", 503));
+    }
     next(error);
   }
 });
@@ -48,26 +86,9 @@ router.post("/logout", authenticate, async (_request, response) => sendSuccess(r
 
 router.get("/me", authenticate, async (request, response, next) => {
   try {
-    const isDeep = request.query.deep === "true";
     const user = await prisma.user.findUnique({
       where: { id: request.user!.id },
-      include: {
-        role: true,
-        employee: {
-          include: {
-            department: true,
-            manager: true,
-            capabilities: true,
-            ...(isDeep ? {
-              scopedTeamMembers: {
-                include: {
-                  employee: true,
-                },
-              },
-            } : {}),
-          },
-        },
-      },
+      include: DEEP_USER_INCLUDE,
     });
 
     if (!user) {

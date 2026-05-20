@@ -28,6 +28,25 @@ function toDateInputValue(year: number, month: number, day: number) {
   return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
 }
 
+function formatDateLong(dateStr: string) {
+  const date = new Date(dateStr);
+  return date.toLocaleDateString(undefined, {
+    weekday: "long",
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
+}
+
+function formatDateShort(dateStr: string | Date) {
+  const date = new Date(dateStr);
+  return date.toLocaleDateString(undefined, {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  });
+}
+
 const weekdayLabels = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
 function getDayStatusLabel(status: CalendarDay["status"]) {
@@ -59,6 +78,7 @@ export default function CalendarPage({ token, role }: CalendarPageProps) {
     name: "",
     description: "",
   });
+  const [selectedDayDetails, setSelectedDayDetails] = useState<CalendarDay | null>(null);
   const canManageCalendar = role === "ADMIN" || role === "HR";
 
   const loadCalendar = useCallback(async () => {
@@ -251,16 +271,33 @@ export default function CalendarPage({ token, role }: CalendarPageProps) {
                         {day.leaves && day.leaves.length > 0 ? (
                           <div className="calendar-day-leaves">
                             <span className="calendar-day-leaves__title">Who's out:</span>
-                            {day.leaves.map(leave => (
+                            {day.leaves.slice(0, 1).map(leave => (
                               <span key={leave.id} className="calendar-day-leaves__item">
                                 {leave.employee.firstName} {leave.employee.lastName[0]}.
                               </span>
                             ))}
+                            <button
+                              type="button"
+                              className="calendar-day-leaves__more-btn"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setSelectedDayDetails(day);
+                              }}
+                            >
+                              {day.leaves.length > 1 ? `+${day.leaves.length - 1} more...` : "see more..."}
+                            </button>
                           </div>
                         ) : null}
 
                         {canManageCalendar && day.exception ? (
-                          <button type="button" className="secondary calendar-day-card__remove calendar-action-button" onClick={() => handleRemoveException(day.exception!.id)}>
+                          <button
+                            type="button"
+                            className="calendar-day-card__remove"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              void handleRemoveException(day.exception!.id);
+                            }}
+                          >
                             Remove
                           </button>
                         ) : null}
@@ -348,6 +385,87 @@ export default function CalendarPage({ token, role }: CalendarPageProps) {
             </button>
           </div>
         </div>
+      </Modal>
+      <Modal 
+        open={selectedDayDetails !== null} 
+        title={`Day Details — ${selectedDayDetails ? formatDateShort(selectedDayDetails.date) : ""}`} 
+        onClose={() => setSelectedDayDetails(null)}
+        className="day-details-modal"
+      >
+        {selectedDayDetails ? (
+          <div className="stack day-details-content">
+            <div className="day-details-header-card">
+              <h4 className="day-details-date">
+                {formatDateLong(selectedDayDetails.date)}
+              </h4>
+              <div className="day-details-badges">
+                <span className={`day-status-badge day-status-badge--${selectedDayDetails.status.toLowerCase().replace(/_/g, "-")}`}>
+                  {getDayStatusLabel(selectedDayDetails.status) || "Regular Workday"}
+                </span>
+              </div>
+            </div>
+
+            {selectedDayDetails.exception ? (
+              <div className={`day-exception-box day-exception-box--${selectedDayDetails.exception.type.toLowerCase().replace(/_/g, "-")}`}>
+                <h5 className="day-exception-title">
+                  {selectedDayDetails.exception.type === "HOLIDAY" ? "🎉 Holiday Event" : "🛠️ Working Saturday Event"}
+                  {selectedDayDetails.exception.name ? `: ${selectedDayDetails.exception.name}` : ""}
+                </h5>
+                {selectedDayDetails.exception.description ? (
+                  <p className="day-exception-desc">{selectedDayDetails.exception.description}</p>
+                ) : (
+                  <p className="day-exception-desc italic">No description provided.</p>
+                )}
+              </div>
+            ) : null}
+
+            <div className="day-leaves-section">
+              <div className="day-leaves-header">
+                <h5>👥 Who's Out ({selectedDayDetails.leaves?.length || 0})</h5>
+              </div>
+              {selectedDayDetails.leaves && selectedDayDetails.leaves.length > 0 ? (
+                <div className="day-leaves-list">
+                  {selectedDayDetails.leaves.map((leave) => {
+                    const initials = `${leave.employee.firstName[0] || ""}${leave.employee.lastName[0] || ""}`.toUpperCase();
+                    return (
+                      <div key={leave.id} className="day-leave-row-card">
+                        <div className="day-leave-avatar-col">
+                          <div className="day-leave-avatar">{initials}</div>
+                        </div>
+                        <div className="day-leave-info-col">
+                          <span className="day-leave-emp-name">
+                            {leave.employee.firstName} {leave.employee.lastName}
+                          </span>
+                          <span className="day-leave-duration">
+                            📅 Leave Period: {formatDateShort(leave.startDate)} to {formatDateShort(leave.endDate)}
+                          </span>
+                        </div>
+                        <div className="day-leave-badge-col">
+                          <span className="day-leave-row-badge">On Leave</span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="day-leaves-empty">
+                  <div className="empty-emoji">☀️</div>
+                  <p>Everyone is working today. No employee leaves scheduled!</p>
+                </div>
+              )}
+            </div>
+
+            <div className="button-row" style={{ marginTop: 'var(--space-4)', justifyContent: 'flex-end' }}>
+              <button 
+                type="button" 
+                className="calendar-action-button secondary" 
+                onClick={() => setSelectedDayDetails(null)}
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        ) : null}
       </Modal>
     </section>
   );

@@ -22,7 +22,7 @@ type PayrollFormValues = {
 };
 
 type PayrollPreview = {
-  employee: Pick<Employee, "id" | "firstName" | "lastName" | "annualPackageLpa" | "grossMonthlySalary" | "basicMonthlySalary" | "isOnProbation" | "probationEndDate" | "joiningDate">;
+  employee: Pick<Employee, "id" | "firstName" | "lastName" | "annualPackageLpa" | "grossMonthlySalary" | "basicMonthlySalary" | "isOnProbation" | "probationEndDate" | "joiningDate" | "department" | "jobTitle" | "panCardNumber">;
   month: number;
   year: number;
   pf: number;
@@ -41,6 +41,7 @@ type PayrollPreview = {
   finalSalary: number;
   totalIncentives: number;
   totalPayableSalary: number;
+  basicMonthlySalary?: number;
   incentives: Array<{
     id: number;
     type: string;

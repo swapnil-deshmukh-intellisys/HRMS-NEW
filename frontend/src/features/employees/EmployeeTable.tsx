@@ -124,6 +124,7 @@ export default function EmployeeTable({ employees, onAdd, onSelect, initialSearc
       <div className="table-wrap employee-directory-table">
         <table className="table table--dense">
           <colgroup>
+            <col className="employee-directory-col employee-directory-col--sr" />
             <col className="employee-directory-col employee-directory-col--name" />
             <col className="employee-directory-col employee-directory-col--code" />
             <col className="employee-directory-col employee-directory-col--department" />
@@ -132,6 +133,7 @@ export default function EmployeeTable({ employees, onAdd, onSelect, initialSearc
           </colgroup>
           <thead>
             <tr>
+              <th>Sr No</th>
               <th>Name</th>
               <th>Code</th>
               <th>Department</th>
@@ -141,7 +143,7 @@ export default function EmployeeTable({ employees, onAdd, onSelect, initialSearc
           </thead>
           <tbody>
             {filteredEmployees.length ? (
-              filteredEmployees.map((employee) => (
+              filteredEmployees.map((employee, index) => (
                 <tr
                   key={employee.id}
                   className="employee-row"
@@ -154,6 +156,9 @@ export default function EmployeeTable({ employees, onAdd, onSelect, initialSearc
                   }}
                   tabIndex={0}
                 >
+                  <td>
+                    <span className="employee-sr-no">{index + 1}</span>
+                  </td>
                   <td>
                     <div className="table-cell-stack">
                       <span className="table-cell-primary">{`${employee.firstName} ${employee.lastName}`}</span>
@@ -172,7 +177,7 @@ export default function EmployeeTable({ employees, onAdd, onSelect, initialSearc
               ))
             ) : (
               <tr>
-                <td colSpan={5}>
+                <td colSpan={6}>
                   <div className="table-empty-state">
                     <strong>No employees found.</strong>
                     <span>Try a different employee name or clear the search.</span>

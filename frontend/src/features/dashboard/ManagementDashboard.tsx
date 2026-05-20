@@ -79,13 +79,13 @@ export default function ManagementDashboard({ token, role }: { token: string | n
 
       <WorkdayTimeline checkInTime={summary?.attendanceToday?.checkInTime ?? null} token={token} />
 
-      <Modal open={isAnnouncementModalOpen} onClose={() => setAnnouncementModalOpen(false)}>
+      <Modal open={isAnnouncementModalOpen} onClose={() => setAnnouncementModalOpen(false)} className="broadcast-studio-modal">
         <AnnouncementForm token={token} onCreated={() => { setAnnouncementKey(k => k + 1); setAnnouncementModalOpen(false); }} />
       </Modal>
 
       <div className="grid cols-2 dashboard-grid">
         {Object.entries(data)
-          .filter(([key]) => !["attendanceToday", "currentEmployee", "leaveRequests", "isTeamLead", "teamOnLeaveToday"].includes(key))
+          .filter(([key]) => !["attendanceToday", "currentEmployee", "leaveRequests", "isTeamLead", "teamOnLeaveToday", "pendingCorrectionRequests", "pendingIncentiveApprovals"].includes(key))
           .map(([key, value]) => {
             const getNavigationPath = () => {
               switch (key) {

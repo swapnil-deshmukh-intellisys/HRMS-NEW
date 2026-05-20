@@ -115,12 +115,22 @@
 }
 
 .clock-timezone-search input {
-  background: transparent;
-  border: none;
+  background: transparent !important;
+  border: none !important;
   color: var(--color-text-strong);
   font-size: 14px;
   width: 100%;
-  outline: none;
+  min-height: 0 !important;
+  padding: 0 !important;
+  box-shadow: none !important;
+  outline: none !important;
+}
+
+.clock-timezone-search input:focus {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  outline: none !important;
 }
 
 .clock-timezone-search .clear-search {

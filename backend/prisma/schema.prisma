@@ -574,4 +574,3 @@ model GeneralTaskCompletion {
   @@index([taskId])
   @@index([employeeId])
 }
-

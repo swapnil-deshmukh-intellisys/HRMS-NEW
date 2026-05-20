@@ -53,7 +53,7 @@ export default function EmployeeForm({
   const compensationPreview = useMemo(() => calculateCompensationPreview(form.annualPackageLpa), [form.annualPackageLpa]);
 
   function formatCompensationValue(value: number) {
-    return value.toLocaleString("en-IN", {
+    return "₹" + value.toLocaleString("en-IN", {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
     });
@@ -186,25 +186,32 @@ export default function EmployeeForm({
         <div className="employee-form-section employee-form-section--compensation">
           <div className="employee-form-section__header">
             <h4>Compensation Structure</h4>
-            <p className="muted">Package in LPA. Monthly breakdown updates automatically.</p>
+            <p className="muted">Annual package amount. Monthly breakdown updates automatically.</p>
           </div>
           <div className="employee-form-group">
             <label>
-              Package (LPA)
+              Annual Package (₹)
               <input
                 value={form.annualPackageLpa}
                 onChange={(event) => onChange({ ...form, annualPackageLpa: event.target.value })}
                 type="number"
                 min="0"
-                step="0.01"
-                placeholder="6.00"
+                step="1"
+                placeholder="300000"
               />
             </label>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', justifyContent: 'center' }}>
-              <label className="checkbox-row">
-                <input checked={form.isOnProbation} type="checkbox" onChange={(event) => onChange({ ...form, isOnProbation: event.target.checked })} />
+              <div 
+                className="checkbox-row" 
+                onClick={() => onChange({ ...form, isOnProbation: !form.isOnProbation })}
+                role="checkbox"
+                aria-checked={form.isOnProbation}
+                tabIndex={0}
+                onKeyDown={(e) => { if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); onChange({ ...form, isOnProbation: !form.isOnProbation }); } }}
+              >
+                <input checked={form.isOnProbation} type="checkbox" readOnly tabIndex={-1} style={{ pointerEvents: 'none' }} />
                 <span>On probation</span>
-              </label>
+              </div>
               {form.isOnProbation ? (
                 <label>
                   Probation end date
@@ -258,10 +265,17 @@ export default function EmployeeForm({
         </div>
 
         <div className="employee-form-group employee-form-group--full">
-          <label className="checkbox-row">
-            <input checked={form.isTeamLead} type="checkbox" onChange={(event) => onChange({ ...form, isTeamLead: event.target.checked })} />
+          <div 
+            className="checkbox-row" 
+            onClick={() => onChange({ ...form, isTeamLead: !form.isTeamLead })}
+            role="checkbox"
+            aria-checked={form.isTeamLead}
+            tabIndex={0}
+            onKeyDown={(e) => { if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); onChange({ ...form, isTeamLead: !form.isTeamLead }); } }}
+          >
+            <input checked={form.isTeamLead} type="checkbox" readOnly tabIndex={-1} style={{ pointerEvents: 'none' }} />
             <strong>Assign Team Leader capability</strong>
-          </label>
+          </div>
           {form.isTeamLead ? (
             <div className="stack tl-scope-list">
               <div className="tl-scope-list__header">
@@ -319,26 +333,47 @@ export default function EmployeeForm({
                   }
 
                   return eligibleEmployees.map((employee) => (
-                    <label key={employee.id} className="checkbox-row">
+                    <div 
+                      key={employee.id} 
+                      className="checkbox-row"
+                      onClick={() => {
+                        const currentIds = form.teamLeadScopeIds.map(id => Number(id));
+                        const targetId = Number(employee.id);
+                        const isChecked = currentIds.includes(targetId);
+                        const nextIds = !isChecked
+                          ? [...new Set([...currentIds, targetId])]
+                          : currentIds.filter((id) => id !== targetId);
+
+                        onChange({
+                          ...form,
+                          teamLeadScopeIds: nextIds,
+                        });
+                      }}
+                      role="checkbox"
+                      aria-checked={form.teamLeadScopeIds.some(id => Number(id) === Number(employee.id))}
+                      tabIndex={0}
+                      onKeyDown={(e) => { 
+                        if (e.key === ' ' || e.key === 'Enter') { 
+                          e.preventDefault(); 
+                          const currentIds = form.teamLeadScopeIds.map(id => Number(id));
+                          const targetId = Number(employee.id);
+                          const isChecked = currentIds.includes(targetId);
+                          const nextIds = !isChecked
+                            ? [...new Set([...currentIds, targetId])]
+                            : currentIds.filter((id) => id !== targetId);
+                          onChange({ ...form, teamLeadScopeIds: nextIds });
+                        } 
+                      }}
+                    >
                       <input
                         checked={form.teamLeadScopeIds.some(id => Number(id) === Number(employee.id))}
                         type="checkbox"
-                        onChange={(event) => {
-                          const currentIds = form.teamLeadScopeIds.map(id => Number(id));
-                          const targetId = Number(employee.id);
-
-                          const nextIds = event.target.checked
-                            ? [...new Set([...currentIds, targetId])]
-                            : currentIds.filter((id) => id !== targetId);
-
-                          onChange({
-                            ...form,
-                            teamLeadScopeIds: nextIds,
-                          });
-                        }}
+                        readOnly
+                        tabIndex={-1}
+                        style={{ pointerEvents: 'none' }}
                       />
                       <span>{`${employee.firstName} ${employee.lastName}`}</span>
-                    </label>
+                    </div>
                   ));
                 })()}
               </div>

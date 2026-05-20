@@ -26,7 +26,7 @@ describe("EmployeeProfilePage", () => {
     expect(await screen.findByText("Ava Stone")).toBeInTheDocument();
     expect(await screen.findByRole("tab", { name: /overview/i })).toBeInTheDocument();
     expect(screen.queryByRole("tab", { name: /payroll/i })).not.toBeInTheDocument();
-    expect(await screen.findByText("Employee details")).toBeInTheDocument();
-    expect(screen.getByText("Integrations")).toBeInTheDocument();
+    expect(await screen.findByText("Employment")).toBeInTheDocument();
+    expect(screen.getByText("Integrations & Connectivity")).toBeInTheDocument();
   });
 });

@@ -1,0 +1,850 @@
+.birthday-test-page {
+  padding: var(--space-8) var(--space-6) var(--space-6);
+  max-width: 1400px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.birthday-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--space-6);
+  gap: var(--space-4);
+  flex-wrap: wrap;
+}
+
+.birthday-header-title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.birthday-header-icon-wrapper {
+  width: 52px;
+  height: 52px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 16px;
+  background: linear-gradient(135deg, rgba(236, 72, 153, 0.15), rgba(219, 39, 119, 0.15));
+  color: #db2777;
+  box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.5);
+  animation: float 3s ease-in-out infinite;
+}
+
+.birthday-header-title h1 {
+  font-size: var(--text-xl);
+  font-weight: 700;
+  color: var(--color-text-strong);
+  margin: 0 0 4px 0;
+  letter-spacing: -0.01em;
+}
+
+.birthday-header-title p {
+  color: var(--color-text-secondary);
+  margin: 0;
+  font-size: 13px;
+}
+
+.birthday-header-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  border-radius: 20px;
+  background: rgba(22, 50, 112, 0.08);
+  border: 1px solid rgba(22, 50, 112, 0.12);
+  color: var(--color-primary);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+/* Page Layout */
+.birthday-grid {
+  display: grid;
+  grid-template-columns: 1fr 1.2fr;
+  gap: var(--space-6);
+  align-items: start;
+}
+
+@media (max-width: 1024px) {
+  .birthday-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.birthday-panel {
+  background: var(--color-surface-panel);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--color-border-default);
+  box-shadow: var(--shadow-lg);
+  padding: var(--space-6);
+}
+
+.panel-title {
+  font-size: var(--text-md);
+  font-weight: 700;
+  color: var(--color-text-strong);
+  margin: 0 0 var(--space-4) 0;
+  border-bottom: 1px solid var(--color-border-subtle);
+  padding-bottom: var(--space-3);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+/* Customize Panel Details */
+.form-group {
+  margin-bottom: var(--space-5);
+}
+
+.form-label {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  margin-bottom: var(--space-2);
+}
+
+.form-input {
+  width: 100%;
+  padding: var(--control-padding-y) var(--control-padding-x);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border-default);
+  background: rgba(255, 255, 255, 0.8);
+  font-family: inherit;
+  font-size: 14px;
+  color: var(--color-text-strong);
+  transition: all var(--transition-fast);
+}
+
+.form-input:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(22, 50, 112, 0.15);
+  background: #fff;
+}
+
+.form-input.text-area {
+  resize: vertical;
+  line-height: 1.5;
+}
+
+/* Recipient List Custom Selector */
+.recipient-selector {
+  background: rgba(15, 23, 42, 0.02);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border-subtle);
+  padding: 12px;
+}
+
+.birthday-alert-banner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: rgba(16, 185, 129, 0.12);
+  color: #059669;
+  margin-bottom: 10px;
+}
+
+.birthday-alert-banner.mock {
+  background: rgba(245, 158, 11, 0.1);
+  color: #d97706;
+}
+
+.recipient-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 180px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.recipient-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: #fff;
+  border: 1px solid var(--color-border-subtle);
+  text-align: left;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  width: 100%;
+}
+
+.recipient-card:hover {
+  border-color: var(--color-primary);
+  transform: translateX(2px);
+  background: var(--color-surface-hover);
+}
+
+.recipient-card.active {
+  border-color: var(--color-primary);
+  background: var(--color-surface-hover);
+  box-shadow: var(--shadow-sm);
+}
+
+.recipient-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--color-accent-gradient);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  box-shadow: 0 2px 4px rgba(22, 50, 112, 0.25);
+}
+
+.recipient-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.recipient-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text-strong);
+}
+
+.recipient-role {
+  font-size: 11px;
+  color: var(--color-text-secondary);
+}
+
+.recipient-check {
+  color: var(--color-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(22, 50, 112, 0.1);
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+}
+
+/* Theme Selector Grid */
+.theme-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+@media (max-width: 480px) {
+  .theme-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.theme-selector-card {
+  display: flex;
+  flex-direction: column;
+  padding: 10px;
+  background: #fff;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: 12px;
+  cursor: pointer;
+  text-align: left;
+  transition: all var(--transition-normal);
+  gap: 8px;
+}
+
+.theme-selector-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--color-primary);
+  box-shadow: var(--shadow-sm);
+}
+
+.theme-selector-card.active {
+  border-color: var(--color-primary);
+  background: var(--color-surface-hover);
+  box-shadow: var(--shadow-md);
+}
+
+.theme-color-preview {
+  height: 48px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 18px;
+}
+
+/* Card Themes Preview Backgrounds */
+.theme-color-preview.theme-gold {
+  background: radial-gradient(circle, #2d2d34 0%, #111115 100%);
+  color: #fcf6ba;
+  border: 1px solid #bf953f;
+  box-shadow: inset 0 0 10px rgba(191, 149, 63, 0.3);
+}
+
+.theme-color-preview.theme-confetti {
+  background: linear-gradient(135deg, #fbcfe8 0%, #fecdd3 50%, #fef08a 100%);
+  color: #db2777;
+}
+
+.theme-color-preview.theme-neon {
+  background: linear-gradient(135deg, #09090b 0%, #27272a 100%);
+  color: #c084fc;
+  border: 1px solid rgba(192, 132, 252, 0.4);
+}
+
+.theme-color-preview.theme-cozy {
+  background: linear-gradient(135deg, #ffedd5 0%, #fed7aa 100%);
+  color: #ea580c;
+}
+
+.theme-text-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.theme-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text-strong);
+}
+
+.theme-desc {
+  font-size: 10px;
+  color: var(--color-text-secondary);
+  line-height: 1.3;
+  margin-top: 2px;
+}
+
+/* Action Buttons & Status */
+.action-buttons {
+  display: flex;
+  gap: 12px;
+  margin-top: var(--space-4);
+  flex-wrap: wrap;
+}
+
+.burst-btn, .send-btn {
+  flex: 1;
+  min-width: 160px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 44px;
+}
+
+.burst-btn {
+  border-color: rgba(22, 50, 112, 0.2);
+  color: var(--color-primary);
+}
+
+.status-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 16px;
+  border-radius: var(--radius-sm);
+  margin-top: 16px;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.status-banner.success {
+  background: rgba(16, 185, 129, 0.08);
+  border: 1px solid rgba(16, 185, 129, 0.2);
+  color: #047857;
+}
+
+.status-banner.error {
+  background: rgba(239, 68, 68, 0.08);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  color: #b91c1c;
+}
+
+.warning-mark {
+  font-size: 16px;
+}
+
+/* Preview Stage Layout */
+.preview-panel {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  min-height: 520px;
+}
+
+.preview-panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.preview-badge {
+  background: rgba(236, 72, 153, 0.1);
+  color: #db2777;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.card-stage-container {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient(circle at center, rgba(15, 23, 42, 0.04) 0%, rgba(15, 23, 42, 0.08) 100%);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border-subtle);
+  padding: 40px var(--space-4);
+  position: relative;
+  overflow: hidden;
+  min-height: 380px;
+}
+
+.confetti-canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 100;
+}
+
+/* Birthday Card Outer Layout */
+.birthday-card-outer {
+  width: 100%;
+  max-width: 440px;
+  aspect-ratio: 4 / 5;
+  border-radius: 24px;
+  padding: 16px;
+  position: relative;
+  z-index: 2;
+  transition: transform var(--transition-bounce), box-shadow var(--transition-bounce);
+  transform-style: preserve-3d;
+  perspective: 1000px;
+  box-shadow: 
+    0 20px 40px -10px rgba(0, 0, 0, 0.12),
+    0 10px 20px -5px rgba(0, 0, 0, 0.08);
+}
+
+.birthday-card-outer:hover {
+  transform: translateY(-8px) rotateX(4deg) rotateY(-4deg);
+  box-shadow: 
+    0 30px 60px -15px rgba(0, 0, 0, 0.2),
+    0 15px 30px -10px rgba(0, 0, 0, 0.12),
+    0 0 24px rgba(255, 255, 255, 0.4);
+}
+
+.birthday-card-inner {
+  height: 100%;
+  border-radius: 18px;
+  padding: 32px 24px 24px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  position: relative;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.95);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6);
+  z-index: 2;
+}
+
+/* Card Decor Elements */
+.balloon-decor, .sparkle-decor, .cupcake-decor {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.balloon {
+  position: absolute;
+  font-size: 36px;
+  animation: floatBalloon 5s ease-in-out infinite;
+}
+
+.balloon.b1 { left: 15px; top: 20px; animation-delay: 0s; }
+.balloon.b2 { right: 15px; top: 40px; animation-delay: 1.5s; }
+.balloon.b3 { left: 40%; top: -10px; animation-delay: 3s; font-size: 28px; }
+
+.star {
+  position: absolute;
+  color: #bf953f;
+  animation: twinkle 2s ease-in-out infinite;
+}
+
+.star.s1 { left: 24px; top: 24px; font-size: 20px; animation-delay: 0s; }
+.star.s2 { right: 28px; top: 32px; font-size: 16px; animation-delay: 0.6s; }
+.star.s3 { left: 35%; top: 12px; font-size: 14px; animation-delay: 1.2s; color: #fcf6ba; }
+
+.cupcake-decor .cupcake {
+  position: absolute;
+  right: 24px;
+  bottom: 24px;
+  font-size: 40px;
+  z-index: 5;
+  animation: float 4s ease-in-out infinite;
+}
+
+.cupcake-decor .cherry {
+  position: absolute;
+  top: -24px;
+  left: 12px;
+  font-size: 16px;
+}
+
+.cupcake-decor .candle {
+  position: absolute;
+  top: -38px;
+  left: 16px;
+  font-size: 20px;
+  animation: flicker 0.8s ease-in-out infinite alternate;
+}
+
+/* Card Interior Content styling */
+.card-top-icon {
+  width: 56px;
+  height: 56px;
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--card-accent-soft, rgba(236, 72, 153, 0.1));
+  color: var(--card-accent-color, #db2777);
+  margin: 0 auto 16px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+}
+
+.card-birthday-title {
+  font-size: 24px;
+  font-weight: 800;
+  text-align: center;
+  margin: 0 0 16px 0;
+  font-family: "Outfit", sans-serif;
+  letter-spacing: -0.02em;
+}
+
+.card-recipient-hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  margin-bottom: 20px;
+  gap: 10px;
+}
+
+.card-recipient-avatar-large {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: var(--card-avatar-gradient, linear-gradient(135deg, #fbcfe8 0%, #db2777 100%));
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+  border: 3px solid #fff;
+}
+
+.card-recipient-text h4 {
+  font-size: 16px;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 0;
+}
+
+.card-recipient-text p {
+  font-size: 12px;
+  color: #64748b;
+  margin: 4px 0 0 0;
+  font-weight: 500;
+}
+
+.card-wish-text {
+  font-size: 13.5px;
+  line-height: 1.6;
+  text-align: center;
+  color: #334155;
+  margin: 0 0 20px 0;
+  font-style: italic;
+  font-weight: 500;
+  flex-grow: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  max-width: 320px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.card-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-top: 1px dashed rgba(15, 23, 42, 0.08);
+  padding-top: 12px;
+  margin-top: auto;
+}
+
+.card-footer-logo {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: #94a3b8;
+}
+
+.card-footer-date {
+  font-size: 11px;
+  font-weight: 600;
+  color: #64748b;
+}
+
+/* Theme Specific Card Overrides */
+/* 1. Theme Elegant Gold */
+.birthday-card-outer.theme-gold {
+  background: linear-gradient(135deg, #bf953f 0%, #fcf6ba 25%, #b38728 50%, #fbf5b7 75%, #aa771c 100%);
+  padding: 4px;
+}
+
+.birthday-card-outer.theme-gold .birthday-card-inner {
+  background: radial-gradient(circle at center, #1b1b22 0%, #0d0d10 100%);
+  border: 1px solid rgba(191, 149, 63, 0.35);
+  box-shadow: inset 0 0 20px rgba(191, 149, 63, 0.15);
+}
+
+.birthday-card-outer.theme-gold .card-top-icon {
+  background: rgba(191, 149, 63, 0.15);
+  color: #fcf6ba;
+  border: 1px solid rgba(191, 149, 63, 0.3);
+}
+
+.birthday-card-outer.theme-gold .card-birthday-title {
+  background: linear-gradient(to right, #bf953f, #fcf6ba, #b38728, #fbf5b7, #aa771c);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.birthday-card-outer.theme-gold .card-recipient-avatar-large {
+  background: linear-gradient(135deg, #bf953f 0%, #aa771c 100%);
+  border-color: #bf953f;
+  box-shadow: 0 8px 20px rgba(191, 149, 63, 0.25);
+}
+
+.birthday-card-outer.theme-gold .card-recipient-text h4 {
+  color: #f1f5f9;
+}
+
+.birthday-card-outer.theme-gold .card-recipient-text p {
+  color: #94a3b8;
+}
+
+.birthday-card-outer.theme-gold .card-wish-text {
+  color: #e2e8f0;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+.birthday-card-outer.theme-gold .card-footer {
+  border-color: rgba(191, 149, 63, 0.25);
+}
+
+.birthday-card-outer.theme-gold .card-footer-date {
+  color: #a3a3a3;
+}
+
+/* 2. Theme Joyful Confetti */
+.birthday-card-outer.theme-confetti {
+  background: linear-gradient(135deg, #fbcfe8 0%, #fecdd3 50%, #fef08a 100%);
+}
+
+.birthday-card-outer.theme-confetti .birthday-card-inner {
+  background: rgba(255, 255, 255, 0.94);
+  border-radius: 20px;
+}
+
+.birthday-card-outer.theme-confetti .card-top-icon {
+  background: rgba(219, 39, 119, 0.1);
+  color: #db2777;
+}
+
+.birthday-card-outer.theme-confetti .card-birthday-title {
+  color: #be185d;
+}
+
+.birthday-card-outer.theme-confetti .card-recipient-avatar-large {
+  background: linear-gradient(135deg, #ec4899 0%, #db2777 100%);
+  box-shadow: 0 8px 16px rgba(219, 39, 119, 0.2);
+}
+
+/* 3. Theme Neon Glassmorphism */
+.birthday-card-outer.theme-neon {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1.5px solid rgba(168, 85, 247, 0.4);
+  box-shadow: 
+    0 15px 30px rgba(0, 0, 0, 0.3),
+    0 0 20px rgba(168, 85, 247, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.birthday-card-outer.theme-neon .birthday-card-inner {
+  background: rgba(9, 9, 11, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  box-shadow: inset 0 0 25px rgba(255, 255, 255, 0.02);
+}
+
+.birthday-card-outer.theme-neon:hover {
+  border-color: #a855f7;
+  box-shadow: 
+    0 25px 50px rgba(0, 0, 0, 0.4),
+    0 0 35px rgba(168, 85, 247, 0.4),
+    0 0 50px rgba(59, 130, 246, 0.2);
+}
+
+.birthday-card-outer.theme-neon .card-top-icon {
+  background: rgba(168, 85, 247, 0.15);
+  color: #a855f7;
+  border: 1px solid rgba(168, 85, 247, 0.25);
+}
+
+.birthday-card-outer.theme-neon .card-birthday-title {
+  background: linear-gradient(135deg, #a855f7 0%, #3b82f6 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.birthday-card-outer.theme-neon .card-recipient-avatar-large {
+  background: linear-gradient(135deg, #a855f7 0%, #3b82f6 100%);
+  border-color: #a855f7;
+  box-shadow: 0 8px 24px rgba(168, 85, 247, 0.3);
+}
+
+.birthday-card-outer.theme-neon .card-recipient-text h4 {
+  color: #f4f4f5;
+}
+
+.birthday-card-outer.theme-neon .card-recipient-text p {
+  color: #a1a1aa;
+}
+
+.birthday-card-outer.theme-neon .card-wish-text {
+  color: #e4e4e7;
+}
+
+.birthday-card-outer.theme-neon .card-footer {
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+.birthday-card-outer.theme-neon .card-footer-logo {
+  color: #71717a;
+}
+
+.birthday-card-outer.theme-neon .card-footer-date {
+  color: #a1a1aa;
+}
+
+/* 4. Theme Sweet Cozy */
+.birthday-card-outer.theme-cozy {
+  background: linear-gradient(135deg, #fed7aa 0%, #ffedd5 50%, #fecdd3 100%);
+}
+
+.birthday-card-outer.theme-cozy .birthday-card-inner {
+  background: #fffbf7;
+}
+
+.birthday-card-outer.theme-cozy .card-top-icon {
+  background: rgba(234, 88, 12, 0.08);
+  color: #ea580c;
+}
+
+.birthday-card-outer.theme-cozy .card-birthday-title {
+  color: #c2410c;
+}
+
+.birthday-card-outer.theme-cozy .card-recipient-avatar-large {
+  background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+  box-shadow: 0 8px 16px rgba(234, 88, 12, 0.2);
+}
+
+.birthday-card-outer.theme-cozy .card-recipient-text h4 {
+  color: #431407;
+}
+
+.birthday-card-outer.theme-cozy .card-recipient-text p {
+  color: #7c2d12;
+  opacity: 0.8;
+}
+
+.birthday-card-outer.theme-cozy .card-wish-text {
+  color: #451a03;
+}
+
+/* Details and helper text */
+.preview-tips {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--color-text-secondary);
+  font-size: 12px;
+  justify-content: center;
+  margin-top: 16px;
+  font-weight: 500;
+  opacity: 0.8;
+}
+
+/* Keyframes Animations */
+@keyframes float {
+  0% { transform: translateY(0px); }
+  50% { transform: translateY(-5px); }
+  100% { transform: translateY(0px); }
+}
+
+@keyframes floatBalloon {
+  0% { transform: translateY(0px) rotate(0deg); }
+  50% { transform: translateY(-8px) rotate(3deg); }
+  100% { transform: translateY(0px) rotate(0deg); }
+}
+
+@keyframes twinkle {
+  0% { opacity: 0.3; transform: scale(0.8); }
+  50% { opacity: 1; transform: scale(1.1); }
+  100% { opacity: 0.3; transform: scale(0.8); }
+}
+
+@keyframes flicker {
+  0% { transform: skewX(-1.5deg) scale(0.95); opacity: 0.8; }
+  100% { transform: skewX(1.5deg) scale(1.05); opacity: 1; }
+}
+
+@keyframes spinning {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.spinning {
+  animation: spinning 1.2s linear infinite;
+}

@@ -48,4 +48,35 @@ router.post("/subscribe", async (req, res, next) => {
   }
 });
 
+router.post("/test-birthday-email", async (req, res, next) => {
+  try {
+    const { employeeId, title, message, theme } = req.body;
+    const { prisma } = await import("../../config/prisma.js");
+    const { sendEmail } = await import("../../services/mailer.js");
+    const { getBirthdayWishEmail } = await import("../../utils/emailTemplates.js");
+
+    let recipientName = "Valued Employee";
+    if (employeeId) {
+      const employee = await prisma.employee.findUnique({
+        where: { id: Number(employeeId) }
+      });
+      if (employee) {
+        recipientName = `${employee.firstName} ${employee.lastName}`;
+      }
+    }
+
+    const html = getBirthdayWishEmail(recipientName, title, message, theme);
+    const targetEmail = "swapnil.deshmukh.intellisys@gmail.com";
+
+    await sendEmail(targetEmail, `[Preview Test] Birthday Wishes for ${recipientName}! 🎂`, html);
+
+    return sendSuccess(res, "Test birthday email dispatched successfully", {
+      recipientEmail: targetEmail,
+      recipientName
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
 export default router;

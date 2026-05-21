@@ -1,6 +1,6 @@
 
 import "./EmployeeProfileHeader.css";
-import { Pencil, Power, MessageCircle, Mail, Phone, CalendarDays, UserCheck } from "lucide-react";
+import { Pencil, Power, Mail, Phone, CalendarDays, UserCheck } from "lucide-react";
 import type { Employee, Role } from "../../types";
 import { formatDateLabel } from "../../utils/format";
 

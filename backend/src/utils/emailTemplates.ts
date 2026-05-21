@@ -41,7 +41,7 @@ function wrapInBaseTemplate(content: string) {
         ${content}
       </div>
       <div style="text-align: center; margin-top: 24px; color: #6b7280; font-size: 12px;">
-        This is an automated message from the HRMS. Please do not reply.
+        This is an automated message from IntelliHRMS. Please do not reply.
       </div>
     </div>
   `;
@@ -57,15 +57,24 @@ export function getGenericNotificationEmail(title: string, message: string, link
   return wrapInBaseTemplate(content);
 }
 
-export function getLeaveRequestEmail(employeeName: string, leaveType: string, startDate: string, endDate: string, link: string) {
+export function getLeaveRequestEmail(employeeName: string, leaveType: string, startDate: string, endDate: string, link: string, reason?: string) {
   const content = `
-    <h2 style="${HEADER_STYLES}">New Leave Request</h2>
-    <p style="font-size: 16px; margin-bottom: 16px;">Hello Manager,</p>
-    <p style="font-size: 16px; margin-bottom: 16px;"><strong>${employeeName}</strong> has submitted a new leave request.</p>
-    <div style="background-color: #f3f4f6; padding: 16px; border-radius: 6px; margin-bottom: 24px;">
-      <p style="margin: 0 0 8px 0;"><strong>Type:</strong> ${leaveType}</p>
-      <p style="margin: 0 0 8px 0;"><strong>From:</strong> ${startDate}</p>
-      <p style="margin: 0 0 0 0;"><strong>To:</strong> ${endDate}</p>
+    <h2 style="${HEADER_STYLES}">New Leave Request 📅</h2>
+    <p style="font-size: 16px; margin-bottom: 16px;">Hello,</p>
+    <p style="font-size: 16px; margin-bottom: 16px;"><strong>${employeeName}</strong> has submitted a new leave request for your review.</p>
+    <div style="background-color: #eff6ff; border-left: 4px solid #3b82f6; padding: 16px; border-radius: 6px; margin-bottom: 24px;">
+      <p style="margin: 0 0 8px 0; color: #1e3a8a;"><strong>Type:</strong> ${leaveType}</p>
+      <p style="margin: 0 0 8px 0; color: #1e3a8a;"><strong>From:</strong> ${startDate}</p>
+      <p style="margin: 0 0 8px 0; color: #1e3a8a;"><strong>To:</strong> ${endDate}</p>
+      
+      ${reason ? `
+      <div style="margin-top: 16px; padding-top: 16px; border-top: 1px solid #dbeafe;">
+        <p style="margin: 0 0 6px 0; font-size: 12px; color: #1e40af; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;">Reason for Leave</p>
+        <p style="margin: 0; font-size: 14px; color: #1e3a8a; font-style: italic; line-height: 1.5; background-color: rgba(255,255,255,0.6); padding: 12px; border-radius: 6px;">
+          “ ${reason} ”
+        </p>
+      </div>
+      ` : ''}
     </div>
     <div style="text-align: center;">
       <a href="${link}" style="${BUTTON_STYLES}">Review Request</a>
@@ -198,11 +207,11 @@ export function getBirthdayWishEmail(recipientName: string, title: string, wishM
         </p>
 
         <div style="border-top: 1px dashed rgba(0,0,0,0.1); padding-top: 16px; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; opacity: 0.6;">
-          Best Wishes From Team HRMS
+          Best Wishes From Team Intellisys
         </div>
       </div>
       <div style="text-align: center; margin-top: 24px; color: #94a3b8; font-size: 12px;">
-        Sent via HRMS Birthday Greeter Studio.
+        Sent via IntelliHRMS
       </div>
     </div>
   `;

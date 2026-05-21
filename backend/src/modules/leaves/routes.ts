@@ -410,7 +410,8 @@ router.post("/leaves", upload.single("attachment"), validate(applyLeaveSchema), 
               employeeName: `${leaveRequest.employee.firstName} ${leaveRequest.employee.lastName}`,
               leaveType: leaveRequest.leaveType?.name || "Leave",
               startDate: new Date(leaveRequest.startDate).toLocaleDateString(),
-              endDate: new Date(leaveRequest.endDate).toLocaleDateString()
+              endDate: new Date(leaveRequest.endDate).toLocaleDateString(),
+              reason: leaveRequest.reason
             }
           },
         });
@@ -438,7 +439,8 @@ router.post("/leaves", upload.single("attachment"), validate(applyLeaveSchema), 
             employeeName: `${leaveRequest.employee.firstName} ${leaveRequest.employee.lastName}`,
             leaveType: leaveRequest.leaveType?.name || "Leave",
             startDate: new Date(leaveRequest.startDate).toLocaleDateString(),
-            endDate: new Date(leaveRequest.endDate).toLocaleDateString()
+            endDate: new Date(leaveRequest.endDate).toLocaleDateString(),
+            reason: leaveRequest.reason
           }
         },
       });

@@ -66,7 +66,8 @@ export async function processOutbox() {
               payload.extraData.leaveType, 
               payload.extraData.startDate, 
               payload.extraData.endDate, 
-              fullLink || appUrl
+              fullLink || appUrl,
+              payload.extraData.reason
             );
           } else if ((payload.type === "LEAVE_APPROVED" || payload.type === "LEAVE_PROOF_REMINDER") && payload.extraData) {
             htmlContent = getLeaveApprovedEmail(

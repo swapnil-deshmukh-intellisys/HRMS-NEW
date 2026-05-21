@@ -116,7 +116,8 @@ export async function createNotification(params: {
               params.extraData.leaveType, 
               params.extraData.startDate, 
               params.extraData.endDate, 
-              fullLink || appUrl
+              fullLink || appUrl,
+              params.extraData.reason
             );
           } else if ((params.type === "LEAVE_APPROVED" || params.type === "LEAVE_PROOF_REMINDER") && params.extraData) {
             htmlContent = getLeaveApprovedEmail(

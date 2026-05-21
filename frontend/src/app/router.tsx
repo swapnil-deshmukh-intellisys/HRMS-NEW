@@ -22,7 +22,6 @@ const TodoHistoryPage = lazy(() => import("../features/dashboard/TodoHistoryPage
 const ManageTasksPage = lazy(() => import("../features/tasks/ManageTasksPage"));
 const EmployeeTodosPage = lazy(() => import("../features/tasks/EmployeeTodosPage"));
 const NotificationsPage = lazy(() => import("../features/notifications/NotificationsPage"));
-const BirthdayTestPage = lazy(() => import("../features/hr/BirthdayTestPage"));
 const AppLayout = lazy(() => import("../layout/AppLayout"));
 import { AppProvider } from "../context/AppContext";
 
@@ -218,15 +217,6 @@ function AppRoutes() {
             <Page context="Notifications">
               <NotificationsPage />
             </Page>
-          } />
-          <Route path="/birthday-test" element={
-            (sessionUser?.role === "HR" || sessionUser?.role === "ADMIN") ? (
-              <Page context="Birthday Studio">
-                <BirthdayTestPage />
-              </Page>
-            ) : (
-              <Navigate to="/" replace />
-            )
           } />
         </Route>
       </Routes>

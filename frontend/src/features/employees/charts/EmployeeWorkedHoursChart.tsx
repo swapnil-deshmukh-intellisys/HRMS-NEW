@@ -34,7 +34,7 @@ export default function EmployeeWorkedHoursChart({ attendance }: EmployeeWorkedH
             tick={{ fill: "#667085", fontSize: 12 }} 
           />
           <Tooltip 
-            formatter={(value: number, name: string, props: any) => {
+            formatter={(_value: any, _name: any, props: any) => {
               const mins = props.payload.minutes;
               const h = Math.floor(mins / 60);
               const m = mins % 60;

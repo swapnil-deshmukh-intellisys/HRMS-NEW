@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Bell, CheckSquare, Search } from "lucide-react";
+import { Bell, CheckSquare } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { apiRequest } from "../../services/api";
 import type { Notification } from "../../types";

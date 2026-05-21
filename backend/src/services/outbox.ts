@@ -1,4 +1,12 @@
 import { prisma } from "../config/prisma.js";
+import { sendEmail } from "./mailer.js";
+import { 
+  getGenericNotificationEmail, 
+  getLeaveRequestEmail, 
+  getTaskAssignedEmail, 
+  getAnnouncementEmail 
+} from "../utils/emailTemplates.js";
+
 
 export async function addToOutbox(params: {
   type: string;
@@ -42,6 +50,42 @@ export async function processOutbox() {
         link: payload.link,
         sendPush: payload.sendPush,
       });
+
+      if (payload.sendEmail) {
+        const user = await prisma.user.findUnique({ where: { id: payload.userId } });
+        if (user && user.email) {
+          let htmlContent = "";
+          const appUrl = process.env.FRONTEND_URL || "http://localhost:5173";
+          const fullLink = payload.link ? `${appUrl}${payload.link}` : undefined;
+
+          if (payload.type === "LEAVE_REQUESTED" && payload.extraData) {
+            htmlContent = getLeaveRequestEmail(
+              payload.extraData.employeeName, 
+              payload.extraData.leaveType, 
+              payload.extraData.startDate, 
+              payload.extraData.endDate, 
+              fullLink || appUrl
+            );
+          } else if (payload.type === "TASK_ASSIGNED" && payload.extraData) {
+            htmlContent = getTaskAssignedEmail(
+              payload.title, 
+              payload.extraData.assignedBy, 
+              fullLink || appUrl
+            );
+          } else if (payload.type === "ANNOUNCEMENT" && payload.extraData) {
+            htmlContent = getAnnouncementEmail(
+              payload.title, 
+              payload.extraData.priority, 
+              payload.message, 
+              fullLink || appUrl
+            );
+          } else {
+            htmlContent = getGenericNotificationEmail(payload.title, payload.message, fullLink);
+          }
+          
+          await sendEmail(user.email, payload.title, htmlContent);
+        }
+      }
 
       await prisma.notificationOutbox.update({
         where: { id: item.id },

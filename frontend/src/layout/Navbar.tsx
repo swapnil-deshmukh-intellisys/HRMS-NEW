@@ -8,8 +8,43 @@ import BreakQuickAction from "../components/common/BreakQuickAction";
 import Button from "../components/common/Button";
 import type { Role } from "../types";
 import { useApp } from "../context/AppContext";
-import { formatDateTime } from "../utils/format";
 import { usePushNotifications } from "../hooks/usePushNotifications";
+
+function getNotificationIcon(type: string): { emoji: string; className: string } {
+  switch (type) {
+    case "TASK":
+      return { emoji: "📋", className: "notif-icon--task" };
+    case "LEAVE":
+      return { emoji: "🏖️", className: "notif-icon--leave" };
+    case "ATTENDANCE":
+      return { emoji: "⏰", className: "notif-icon--attendance" };
+    case "PAYROLL":
+      return { emoji: "💰", className: "notif-icon--payroll" };
+    case "ANNOUNCEMENT":
+      return { emoji: "📢", className: "notif-icon--announcement" };
+    case "INCENTIVE":
+      return { emoji: "🎁", className: "notif-icon--incentive" };
+    default:
+      return { emoji: "🔔", className: "notif-icon--default" };
+  }
+}
+
+function getRelativeTime(dateStr: string): string {
+  const now = new Date();
+  const date = new Date(dateStr);
+  const diffMs = now.getTime() - date.getTime();
+  const diffSec = Math.floor(diffMs / 1000);
+  const diffMin = Math.floor(diffSec / 60);
+  const diffHour = Math.floor(diffMin / 60);
+  const diffDay = Math.floor(diffHour / 24);
+
+  if (diffSec < 60) return "Just now";
+  if (diffMin < 60) return `${diffMin}m ago`;
+  if (diffHour < 24) return `${diffHour}h ago`;
+  if (diffDay === 1) return "Yesterday";
+  if (diffDay < 7) return `${diffDay}d ago`;
+  return date.toLocaleDateString(undefined, { day: "numeric", month: "short" });
+}
 
 type NavbarProps = {
   title: string;
@@ -28,7 +63,7 @@ export default function Navbar({ title, navOpen, onToggleNav, token, currentEmpl
   const [searchTerm, setSearchTerm] = useState("");
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [isVisible, setIsVisible] = useState(true);
-  const [lastScrollY, setLastScrollY] = useState(0);
+  const lastScrollY = useRef(0);
   const notificationsRef = useRef<HTMLDivElement | null>(null);
   const canSearchEmployees = role !== "EMPLOYEE";
 
@@ -54,19 +89,19 @@ export default function Navbar({ title, navOpen, onToggleNav, token, currentEmpl
       const currentScrollY = window.scrollY;
 
       // Show if scrolling up, hide if scrolling down (and past a threshold)
-      if (currentScrollY > lastScrollY && currentScrollY > 100) {
+      if (currentScrollY > lastScrollY.current && currentScrollY > 100) {
         setIsVisible(false);
         setNotificationsOpen(false); // Close notifications if open and scrolling
       } else {
         setIsVisible(true);
       }
 
-      setLastScrollY(currentScrollY);
+      lastScrollY.current = currentScrollY;
     };
 
     window.addEventListener("scroll", handleScroll, { passive: true });
     return () => window.removeEventListener("scroll", handleScroll);
-  }, [lastScrollY]);
+  }, []);
 
   function handleEmployeeSearchSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -174,38 +209,64 @@ export default function Navbar({ title, navOpen, onToggleNav, token, currentEmpl
                 notifications.length ? (
                   <div className="topbar-notification-list">
                     <div className="topbar-notification-list__label">Last 7 days activity</div>
-                    {notifications.map((item) => (
-                      <button
-                        key={item.id}
-                        type="button"
-                        className={`topbar-notification-item ${!item.isRead ? "unread" : ""}`}
-                        onClick={() => {
-                          if (!item.isRead) {
-                            void markNotificationAsRead(item.id);
-                          }
-                          if (item.link) {
-                            navigate(item.link);
-                          }
-                          setNotificationsOpen(false);
-                        }}
-                      >
-                        <div className="topbar-notification-item__content">
-                          <span className="topbar-notification-item__title">
-                            {item.title}
-                            {!item.isRead && <span className="unread-dot" />}
-                          </span>
-                          <span className="topbar-notification-item__desc">{item.message}</span>
-                          <span className="topbar-notification-item__time">
-                            {formatDateTime(item.createdAt)}
-                          </span>
-                        </div>
-                      </button>
-                    ))}
+                    {notifications.map((item) => {
+                      const iconInfo = getNotificationIcon(item.type);
+                      return (
+                        <button
+                          key={item.id}
+                          type="button"
+                          className={`topbar-notification-item ${!item.isRead ? "unread" : ""}`}
+                          onClick={() => {
+                            if (!item.isRead) {
+                              void markNotificationAsRead(item.id);
+                            }
+                            if (item.link) {
+                              navigate(item.link);
+                            }
+                            setNotificationsOpen(false);
+                          }}
+                        >
+                          <div className="topbar-notification-item__icon-wrapper">
+                            <div className={`topbar-notification-item__icon ${iconInfo.className}`}>
+                              {iconInfo.emoji}
+                            </div>
+                          </div>
+                          <div className="topbar-notification-item__content">
+                            <div className="topbar-notification-item__top">
+                              <span className="topbar-notification-item__title">
+                                {item.title}
+                                {!item.isRead && <span className="unread-dot" />}
+                              </span>
+                              <span className="topbar-notification-item__time">
+                                {getRelativeTime(item.createdAt)}
+                              </span>
+                            </div>
+                            <span className="topbar-notification-item__desc">{item.message}</span>
+                          </div>
+                        </button>
+                      );
+                    })}
                   </div>
                 ) : (
-                  <p className="muted">No notifications yet.</p>
+                  <div className="topbar-notification-empty">
+                    <div className="topbar-notification-empty__icon">🔔</div>
+                    <p className="topbar-notification-empty__title">You're all caught up!</p>
+                    <p className="topbar-notification-empty__desc">No new notifications in the last 7 days.</p>
+                  </div>
                 )
               ) : null}
+              <div className="topbar-notification-popover__footer">
+                <button 
+                  type="button" 
+                  className="topbar-notification-view-all"
+                  onClick={() => {
+                    navigate("/notifications");
+                    setNotificationsOpen(false);
+                  }}
+                >
+                  View All Notifications
+                </button>
+              </div>
             </div>
           ) : null}
         </div>

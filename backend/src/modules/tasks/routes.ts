@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { z } from "zod";
 import { prisma } from "../../config/prisma.js";
-import { authenticate, requireRoles } from "../../middleware/auth.js";
+import { authenticate, requireRolesOrCapability } from "../../middleware/auth.js";
 import { validate } from "../../middleware/validate.js";
 import { sendSuccess, AppError } from "../../utils/api.js";
 
@@ -184,14 +184,15 @@ router.put("/items/:itemId", authenticate, async (request, response, next) => {
       });
 
       if (taskCreator && completerEmployee) {
-        await prisma.notification.create({
-          data: {
+        import("../notifications/service.js").then(ns => {
+          ns.createNotification({
             userId: taskCreator.userId,
             title: task.employeeId === null ? "General Task Completed" : "Direct Task Completed",
             message: `${completerEmployee.firstName} ${completerEmployee.lastName} completed: "${task.title}"`,
             type: "TASK",
-            link: "/tasks/manage"
-          }
+            link: "/tasks/manage",
+            sendEmail: true, // Optionally notify manager of completion
+          }).catch(err => console.error("Error sending task completion notification", err));
         });
       }
     }
@@ -203,7 +204,7 @@ router.put("/items/:itemId", authenticate, async (request, response, next) => {
 });
 
 // GET /api/tasks/employees - Fetch all active employees (for manager assignments)
-router.get("/employees", authenticate, requireRoles("MANAGER", "ADMIN"), async (request, response, next) => {
+router.get("/employees", authenticate, requireRolesOrCapability(["MANAGER", "ADMIN"], ["TEAM_LEAD"]), async (request, response, next) => {
   try {
     const employees = await prisma.employee.findMany({
       where: { isActive: true },
@@ -231,7 +232,7 @@ router.get("/employees", authenticate, requireRoles("MANAGER", "ADMIN"), async (
 });
 
 // GET /api/tasks/manager - Fetch tasks created by the manager
-router.get("/manager", authenticate, requireRoles("MANAGER", "ADMIN"), async (request, response, next) => {
+router.get("/manager", authenticate, requireRolesOrCapability(["MANAGER", "ADMIN"], ["TEAM_LEAD"]), async (request, response, next) => {
   try {
     const employeeId = request.user!.employeeId;
     if (!employeeId) {
@@ -272,7 +273,7 @@ router.get("/manager", authenticate, requireRoles("MANAGER", "ADMIN"), async (re
 });
 
 // POST /api/tasks/manager - Bulk create individual standalone tasks
-router.post("/manager", authenticate, requireRoles("MANAGER", "ADMIN"), validate(bulkCreateTasksSchema), async (request, response, next) => {
+router.post("/manager", authenticate, requireRolesOrCapability(["MANAGER", "ADMIN"], ["TEAM_LEAD"]), validate(bulkCreateTasksSchema), async (request, response, next) => {
   try {
     const creatorId = request.user!.employeeId;
     if (!creatorId) {
@@ -303,14 +304,18 @@ router.post("/manager", authenticate, requireRoles("MANAGER", "ADMIN"), validate
           select: { userId: true }
         });
         if (assignee) {
-          await prisma.notification.createMany({
-            data: createdTasks.map(t => ({
-              userId: assignee.userId,
-              title: "New Task Assignment",
-              message: `You have been assigned a new task: "${t.title}"`,
-              type: "TASK",
-              link: "/dashboard"
-            }))
+          import("../notifications/service.js").then(ns => {
+            Promise.all(createdTasks.map(t => 
+              ns.createNotification({
+                userId: assignee.userId,
+                title: "New Task Assignment",
+                message: `You have been assigned a new task: "${t.title}"`,
+                type: "TASK_ASSIGNED",
+                link: "/dashboard",
+                sendEmail: true,
+                extraData: { assignedBy: "Your Manager" }
+              })
+            )).catch(err => console.error(err));
           });
         }
       } else {
@@ -334,8 +339,13 @@ router.post("/manager", authenticate, requireRoles("MANAGER", "ADMIN"), validate
         }
 
         if (notificationsData.length > 0) {
-          await prisma.notification.createMany({
-            data: notificationsData
+          import("../notifications/service.js").then(ns => {
+            Promise.all(notificationsData.map(data => ns.createNotification({
+              ...data,
+              type: "TASK_ASSIGNED",
+              sendEmail: true,
+              extraData: { assignedBy: "Management" }
+            }))).catch(err => console.error(err));
           });
         }
       }
@@ -350,7 +360,7 @@ router.post("/manager", authenticate, requireRoles("MANAGER", "ADMIN"), validate
 });
 
 // PUT /api/tasks/manager/:id - Update an individual task
-router.put("/manager/:id", authenticate, requireRoles("MANAGER", "ADMIN"), validate(updateTaskSchema), async (request, response, next) => {
+router.put("/manager/:id", authenticate, requireRolesOrCapability(["MANAGER", "ADMIN"], ["TEAM_LEAD"]), validate(updateTaskSchema), async (request, response, next) => {
   try {
     const id = Number(request.params.id);
     const creatorId = request.user!.employeeId;
@@ -413,7 +423,7 @@ router.put("/manager/:id", authenticate, requireRoles("MANAGER", "ADMIN"), valid
 });
 
 // DELETE /api/tasks/manager/:id - Delete an individual task
-router.delete("/manager/:id", authenticate, requireRoles("MANAGER", "ADMIN"), async (request, response, next) => {
+router.delete("/manager/:id", authenticate, requireRolesOrCapability(["MANAGER", "ADMIN"], ["TEAM_LEAD"]), async (request, response, next) => {
   try {
     const id = Number(request.params.id);
     const creatorId = request.user!.employeeId;

@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useMemo } from "react";
+import React, { useEffect, useState, useCallback, useMemo } from "react";
 import type { ReactNode } from "react";
 import { apiRequest } from "../services/api";
 import type { Role, Notification, CalendarException } from "../types";
@@ -11,6 +11,7 @@ export function AppProvider({ children, token, role }: { children: ReactNode; to
   const [announcements, setAnnouncements] = useState<any[]>([]);
   const [calendarExceptions, setCalendarExceptions] = useState<CalendarException[]>([]);
   const [analyticsData, setAnalyticsData] = useState<AnalyticsData | null>(null);
+  const analyticsLastFetched = React.useRef<number>(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -76,7 +77,7 @@ export function AppProvider({ children, token, role }: { children: ReactNode; to
 
     // Basic Cache Logic: If fetched in the last 5 minutes, reuse unless forced
     const now = Date.now();
-    if (!force && analyticsData?.lastFetched && (now - analyticsData.lastFetched < 5 * 60 * 1000)) {
+    if (!force && (now - analyticsLastFetched.current < 5 * 60 * 1000)) {
       return;
     }
 
@@ -88,12 +89,13 @@ export function AppProvider({ children, token, role }: { children: ReactNode; to
         ...response.data,
         lastFetched: now
       });
+      analyticsLastFetched.current = now;
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load analytics data");
     } finally {
       setLoading(false);
     }
-  }, [token, analyticsData]);
+  }, [token]);
 
   useEffect(() => {
     if (token) {
@@ -130,8 +132,9 @@ export function AppProvider({ children, token, role }: { children: ReactNode; to
     markAllNotificationsAsRead,
     analyticsData,
     fetchAnalyticsData,
-    calendarExceptions
-  }), [summary, notifications, announcements, loading, error, refreshSummary, markNotificationAsRead, markAllNotificationsAsRead, analyticsData, fetchAnalyticsData, calendarExceptions]);
+    calendarExceptions,
+    token
+  }), [summary, notifications, announcements, loading, error, refreshSummary, markNotificationAsRead, markAllNotificationsAsRead, analyticsData, fetchAnalyticsData, calendarExceptions, token]);
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
 }

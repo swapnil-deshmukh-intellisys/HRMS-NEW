@@ -105,7 +105,11 @@ router.post("/", requireRoles("ADMIN", "HR", "MANAGER"), async (req, res, next) 
           title,
           message,
           type: "ANNOUNCEMENT",
-          link: "/announcements"
+          link: "/announcements",
+          sendEmail: announcement.priority === "HIGH" || announcement.priority === "URGENT",
+          extraData: {
+            priority: announcement.priority,
+          }
         })
       )).catch(err => console.error("Failed to create announcement DB notifications:", err));
     });

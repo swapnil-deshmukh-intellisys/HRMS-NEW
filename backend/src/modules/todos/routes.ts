@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { z } from "zod";
 import { prisma } from "../../config/prisma.js";
-import { authenticate } from "../../middleware/auth.js";
+import { authenticate, requireRolesOrCapability } from "../../middleware/auth.js";
 import { validate } from "../../middleware/validate.js";
 import { sendSuccess } from "../../utils/api.js";
 
@@ -30,6 +30,49 @@ router.get("/", authenticate, async (request, response, next) => {
       orderBy: { createdAt: "desc" },
     });
     return sendSuccess(response, "Todos fetched successfully", todos);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Get all employees' personal todos (Manager/HR only)
+router.get("/employees", authenticate, requireRolesOrCapability(["MANAGER", "HR", "ADMIN"], ["TEAM_LEAD"]), async (request, response, next) => {
+  try {
+    const employees = await prisma.employee.findMany({
+      where: {
+        isActive: true,
+        user: {
+          todos: {
+            some: {}
+          }
+        }
+      },
+      include: {
+        department: true,
+        user: {
+          include: {
+            todos: {
+              orderBy: { createdAt: "desc" }
+            }
+          }
+        }
+      },
+      orderBy: [
+        { firstName: "asc" },
+        { lastName: "asc" }
+      ]
+    });
+
+    const result = employees.map(emp => ({
+      id: emp.id,
+      firstName: emp.firstName,
+      lastName: emp.lastName,
+      employeeCode: emp.employeeCode,
+      department: emp.department?.name,
+      todos: emp.user.todos
+    }));
+
+    return sendSuccess(response, "Employee todos fetched successfully", result);
   } catch (error) {
     next(error);
   }

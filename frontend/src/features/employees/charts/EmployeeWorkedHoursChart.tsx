@@ -6,10 +6,6 @@ type EmployeeWorkedHoursChartProps = {
   attendance: Attendance[];
 };
 
-function formatHours(workedMinutes: number) {
-  return Number((workedMinutes / 60).toFixed(1));
-}
-
 export default function EmployeeWorkedHoursChart({ attendance }: EmployeeWorkedHoursChartProps) {
   const data = attendance
     .filter((record) => record.checkOutTime)
@@ -17,7 +13,8 @@ export default function EmployeeWorkedHoursChart({ attendance }: EmployeeWorkedH
     .reverse()
     .map((record) => ({
       label: new Date(record.attendanceDate).toLocaleDateString(undefined, { day: "numeric", month: "short" }),
-      hours: formatHours(record.workedMinutes),
+      hours: record.workedMinutes / 60,
+      minutes: record.workedMinutes,
     }));
 
   return (
@@ -26,8 +23,24 @@ export default function EmployeeWorkedHoursChart({ attendance }: EmployeeWorkedH
         <LineChart data={data} margin={{ top: 8, right: 8, bottom: 0, left: -20 }}>
           <CartesianGrid stroke="#e5e7eb" strokeDasharray="3 3" vertical={false} />
           <XAxis dataKey="label" tickLine={false} axisLine={false} tick={{ fill: "#667085", fontSize: 12 }} />
-          <YAxis tickLine={false} axisLine={false} tick={{ fill: "#667085", fontSize: 12 }} />
-          <Tooltip />
+          <YAxis 
+            tickFormatter={(val) => {
+              const h = Math.floor(val);
+              const m = Math.round((val - h) * 60);
+              return m > 0 ? `${h}h ${m}m` : `${h}h`;
+            }}
+            tickLine={false} 
+            axisLine={false} 
+            tick={{ fill: "#667085", fontSize: 12 }} 
+          />
+          <Tooltip 
+            formatter={(_value: any, _name: any, props: any) => {
+              const mins = props.payload.minutes;
+              const h = Math.floor(mins / 60);
+              const m = mins % 60;
+              return [`${h}h ${m}m`, "Worked"];
+            }}
+          />
           <Line type="monotone" dataKey="hours" stroke="#2563eb" strokeWidth={2.5} dot={{ r: 3 }} activeDot={{ r: 5 }} />
         </LineChart>
       </ResponsiveContainer>

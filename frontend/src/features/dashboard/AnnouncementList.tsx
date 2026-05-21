@@ -22,9 +22,9 @@ type Announcement = {
   priority: "NORMAL" | "HIGH" | "URGENT";
   createdAt: string;
   createdBy: {
-    firstName: true;
-    lastName: true;
-    jobTitle: true;
+    firstName: string;
+    lastName: string;
+    jobTitle: string;
   };
 };
 

@@ -401,10 +401,17 @@ router.post("/leaves", upload.single("attachment"), validate(applyLeaveSchema), 
           payload: {
             userId: manager.userId,
             title: "New Leave Request 📅",
-            message: `${leaveRequest.employee.firstName} has requested leave for ${formatInTimeZone(leaveRequest.startDate, TIMEZONE, 'dd MMM yyyy')}.`,
+            message: `${leaveRequest.employee.firstName} has requested leave for ${leaveRequest.startDate}.`,
             type: "LEAVE_REQUESTED",
             link: `/leaves?id=${leaveRequest.id}`,
-            sendPush: true
+            sendPush: true,
+            sendEmail: true,
+            extraData: {
+              employeeName: `${leaveRequest.employee.firstName} ${leaveRequest.employee.lastName}`,
+              leaveType: leaveRequest.leaveType?.name || "Leave",
+              startDate: new Date(leaveRequest.startDate).toLocaleDateString(),
+              endDate: new Date(leaveRequest.endDate).toLocaleDateString()
+            }
           },
         });
       }
@@ -422,10 +429,17 @@ router.post("/leaves", upload.single("attachment"), validate(applyLeaveSchema), 
         payload: {
           userId: hr.id,
           title: "New Leave Request (HR) 📅",
-          message: `${leaveRequest.employee.firstName} has requested leave for ${formatInTimeZone(leaveRequest.startDate, TIMEZONE, 'dd MMM yyyy')}.`,
+          message: `${leaveRequest.employee.firstName} has requested leave for ${leaveRequest.startDate}.`,
           type: "LEAVE_REQUESTED",
           link: `/leaves?id=${leaveRequest.id}`,
-          sendPush: true
+          sendPush: true,
+          sendEmail: true,
+          extraData: {
+            employeeName: `${leaveRequest.employee.firstName} ${leaveRequest.employee.lastName}`,
+            leaveType: leaveRequest.leaveType?.name || "Leave",
+            startDate: new Date(leaveRequest.startDate).toLocaleDateString(),
+            endDate: new Date(leaveRequest.endDate).toLocaleDateString()
+          }
         },
       });
     }

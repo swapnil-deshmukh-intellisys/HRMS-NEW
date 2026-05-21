@@ -1,6 +1,13 @@
 import webpush from "web-push";
 import { prisma } from "../../config/prisma.js";
 import { env } from "../../config/env.js";
+import { sendEmail } from "../../services/mailer.js";
+import { 
+  getGenericNotificationEmail, 
+  getLeaveRequestEmail, 
+  getTaskAssignedEmail, 
+  getAnnouncementEmail 
+} from "../../utils/emailTemplates.js";
 
 // Initialize web-push with VAPID keys
 webpush.setVapidDetails(
@@ -74,6 +81,8 @@ export async function createNotification(params: {
   type: string;
   link?: string;
   sendPush?: boolean;
+  sendEmail?: boolean;
+  extraData?: any;
 }) {
   const notification = await prisma.notification.create({
     data: {
@@ -87,6 +96,49 @@ export async function createNotification(params: {
 
   if (params.sendPush) {
     void sendPushNotification(params.userId, params.title, params.message, { url: params.link });
+  }
+
+  if (params.sendEmail) {
+    // Fire and forget email sending so it doesn't block the API response
+    void (async () => {
+      try {
+        const user = await prisma.user.findUnique({ where: { id: params.userId } });
+        if (user && user.email) {
+          let htmlContent = "";
+          const appUrl = process.env.FRONTEND_URL || "http://localhost:5173";
+          const fullLink = params.link ? `${appUrl}${params.link}` : undefined;
+
+          if (params.type === "LEAVE_REQUEST" && params.extraData) {
+            htmlContent = getLeaveRequestEmail(
+              params.extraData.employeeName, 
+              params.extraData.leaveType, 
+              params.extraData.startDate, 
+              params.extraData.endDate, 
+              fullLink || appUrl
+            );
+          } else if (params.type === "TASK_ASSIGNED" && params.extraData) {
+            htmlContent = getTaskAssignedEmail(
+              params.title, 
+              params.extraData.assignedBy, 
+              fullLink || appUrl
+            );
+          } else if (params.type === "ANNOUNCEMENT" && params.extraData) {
+            htmlContent = getAnnouncementEmail(
+              params.title, 
+              params.extraData.priority, 
+              params.message, 
+              fullLink || appUrl
+            );
+          } else {
+            htmlContent = getGenericNotificationEmail(params.title, params.message, fullLink);
+          }
+          
+          await sendEmail(user.email, params.title, htmlContent);
+        }
+      } catch (err) {
+        console.error("Failed to send email for notification asynchronously:", err);
+      }
+    })();
   }
 
   return notification;

@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Plus, Trash2, Edit2, CheckSquare, ClipboardList, BarChart3, Search, Check, AlertCircle } from "lucide-react";
 import { apiRequest } from "../../services/api";
 import Modal from "../../components/common/Modal";
@@ -227,6 +228,7 @@ function SearchableSelect({
 }
 
 export default function ManageTasksPage({ token }: { token: string | null }) {
+  const navigate = useNavigate();
   const [tasks, setTasks] = useState<ManagerTask[]>([]);
   const [employees, setEmployees] = useState<AssignableEmployee[]>([]);
   const [loading, setLoading] = useState(true);
@@ -597,10 +599,15 @@ export default function ManageTasksPage({ token }: { token: string | null }) {
           <span className="eyebrow eyebrow--purple">Manager Console</span>
           <h2 className="page-title">Assigned Tasks & Progress</h2>
         </div>
-        <button className="button button--primary add-task-list-btn" onClick={openBulkCreateModal}>
-          <Plus size={18} />
-          Assign Direct Tasks
-        </button>
+        <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+          <button className="button button--secondary" onClick={() => navigate("/tasks/employee-todos")}>
+            Employee Todos
+          </button>
+          <button className="button button--primary add-task-list-btn" onClick={openBulkCreateModal}>
+            <Plus size={18} />
+            Assign Direct Tasks
+          </button>
+        </div>
       </header>
 
       {/* Stats Board */}

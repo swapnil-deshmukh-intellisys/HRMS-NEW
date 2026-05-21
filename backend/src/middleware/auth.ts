@@ -18,7 +18,11 @@ export async function authenticate(request: Request, _response: Response, next: 
       where: { id: payload.userId },
       include: {
         role: true,
-        employee: true,
+        employee: {
+          include: {
+            capabilities: true,
+          },
+        },
       },
     });
 
@@ -31,6 +35,7 @@ export async function authenticate(request: Request, _response: Response, next: 
       role: user.role.name,
       employeeId: user.employee?.id,
       email: user.email,
+      capabilities: user.employee?.capabilities?.map((c: any) => c.capability) || [],
     };
 
     next();
@@ -50,6 +55,23 @@ export function requireRoles(...roles: string[]) {
     }
 
     if (!roles.includes(request.user.role)) {
+      return next(new AppError("You are not authorized to access this resource", 403));
+    }
+
+    next();
+  };
+}
+
+export function requireRolesOrCapability(roles: string[], capabilities: string[] = []) {
+  return (request: Request, _response: Response, next: NextFunction) => {
+    if (!request.user) {
+      return next(new AppError("Authentication required", 401));
+    }
+
+    const hasRole = roles.includes(request.user.role);
+    const hasCapability = request.user.capabilities?.some((c) => capabilities.includes(c));
+
+    if (!hasRole && !hasCapability) {
       return next(new AppError("You are not authorized to access this resource", 403));
     }
 

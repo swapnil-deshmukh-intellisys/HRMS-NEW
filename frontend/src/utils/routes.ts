@@ -8,5 +8,6 @@ export function getPageTitle(pathname: string) {
   if (pathname === "/leaves") return "Leaves";
   if (pathname === "/team") return "Team";
   if (pathname === "/payroll") return "Payroll";
+  if (pathname === "/notifications") return "Notifications";
   return "Home";
 }

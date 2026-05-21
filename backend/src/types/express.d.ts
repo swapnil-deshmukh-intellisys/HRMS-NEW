@@ -6,6 +6,7 @@ declare namespace Express {
       role: string;
       employeeId?: number;
       email: string;
+      capabilities?: string[];
     };
   }
 }

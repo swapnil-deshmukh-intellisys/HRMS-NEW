@@ -34,7 +34,7 @@ function getNavItems(sessionUser: SessionUser): NavItem[] {
   if (isTeamLead || isManager) {
     items.push({ to: "/team", label: "Team", icon: Users });
   }
-  if (role === "MANAGER" || role === "ADMIN") {
+  if (role === "MANAGER" || role === "ADMIN" || isTeamLead) {
     items.push({ to: "/tasks/manage", label: "Manage Tasks", icon: ClipboardList });
   }
   items.push({ to: "/payroll", label: "Payroll", icon: Wallet });

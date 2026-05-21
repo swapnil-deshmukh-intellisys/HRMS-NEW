@@ -36,6 +36,7 @@ export type AppContextType = {
   analyticsData: AnalyticsData | null;
   fetchAnalyticsData: (force?: boolean) => Promise<void>;
   calendarExceptions: CalendarException[];
+  token: string | null;
 };
 
 export const AppContext = createContext<AppContextType | undefined>(undefined);

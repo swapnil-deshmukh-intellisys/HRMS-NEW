@@ -207,3 +207,38 @@ export function getBirthdayWishEmail(recipientName: string, title: string, wishM
     </div>
   `;
 }
+
+export function getLeaveApprovedEmail(employeeName: string, leaveType: string, startDate: string, endDate: string, approvedBy: string, link: string) {
+  const content = `
+    <h2 style="${HEADER_STYLES}">Leave Approved! ✅</h2>
+    <p style="font-size: 16px; margin-bottom: 16px;">Hello ${employeeName},</p>
+    <p style="font-size: 16px; margin-bottom: 16px;">Your leave request has been approved by <strong>${approvedBy}</strong>.</p>
+    <div style="background-color: #f0fdf4; border-left: 4px solid #16a34a; padding: 16px; border-radius: 6px; margin-bottom: 24px;">
+      <p style="margin: 0 0 8px 0; color: #14532d;"><strong>Type:</strong> ${leaveType}</p>
+      <p style="margin: 0 0 8px 0; color: #14532d;"><strong>From:</strong> ${startDate}</p>
+      <p style="margin: 0 0 0 0; color: #14532d;"><strong>To:</strong> ${endDate}</p>
+    </div>
+    <div style="text-align: center;">
+      <a href="${link}" style="${BUTTON_STYLES}">View Details</a>
+    </div>
+  `;
+  return wrapInBaseTemplate(content);
+}
+
+export function getLeaveRejectedEmail(employeeName: string, leaveType: string, startDate: string, endDate: string, rejectedBy: string, reason: string, link: string) {
+  const content = `
+    <h2 style="${HEADER_STYLES}">Leave Request Rejected ❌</h2>
+    <p style="font-size: 16px; margin-bottom: 16px;">Hello ${employeeName},</p>
+    <p style="font-size: 16px; margin-bottom: 16px;">We regret to inform you that your leave request has been rejected by <strong>${rejectedBy}</strong>.</p>
+    <div style="background-color: #fef2f2; border-left: 4px solid #dc2626; padding: 16px; border-radius: 6px; margin-bottom: 24px;">
+      <p style="margin: 0 0 8px 0; color: #7f1d1d;"><strong>Type:</strong> ${leaveType}</p>
+      <p style="margin: 0 0 8px 0; color: #7f1d1d;"><strong>From:</strong> ${startDate}</p>
+      <p style="margin: 0 0 8px 0; color: #7f1d1d;"><strong>To:</strong> ${endDate}</p>
+      <p style="margin: 8px 0 0 0; color: #7f1d1d; font-style: italic;"><strong>Reason:</strong> ${reason || "No reason provided"}</p>
+    </div>
+    <div style="text-align: center;">
+      <a href="${link}" style="${BUTTON_STYLES}">View Details</a>
+    </div>
+  `;
+  return wrapInBaseTemplate(content);
+}

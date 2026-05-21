@@ -4,7 +4,9 @@ import {
   getGenericNotificationEmail, 
   getLeaveRequestEmail, 
   getTaskAssignedEmail, 
-  getAnnouncementEmail 
+  getAnnouncementEmail,
+  getLeaveApprovedEmail,
+  getLeaveRejectedEmail
 } from "../utils/emailTemplates.js";
 
 
@@ -64,6 +66,25 @@ export async function processOutbox() {
               payload.extraData.leaveType, 
               payload.extraData.startDate, 
               payload.extraData.endDate, 
+              fullLink || appUrl
+            );
+          } else if ((payload.type === "LEAVE_APPROVED" || payload.type === "LEAVE_PROOF_REMINDER") && payload.extraData) {
+            htmlContent = getLeaveApprovedEmail(
+              payload.extraData.employeeName,
+              payload.extraData.leaveType,
+              payload.extraData.startDate,
+              payload.extraData.endDate,
+              payload.extraData.approvedBy,
+              fullLink || appUrl
+            );
+          } else if (payload.type === "LEAVE_REJECTED" && payload.extraData) {
+            htmlContent = getLeaveRejectedEmail(
+              payload.extraData.employeeName,
+              payload.extraData.leaveType,
+              payload.extraData.startDate,
+              payload.extraData.endDate,
+              payload.extraData.rejectedBy,
+              payload.extraData.reason,
               fullLink || appUrl
             );
           } else if (payload.type === "TASK_ASSIGNED" && payload.extraData) {

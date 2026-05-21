@@ -6,7 +6,9 @@ import {
   getGenericNotificationEmail, 
   getLeaveRequestEmail, 
   getTaskAssignedEmail, 
-  getAnnouncementEmail 
+  getAnnouncementEmail,
+  getLeaveApprovedEmail,
+  getLeaveRejectedEmail
 } from "../../utils/emailTemplates.js";
 
 // Initialize web-push with VAPID keys
@@ -108,12 +110,31 @@ export async function createNotification(params: {
           const appUrl = process.env.FRONTEND_URL || "http://localhost:5173";
           const fullLink = params.link ? `${appUrl}${params.link}` : undefined;
 
-          if (params.type === "LEAVE_REQUEST" && params.extraData) {
+          if ((params.type === "LEAVE_REQUEST" || params.type === "LEAVE_REQUESTED") && params.extraData) {
             htmlContent = getLeaveRequestEmail(
               params.extraData.employeeName, 
               params.extraData.leaveType, 
               params.extraData.startDate, 
               params.extraData.endDate, 
+              fullLink || appUrl
+            );
+          } else if ((params.type === "LEAVE_APPROVED" || params.type === "LEAVE_PROOF_REMINDER") && params.extraData) {
+            htmlContent = getLeaveApprovedEmail(
+              params.extraData.employeeName,
+              params.extraData.leaveType,
+              params.extraData.startDate,
+              params.extraData.endDate,
+              params.extraData.approvedBy,
+              fullLink || appUrl
+            );
+          } else if (params.type === "LEAVE_REJECTED" && params.extraData) {
+            htmlContent = getLeaveRejectedEmail(
+              params.extraData.employeeName,
+              params.extraData.leaveType,
+              params.extraData.startDate,
+              params.extraData.endDate,
+              params.extraData.rejectedBy,
+              params.extraData.reason,
               fullLink || appUrl
             );
           } else if (params.type === "TASK_ASSIGNED" && params.extraData) {

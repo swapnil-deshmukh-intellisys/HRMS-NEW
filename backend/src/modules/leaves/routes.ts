@@ -879,7 +879,15 @@ async function managerApproveLeave(leaveId: number, actor: NonNullable<Express.R
             message: `Your Sick Leave request has been approved. Please upload your medical proof within 24 hours to avoid conversion to Casual or Unpaid leave.`,
             type: "LEAVE_PROOF_REMINDER",
             link: `/leaves?id=${finalLeave.id}`,
-            sendPush: true
+            sendPush: true,
+            sendEmail: true,
+            extraData: {
+              employeeName: `${finalLeave.employee.firstName} ${finalLeave.employee.lastName}`,
+              leaveType: finalLeave.leaveType.name,
+              startDate: formatInTimeZone(finalLeave.startDate, TIMEZONE, 'dd MMM yyyy'),
+              endDate: formatInTimeZone(finalLeave.endDate, TIMEZONE, 'dd MMM yyyy'),
+              approvedBy: finalLeave.hrApprovedBy ? `${finalLeave.hrApprovedBy.firstName} ${finalLeave.hrApprovedBy.lastName}` : (finalLeave.managerApprovedBy ? `${finalLeave.managerApprovedBy.firstName} ${finalLeave.managerApprovedBy.lastName}` : "Manager")
+            }
           }
         });
       } else {
@@ -891,7 +899,15 @@ async function managerApproveLeave(leaveId: number, actor: NonNullable<Express.R
             message: `Your leave from ${formatInTimeZone(finalLeave.startDate, TIMEZONE, 'dd MMM yyyy')} to ${formatInTimeZone(finalLeave.endDate, TIMEZONE, 'dd MMM yyyy')} has been approved.`,
             type: "LEAVE_APPROVED",
             link: `/leaves?id=${finalLeave.id}`,
-            sendPush: true
+            sendPush: true,
+            sendEmail: true,
+            extraData: {
+              employeeName: `${finalLeave.employee.firstName} ${finalLeave.employee.lastName}`,
+              leaveType: finalLeave.leaveType.name,
+              startDate: formatInTimeZone(finalLeave.startDate, TIMEZONE, 'dd MMM yyyy'),
+              endDate: formatInTimeZone(finalLeave.endDate, TIMEZONE, 'dd MMM yyyy'),
+              approvedBy: finalLeave.hrApprovedBy ? `${finalLeave.hrApprovedBy.firstName} ${finalLeave.hrApprovedBy.lastName}` : (finalLeave.managerApprovedBy ? `${finalLeave.managerApprovedBy.firstName} ${finalLeave.managerApprovedBy.lastName}` : "Manager")
+            }
           }
         });
       }
@@ -942,7 +958,15 @@ async function managerApproveLeave(leaveId: number, actor: NonNullable<Express.R
       message: `Your manager has approved your leave request for ${formatInTimeZone(updatedLeave.startDate, TIMEZONE, 'dd MMM yyyy')}. It is now pending final HR approval.`,
       type: "LEAVE_APPROVED",
       link: `/leaves?id=${updatedLeave.id}`,
-      sendPush: true
+      sendPush: true,
+      sendEmail: true,
+      extraData: {
+        employeeName: `${updatedLeave.employee.firstName} ${updatedLeave.employee.lastName}`,
+        leaveType: updatedLeave.leaveType.name,
+        startDate: formatInTimeZone(updatedLeave.startDate, TIMEZONE, 'dd MMM yyyy'),
+        endDate: formatInTimeZone(updatedLeave.endDate, TIMEZONE, 'dd MMM yyyy'),
+        approvedBy: updatedLeave.managerApprovedBy ? `${updatedLeave.managerApprovedBy.firstName} ${updatedLeave.managerApprovedBy.lastName}` : "Manager"
+      }
     }).catch(err => console.error("Failed to create manager leave approval notification:", err));
   });
 
@@ -1009,7 +1033,16 @@ async function managerRejectLeave(
       message: `Your leave request for ${formatInTimeZone(result.startDate, TIMEZONE, 'dd MMM yyyy')} has been rejected by your manager.`,
       type: "LEAVE_REJECTED",
       link: `/leaves?id=${result.id}`,
-      sendPush: true
+      sendPush: true,
+      sendEmail: true,
+      extraData: {
+        employeeName: `${result.employee.firstName} ${result.employee.lastName}`,
+        leaveType: result.leaveType.name,
+        startDate: formatInTimeZone(result.startDate, TIMEZONE, 'dd MMM yyyy'),
+        endDate: formatInTimeZone(result.endDate, TIMEZONE, 'dd MMM yyyy'),
+        rejectedBy: result.managerApprovedBy ? `${result.managerApprovedBy.firstName} ${result.managerApprovedBy.lastName}` : "Manager",
+        reason: result.managerRejectionReason
+      }
     }).catch(err => console.error("Failed to create leave rejection notification:", err));
   });
 
@@ -1098,7 +1131,15 @@ async function hrApproveLeave(leaveId: number, actor: NonNullable<Express.Reques
             message: `Your Sick Leave request has been approved. Please upload your medical proof within 24 hours to avoid conversion to Casual or Unpaid leave.`,
             type: "LEAVE_PROOF_REMINDER",
             link: `/leaves?id=${finalLeave.id}`,
-            sendPush: true
+            sendPush: true,
+            sendEmail: true,
+            extraData: {
+              employeeName: `${finalLeave.employee.firstName} ${finalLeave.employee.lastName}`,
+              leaveType: finalLeave.leaveType.name,
+              startDate: formatInTimeZone(finalLeave.startDate, TIMEZONE, 'dd MMM yyyy'),
+              endDate: formatInTimeZone(finalLeave.endDate, TIMEZONE, 'dd MMM yyyy'),
+              approvedBy: finalLeave.hrApprovedBy ? `${finalLeave.hrApprovedBy.firstName} ${finalLeave.hrApprovedBy.lastName}` : "HR"
+            }
           }
         });
       } else {
@@ -1110,7 +1151,15 @@ async function hrApproveLeave(leaveId: number, actor: NonNullable<Express.Reques
             message: `Your leave from ${formatInTimeZone(finalLeave.startDate, TIMEZONE, 'dd MMM yyyy')} to ${formatInTimeZone(finalLeave.endDate, TIMEZONE, 'dd MMM yyyy')} has been approved.`,
             type: "LEAVE_APPROVED",
             link: `/leaves?id=${finalLeave.id}`,
-            sendPush: true
+            sendPush: true,
+            sendEmail: true,
+            extraData: {
+              employeeName: `${finalLeave.employee.firstName} ${finalLeave.employee.lastName}`,
+              leaveType: finalLeave.leaveType.name,
+              startDate: formatInTimeZone(finalLeave.startDate, TIMEZONE, 'dd MMM yyyy'),
+              endDate: formatInTimeZone(finalLeave.endDate, TIMEZONE, 'dd MMM yyyy'),
+              approvedBy: finalLeave.hrApprovedBy ? `${finalLeave.hrApprovedBy.firstName} ${finalLeave.hrApprovedBy.lastName}` : "HR"
+            }
           }
         });
       }
@@ -1144,7 +1193,15 @@ async function hrApproveLeave(leaveId: number, actor: NonNullable<Express.Reques
       message: `Your leave request for ${formatInTimeZone(result.startDate, TIMEZONE, 'dd MMM yyyy')} has been approved by HR.`,
       type: "LEAVE_APPROVED",
       link: `/leaves?id=${result.id}`,
-      sendPush: true
+      sendPush: true,
+      sendEmail: true,
+      extraData: {
+        employeeName: `${result.employee.firstName} ${result.employee.lastName}`,
+        leaveType: result.leaveType.name,
+        startDate: formatInTimeZone(result.startDate, TIMEZONE, 'dd MMM yyyy'),
+        endDate: formatInTimeZone(result.endDate, TIMEZONE, 'dd MMM yyyy'),
+        approvedBy: result.hrApprovedBy ? `${result.hrApprovedBy.firstName} ${result.hrApprovedBy.lastName}` : "HR"
+      }
     }).catch(err => console.error("Failed to create leave approval notification:", err));
   });
 
@@ -1212,7 +1269,16 @@ async function hrRejectLeave(
       message: `Your leave request for ${formatInTimeZone(result.startDate, TIMEZONE, 'dd MMM yyyy')} has been rejected by HR.`,
       type: "LEAVE_REJECTED",
       link: `/leaves?id=${result.id}`,
-      sendPush: true
+      sendPush: true,
+      sendEmail: true,
+      extraData: {
+        employeeName: `${result.employee.firstName} ${result.employee.lastName}`,
+        leaveType: result.leaveType.name,
+        startDate: formatInTimeZone(result.startDate, TIMEZONE, 'dd MMM yyyy'),
+        endDate: formatInTimeZone(result.endDate, TIMEZONE, 'dd MMM yyyy'),
+        rejectedBy: result.hrApprovedBy ? `${result.hrApprovedBy.firstName} ${result.hrApprovedBy.lastName}` : "HR",
+        reason: result.hrRejectionReason
+      }
     }).catch(err => console.error("Failed to create leave rejection notification:", err));
   });
 

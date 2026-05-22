@@ -130,8 +130,7 @@ export default function PayrollHistoryPage({ token }: Omit<PayrollHistoryPagePro
               .stamp-row td { height: 90px; position: relative; border-left: 1px solid #000; }
               .stamp-row td:first-child { border-left: none; }
               .stamp-container { position: relative; }
-              .stamp-box { position: absolute; right: 20px; bottom: 10px; width: 90px; height: 90px; border-radius: 50%; border: 2px solid #333; display: flex; align-items: center; justify-content: center; text-align: center; font-size: 10px; font-weight: bold; color: #333; transform: rotate(-15deg); opacity: 0.7; }
-              .stamp-box::after { content: 'AUTHORIZED SIGNATORY'; position: absolute; font-size: 8px; width: 100%; }
+              .stamp-img { position: absolute; right: 30px; bottom: 5px; height: 120px; width: auto; opacity: 0.9; transform: rotate(-12deg); }
               
               /* Bottom Footer */
               .bottom-footer { display: flex; justify-content: space-between; font-size: 12px; margin-top: 10px; padding: 0 10px; }
@@ -244,7 +243,7 @@ export default function PayrollHistoryPage({ token }: Omit<PayrollHistoryPagePro
                     <tr class="stamp-row">
                       <td colspan="2"></td>
                       <td colspan="3" class="stamp-container">
-                        <div class="stamp-box">SEAL</div>
+                        <img class="stamp-img" src="/assets/images/stamp.png" alt="Authorized Signatory Stamp" />
                       </td>
                     </tr>
                   </tbody>

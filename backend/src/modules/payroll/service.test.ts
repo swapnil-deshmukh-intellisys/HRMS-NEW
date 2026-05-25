@@ -112,3 +112,14 @@ test("calculatePayrollPreview supports half-day deduction separately from full a
     finalSalary: 51924.15,
   });
 });
+
+test("calculatePayrollBreakdown bypasses PF, gratuity, PT for interns", () => {
+  assert.deepEqual(calculatePayrollBreakdown(15000, 0, 3, "INTERNSHIP"), {
+    pf: 0,
+    gratuity: 0,
+    pt: 0,
+    netSalary: 15000,
+    perDaySalary: 500,
+    perHourSalary: 55.56,
+  });
+});

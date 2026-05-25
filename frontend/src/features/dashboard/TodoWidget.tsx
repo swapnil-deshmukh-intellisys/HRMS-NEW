@@ -34,21 +34,12 @@ export default function TodoWidget({ token }: { token: string | null }) {
     priority: "NORMAL", 
     reminder: new Date(new Date().setMinutes(new Date().getMinutes() + 30)),
   });
+  const [tempReminder, setTempReminder] = useState<Date>(new Date());
   const [submitting, setSubmitting] = useState(false);
   const [completingTodoId, setCompletingTodoId] = useState<number | null>(null);
   const [todoToConfirm, setTodoToConfirm] = useState<Todo | null>(null);
+  const [todoToDelete, setTodoToDelete] = useState<Todo | null>(null);
   const pickerRef = useRef<HTMLDivElement>(null);
-
-  // Click-away listener for date picker
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (isPickerOpen && pickerRef.current && !pickerRef.current.contains(event.target as Node)) {
-        setPickerOpen(false);
-      }
-    }
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [isPickerOpen]);
 
   useEffect(() => {
     fetchTodos();
@@ -167,6 +158,25 @@ export default function TodoWidget({ token }: { token: string | null }) {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!newTodo.title.trim()) return;
+
+    if (newTodo.title.length > 100) {
+      toast.error("Task title cannot exceed 100 characters!");
+      return;
+    }
+
+    if (newTodo.description.length > 500) {
+      toast.error("Description cannot exceed 500 characters!");
+      return;
+    }
+
+    const reminderChanged = editingTodo 
+      ? (!editingTodo.reminderTime || new Date(editingTodo.reminderTime).getTime() !== newTodo.reminder.getTime())
+      : true;
+
+    if (reminderChanged && newTodo.reminder.getTime() < Date.now()) {
+      toast.error("Reminder time cannot be in the past!");
+      return;
+    }
 
     setSubmitting(true);
     try {
@@ -292,7 +302,7 @@ export default function TodoWidget({ token }: { token: string | null }) {
                 </div>
               </div>
               <div className="todo-actions">
-                <button className="todo-action-btn" title="Delete" onClick={(e) => { e.stopPropagation(); deleteTodo(todo.id); }}>
+                <button className="todo-action-btn" title="Delete" onClick={(e) => { e.stopPropagation(); setTodoToDelete(todo); }}>
                   <Trash2 size={16} />
                 </button>
               </div>
@@ -304,18 +314,30 @@ export default function TodoWidget({ token }: { token: string | null }) {
       <Modal open={isModalOpen} onClose={() => setModalOpen(false)} title={editingTodo ? "Edit Task" : "Add New Task"}>
         <form className="todo-form" onSubmit={handleSubmit}>
           <label>
-            Task Title
+            <div className="field-label-row">
+              <span>Task Title</span>
+              <span className={`char-counter ${newTodo.title.length >= 100 ? "limit-reached" : ""}`}>
+                {newTodo.title.length} / 100
+              </span>
+            </div>
             <input 
               type="text" 
               required 
+              maxLength={100}
               placeholder="What needs to be done?"
               value={newTodo.title}
               onChange={e => setNewTodo(prev => ({ ...prev, title: e.target.value }))}
             />
           </label>
           <label>
-            Description (Optional)
+            <div className="field-label-row">
+              <span>Description (Optional)</span>
+              <span className={`char-counter ${newTodo.description.length >= 500 ? "limit-reached" : ""}`}>
+                {newTodo.description.length} / 500
+              </span>
+            </div>
             <textarea 
+              maxLength={500}
               placeholder="Add some details..."
               value={newTodo.description}
               onChange={e => setNewTodo(prev => ({ ...prev, description: e.target.value }))}
@@ -335,12 +357,15 @@ export default function TodoWidget({ token }: { token: string | null }) {
                 </button>
               ))}
             </div>
-          </div>          <div className="reminder-section" ref={pickerRef}>
+          </div>          <div className="reminder-section">
             <label className="section-label">Set Reminder</label>
             
             <div 
               className={`picker-trigger ${isPickerOpen ? 'active' : ''}`} 
-              onClick={() => setPickerOpen(!isPickerOpen)}
+              onClick={() => {
+                setTempReminder(new Date(newTodo.reminder));
+                setPickerOpen(true);
+              }}
             >
               <div className="trigger-section" title="Change Date">
                 <Calendar size={14} />
@@ -353,29 +378,39 @@ export default function TodoWidget({ token }: { token: string | null }) {
               </div>
             </div>
 
-            <div className={`picker-popover ${isPickerOpen ? 'active' : ''}`}>
-              <DateTimePicker 
-                value={newTodo.reminder}
-                onChange={date => setNewTodo(prev => ({ ...prev, reminder: date }))}
-              />
-            </div>
-            
-            <div className="quick-time-chips">
-              <button type="button" onClick={() => {
-                const d = new Date(); 
-                if (d.getHours() >= 18) d.setDate(d.getDate() + 1);
-                d.setHours(18, 0, 0, 0);
-                setNewTodo(prev => ({ ...prev, reminder: d }));
-              }}>Today EOD</button>
-              <button type="button" onClick={() => {
-                const d = new Date(); d.setDate(d.getDate() + 1); d.setHours(10, 10, 0, 0);
-                setNewTodo(prev => ({ ...prev, reminder: d }));
-              }}>Tomorrow AM</button>
-              <button type="button" onClick={() => {
-                const d = new Date(); d.setHours(d.getHours() + 2);
-                setNewTodo(prev => ({ ...prev, reminder: d }));
-              }}>+2 Hours</button>
-            </div>
+            <Modal open={isPickerOpen} onClose={() => setPickerOpen(false)} title="Set Reminder">
+              <div className="stack" style={{ gap: 'var(--space-4)', alignItems: 'center' }}>
+                <DateTimePicker 
+                  value={tempReminder}
+                  onChange={setTempReminder}
+                />
+                
+                <div className="quick-time-chips" style={{ justifyContent: 'center', marginTop: 'var(--space-2)' }}>
+                  <button type="button" onClick={() => {
+                    const d = new Date(); 
+                    if (d.getHours() >= 18) d.setDate(d.getDate() + 1);
+                    d.setHours(18, 0, 0, 0);
+                    setTempReminder(d);
+                  }}>Today EOD</button>
+                  <button type="button" onClick={() => {
+                    const d = new Date(); d.setDate(d.getDate() + 1); d.setHours(10, 10, 0, 0);
+                    setTempReminder(d);
+                  }}>Tomorrow AM</button>
+                  <button type="button" onClick={() => {
+                    const d = new Date(); d.setHours(d.getHours() + 2);
+                    setTempReminder(d);
+                  }}>+2 Hours</button>
+                </div>
+
+                <div className="button-row" style={{ marginTop: 'var(--space-4)', width: '100%', display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+                  <button type="button" className="secondary" onClick={() => setPickerOpen(false)}>Cancel</button>
+                  <button type="button" onClick={() => {
+                    setNewTodo(prev => ({ ...prev, reminder: tempReminder }));
+                    setPickerOpen(false);
+                  }}>Save</button>
+                </div>
+              </div>
+            </Modal>
           </div>
           <div className="button-row" style={{ marginTop: 'var(--space-4)' }}>
             <button type="button" className="secondary" onClick={() => setModalOpen(false)}>Cancel</button>
@@ -399,6 +434,29 @@ export default function TodoWidget({ token }: { token: string | null }) {
               if (todoToConfirm) performToggle(todoToConfirm);
               setTodoToConfirm(null);
             }}>Yes, Complete</button>
+          </div>
+        </div>
+      </Modal>
+
+      <Modal 
+        open={!!todoToDelete} 
+        onClose={() => setTodoToDelete(null)} 
+        title="Delete Task?"
+      >
+        <div className="stack" style={{ gap: 'var(--space-4)' }}>
+          <p>Are you sure you want to permanently delete "<strong>{todoToDelete?.title}</strong>"? This action cannot be undone.</p>
+          <div className="button-row" style={{ display: "flex", gap: "12px", justifyContent: "flex-end" }}>
+            <button type="button" className="secondary" onClick={() => setTodoToDelete(null)}>Cancel</button>
+            <button 
+              type="button" 
+              style={{ background: "var(--color-danger, #ef4444)", color: "white" }} 
+              onClick={() => {
+                if (todoToDelete) deleteTodo(todoToDelete.id);
+                setTodoToDelete(null);
+              }}
+            >
+              Yes, Delete
+            </button>
           </div>
         </div>
       </Modal>

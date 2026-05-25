@@ -3,7 +3,7 @@ import { sendEmail } from "./mailer.js";
 import { 
   getGenericNotificationEmail, 
   getLeaveRequestEmail, 
-  getTaskAssignedEmail, 
+  getColleagueBirthdayEmail, 
   getAnnouncementEmail,
   getLeaveApprovedEmail,
   getLeaveRejectedEmail
@@ -89,11 +89,7 @@ export async function processOutbox() {
               fullLink || appUrl
             );
           } else if (payload.type === "TASK_ASSIGNED" && payload.extraData) {
-            htmlContent = getTaskAssignedEmail(
-              payload.title, 
-              payload.extraData.assignedBy, 
-              fullLink || appUrl
-            );
+            // Bypassed automatic generic notification email for task assignment in outbox
           } else if (payload.type === "ANNOUNCEMENT" && payload.extraData) {
             htmlContent = getAnnouncementEmail(
               payload.title, 
@@ -102,10 +98,12 @@ export async function processOutbox() {
               fullLink || appUrl
             );
           } else {
-            htmlContent = getGenericNotificationEmail(payload.title, payload.message, fullLink);
+            // Bypassed automatic generic notification email fallback in outbox
           }
           
-          await sendEmail(user.email, payload.title, htmlContent);
+          if (htmlContent) {
+            await sendEmail(user.email, payload.title, htmlContent);
+          }
         }
       }
 

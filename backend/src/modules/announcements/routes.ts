@@ -2,6 +2,7 @@ import { Router } from "express";
 import { prisma } from "../../config/prisma.js";
 import { authenticate, requireRoles } from "../../middleware/auth.js";
 import { sendSuccess } from "../../utils/api.js";
+import { systemCache } from "../../services/cache.js";
 
 const router = Router();
 
@@ -114,6 +115,9 @@ router.post("/", requireRoles("ADMIN", "HR", "MANAGER"), async (req, res, next) 
       )).catch(err => console.error("Failed to create announcement DB notifications:", err));
     });
 
+    // Invalidate announcements cache
+    systemCache.invalidateAnnouncements();
+
     return sendSuccess(res, "Announcement created successfully", announcement);
   } catch (error) {
     next(error);
@@ -133,6 +137,9 @@ router.delete("/:id", requireRoles("ADMIN", "HR", "MANAGER"), async (req, res, n
       where: { id: Number(id) },
       data: { isActive: false }
     });
+
+    // Invalidate announcements cache
+    systemCache.invalidateAnnouncements();
 
     return sendSuccess(res, "Announcement deactivated successfully", null);
   } catch (error) {

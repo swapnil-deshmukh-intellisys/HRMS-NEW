@@ -5,7 +5,7 @@ import { sendEmail } from "../../services/mailer.js";
 import { 
   getGenericNotificationEmail, 
   getLeaveRequestEmail, 
-  getTaskAssignedEmail, 
+  getColleagueBirthdayEmail, 
   getAnnouncementEmail,
   getLeaveApprovedEmail,
   getLeaveRejectedEmail
@@ -139,11 +139,7 @@ export async function createNotification(params: {
               fullLink || appUrl
             );
           } else if (params.type === "TASK_ASSIGNED" && params.extraData) {
-            htmlContent = getTaskAssignedEmail(
-              params.title, 
-              params.extraData.assignedBy, 
-              fullLink || appUrl
-            );
+            // Bypassed automatic generic notification email for task assignment
           } else if (params.type === "ANNOUNCEMENT" && params.extraData) {
             htmlContent = getAnnouncementEmail(
               params.title, 
@@ -152,10 +148,12 @@ export async function createNotification(params: {
               fullLink || appUrl
             );
           } else {
-            htmlContent = getGenericNotificationEmail(params.title, params.message, fullLink);
+            // Bypassed automatic generic notification email fallback
           }
           
-          await sendEmail(user.email, params.title, htmlContent);
+          if (htmlContent) {
+            await sendEmail(user.email, params.title, htmlContent);
+          }
         }
       } catch (err) {
         console.error("Failed to send email for notification asynchronously:", err);

@@ -121,6 +121,15 @@ export function AppProvider({ children, token, role }: { children: ReactNode; to
     return () => window.removeEventListener(ATTENDANCE_EVENT, handleAttendanceUpdated);
   }, []);
 
+  useEffect(() => {
+    const handleReconnected = () => {
+      console.log("[AppProvider] Reconnection event detected. Syncing workspace summary...");
+      void refreshSummary();
+    };
+    window.addEventListener("hrms-reconnected", handleReconnected);
+    return () => window.removeEventListener("hrms-reconnected", handleReconnected);
+  }, [refreshSummary]);
+
   const value = useMemo(() => ({
     summary,
     notifications,

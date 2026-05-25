@@ -77,4 +77,40 @@ describe("AttendancePage", () => {
     expect(screen.getByText("Request attendance correction")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /submit request/i })).toBeInTheDocument();
   });
+
+  test("limits the correction request date picker input to not select dates before joining date", async () => {
+    mockApiRoutes([
+      { path: "/attendance?date=2026-05-12", data: [] },
+      { path: "/attendance/regularizations", data: [] },
+    ]);
+
+    // Employee joined on 2026-05-08
+    const employee = createEmployee({ 
+      id: 1,
+      joiningDate: "2026-05-08T00:00:00.000Z" 
+    });
+
+    const { container } = render(
+      <MemoryRouter>
+        <AttendancePage
+          token="token"
+          role="EMPLOYEE"
+          currentEmployeeId={1}
+          currentEmployee={employee}
+        />
+      </MemoryRouter>,
+    );
+
+    await screen.findByText("Attendance history");
+    fireEvent.click(screen.getByRole("button", { name: /request correction/i }));
+
+    expect(await screen.findByRole("dialog")).toBeInTheDocument();
+
+    // Query date input inside dialog (Portalled)
+    const dateInput = document.body.querySelector("input[type='date']") as HTMLInputElement;
+    expect(dateInput).toBeInTheDocument();
+    
+    // It should have min attribute set to formatted joining date: "2026-05-08"
+    expect(dateInput.getAttribute("min")).toBe("2026-05-08");
+  });
 });

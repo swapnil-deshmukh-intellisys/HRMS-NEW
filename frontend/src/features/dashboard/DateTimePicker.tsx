@@ -13,7 +13,9 @@ import {
   addHours,
   addMinutes,
   setHours,
-  setMinutes
+  setMinutes,
+  isBefore,
+  startOfDay
 } from 'date-fns';
 import { ChevronLeft, ChevronRight, ChevronUp, ChevronDown } from 'lucide-react';
 import './DateTimePicker.css';
@@ -26,15 +28,24 @@ interface DateTimePickerProps {
 export default function DateTimePicker({ value, onChange }: DateTimePickerProps) {
   const [currentMonth, setCurrentMonth] = useState(startOfMonth(value));
   
-  // Local state for typing
+  // Local state for typing and focus tracking
   const [tempHours, setTempHours] = useState(format(value, 'hh'));
   const [tempMinutes, setTempMinutes] = useState(format(value, 'mm'));
+  const [isHourFocused, setIsHourFocused] = useState(false);
+  const [isMinFocused, setIsMinFocused] = useState(false);
 
-  // Sync temp state when value changes externally
+  // Sync temp state when value changes externally, unless currently focused
   React.useEffect(() => {
-    setTempHours(format(value, 'hh'));
-    setTempMinutes(format(value, 'mm'));
-  }, [value]);
+    if (!isHourFocused) {
+      setTempHours(format(value, 'hh'));
+    }
+  }, [value, isHourFocused]);
+
+  React.useEffect(() => {
+    if (!isMinFocused) {
+      setTempMinutes(format(value, 'mm'));
+    }
+  }, [value, isMinFocused]);
   
   // Date Logic
   const monthStart = startOfMonth(currentMonth);
@@ -54,8 +65,10 @@ export default function DateTimePicker({ value, onChange }: DateTimePickerProps)
     let newDate = new Date(value);
     if (type === 'h') {
       newDate = addHours(newDate, delta);
+      setTempHours(format(newDate, 'hh'));
     } else {
       newDate = addMinutes(newDate, delta);
+      setTempMinutes(format(newDate, 'mm'));
     }
     onChange(newDate);
   };
@@ -107,6 +120,8 @@ export default function DateTimePicker({ value, onChange }: DateTimePickerProps)
     } else {
       newDate = setHours(newDate, hours + 12);
     }
+    setTempHours(format(newDate, 'hh'));
+    setTempMinutes(format(newDate, 'mm'));
     onChange(newDate);
   };
 
@@ -137,12 +152,15 @@ export default function DateTimePicker({ value, onChange }: DateTimePickerProps)
         {calendarDays.map((day, i) => {
           const isCurrentMonth = isSameMonth(day, monthStart);
           const isSelected = isSameDay(day, value);
+          const isPast = isBefore(startOfDay(day), startOfDay(new Date()));
           return (
             <button 
               key={i} 
               type="button"
+              disabled={isPast}
               className={`calendar-day ${!isCurrentMonth ? 'inactive' : ''} ${isSelected ? 'selected' : ''}`}
               onClick={(e) => {
+                if (isPast) return;
                 e.stopPropagation();
                 const newDate = new Date(value);
                 newDate.setFullYear(day.getFullYear());
@@ -165,7 +183,11 @@ export default function DateTimePicker({ value, onChange }: DateTimePickerProps)
               type="text" 
               value={tempHours} 
               onChange={(e) => handleInputChange('h', e.target.value)}
-              onBlur={() => commitChange('h', tempHours)}
+              onFocus={() => setIsHourFocused(true)}
+              onBlur={() => {
+                commitChange('h', tempHours);
+                setIsHourFocused(false);
+              }}
               onKeyDown={(e) => handleKeyDown(e, 'h')}
               maxLength={2}
             />
@@ -180,7 +202,11 @@ export default function DateTimePicker({ value, onChange }: DateTimePickerProps)
               type="text" 
               value={tempMinutes} 
               onChange={(e) => handleInputChange('m', e.target.value)}
-              onBlur={() => commitChange('m', tempMinutes)}
+              onFocus={() => setIsMinFocused(true)}
+              onBlur={() => {
+                commitChange('m', tempMinutes);
+                setIsMinFocused(false);
+              }}
               onKeyDown={(e) => handleKeyDown(e, 'm')}
               maxLength={2}
             />

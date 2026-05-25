@@ -1,4 +1,4 @@
-.todo-history-page {
+.assigned-history-page {
   padding: var(--space-6) var(--space-8);
   width: 100%;
 }
@@ -161,15 +161,6 @@
   white-space: nowrap;
 }
 
-.day-badge {
-  background: var(--color-surface-hover);
-  color: var(--color-text-secondary);
-  padding: 4px 10px;
-  border-radius: var(--radius-sm);
-  font-size: var(--text-xs);
-  font-weight: var(--fw-medium);
-}
-
 .task-name {
   display: block;
   font-weight: var(--fw-semibold);
@@ -184,7 +175,7 @@
   margin-top: 2px;
 }
 
-.priority-pill {
+.task-badge {
   font-size: 10px;
   font-weight: var(--fw-bold);
   padding: 2px 8px;
@@ -192,24 +183,8 @@
   text-transform: uppercase;
 }
 
-.priority-pill--high { background: #fef2f2; color: #ef4444; }
-.priority-pill--normal { background: #eff6ff; color: #3b82f6; }
-.priority-pill--low { background: #f9fafb; color: #6b7280; }
-
-.delete-history-btn {
-  background: transparent;
-  border: none;
-  color: var(--color-text-secondary);
-  padding: 8px;
-  border-radius: var(--radius-md);
-  transition: all var(--transition-fast);
-  cursor: pointer;
-}
-
-.delete-history-btn:hover {
-  background: #fef2f2;
-  color: #ef4444;
-}
+.badge-general { background: #eff6ff; color: #3b82f6; }
+.badge-assigned { background: #faf5ff; color: #8b5cf6; }
 
 .empty-history-card {
   padding: var(--space-12) var(--space-4);

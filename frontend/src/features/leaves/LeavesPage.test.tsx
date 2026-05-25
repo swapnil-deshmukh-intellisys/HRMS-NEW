@@ -126,4 +126,44 @@ describe("LeavesPage", () => {
     expect(await screen.findByText(/proof upload pending/i)).toBeInTheDocument();
     expect(screen.getAllByRole("button", { name: /upload proof/i })[0]).toBeInTheDocument();
   });
+
+  test("retains multiple days leave tab when changing start date to match end date", async () => {
+    mockApiRoutes([
+      { path: "/leave-balances/me", data: [createLeaveBalance()] },
+      { path: "/leaves", data: [], method: "GET" },
+      { path: "/leave-types", data: [createLeaveType()] },
+    ]);
+
+    render(
+      <MemoryRouter>
+        <LeavesPage
+          token="token"
+          role="EMPLOYEE"
+          currentEmployeeId={1}
+        />
+      </MemoryRouter>,
+    );
+
+    await screen.findByText("Leave requests");
+    fireEvent.click(screen.getByRole("button", { name: /apply for leave/i }));
+
+    // Click on Multiple Days Leave tab
+    const multiDaysTab = await screen.findByRole("button", { name: /multiple days leave/i });
+    fireEvent.click(multiDaysTab);
+
+    // Verify Start date and End date fields are rendered
+    const startDateInput = screen.getByLabelText(/start date/i) as HTMLInputElement;
+    const endDateInput = screen.getByLabelText(/end date/i) as HTMLInputElement;
+    expect(startDateInput).toBeInTheDocument();
+    expect(endDateInput).toBeInTheDocument();
+
+    // Change start date to some date equal to or after the current end date
+    const initialEndDate = endDateInput.value;
+    fireEvent.change(startDateInput, { target: { value: initialEndDate } });
+
+    // Verify we are still on Multiple Days Leave tab (both fields are still present)
+    expect(screen.getByLabelText(/start date/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/end date/i)).toBeInTheDocument();
+    expect(screen.queryByLabelText(/leave date/i)).not.toBeInTheDocument();
+  });
 });

@@ -27,22 +27,25 @@ function toEmployeeForm(employee: Employee): EmployeeFormValues {
     email: employee.user?.email ?? "",
     password: "",
     role: employee.user?.role.name ?? "EMPLOYEE",
-    employeeCode: employee.employeeCode,
-    firstName: employee.firstName,
-    lastName: employee.lastName,
+    employeeCode: employee.employeeCode ?? "",
+    firstName: employee.firstName ?? "",
+    lastName: employee.lastName ?? "",
     jobTitle: employee.jobTitle ?? "",
     phone: employee.phone ?? "",
     annualPackageLpa: employee.annualPackageLpa ? String(employee.annualPackageLpa) : "",
     isOnProbation: Boolean(employee.isOnProbation),
     probationEndDate: employee.probationEndDate ? formatStoredDateForInput(employee.probationEndDate) : "",
-    departmentId: String(employee.departmentId),
+    departmentId: employee.departmentId ? String(employee.departmentId) : "",
     managerId: employee.managerId ? String(employee.managerId) : "",
-    joiningDate: formatStoredDateTimeForInput(employee.joiningDate),
+    joiningDate: employee.joiningDate ? formatStoredDateTimeForInput(employee.joiningDate) : "",
     employmentStatus: employee.employmentStatus,
     isTeamLead: Boolean(employee.capabilities?.some((capability) => capability.capability === "TEAM_LEAD")),
     teamLeadScopeIds: employee.scopedTeamMembers?.map((item) => item.employee.id) ?? [],
     panCardNumber: employee.panCardNumber ?? "",
     dateOfBirth: employee.dateOfBirth ? formatStoredDateForInput(employee.dateOfBirth) : "",
+    employmentType: employee.employmentType ?? "FULL_TIME",
+    internshipType: employee.internshipType ?? "PAID",
+    stipend: employee.stipend ? String(employee.stipend) : "",
   };
 }
 
@@ -111,6 +114,11 @@ export default function EmployeeProfilePage({ token, role, currentEmployeeId }: 
   useEffect(() => {
     reloadProfile();
   }, [reloadProfile]);
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+    document.querySelector(".content-body")?.scrollTo({ top: 0, left: 0, behavior: "auto" });
+  }, [employeeId]);
 
   useEffect(() => {
     if (employee) {
@@ -198,14 +206,17 @@ export default function EmployeeProfilePage({ token, role, currentEmployeeId }: 
         password: formValues.password.trim() || undefined,
         jobTitle: formValues.jobTitle.trim() || undefined,
         phone: formValues.phone.trim() || undefined,
-        annualPackageLpa: formValues.annualPackageLpa.trim() ? Number(formValues.annualPackageLpa) : null,
-        isOnProbation: formValues.isOnProbation,
-        probationEndDate: formValues.isOnProbation && formValues.probationEndDate ? `${formValues.probationEndDate}T00:00:00.000Z` : null,
-        departmentId: Number(formValues.departmentId),
+        annualPackageLpa: formValues.employmentType === "FULL_TIME" && formValues.annualPackageLpa.trim() ? Number(formValues.annualPackageLpa) : null,
+        isOnProbation: formValues.employmentType === "FULL_TIME" ? formValues.isOnProbation : false,
+        probationEndDate: formValues.employmentType === "FULL_TIME" && formValues.isOnProbation && formValues.probationEndDate ? `${formValues.probationEndDate}T00:00:00.000Z` : null,
+        departmentId: formValues.departmentId ? Number(formValues.departmentId) : undefined,
         managerId: formValues.managerId ? Number(formValues.managerId) : null,
-        joiningDate: serializeLocalDateTime(formValues.joiningDate),
+        joiningDate: formValues.joiningDate ? serializeLocalDateTime(formValues.joiningDate) : undefined,
         panCardNumber: formValues.panCardNumber.trim() || null,
         dateOfBirth: formValues.dateOfBirth ? `${formValues.dateOfBirth}T00:00:00.000Z` : null,
+        employmentType: formValues.employmentType || "FULL_TIME",
+        internshipType: formValues.employmentType === "INTERNSHIP" ? formValues.internshipType : null,
+        stipend: formValues.employmentType === "INTERNSHIP" && formValues.internshipType === "PAID" && formValues.stipend ? Number(formValues.stipend) : null,
       };
 
       await apiRequest<Employee>(`/employees/${employee.id}`, {
@@ -309,11 +320,11 @@ export default function EmployeeProfilePage({ token, role, currentEmployeeId }: 
       />
       <EmployeeProfileTabs activeTab={activeTab} tabs={visibleTabs} onChange={setActiveTab} />
       {activeTab === "overview" ? <EmployeeOverviewTab employee={employee} token={token} /> : null}
-      {activeTab === "attendance" ? <EmployeeAttendanceTab attendance={attendance} exceptions={localExceptions} /> : null}
+      {activeTab === "attendance" ? <EmployeeAttendanceTab attendance={attendance} exceptions={localExceptions} joiningDate={employee.joiningDate} /> : null}
       {activeTab === "leaves" ? (
         <EmployeeLeavesTab balances={balances} leaves={leaves} role={role} viewerEmployeeId={currentEmployeeId} />
       ) : null}
-      {canViewPayroll && activeTab === "payroll" ? <EmployeePayrollTab payroll={visiblePayroll} /> : null}
+      {canViewPayroll && activeTab === "payroll" ? <EmployeePayrollTab payroll={visiblePayroll} token={token} /> : null}
       <Modal open={employeeModalOpen} title="Edit employee" className="employee-profile-modal" onClose={() => setEmployeeModalOpen(false)}>
         <EmployeeForm
           form={form}

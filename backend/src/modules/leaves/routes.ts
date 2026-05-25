@@ -332,7 +332,7 @@ router.post("/leaves", upload.single("attachment"), validate(applyLeaveSchema), 
           });
         },
         isWorkingDay: async (date) => getCalendarDayStatus(date, calendarExceptions).isWorkingDay,
-        createLeaveRequest: ({
+        createLeaveRequest: async ({
           employeeId,
           leaveTypeId,
           startDate,
@@ -354,8 +354,14 @@ router.post("/leaves", upload.single("attachment"), validate(applyLeaveSchema), 
           medicalProofReviewedById,
           medicalProofRejectionReason,
           reason,
-        }) =>
-          prisma.leaveRequest.create({
+        }) => {
+          const employee = await prisma.employee.findUnique({
+            where: { id: employeeId },
+            select: { managerId: true }
+          });
+          const hasNoManager = !employee?.managerId;
+
+          return prisma.leaveRequest.create({
             data: {
               employeeId,
               leaveTypeId,
@@ -378,6 +384,7 @@ router.post("/leaves", upload.single("attachment"), validate(applyLeaveSchema), 
               medicalProofReviewedById,
               medicalProofRejectionReason,
               reason,
+              managerApprovalStatus: hasNoManager ? ApprovalStepStatus.APPROVED : ApprovalStepStatus.PENDING,
             },
             include: {
               employee: true,
@@ -386,7 +393,8 @@ router.post("/leaves", upload.single("attachment"), validate(applyLeaveSchema), 
               hrApprovedBy: true,
               medicalProofReviewedBy: true,
             },
-          }),
+          });
+        },
       },
     );
 
@@ -952,23 +960,16 @@ async function managerApproveLeave(leaveId: number, actor: NonNullable<Express.R
     },
   });
 
-  // Notify employee that manager has approved
+  // Notify employee that manager has approved (push-only — leave still needs HR approval)
   import("./../notifications/service.js").then(ns => {
     ns.createNotification({
       userId: updatedLeave.employee.userId,
-      title: "Manager Approved Leave ✅",
-      message: `Your manager has approved your leave request for ${formatInTimeZone(updatedLeave.startDate, TIMEZONE, 'dd MMM yyyy')}. It is now pending final HR approval.`,
+      title: "Manager Approved — Pending HR Review ✅",
+      message: `Your manager ${updatedLeave.managerApprovedBy ? `${updatedLeave.managerApprovedBy.firstName} ${updatedLeave.managerApprovedBy.lastName}` : ""} has approved your leave request for ${formatInTimeZone(updatedLeave.startDate, TIMEZONE, 'dd MMM yyyy')}. It is now pending final HR approval.`,
       type: "LEAVE_APPROVED",
       link: `/leaves?id=${updatedLeave.id}`,
       sendPush: true,
-      sendEmail: true,
-      extraData: {
-        employeeName: `${updatedLeave.employee.firstName} ${updatedLeave.employee.lastName}`,
-        leaveType: updatedLeave.leaveType.name,
-        startDate: formatInTimeZone(updatedLeave.startDate, TIMEZONE, 'dd MMM yyyy'),
-        endDate: formatInTimeZone(updatedLeave.endDate, TIMEZONE, 'dd MMM yyyy'),
-        approvedBy: updatedLeave.managerApprovedBy ? `${updatedLeave.managerApprovedBy.firstName} ${updatedLeave.managerApprovedBy.lastName}` : "Manager"
-      }
+      sendEmail: false,
     }).catch(err => console.error("Failed to create manager leave approval notification:", err));
   });
 
@@ -1187,23 +1188,16 @@ async function hrApproveLeave(leaveId: number, actor: NonNullable<Express.Reques
     },
   });
 
-  // DB Notification
+  // Notify employee that HR has approved (push-only — leave still needs manager approval)
   import("./../notifications/service.js").then(ns => {
     ns.createNotification({
       userId: result.employee.userId,
-      title: "Leave Approved! ✅",
-      message: `Your leave request for ${formatInTimeZone(result.startDate, TIMEZONE, 'dd MMM yyyy')} has been approved by HR.`,
+      title: "HR Approved — Pending Manager Review ✅",
+      message: `HR has approved your leave request for ${formatInTimeZone(result.startDate, TIMEZONE, 'dd MMM yyyy')}. It is now pending your manager's approval.`,
       type: "LEAVE_APPROVED",
       link: `/leaves?id=${result.id}`,
       sendPush: true,
-      sendEmail: true,
-      extraData: {
-        employeeName: `${result.employee.firstName} ${result.employee.lastName}`,
-        leaveType: result.leaveType.name,
-        startDate: formatInTimeZone(result.startDate, TIMEZONE, 'dd MMM yyyy'),
-        endDate: formatInTimeZone(result.endDate, TIMEZONE, 'dd MMM yyyy'),
-        approvedBy: result.hrApprovedBy ? `${result.hrApprovedBy.firstName} ${result.hrApprovedBy.lastName}` : "HR"
-      }
+      sendEmail: false,
     }).catch(err => console.error("Failed to create leave approval notification:", err));
   });
 

@@ -225,8 +225,13 @@
   background-color: #dcfce7 !important; /* Slightly darker emerald */
 }
 
+.attendance-row--joining-day {
+  background-color: #eff6ff !important; /* Premium light blue highlight for Joining Day */
+}
+
 .attendance-row--off td,
-.attendance-row--holiday td {
+.attendance-row--holiday td,
+.attendance-row--joining-day td {
   border-bottom-color: #e2e8f0;
 }
 
@@ -245,6 +250,12 @@
   color: #059669;
 }
 
+.status-pill--no-data {
+  background: #f8fafc;
+  color: #94a3b8;
+  border: 1px dashed #cbd5e1;
+}
+
 .attendance-warning-text {
   color: #ef4444;
   font-weight: 500;
@@ -261,3 +272,140 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* Leave Overview Dashboard classes */
+.employee-leave-overview {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(280px, 0.8fr);
+  gap: var(--space-6);
+  align-items: center;
+}
+
+.employee-leave-overview__visual {
+  min-width: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.employee-leave-overview__details {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.employee-leave-progress-card {
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface-page);
+  transition: all var(--transition-fast) ease-in-out;
+  cursor: default;
+}
+
+.employee-leave-progress-card:hover {
+  background: var(--color-surface-secondary);
+  border-color: var(--color-border-default);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+.employee-leave-progress-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.employee-leave-progress-card__title-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.employee-leave-progress-card__name {
+  color: var(--color-text-strong);
+  font-size: var(--text-sm);
+  font-weight: var(--fw-semibold);
+}
+
+.employee-leave-progress-card__badge {
+  display: inline-block;
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+  font-size: 10px;
+  font-weight: var(--fw-bold);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.employee-leave-progress-card__badge--sl {
+  background: color-mix(in srgb, #10b981 12%, transparent);
+  color: #059669;
+}
+
+.employee-leave-progress-card__badge--cl {
+  background: color-mix(in srgb, #3b82f6 12%, transparent);
+  color: #2563eb;
+}
+
+.employee-leave-progress-card__badge--pl {
+  background: color-mix(in srgb, #8b5cf6 12%, transparent);
+  color: #7c3aed;
+}
+
+.employee-leave-progress-card__badge--default {
+  background: color-mix(in srgb, #f59e0b 12%, transparent);
+  color: #d97706;
+}
+
+.employee-leave-progress-card__usage {
+  color: var(--color-text-strong);
+  font-size: var(--text-xs);
+  font-weight: var(--fw-semibold);
+}
+
+.employee-leave-progress-card__usage span {
+  color: var(--color-text-secondary);
+  font-weight: var(--fw-normal);
+}
+
+.employee-leave-progress-card__track {
+  overflow: hidden;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--color-surface-secondary);
+}
+
+.employee-leave-progress-card__fill {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  transition: width var(--transition-slow) cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.employee-leave-progress-card__available-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 11px;
+  color: var(--color-text-secondary);
+}
+
+.employee-leave-progress-card__available-text {
+  font-weight: var(--fw-medium);
+}
+
+.employee-leave-progress-card__available-val {
+  font-weight: var(--fw-semibold);
+  color: var(--color-text-strong);
+}
+
+@media (max-width: 768px) {
+  .employee-leave-overview {
+    grid-template-columns: 1fr;
+    gap: var(--space-4);
+  }
+}
+

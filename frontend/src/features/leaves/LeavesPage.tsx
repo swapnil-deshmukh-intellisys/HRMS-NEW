@@ -481,12 +481,27 @@ export default function LeavesPage({ token, role, currentEmployeeId }: LeavesPag
             onSubmit={handleSubmit}
           />
           <aside className="leave-policy-note">
-            <p className="eyebrow">Leave policy</p>
-            <ul className="leave-policy-note__list">
-              <li>Sandwich leave is not allowed.</li>
-              <li>Manager and HR approval are required.</li>
-              <li>Apply through HRMS or official email only.</li>
-            </ul>
+            <p className="eyebrow" style={{ marginBottom: "8px" }}>Leave policy</p>
+            <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+              <div>
+                <strong style={{ fontSize: "13px", color: "var(--color-text-strong)", display: "block" }}>🥪 Sandwich Leave Rule</strong>
+                <p style={{ margin: "2px 0 0 0", fontSize: "12px", color: "var(--color-text-secondary)", lineHeight: "1.4" }}>
+                  Sandwich leave is not allowed. If an official weekend or holiday falls directly between two approved leave days (e.g., Friday and Monday), those intermediate weekend/holiday days will also be deducted as leaves from your balance.
+                </p>
+              </div>
+              <div>
+                <strong style={{ fontSize: "13px", color: "var(--color-text-strong)", display: "block" }}>⚙️ Approval Workflow</strong>
+                <p style={{ margin: "2px 0 0 0", fontSize: "12px", color: "var(--color-text-secondary)", lineHeight: "1.4" }}>
+                  Both Manager and HR approvals are required. Your request must be reviewed and approved by both your direct manager and the HR department before it is officially authorized.
+                </p>
+              </div>
+              <div>
+                <strong style={{ fontSize: "13px", color: "var(--color-text-strong)", display: "block" }}>✉️ Application Channels</strong>
+                <p style={{ margin: "2px 0 0 0", fontSize: "12px", color: "var(--color-text-secondary)", lineHeight: "1.4" }}>
+                  Apply through HRMS or official email only. Informal submissions via verbal notices or instant messengers (e.g., WhatsApp, Slack) are not recognized as valid.
+                </p>
+              </div>
+            </div>
           </aside>
         </div>
       </Modal>

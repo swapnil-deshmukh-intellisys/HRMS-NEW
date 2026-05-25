@@ -25,10 +25,17 @@ export function calculateCompensationFromLpa(annualPackageLpa: number) {
   };
 }
 
-export function calculatePayrollBreakdown(grossMonthlySalary: number, basicMonthlySalary: number, month: number) {
-  const pf = roundCurrency(0.12 * basicMonthlySalary);
-  const gratuity = roundCurrency(0.0481 * basicMonthlySalary);
-  const pt = month === 3 ? 300 : 200;
+export function calculatePayrollBreakdown(grossMonthlySalary: number, basicMonthlySalary: number, month: number, employmentType?: string) {
+  let pf = roundCurrency(0.12 * basicMonthlySalary);
+  let gratuity = roundCurrency(0.0481 * basicMonthlySalary);
+  let pt = month === 3 ? 300 : 200;
+
+  if (employmentType === "INTERNSHIP") {
+    pf = 0;
+    gratuity = 0;
+    pt = 0;
+  }
+
   const netSalary = roundCurrency(grossMonthlySalary - pf - gratuity - pt);
   const perDaySalary = roundCurrency(netSalary / 30);
   const perHourSalary = roundCurrency(perDaySalary / 9);
@@ -51,8 +58,9 @@ export function calculatePayrollPreview(input: {
   halfDayDeductionDays?: number;
   deductibleDays: number;
   probationMultiplier?: number;
+  employmentType?: string;
 }) {
-  const breakdown = calculatePayrollBreakdown(input.grossMonthlySalary, input.basicMonthlySalary, input.month);
+  const breakdown = calculatePayrollBreakdown(input.grossMonthlySalary, input.basicMonthlySalary, input.month, input.employmentType);
   const deductionAmount = roundCurrency(breakdown.perDaySalary * input.deductibleDays);
   const finalSalaryBeforeProbation = roundCurrency(breakdown.netSalary - deductionAmount);
   // User Rule: Probation staff always get exactly 50% for their period on probation.
@@ -93,6 +101,9 @@ export async function buildPayrollPreview(params: {
       basicMonthlySalary: true,
       isOnProbation: true,
       probationEndDate: true,
+      employmentType: true,
+      internshipType: true,
+      stipend: true,
     },
   });
 
@@ -212,6 +223,7 @@ export async function buildPayrollPreview(params: {
     halfDayDeductionDays,
     deductibleDays,
     probationMultiplier: effectiveProbationMultiplier,
+    employmentType: employee.employmentType || undefined,
   });
 
   const incentives = await prisma.incentive.findMany({

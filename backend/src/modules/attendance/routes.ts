@@ -1216,7 +1216,7 @@ router.post(
 // Returns work-hours ranking + on-time check-in ranking for the manager's team.
 router.get(
   "/leaderboard",
-  requireRoles("MANAGER", "ADMIN", "HR"),
+  requireRoles("MANAGER", "ADMIN", "HR", "EMPLOYEE"),
   async (request, response, next) => {
     try {
       const now = new Date();
@@ -1226,22 +1226,8 @@ router.get(
       const startDate = new Date(year, month - 1, 1);
       const endDate   = new Date(year, month, 0, 23, 59, 59, 999);
 
-      // Determine scope: manager sees their direct reports; admin/hr see all
-      const managerEmployeeId = request.user?.employeeId;
-      const isPrivileged = ["ADMIN", "HR"].includes(request.user!.role);
-
-      let employeeWhere: Record<string, unknown> = { isActive: true };
-      if (!isPrivileged && managerEmployeeId) {
-        // Direct reports + scoped team-lead members
-        const scopedIds = await getScopedEmployeeIdsForTeamLead(prisma, managerEmployeeId);
-        employeeWhere = {
-          isActive: true,
-          OR: [
-            { managerId: managerEmployeeId },
-            { id: { in: scopedIds } },
-          ],
-        };
-      }
+      // Determine scope: Everyone sees the entire leaderboard
+      const employeeWhere: Record<string, unknown> = { isActive: true };
 
       // Fetch all attendance records for the month for the relevant employees
       const attendanceRecords = await prisma.attendance.findMany({

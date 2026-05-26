@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Trophy, Clock, Timer, ArrowLeft, ChevronLeft, ChevronRight, Medal, Star, Plus, Minus } from "lucide-react";
+import { Trophy, Clock, Timer, ArrowLeft, ChevronLeft, ChevronRight, Medal, Star, Plus, Minus, History } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { apiRequest } from "../../services/api";
 import toast from "react-hot-toast";
@@ -14,6 +14,15 @@ type LeaderboardEmployee = {
   jobTitle: string | null;
   department: { name: string } | null;
   points?: number;
+};
+
+type PointHistoryEntry = {
+  id: number;
+  amount: number;
+  reason: string;
+  mode: string;
+  createdAt: string;
+  givenBy?: { firstName: string; lastName: string } | null;
 };
 
 type WorkHoursEntry = {
@@ -64,7 +73,7 @@ function ProgressBar({ value, max, color }: { value: number; max: number; color:
   );
 }
 
-export default function LeaderboardPage({ token }: { token: string | null }) {
+export default function LeaderboardPage({ token, role = "EMPLOYEE" }: { token: string | null, role?: string }) {
   const navigate = useNavigate();
   const now = new Date();
   const [month, setMonth] = useState(now.getMonth() + 1);
@@ -77,9 +86,15 @@ export default function LeaderboardPage({ token }: { token: string | null }) {
   const [pointsModal, setPointsModal] = useState<LeaderboardEmployee | null>(null);
   const [pointsMode, setPointsMode] = useState<"add" | "subtract">("add");
   const [pointsAmount, setPointsAmount] = useState(10);
+  const [pointsReason, setPointsReason] = useState("");
   const [isSavingPoints, setIsSavingPoints] = useState(false);
   // local points map to avoid refetching entire leaderboard
   const [pointsMap, setPointsMap] = useState<Record<number, number>>({});
+  
+  // History state
+  const [historyModal, setHistoryModal] = useState<LeaderboardEmployee | null>(null);
+  const [pointsHistory, setPointsHistory] = useState<PointHistoryEntry[]>([]);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(false);
 
   useEffect(() => {
     fetchLeaderboard();
@@ -125,6 +140,10 @@ export default function LeaderboardPage({ token }: { token: string | null }) {
       toast.error("Points must be greater than 0");
       return;
     }
+    if (!pointsReason.trim()) {
+      toast.error("Please provide a reason for the points adjustment");
+      return;
+    }
     try {
       setIsSavingPoints(true);
       const res = await apiRequest<{ id: number; points: number }>(
@@ -132,7 +151,7 @@ export default function LeaderboardPage({ token }: { token: string | null }) {
         {
           method: "PATCH",
           token,
-          body: { points: pointsAmount, mode: pointsMode },
+          body: { points: pointsAmount, mode: pointsMode, reason: pointsReason },
         }
       );
       const newPoints = res.data.points;
@@ -142,10 +161,25 @@ export default function LeaderboardPage({ token }: { token: string | null }) {
       );
       setPointsModal(null);
       setPointsAmount(10);
+      setPointsReason("");
     } catch (err: any) {
       toast.error(err.message || "Failed to update points");
     } finally {
       setIsSavingPoints(false);
+    }
+  }
+
+  async function handleViewHistory(emp: LeaderboardEmployee) {
+    setHistoryModal(emp);
+    setIsLoadingHistory(true);
+    setPointsHistory([]);
+    try {
+      const res = await apiRequest<PointHistoryEntry[]>(`/employees/${emp.id}/points-history`, { token });
+      setPointsHistory(res.data);
+    } catch (err: any) {
+      toast.error(err.message || "Failed to load history");
+    } finally {
+      setIsLoadingHistory(false);
     }
   }
 
@@ -159,7 +193,7 @@ export default function LeaderboardPage({ token }: { token: string | null }) {
       {/* Header */}
       <header className="lb-page-header">
         <div className="stack" style={{ gap: "4px" }}>
-          <span className="eyebrow eyebrow--purple">Manager Console</span>
+          <span className="eyebrow eyebrow--purple">Team Activity</span>
           <h2 className="page-title">Leaderboard</h2>
         </div>
         <button
@@ -283,13 +317,24 @@ export default function LeaderboardPage({ token }: { token: string | null }) {
                         <div className="lb-row-stat-primary">{entry.totalHours}h</div>
                         <div className="lb-row-stat-sub">{entry.presentDays} days</div>
                       </div>
+                      {role !== "EMPLOYEE" && (
+                        <button
+                          type="button"
+                          className="lb-award-btn"
+                          onClick={() => { setPointsModal(entry.employee); setPointsMode("add"); setPointsAmount(10); setPointsReason(""); }}
+                        >
+                          <Star size={13} />
+                          Points
+                        </button>
+                      )}
                       <button
                         type="button"
                         className="lb-award-btn"
-                        onClick={() => { setPointsModal(entry.employee); setPointsMode("add"); setPointsAmount(10); }}
+                        style={{ padding: "8px", minWidth: "auto", background: "rgba(100, 116, 139, 0.1)", color: "#64748b" }}
+                        onClick={() => handleViewHistory(entry.employee)}
+                        title="View History"
                       >
-                        <Star size={13} />
-                        Points
+                        <History size={15} />
                       </button>
                     </div>
                   </div>
@@ -336,13 +381,24 @@ export default function LeaderboardPage({ token }: { token: string | null }) {
                           <div className="lb-row-stat-primary" style={{ color: "#059669" }}>{entry.onTimeRate}%</div>
                           <div className="lb-row-stat-sub">{entry.onTimeDays}/{entry.totalDays} days</div>
                         </div>
+                        {role !== "EMPLOYEE" && (
+                          <button
+                            type="button"
+                            className="lb-award-btn"
+                            onClick={() => { setPointsModal(entry.employee); setPointsMode("add"); setPointsAmount(10); setPointsReason(""); }}
+                          >
+                            <Star size={13} />
+                            Points
+                          </button>
+                        )}
                         <button
                           type="button"
                           className="lb-award-btn"
-                          onClick={() => { setPointsModal(entry.employee); setPointsMode("add"); setPointsAmount(10); }}
+                          style={{ padding: "8px", minWidth: "auto", background: "rgba(100, 116, 139, 0.1)", color: "#64748b" }}
+                          onClick={() => handleViewHistory(entry.employee)}
+                          title="View History"
                         >
-                          <Star size={13} />
-                          Points
+                          <History size={15} />
                         </button>
                       </div>
                     </div>
@@ -358,7 +414,7 @@ export default function LeaderboardPage({ token }: { token: string | null }) {
       <Modal
         open={pointsModal !== null}
         title={`Award Points — ${pointsModal?.firstName} ${pointsModal?.lastName}`}
-        onClose={() => { setPointsModal(null); setPointsAmount(10); }}
+        onClose={() => { setPointsModal(null); setPointsAmount(10); setPointsReason(""); }}
       >
         <div className="lb-points-modal">
           <div className="lb-points-current">
@@ -399,7 +455,7 @@ export default function LeaderboardPage({ token }: { token: string | null }) {
           </div>
 
           {/* Custom amount */}
-          <div className="lb-custom-points">
+          <div className="lb-custom-points" style={{ marginBottom: "16px" }}>
             <label className="lb-custom-label">Custom amount</label>
             <input
               type="number"
@@ -408,6 +464,18 @@ export default function LeaderboardPage({ token }: { token: string | null }) {
               value={pointsAmount}
               onChange={e => setPointsAmount(Math.max(1, parseInt(e.target.value) || 1))}
               className="lb-custom-input"
+            />
+          </div>
+
+          <div className="lb-custom-points">
+            <label className="lb-custom-label">Reason</label>
+            <textarea
+              value={pointsReason}
+              onChange={e => setPointsReason(e.target.value)}
+              className="lb-custom-input"
+              rows={2}
+              placeholder="Why are you awarding/deducting points?"
+              style={{ width: "100%", resize: "none", fontSize: "14px" }}
             />
           </div>
 
@@ -424,7 +492,7 @@ export default function LeaderboardPage({ token }: { token: string | null }) {
           <div className="lb-points-actions">
             <button
               className="button button--secondary"
-              onClick={() => { setPointsModal(null); setPointsAmount(10); }}
+              onClick={() => { setPointsModal(null); setPointsAmount(10); setPointsReason(""); }}
               disabled={isSavingPoints}
             >
               Cancel
@@ -437,6 +505,49 @@ export default function LeaderboardPage({ token }: { token: string | null }) {
               {isSavingPoints ? "Saving..." : "Save Points"}
             </button>
           </div>
+        </div>
+      </Modal>
+
+      {/* History Modal */}
+      <Modal
+        open={historyModal !== null}
+        title={`Points History — ${historyModal?.firstName} ${historyModal?.lastName}`}
+        onClose={() => setHistoryModal(null)}
+      >
+        <div className="lb-history-modal" style={{ padding: "12px 0" }}>
+          {isLoadingHistory ? (
+            <div style={{ padding: "40px", textAlign: "center", color: "#64748b" }}>Loading history...</div>
+          ) : pointsHistory.length === 0 ? (
+            <div style={{ padding: "40px", textAlign: "center", color: "#64748b" }}>
+              <Trophy size={32} style={{ margin: "0 auto 12px", opacity: 0.5 }} />
+              No points history found.
+            </div>
+          ) : (
+            <div className="lb-history-list" style={{ maxHeight: "400px", overflowY: "auto", display: "flex", flexDirection: "column", gap: "12px" }}>
+              {pointsHistory.map(entry => (
+                <div key={entry.id} className="lb-history-item" style={{ padding: "16px", borderRadius: "8px", border: "1px solid #e2e8f0", background: "#f8fafc" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "8px", alignItems: "center" }}>
+                    <strong style={{ fontSize: "16px", color: entry.mode === "add" ? "#059669" : entry.mode === "subtract" ? "#dc2626" : "#4f46e5", display: "flex", alignItems: "center", gap: "6px" }}>
+                      {entry.mode === "add" ? <Plus size={14} /> : entry.mode === "subtract" ? <Minus size={14} /> : <Star size={14} />}
+                      {entry.amount} pts
+                    </strong>
+                    <span style={{ fontSize: "12px", color: "#64748b" }}>
+                      {new Date(entry.createdAt).toLocaleDateString()}
+                    </span>
+                  </div>
+                  <div style={{ fontSize: "14px", color: "#334155", marginBottom: "8px", lineHeight: "1.5" }}>{entry.reason}</div>
+                  {entry.givenBy && (
+                    <div style={{ fontSize: "12px", color: "#94a3b8", display: "flex", alignItems: "center", gap: "4px" }}>
+                      <span style={{ width: "16px", height: "16px", borderRadius: "50%", background: "#cbd5e1", display: "flex", alignItems: "center", justifyContent: "center", color: "white", fontSize: "10px", fontWeight: "bold" }}>
+                        {entry.givenBy.firstName[0]}{entry.givenBy.lastName[0]}
+                      </span>
+                      Given by {entry.givenBy.firstName} {entry.givenBy.lastName}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </Modal>
     </div>

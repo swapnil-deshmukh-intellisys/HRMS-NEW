@@ -13,6 +13,7 @@ type NavItem = {
   to: string;
   label: string;
   icon: LucideIcon;
+  exact?: boolean;
 };
 
 function getNavItems(sessionUser: SessionUser): NavItem[] {
@@ -32,7 +33,7 @@ function getNavItems(sessionUser: SessionUser): NavItem[] {
   items.push({ to: "/leaves", label: "Leaves", icon: CalendarDays });
   const isManager = role === "MANAGER";
   if (isTeamLead || isManager) {
-    items.push({ to: "/team", label: "Team", icon: Users });
+    items.push({ to: "/team", label: "Team", icon: Users, exact: true });
     items.push({ to: "/team/leaderboard", label: "Leaderboard", icon: Trophy });
   }
   if (role === "MANAGER" || role === "ADMIN" || isTeamLead) {
@@ -51,12 +52,12 @@ export default function Sidebar({ sessionUser, navOpen, onNavigate }: SidebarPro
   const location = useLocation();
   const navItems = getNavItems(sessionUser);
 
-  function isActivePath(path: string) {
-    if (path === "/") {
-      return location.pathname === "/";
+  function isActivePath(item: NavItem) {
+    if (item.to === "/" || item.exact) {
+      return location.pathname === item.to;
     }
 
-    return location.pathname === path || location.pathname.startsWith(`${path}/`);
+    return location.pathname === item.to || location.pathname.startsWith(`${item.to}/`);
   }
 
   return (
@@ -87,7 +88,7 @@ export default function Sidebar({ sessionUser, navOpen, onNavigate }: SidebarPro
           {navItems.map((item) => (
             <Link
               key={item.to}
-              className={isActivePath(item.to) ? "nav-link active" : "nav-link"}
+              className={isActivePath(item) ? "nav-link active" : "nav-link"}
               to={item.to}
               onClick={onNavigate}
             >

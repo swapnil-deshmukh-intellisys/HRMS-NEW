@@ -108,6 +108,8 @@ model Employee {
   assignedManagerTasks              ManagerTask[]                     @relation("ManagerTaskAssignee")
   completedManagerTasks             ManagerTask[]                     @relation("ManagerTaskCompleter")
   generalTaskCompletions            GeneralTaskCompletion[]
+  pointHistory                      PointHistory[]                    @relation("EmployeePointHistory")
+  givenPointHistory                 PointHistory[]                    @relation("GivenPointHistory")
 
   @@index([departmentId])
   @@index([managerId])
@@ -578,4 +580,20 @@ model GeneralTaskCompletion {
   @@unique([taskId, employeeId])
   @@index([taskId])
   @@index([employeeId])
+}
+
+model PointHistory {
+  id          Int      @id @default(autoincrement())
+  employeeId  Int
+  amount      Int
+  reason      String
+  mode        String   // "add", "subtract", "set"
+  givenById   Int?
+  createdAt   DateTime @default(now())
+  
+  employee    Employee @relation("EmployeePointHistory", fields: [employeeId], references: [id])
+  givenBy     Employee? @relation("GivenPointHistory", fields: [givenById], references: [id])
+
+  @@index([employeeId])
+  @@index([givenById])
 }

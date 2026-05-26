@@ -683,7 +683,7 @@ router.patch(
   validate(z.object({
     points: z.coerce.number().int().min(0),
     mode: z.enum(["add", "subtract", "set"]).default("add"),
-    reason: z.string().trim().optional(),
+    reason: z.string().trim().min(1, "Reason is required"),
   })),
   async (request, response, next) => {
     try {
@@ -691,7 +691,7 @@ router.patch(
 
       const employee = await prisma.employee.findUnique({
         where: { id: employeeId },
-        select: { id: true, isActive: true, points: true, managerId: true },
+        select: { id: true, isActive: true, points: true, managerId: true, userId: true },
       });
 
       if (!employee || !employee.isActive) {
@@ -703,7 +703,7 @@ router.patch(
         throw new AppError("You are not authorized to award points to this employee", 403);
       }
 
-      const { points, mode } = request.body;
+      const { points, mode, reason } = request.body;
       let newPoints: number;
 
       if (mode === "set") {
@@ -714,10 +714,46 @@ router.patch(
         newPoints = (employee.points ?? 0) + points;
       }
 
-      const updated = await prisma.employee.update({
-        where: { id: employeeId },
-        data: { points: newPoints },
-        select: { id: true, firstName: true, lastName: true, points: true },
+      const updated = await prisma.$transaction(async (tx) => {
+        const emp = await tx.employee.update({
+          where: { id: employeeId },
+          data: { points: newPoints },
+          select: { id: true, firstName: true, lastName: true, points: true },
+        });
+
+        await tx.pointHistory.create({
+          data: {
+            employeeId,
+            amount: points,
+            reason,
+            mode,
+            givenById: request.user?.employeeId ?? null,
+          }
+        });
+
+        let notificationMsg = "";
+        let notificationTitle = "Points Updated";
+        if (mode === "add") {
+          notificationMsg = `You received ${points} points. Reason: ${reason}`;
+          notificationTitle = "Points Awarded";
+        } else if (mode === "subtract") {
+          notificationMsg = `${points} points were deducted. Reason: ${reason}`;
+          notificationTitle = "Points Deducted";
+        } else {
+          notificationMsg = `Your points were set to ${points}. Reason: ${reason}`;
+        }
+
+        await tx.notification.create({
+          data: {
+            userId: employee.userId,
+            title: notificationTitle,
+            message: notificationMsg,
+            type: "POINTS_UPDATE",
+            link: "/team/leaderboard",
+          }
+        });
+
+        return emp;
       });
 
       return sendSuccess(response, "Points updated successfully", updated);
@@ -726,5 +762,28 @@ router.patch(
     }
   }
 );
+
+router.get("/:id/points-history", requireRoles("ADMIN", "HR", "MANAGER", "EMPLOYEE"), async (request, response, next) => {
+  try {
+    const employeeId = Number(request.params.id);
+
+    const history = await prisma.pointHistory.findMany({
+      where: { employeeId },
+      orderBy: { createdAt: "desc" },
+      include: {
+        givenBy: {
+          select: {
+            firstName: true,
+            lastName: true,
+          }
+        }
+      }
+    });
+
+    return sendSuccess(response, "Points history fetched successfully", history);
+  } catch (error) {
+    next(error);
+  }
+});
 
 export default router;

@@ -102,6 +102,14 @@ export default function TeamPage({ token, role, currentEmployee }: TeamPageProps
   const [selectedEmailIds, setSelectedEmailIds] = useState<number[]>([]);
   const [isSavingEmails, setIsSavingEmails] = useState(false);
   const { refreshSession } = useAuth();
+
+  const [tutMagazines, setTutMagazines] = useState(["Forbes", "Fortune", "Financial Times", "Business Today"]);
+  const [tecMagazines, setTecMagazines] = useState(["Entrepreneur", "Wired", "HBR", "Fast Company"]);
+  const [tutIndustries, setTutIndustries] = useState(["Tech", "Fashion", "Finance", "Health", "Real Estate"]);
+  const [tecIndustries, setTecIndustries] = useState(["Logistics", "Agri", "Manufacturing", "E-com", "Energy"]);
+
+  const [addProjectModal, setAddProjectModal] = useState<{ type: "MAGAZINE" | "INDUSTRY"; client: "TUT" | "TEC" } | null>(null);
+  const [newProjectName, setNewProjectName] = useState("");
   
   const isTeamLead = Boolean(currentEmployee?.capabilities?.some((capability) => capability.capability === "TEAM_LEAD"));
   const isManager = role === "MANAGER";
@@ -382,15 +390,15 @@ export default function TeamPage({ token, role, currentEmployee }: TeamPageProps
                   <h3>Magazines</h3>
                   <p className="muted">Active editorial and publication projects.</p>
                 </div>
-                <button type="button" className="secondary team-page-add-btn">
+                <button type="button" className="secondary team-page-add-btn" onClick={() => setAddProjectModal({ type: "MAGAZINE", client: activeClientCode })}>
                   <span className="add-icon">+</span>
                   Add Magazine
                 </button>
               </div>
               <div className="stack projects-stack">
                 {(activeClientCode === "TUT" 
-                  ? ["Forbes", "Fortune", "Financial Times", "Business Today"]
-                  : ["Entrepreneur", "Wired", "HBR", "Fast Company"]
+                  ? tutMagazines
+                  : tecMagazines
                 ).map((magazine) => (
                   <article key={magazine} className="project-item-card project-item-card--stacked">
                     <div className="project-icon-wrap" style={{ background: activeClientCode === "TEC" ? 'linear-gradient(135deg, #059669, #10b981)' : undefined }}>
@@ -399,9 +407,6 @@ export default function TeamPage({ token, role, currentEmployee }: TeamPageProps
                     <div className="project-info">
                       <strong>{magazine}</strong>
                       <span className="muted text-xs">{activeClientCode === "TUT" ? "Editorial Publication" : "Innovation Digest"}</span>
-                    </div>
-                    <div className="project-actions">
-                      <span className="status-pill status-pill--active">Active</span>
                     </div>
                   </article>
                 ))}
@@ -414,15 +419,15 @@ export default function TeamPage({ token, role, currentEmployee }: TeamPageProps
                   <h3>Industries</h3>
                   <p className="muted">Key industry focus areas and sectors for {activeClientCode}.</p>
                 </div>
-                <button type="button" className="secondary team-page-add-btn">
+                <button type="button" className="secondary team-page-add-btn" onClick={() => setAddProjectModal({ type: "INDUSTRY", client: activeClientCode })}>
                   <span className="add-icon">+</span>
                   Add Industry
                 </button>
               </div>
               <div className="grid cols-5 projects-grid">
                 {(activeClientCode === "TUT"
-                  ? ["Tech", "Fashion", "Finance", "Health", "Real Estate"]
-                  : ["Logistics", "Agri", "Manufacturing", "E-com", "Energy"]
+                  ? tutIndustries
+                  : tecIndustries
                 ).map((industry) => (
                   <article key={industry} className="project-item-card">
                     <div className={`project-icon-wrap ${activeClientCode === "TUT" ? "project-icon-wrap--industry" : "project-icon-wrap--tec-industry"}`}>
@@ -924,6 +929,65 @@ export default function TeamPage({ token, role, currentEmployee }: TeamPageProps
               }}
             >
               {isSavingEmails ? "Saving..." : "Save Assignments"}
+            </button>
+          </div>
+        </div>
+      </Modal>
+      <Modal
+        open={addProjectModal !== null}
+        title={`Add ${addProjectModal?.type === "MAGAZINE" ? "Magazine" : "Industry"}`}
+        onClose={() => {
+          setAddProjectModal(null);
+          setNewProjectName("");
+        }}
+      >
+        <div className="stack" style={{ gap: "var(--space-4)" }}>
+          <input
+            type="text"
+            className="leave-form__input"
+            style={{ width: "100%", padding: "10px", borderRadius: "8px", border: "1px solid var(--color-border)" }}
+            placeholder={`Enter name...`}
+            value={newProjectName}
+            onChange={(e) => setNewProjectName(e.target.value)}
+            autoFocus
+          />
+          <div className="button-row" style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end', marginTop: "12px" }}>
+            <button
+              type="button"
+              className="secondary"
+              onClick={() => {
+                setAddProjectModal(null);
+                setNewProjectName("");
+              }}
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              className="primary"
+              onClick={() => {
+                if (!newProjectName.trim()) {
+                  toast.error("Name is required");
+                  return;
+                }
+                const name = newProjectName.trim();
+                const type = addProjectModal?.type;
+                const client = addProjectModal?.client;
+                
+                if (type === "MAGAZINE") {
+                  if (client === "TUT") setTutMagazines(prev => [...prev, name]);
+                  else setTecMagazines(prev => [...prev, name]);
+                } else if (type === "INDUSTRY") {
+                  if (client === "TUT") setTutIndustries(prev => [...prev, name]);
+                  else setTecIndustries(prev => [...prev, name]);
+                }
+                
+                toast.success(`${type === "MAGAZINE" ? "Magazine" : "Industry"} added successfully`);
+                setAddProjectModal(null);
+                setNewProjectName("");
+              }}
+            >
+              Add
             </button>
           </div>
         </div>

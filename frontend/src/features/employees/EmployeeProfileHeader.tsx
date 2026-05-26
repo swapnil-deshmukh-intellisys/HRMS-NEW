@@ -1,6 +1,6 @@
 
 import "./EmployeeProfileHeader.css";
-import { Pencil, Power, Mail, Phone, CalendarDays, UserCheck } from "lucide-react";
+import { Pencil, Power, Mail, Phone, CalendarDays, UserCheck, Star } from "lucide-react";
 import type { Employee, Role } from "../../types";
 import { formatDateLabel } from "../../utils/format";
 
@@ -61,6 +61,12 @@ export default function EmployeeProfileHeader({ employee, role, onEdit, onToggle
               </>
             )}
           </div>
+          {(employee.points != null && employee.points > 0) && (
+            <span className="profile-header__points-badge">
+              <Star size={11} fill="currentColor" />
+              {employee.points} pts
+            </span>
+          )}
         </div>
 
         <div className="profile-header__actions">

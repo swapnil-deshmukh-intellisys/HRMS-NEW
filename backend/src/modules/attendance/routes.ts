@@ -1211,4 +1211,123 @@ router.post(
   },
 );
 
+// ── Leaderboard / Employee of the Month ──────────────────────────────────────
+// GET /attendance/leaderboard?month=5&year=2026
+// Returns work-hours ranking + on-time check-in ranking for the manager's team.
+router.get(
+  "/leaderboard",
+  requireRoles("MANAGER", "ADMIN", "HR"),
+  async (request, response, next) => {
+    try {
+      const now = new Date();
+      const month = request.query.month ? Number(request.query.month) : now.getMonth() + 1;
+      const year  = request.query.year  ? Number(request.query.year)  : now.getFullYear();
+
+      const startDate = new Date(year, month - 1, 1);
+      const endDate   = new Date(year, month, 0, 23, 59, 59, 999);
+
+      // Determine scope: manager sees their direct reports; admin/hr see all
+      const managerEmployeeId = request.user?.employeeId;
+      const isPrivileged = ["ADMIN", "HR"].includes(request.user!.role);
+
+      let employeeWhere: Record<string, unknown> = { isActive: true };
+      if (!isPrivileged && managerEmployeeId) {
+        // Direct reports + scoped team-lead members
+        const scopedIds = await getScopedEmployeeIdsForTeamLead(prisma, managerEmployeeId);
+        employeeWhere = {
+          isActive: true,
+          OR: [
+            { managerId: managerEmployeeId },
+            { id: { in: scopedIds } },
+          ],
+        };
+      }
+
+      // Fetch all attendance records for the month for the relevant employees
+      const attendanceRecords = await prisma.attendance.findMany({
+        where: {
+          attendanceDate: { gte: startDate, lte: endDate },
+          employee: employeeWhere,
+        },
+        include: {
+          employee: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              employeeCode: true,
+              jobTitle: true,
+              points: true,
+              department: { select: { name: true } },
+            },
+          },
+        },
+      });
+
+      // --- Work hours ranking ---
+      const workMap = new Map<number, { employee: any; totalMinutes: number; presentDays: number }>();
+      for (const rec of attendanceRecords) {
+        if (!workMap.has(rec.employeeId)) {
+          workMap.set(rec.employeeId, { employee: rec.employee, totalMinutes: 0, presentDays: 0 });
+        }
+        const entry = workMap.get(rec.employeeId)!;
+        entry.totalMinutes += rec.workedMinutes ?? 0;
+        if (rec.status === "PRESENT" || rec.status === "HALF_DAY") entry.presentDays += 1;
+      }
+
+      const workHoursRanking = Array.from(workMap.values())
+        .sort((a, b) => b.totalMinutes - a.totalMinutes)
+        .map((entry, index) => ({
+          rank: index + 1,
+          employee: entry.employee,
+          totalMinutes: entry.totalMinutes,
+          totalHours: +(entry.totalMinutes / 60).toFixed(1),
+          presentDays: entry.presentDays,
+        }));
+
+      // --- On-time check-in ranking ---
+      const onTimeMap = new Map<number, { employee: any; onTimeDays: number; lateDays: number; totalDays: number }>();
+      for (const rec of attendanceRecords) {
+        if (rec.status !== "PRESENT" && rec.status !== "HALF_DAY") continue;
+        if (!onTimeMap.has(rec.employeeId)) {
+          onTimeMap.set(rec.employeeId, { employee: rec.employee, onTimeDays: 0, lateDays: 0, totalDays: 0 });
+        }
+        const entry = onTimeMap.get(rec.employeeId)!;
+        entry.totalDays += 1;
+        if (rec.isLate) entry.lateDays += 1;
+        else entry.onTimeDays += 1;
+      }
+
+      const onTimeRanking = Array.from(onTimeMap.values())
+        .filter(e => e.totalDays > 0)
+        .sort((a, b) => {
+          const aRate = a.onTimeDays / a.totalDays;
+          const bRate = b.onTimeDays / b.totalDays;
+          if (bRate !== aRate) return bRate - aRate;
+          return b.onTimeDays - a.onTimeDays;
+        })
+        .map((entry, index) => ({
+          rank: index + 1,
+          employee: entry.employee,
+          onTimeDays: entry.onTimeDays,
+          lateDays: entry.lateDays,
+          totalDays: entry.totalDays,
+          onTimeRate: entry.totalDays > 0 ? +(entry.onTimeDays / entry.totalDays * 100).toFixed(1) : 0,
+        }));
+
+      const employeeOfMonth = workHoursRanking[0] ?? null;
+
+      return sendSuccess(response, "Leaderboard fetched successfully", {
+        month,
+        year,
+        employeeOfMonth,
+        workHoursRanking,
+        onTimeRanking,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
 export default router;

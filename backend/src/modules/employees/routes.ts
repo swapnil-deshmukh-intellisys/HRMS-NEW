@@ -675,4 +675,56 @@ router.put("/:id/outlook-emails", requireRoles("ADMIN", "HR", "MANAGER"), valida
   }
 });
 
+// ── Employee Points ────────────────────────────────────────────────────────
+// PATCH /employees/:id/points — managers can add/set points for employees
+router.patch(
+  "/:id/points",
+  requireRoles("ADMIN", "HR", "MANAGER"),
+  validate(z.object({
+    points: z.coerce.number().int().min(0),
+    mode: z.enum(["add", "subtract", "set"]).default("add"),
+    reason: z.string().trim().optional(),
+  })),
+  async (request, response, next) => {
+    try {
+      const employeeId = Number(request.params.id);
+
+      const employee = await prisma.employee.findUnique({
+        where: { id: employeeId },
+        select: { id: true, isActive: true, points: true, managerId: true },
+      });
+
+      if (!employee || !employee.isActive) {
+        throw new AppError("Employee not found", 404);
+      }
+
+      // Managers can only award points to their direct reports
+      if (request.user?.role === "MANAGER" && employee.managerId !== request.user.employeeId) {
+        throw new AppError("You are not authorized to award points to this employee", 403);
+      }
+
+      const { points, mode } = request.body;
+      let newPoints: number;
+
+      if (mode === "set") {
+        newPoints = points;
+      } else if (mode === "subtract") {
+        newPoints = Math.max(0, (employee.points ?? 0) - points);
+      } else {
+        newPoints = (employee.points ?? 0) + points;
+      }
+
+      const updated = await prisma.employee.update({
+        where: { id: employeeId },
+        data: { points: newPoints },
+        select: { id: true, firstName: true, lastName: true, points: true },
+      });
+
+      return sendSuccess(response, "Points updated successfully", updated);
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
 export default router;

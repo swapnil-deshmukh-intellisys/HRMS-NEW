@@ -1,5 +1,5 @@
 import "./Sidebar.css";
-import { Building2, Calendar, CalendarDays, Clock3, Gift, Home, Users, Wallet, UserRound, ClipboardList, Mail, SendHorizontal, type LucideIcon } from "lucide-react";
+import { Building2, Calendar, CalendarDays, Clock3, Gift, Home, Users, Wallet, UserRound, ClipboardList, Mail, SendHorizontal, Trophy, type LucideIcon } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import type { SessionUser } from "../types";
 
@@ -33,6 +33,7 @@ function getNavItems(sessionUser: SessionUser): NavItem[] {
   const isManager = role === "MANAGER";
   if (isTeamLead || isManager) {
     items.push({ to: "/team", label: "Team", icon: Users });
+    items.push({ to: "/team/leaderboard", label: "Leaderboard", icon: Trophy });
   }
   if (role === "MANAGER" || role === "ADMIN" || isTeamLead) {
     items.push({ to: "/tasks/manage", label: "Manage Tasks", icon: ClipboardList });

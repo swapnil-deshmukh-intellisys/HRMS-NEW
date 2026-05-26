@@ -153,32 +153,6 @@ export default function LeaderboardPage({ token }: { token: string | null }) {
   const maxHours = data?.workHoursRanking[0]?.totalHours ?? 1;
   const maxOnTime = data?.onTimeRanking[0]?.onTimeDays ?? 1;
 
-  function PointsBadge({ employeeId }: { employeeId: number }) {
-    const pts = pointsMap[employeeId] ?? 0;
-    return (
-      <span className="lb-points-badge">
-        <Star size={10} />
-        {pts} pts
-      </span>
-    );
-  }
-
-  function AwardBtn({ employee }: { employee: LeaderboardEmployee }) {
-    return (
-      <button
-        className="lb-award-btn"
-        onClick={() => {
-          setPointsModal(employee);
-          setPointsMode("add");
-          setPointsAmount(10);
-        }}
-        title="Award or deduct points"
-      >
-        <Star size={13} />
-        Points
-      </button>
-    );
-  }
 
   return (
     <div className="lb-page">
@@ -286,7 +260,7 @@ export default function LeaderboardPage({ token }: { token: string | null }) {
               </div>
               <div className="lb-ranking-list">
                 {data.workHoursRanking.map((entry) => (
-                  <div key={entry.employee.id} className={`lb-row ${entry.rank <= 3 ? "lb-row--top" : ""}`}>
+                    <div key={entry.employee.id} className={`lb-row ${entry.rank <= 3 ? "lb-row--top" : ""}`}>
                     <div className="lb-row-rank">
                       <RankBadge rank={entry.rank} />
                     </div>
@@ -297,7 +271,7 @@ export default function LeaderboardPage({ token }: { token: string | null }) {
                       <div className="lb-row-name">
                         {entry.employee.firstName} {entry.employee.lastName}
                         <span className="lb-row-code">#{entry.employee.employeeCode}</span>
-                        <PointsBadge employeeId={entry.employee.id} />
+                        <span className="lb-points-badge"><Star size={10} />{pointsMap[entry.employee.id] ?? 0} pts</span>
                       </div>
                       <div className="lb-row-meta">
                         {entry.employee.jobTitle ?? "Employee"} · {entry.employee.department?.name ?? "—"}
@@ -309,7 +283,14 @@ export default function LeaderboardPage({ token }: { token: string | null }) {
                         <div className="lb-row-stat-primary">{entry.totalHours}h</div>
                         <div className="lb-row-stat-sub">{entry.presentDays} days</div>
                       </div>
-                      <AwardBtn employee={entry.employee} />
+                      <button
+                        type="button"
+                        className="lb-award-btn"
+                        onClick={() => { setPointsModal(entry.employee); setPointsMode("add"); setPointsAmount(10); }}
+                      >
+                        <Star size={13} />
+                        Points
+                      </button>
                     </div>
                   </div>
                 ))}
@@ -343,7 +324,7 @@ export default function LeaderboardPage({ token }: { token: string | null }) {
                         <div className="lb-row-name">
                           {entry.employee.firstName} {entry.employee.lastName}
                           <span className="lb-row-code">#{entry.employee.employeeCode}</span>
-                          <PointsBadge employeeId={entry.employee.id} />
+                          <span className="lb-points-badge"><Star size={10} />{pointsMap[entry.employee.id] ?? 0} pts</span>
                         </div>
                         <div className="lb-row-meta">
                           {entry.employee.jobTitle ?? "Employee"} · {entry.employee.department?.name ?? "—"}
@@ -355,7 +336,14 @@ export default function LeaderboardPage({ token }: { token: string | null }) {
                           <div className="lb-row-stat-primary" style={{ color: "#059669" }}>{entry.onTimeRate}%</div>
                           <div className="lb-row-stat-sub">{entry.onTimeDays}/{entry.totalDays} days</div>
                         </div>
-                        <AwardBtn employee={entry.employee} />
+                        <button
+                          type="button"
+                          className="lb-award-btn"
+                          onClick={() => { setPointsModal(entry.employee); setPointsMode("add"); setPointsAmount(10); }}
+                        >
+                          <Star size={13} />
+                          Points
+                        </button>
                       </div>
                     </div>
                   ))}

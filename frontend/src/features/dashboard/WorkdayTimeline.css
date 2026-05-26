@@ -241,6 +241,22 @@
   border-bottom-left-radius: 0;
 }
 
+.wdt-main-rail--overtime .wdt-fill-worked {
+  background: linear-gradient(90deg, var(--wdt-accent-emerald) 0%, var(--wdt-accent-blue) 100%) !important; /* Green to Royal Blue */
+  box-shadow: 0 0 10px rgba(29, 78, 216, 0.4);
+}
+
+.wdt-overtime-badge {
+  background: #eff6ff;
+  color: #1d4ed8;
+  padding: 2px 8px;
+  border-radius: 4px;
+  margin-left: 6px;
+  font-weight: 700;
+  border: 1px solid #bfdbfe;
+  font-size: 10px;
+}
+
 .wdt-fill-glow {
   position: absolute;
   inset: 0;
@@ -268,6 +284,15 @@
   border-radius: 99px 0 0 99px;
   z-index: 10;
   box-shadow: -4px 0 15px rgba(239, 68, 68, 0.4);
+}
+
+.wdt-fill-early-checkout-unfilled {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  background: var(--wdt-accent-rose); /* Theme Crimson Red */
+  border-left: 2px solid var(--wdt-accent-rose);
+  z-index: 4;
 }
 
 /* Break Blocks */

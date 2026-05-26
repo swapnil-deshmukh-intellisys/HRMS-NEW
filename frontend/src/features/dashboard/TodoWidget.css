@@ -2,6 +2,8 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
+  height: 100%;
+  overflow: hidden;
 }
 
 .todo-header {
@@ -15,9 +17,25 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
-  max-height: 400px;
+  flex: 1;
+  min-height: 0;
   overflow-y: auto;
   padding-right: var(--space-2);
+}
+
+/* Custom Scrollbar for todo-list */
+.todo-list::-webkit-scrollbar {
+  width: 6px;
+}
+.todo-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+.todo-list::-webkit-scrollbar-thumb {
+  background: var(--color-border-subtle);
+  border-radius: var(--radius-full);
+}
+.todo-list::-webkit-scrollbar-thumb:hover {
+  background: var(--color-border-default);
 }
 
 .todo-item {
@@ -29,6 +47,9 @@
   border-radius: var(--radius-md);
   background: var(--color-surface-page);
   transition: all var(--transition-normal);
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .todo-item:hover {
@@ -93,18 +114,29 @@
 }
 
 .todo-title {
-  display: block;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
   font-weight: var(--fw-semibold);
   font-size: var(--text-sm);
   color: var(--color-text-strong);
-  margin-bottom: 2px;
+  margin-bottom: 4px;
+  word-break: break-word;
+  overflow-wrap: break-word;
 }
 
 .todo-description {
-  display: block;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
   font-size: var(--text-xs);
   color: var(--color-text-secondary);
   line-height: 1.4;
+  margin-bottom: 4px;
+  word-break: break-word;
+  overflow-wrap: break-word;
 }
 
 .todo-priority {
@@ -473,4 +505,18 @@
 .char-counter.limit-reached {
   color: var(--color-danger);
   font-weight: var(--fw-bold);
+}
+
+.todo-more-link {
+  color: var(--color-accent);
+  font-weight: bold;
+  text-decoration: underline;
+  font-size: 10px;
+  cursor: pointer;
+  margin-left: auto;
+  transition: color var(--transition-fast);
+}
+
+.todo-more-link:hover {
+  color: var(--color-accent-strong);
 }

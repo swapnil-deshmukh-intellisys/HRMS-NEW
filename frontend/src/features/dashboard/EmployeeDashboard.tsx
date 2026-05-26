@@ -36,8 +36,12 @@ export default function EmployeeDashboard({ token }: { token: string | null }) {
         </div>
       </article>
 
-      {/* Workday Progress Section */}
-      <WorkdayTimeline checkInTime={attendanceToday?.checkInTime ?? null} token={token} />
+      <WorkdayTimeline 
+        checkInTime={attendanceToday?.checkInTime ?? null} 
+        checkOutTime={attendanceToday?.checkOutTime ?? null}
+        workedMinutes={attendanceToday?.workedMinutes ?? null}
+        token={token} 
+      />
 
       {/* Primary Action Row: Tasks, Personal Todo, & Celebrations */}
       <div className="grid cols-3 dashboard-grid">

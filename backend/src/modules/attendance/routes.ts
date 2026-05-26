@@ -992,6 +992,10 @@ router.post("/overtime/start", validate(attendanceSchema), async (request, respo
       throw new AppError("Regular attendance checkout is required before starting overtime");
     }
 
+    if (attendance.workedMinutes < 540) {
+      throw new AppError("You must complete at least 9 hours of standard work today to be eligible for overtime", 400);
+    }
+
     // Check if overtime session already exists
     const existingOvertime = await prisma.overtimeSession.findUnique({
       where: {

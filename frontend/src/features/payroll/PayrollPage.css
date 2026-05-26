@@ -21,6 +21,8 @@
   align-items: center;
   justify-content: space-between;
   gap: var(--space-3);
+  position: relative;
+  z-index: 110;
 }
 
 .payroll-form-card__header h3,
@@ -46,8 +48,9 @@
   z-index: 1;
 }
 
-.payroll-field:focus-within {
-  z-index: 50;
+.payroll-field:focus-within,
+.payroll-field:has(.payroll-select--open) {
+  z-index: 120;
   /* Lift the parent field when child is active */
 }
 

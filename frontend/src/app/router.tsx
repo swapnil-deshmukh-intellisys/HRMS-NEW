@@ -14,6 +14,7 @@ const EmployeeProfilePage = lazy(() => import("../features/employees/EmployeePro
 const EmployeesPage = lazy(() => import("../features/employees/EmployeesPage"));
 const LeavesPage = lazy(() => import("../features/leaves/LeavesPage"));
 const TeamPage = lazy(() => import("../features/team/TeamPage"));
+const LeaderboardPage = lazy(() => import("../features/team/LeaderboardPage"));
 const PayrollPage = lazy(() => import("../features/payroll/PayrollPage"));
 const PayrollHistoryPage = lazy(() => import("../features/payroll/PayrollHistoryPage"));
 const IncentivesPage = lazy(() => import("../features/payroll/IncentivesPage"));
@@ -173,6 +174,14 @@ function AppRoutes() {
                   currentEmployeeId={sessionUser?.employee?.id ?? null}
                   currentEmployee={sessionUser?.employee ?? null}
                 />
+              </Page>
+            }
+          />
+          <Route
+            path="/team/leaderboard"
+            element={
+              <Page context="Leaderboard">
+                <LeaderboardPage token={token} />
               </Page>
             }
           />

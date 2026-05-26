@@ -80,8 +80,18 @@ export function EmployeeAttendanceWidgetCard(props: {
     }
 
     const timer = window.setInterval(() => {
-      setNow(new Date());
-    }, 1000);
+      const currentDate = new Date();
+      setNow((prevNow) => {
+        if (
+          currentDate.getMinutes() !== prevNow.getMinutes() ||
+          currentDate.getHours() !== prevNow.getHours() ||
+          currentDate.getDate() !== prevNow.getDate()
+        ) {
+          return currentDate;
+        }
+        return prevNow;
+      });
+    }, 10000);
 
     return () => window.clearInterval(timer);
   }, [selfAttendance?.checkInTime, selfAttendance?.checkOutTime, selfAttendance?.status]);

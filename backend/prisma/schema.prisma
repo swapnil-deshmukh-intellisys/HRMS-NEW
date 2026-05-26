@@ -77,6 +77,9 @@ model Employee {
   probationEndDate                  DateTime?
   panCardNumber                     String?
   dateOfBirth                       DateTime?
+  employmentType                    String?                           @default("FULL_TIME")
+  internshipType                    String?
+  stipend                           Float?
   announcements                     Announcement[]                    @relation("AnnouncementCreator")
   attendances                       Attendance[]
   attendanceRegularizationRequests  AttendanceRegularizationRequest[] @relation("AttendanceRegularizationRequester")

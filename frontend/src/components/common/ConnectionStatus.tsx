@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { WifiOff, RefreshCw } from "lucide-react";
 import "./ConnectionStatus.css";
 

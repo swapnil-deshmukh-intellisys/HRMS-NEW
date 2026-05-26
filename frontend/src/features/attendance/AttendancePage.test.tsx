@@ -90,7 +90,7 @@ describe("AttendancePage", () => {
       joiningDate: "2026-05-08T00:00:00.000Z" 
     });
 
-    const { container } = render(
+    render(
       <MemoryRouter>
         <AttendancePage
           token="token"

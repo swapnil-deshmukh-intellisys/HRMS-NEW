@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState } from "react";
 import { Plus, Trash2, Check, ListTodo, CheckCircle, Calendar, Clock } from "lucide-react";
 import { apiRequest } from "../../services/api";
 import Modal from "../../components/common/Modal";
@@ -39,7 +39,7 @@ export default function TodoWidget({ token }: { token: string | null }) {
   const [completingTodoId, setCompletingTodoId] = useState<number | null>(null);
   const [todoToConfirm, setTodoToConfirm] = useState<Todo | null>(null);
   const [todoToDelete, setTodoToDelete] = useState<Todo | null>(null);
-  const pickerRef = useRef<HTMLDivElement>(null);
+
 
   useEffect(() => {
     fetchTodos();

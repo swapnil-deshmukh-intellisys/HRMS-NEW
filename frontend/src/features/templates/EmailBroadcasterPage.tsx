@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { SendHorizontal, Users, Building2, User, Eye, AlertCircle, HelpCircle, CheckCircle2, Search, ChevronDown, X } from "lucide-react";
+import { SendHorizontal, Eye, HelpCircle, CheckCircle2, Search, ChevronDown, X } from "lucide-react";
 import toast from "react-hot-toast";
 import { apiRequest } from "../../services/api";
 import "./EmailBroadcasterPage.css";
@@ -163,10 +163,6 @@ export default function EmailBroadcasterPage({ token }: EmailBroadcasterPageProp
     }
     if (recipientType === "department") {
       const dept = departments.find(d => d.id === Number(selectedDepartmentId));
-      const count = employees.filter(e => {
-        // We don't have departmentId in the simple Employee type here but backend will handle filtering perfectly
-        return true;
-      }).length; // Fallback representation
       return `All active employees belonging to department: ${dept ? dept.name : "Unselected"}.`;
     }
     if (recipientType === "single") {

@@ -179,8 +179,10 @@ export default function EmployeeLeaveOverview({ balances, leaves }: EmployeeLeav
                   innerRadius={56}
                   outerRadius={82}
                   paddingAngle={3}
-                  activeIndex={activeIndex !== -1 ? activeIndex : undefined as any}
-                  activeShape={renderActiveShape as any}
+                  {...({
+                    activeIndex: activeIndex !== -1 ? activeIndex : undefined,
+                    activeShape: renderActiveShape,
+                  } as any)}
                   onMouseEnter={(_, index) => setActiveIndex(index)}
                   onMouseLeave={() => setActiveIndex(-1)}
                 >

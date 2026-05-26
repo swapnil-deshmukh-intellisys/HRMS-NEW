@@ -164,6 +164,7 @@ input[type="date"],
 input[type="datetime-local"],
 input[type="time"] {
   padding-right: var(--control-icon-space);
+  line-height: normal;
 }
 
 input[type="date"]::-webkit-calendar-picker-indicator,

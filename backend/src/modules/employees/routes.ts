@@ -15,22 +15,25 @@ const router = Router();
 
 const employeeSchema = z.object({
   email: z.string().email(),
-  password: z.string().min(6).optional(),
+  password: z.string().min(6),
   role: z.nativeEnum(RoleName),
-  employeeCode: z.string().min(2),
-  firstName: z.string().min(2),
-  lastName: z.string().min(1),
-  jobTitle: z.string().trim().min(2).optional(),
-  phone: z.string().optional(),
+  employeeCode: z.string().optional().nullable(),
+  firstName: z.string().optional().nullable(),
+  lastName: z.string().optional().nullable(),
+  jobTitle: z.string().trim().optional().nullable(),
+  phone: z.string().optional().nullable(),
   annualPackageLpa: z.union([z.coerce.number().positive(), z.null()]).optional(),
   isOnProbation: z.boolean().optional(),
   probationEndDate: z.string().datetime().nullable().optional(),
-  departmentId: z.coerce.number().int().positive(),
+  departmentId: z.coerce.number().int().positive().optional().nullable(),
   managerId: z.coerce.number().int().positive().nullable().optional(),
-  joiningDate: z.string().datetime(),
+  joiningDate: z.string().datetime().optional().nullable(),
   employmentStatus: z.nativeEnum(EmploymentStatus).default(EmploymentStatus.ACTIVE),
   panCardNumber: z.string().optional().nullable(),
   dateOfBirth: z.string().datetime().nullable().optional(),
+  employmentType: z.string().optional().nullable(),
+  internshipType: z.string().optional().nullable(),
+  stipend: z.union([z.coerce.number(), z.null()]).optional(),
 });
 
 const statusSchema = z.object({
@@ -198,17 +201,43 @@ router.post("/", requireRoles("ADMIN", "HR"), validate(employeeSchema), async (r
   try {
     const { password, role, ...employeeData } = request.body;
     const roleRecord = await prisma.role.findUnique({ where: { name: role } });
-    const compensationData =
-      typeof employeeData.annualPackageLpa === "number"
-        ? calculateCompensationFromLpa(employeeData.annualPackageLpa)
-        : {
-            annualPackageLpa: null,
-            grossMonthlySalary: null,
-            basicMonthlySalary: null,
-          };
 
     if (!roleRecord) {
       throw new AppError("Role not found", 404);
+    }
+
+    const emailPrefix = employeeData.email.split("@")[0];
+    const fallbackFirstName = emailPrefix.charAt(0).toUpperCase() + emailPrefix.slice(1);
+    
+    const finalFirstName = employeeData.firstName || fallbackFirstName;
+    const finalLastName = employeeData.lastName || "User";
+    const finalEmployeeCode = employeeData.employeeCode || `EMP-${Date.now()}`;
+    const finalJoiningDate = employeeData.joiningDate ? new Date(employeeData.joiningDate) : new Date();
+
+    let finalDepartmentId = employeeData.departmentId;
+    if (!finalDepartmentId) {
+      const firstDept = await prisma.department.findFirst({ where: { isActive: true } });
+      if (!firstDept) {
+        throw new AppError("No active department found to assign as default", 404);
+      }
+      finalDepartmentId = firstDept.id;
+    }
+
+    let compensationData = {
+      annualPackageLpa: null as number | null,
+      grossMonthlySalary: null as number | null,
+      basicMonthlySalary: null as number | null,
+    };
+
+    if (employeeData.employmentType === "INTERNSHIP") {
+      const stipendAmount = employeeData.internshipType === "PAID" && employeeData.stipend ? Number(employeeData.stipend) : 0;
+      compensationData = {
+        annualPackageLpa: null,
+        grossMonthlySalary: stipendAmount,
+        basicMonthlySalary: 0,
+      };
+    } else if (typeof employeeData.annualPackageLpa === "number") {
+      compensationData = calculateCompensationFromLpa(employeeData.annualPackageLpa);
     }
 
     const createdEmployee = await prisma.$transaction(async (transaction) => {
@@ -223,20 +252,23 @@ router.post("/", requireRoles("ADMIN", "HR"), validate(employeeSchema), async (r
       return transaction.employee.create({
         data: {
           userId: user.id,
-          employeeCode: employeeData.employeeCode,
-          firstName: employeeData.firstName,
-          lastName: employeeData.lastName,
+          employeeCode: finalEmployeeCode,
+          firstName: finalFirstName,
+          lastName: finalLastName,
           jobTitle: employeeData.jobTitle,
           phone: employeeData.phone,
           ...compensationData,
           isOnProbation: employeeData.isOnProbation ?? false,
           probationEndDate: employeeData.probationEndDate ? new Date(employeeData.probationEndDate) : null,
-          departmentId: employeeData.departmentId,
+          departmentId: finalDepartmentId,
           managerId: employeeData.managerId,
-          joiningDate: new Date(employeeData.joiningDate),
+          joiningDate: finalJoiningDate,
           employmentStatus: employeeData.employmentStatus,
           panCardNumber: employeeData.panCardNumber,
           dateOfBirth: employeeData.dateOfBirth ? new Date(employeeData.dateOfBirth) : null,
+          employmentType: employeeData.employmentType || "FULL_TIME",
+          internshipType: employeeData.internshipType,
+          stipend: employeeData.stipend !== undefined && employeeData.stipend !== null ? Number(employeeData.stipend) : null,
         },
         include: {
           user: { include: { role: true } },
@@ -247,7 +279,7 @@ router.post("/", requireRoles("ADMIN", "HR"), validate(employeeSchema), async (r
       });
     });
 
-    await ensureEmployeeLeaveBalances(prisma, createdEmployee.id, getFinancialYearForDate(new Date(employeeData.joiningDate)));
+    await ensureEmployeeLeaveBalances(prisma, createdEmployee.id, getFinancialYearForDate(finalJoiningDate));
 
     return sendSuccess(response, "Employee created successfully", createdEmployee, 201);
   } catch (error) {
@@ -268,8 +300,28 @@ router.put("/:id", requireRoles("ADMIN", "HR"), validate(employeeSchema.partial(
     }
 
     const { role, password, email, joiningDate, ...employeeData } = request.body;
-    const compensationData =
-      typeof employeeData.annualPackageLpa === "number" ? calculateCompensationFromLpa(employeeData.annualPackageLpa) : null;
+
+    const currentEmploymentType = employeeData.employmentType !== undefined ? employeeData.employmentType : existingEmployee.employmentType;
+    let compensationData = null;
+
+    if (currentEmploymentType === "INTERNSHIP") {
+      const currentStipend = employeeData.stipend !== undefined ? employeeData.stipend : existingEmployee.stipend;
+      const currentInternshipType = employeeData.internshipType !== undefined ? employeeData.internshipType : existingEmployee.internshipType;
+      const stipendAmount = currentInternshipType === "PAID" && currentStipend ? Number(currentStipend) : 0;
+      compensationData = {
+        annualPackageLpa: null,
+        grossMonthlySalary: stipendAmount,
+        basicMonthlySalary: 0,
+      };
+    } else if (typeof employeeData.annualPackageLpa === "number") {
+      compensationData = calculateCompensationFromLpa(employeeData.annualPackageLpa);
+    } else if (request.body.annualPackageLpa === null) {
+      compensationData = {
+        annualPackageLpa: null,
+        grossMonthlySalary: null,
+        basicMonthlySalary: null,
+      };
+    }
 
     const updatedEmployee = await prisma.$transaction(async (transaction) => {
       if (email || role || password) {
@@ -296,15 +348,7 @@ router.put("/:id", requireRoles("ADMIN", "HR"), validate(employeeSchema.partial(
         where: { id },
         data: {
           ...employeeData,
-          ...(compensationData
-            ? compensationData
-            : request.body.annualPackageLpa === null
-              ? {
-                  annualPackageLpa: null,
-                  grossMonthlySalary: null,
-                  basicMonthlySalary: null,
-                }
-              : {}),
+          ...(compensationData ? compensationData : {}),
           ...(request.body.isOnProbation !== undefined ? { isOnProbation: request.body.isOnProbation } : {}),
           ...(request.body.probationEndDate !== undefined
             ? { probationEndDate: request.body.probationEndDate ? new Date(request.body.probationEndDate) : null }

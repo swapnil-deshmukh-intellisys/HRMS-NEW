@@ -76,4 +76,7 @@ export const createInitialEmployeeForm = (): EmployeeFormValues => ({
   teamLeadScopeIds: [],
   panCardNumber: "",
   dateOfBirth: "",
+  employmentType: "FULL_TIME",
+  internshipType: "PAID",
+  stipend: "",
 });

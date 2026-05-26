@@ -1,5 +1,5 @@
 import "./Sidebar.css";
-import { Building2, Calendar, CalendarDays, Clock3, Gift, Home, Users, Wallet, UserRound, ClipboardList, type LucideIcon } from "lucide-react";
+import { Building2, Calendar, CalendarDays, Clock3, Gift, Home, Users, Wallet, UserRound, ClipboardList, Mail, SendHorizontal, type LucideIcon } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import type { SessionUser } from "../types";
 
@@ -39,6 +39,10 @@ function getNavItems(sessionUser: SessionUser): NavItem[] {
   }
   items.push({ to: "/payroll", label: "Payroll", icon: Wallet });
   items.push({ to: "/incentives", label: "Incentives", icon: Gift });
+  if (role === "ADMIN" || role === "HR") {
+    items.push({ to: "/templates", label: "Templates", icon: Mail });
+    items.push({ to: "/email-broadcaster", label: "Broadcaster", icon: SendHorizontal });
+  }
   return items;
 }
 

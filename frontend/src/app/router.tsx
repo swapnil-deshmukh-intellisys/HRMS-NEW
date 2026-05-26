@@ -19,6 +19,7 @@ const PayrollHistoryPage = lazy(() => import("../features/payroll/PayrollHistory
 const IncentivesPage = lazy(() => import("../features/payroll/IncentivesPage"));
 const GoogleCallbackPage = lazy(() => import("../features/google/GoogleCallbackPage"));
 const TodoHistoryPage = lazy(() => import("../features/dashboard/TodoHistoryPage"));
+const AssignedTasksHistoryPage = lazy(() => import("../features/dashboard/AssignedTasksHistoryPage"));
 const ManageTasksPage = lazy(() => import("../features/tasks/ManageTasksPage"));
 const EmployeeTodosPage = lazy(() => import("../features/tasks/EmployeeTodosPage"));
 const NotificationsPage = lazy(() => import("../features/notifications/NotificationsPage"));
@@ -201,6 +202,11 @@ function AppRoutes() {
           <Route path="/todos/history" element={
             <Page context="Todo History">
               <TodoHistoryPage token={token} />
+            </Page>
+          } />
+          <Route path="/tasks/history" element={
+            <Page context="Tasks History">
+              <AssignedTasksHistoryPage token={token} />
             </Page>
           } />
           <Route path="/tasks/manage" element={

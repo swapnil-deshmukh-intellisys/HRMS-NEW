@@ -86,14 +86,17 @@ export default function EmployeesPage({ token, role }: EmployeesPageProps) {
         password: formValues.password.trim() || undefined,
         jobTitle: formValues.jobTitle.trim() || undefined,
         phone: formValues.phone.trim() || undefined,
-        annualPackageLpa: formValues.annualPackageLpa.trim() ? Number(formValues.annualPackageLpa) : null,
-        isOnProbation: formValues.isOnProbation,
-        probationEndDate: formValues.isOnProbation && formValues.probationEndDate ? `${formValues.probationEndDate}T00:00:00.000Z` : null,
-        departmentId: Number(formValues.departmentId),
+        annualPackageLpa: formValues.employmentType === "FULL_TIME" && formValues.annualPackageLpa.trim() ? Number(formValues.annualPackageLpa) : null,
+        isOnProbation: formValues.employmentType === "FULL_TIME" ? formValues.isOnProbation : false,
+        probationEndDate: formValues.employmentType === "FULL_TIME" && formValues.isOnProbation && formValues.probationEndDate ? `${formValues.probationEndDate}T00:00:00.000Z` : null,
+        departmentId: formValues.departmentId ? Number(formValues.departmentId) : undefined,
         managerId: formValues.managerId ? Number(formValues.managerId) : null,
-        joiningDate: serializeLocalDateTime(formValues.joiningDate),
+        joiningDate: formValues.joiningDate ? serializeLocalDateTime(formValues.joiningDate) : undefined,
         panCardNumber: formValues.panCardNumber.trim() || null,
         dateOfBirth: formValues.dateOfBirth ? `${formValues.dateOfBirth}T00:00:00.000Z` : null,
+        employmentType: formValues.employmentType || "FULL_TIME",
+        internshipType: formValues.employmentType === "INTERNSHIP" ? formValues.internshipType : null,
+        stipend: formValues.employmentType === "INTERNSHIP" && formValues.internshipType === "PAID" && formValues.stipend ? Number(formValues.stipend) : null,
       };
 
       const response = await apiRequest<Employee>(editingEmployeeId ? `/employees/${editingEmployeeId}` : "/employees", {

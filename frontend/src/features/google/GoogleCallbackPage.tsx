@@ -67,7 +67,7 @@ export default function GoogleCallbackPage({ token }: GoogleCallbackPageProps) {
     return (
       <div className="stack">
         <MessageCard title="Connection failed" tone="error" message={error} />
-        <button className="secondary" onClick={() => navigate("/dashboard")}>Back to Dashboard</button>
+        <button className="secondary" onClick={() => navigate("/")}>Back to Dashboard</button>
       </div>
     );
   }

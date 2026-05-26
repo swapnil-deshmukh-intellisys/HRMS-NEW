@@ -3,7 +3,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { apiRequest } from "../../services/api";
 import type { Employee, PayrollRecord, Role } from "../../types";
-import { ArrowLeft, Download } from "lucide-react";
+import { ArrowLeft, Download, Eye } from "lucide-react";
 
 type PayrollHistoryPageProps = {
   token: string | null;
@@ -32,6 +32,7 @@ export default function PayrollHistoryPage({ token }: Omit<PayrollHistoryPagePro
   const [records, setRecords] = useState<PayrollRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [printingId, setPrintingId] = useState<number | null>(null);
+  const [previewingId, setPreviewingId] = useState<number | null>(null);
 
   const fetchHistory = useCallback(async () => {
     if (!token || !id) return;
@@ -72,9 +73,13 @@ export default function PayrollHistoryPage({ token }: Omit<PayrollHistoryPagePro
     return `status-pill status-pill--${status.toLowerCase()}`;
   }
 
-  async function handleDownloadPayslip(record: PayrollRecord) {
+  async function handleDownloadPayslip(record: PayrollRecord, shouldPrint: boolean = false) {
     try {
-      setPrintingId(record.id);
+      if (shouldPrint) {
+        setPrintingId(record.id);
+      } else {
+        setPreviewingId(record.id);
+      }
       const response = await apiRequest<any>(`/payroll/${record.id}/breakdown`, { token });
       const data = response.data;
       
@@ -82,9 +87,41 @@ export default function PayrollHistoryPage({ token }: Omit<PayrollHistoryPagePro
       if (!printWindow) return;
 
       const monthLabel = getMonthLabel(data.month);
-      const grossSalary = (data.finalSalary ?? 0) + (data.totalIncentives ?? 0);
-      const totalDeductions = (data.pf ?? 0) + (data.pt ?? 0) + (data.gratuity ?? 0) + (data.deductionAmount ?? 0);
+      const daysInMonth = new Date(data.year, data.month, 0).getDate();
+      const payableDays = daysInMonth - (data.deductibleDays ?? 0);
+
+      const isIntern = data.employee?.employmentType === "INTERNSHIP";
+
+      // Fixed compensation rates from employee profile
+      const employeeGrossMonthly = data.employee?.grossMonthlySalary ?? 0;
+      const employeeBasicMonthly = isIntern ? employeeGrossMonthly : (data.employee?.basicMonthlySalary ?? 0);
+      const employeeAllowances = isIntern ? 0 : (employeeGrossMonthly - employeeBasicMonthly);
+
+      // Monthly Earnings
+      const basicEarned = employeeBasicMonthly;
+      const allowancesEarned = employeeAllowances;
+      const incentivesEarned = data.totalIncentives ?? 0;
+      const totalEarnings = employeeGrossMonthly + incentivesEarned;
+
+      // Monthly Deductions
+      const pfDeduction = isIntern ? 0 : (data.pf ?? 0);
+      const ptDeduction = isIntern ? 0 : (data.pt ?? 0);
+      const gratuityDeduction = isIntern ? 0 : (data.gratuity ?? 0);
+      const lwpDeduction = data.deductionAmount ?? 0;
+      const probationAdjustment = isIntern ? 0 : (Math.round(((data.finalSalaryBeforeProbation ?? 0) * (1 - (data.probationMultiplier ?? 1)) + Number.EPSILON) * 100) / 100);
+
+      const totalDeductions = pfDeduction + ptDeduction + gratuityDeduction + lwpDeduction + probationAdjustment;
       
+      const printScript = shouldPrint ? `
+        <script>
+          window.onload = () => {
+            setTimeout(() => {
+              window.print();
+            }, 500);
+          };
+        </script>
+      ` : '';
+
       printWindow.document.write(`
         <html>
           <head>
@@ -130,8 +167,7 @@ export default function PayrollHistoryPage({ token }: Omit<PayrollHistoryPagePro
               .stamp-row td { height: 90px; position: relative; border-left: 1px solid #000; }
               .stamp-row td:first-child { border-left: none; }
               .stamp-container { position: relative; }
-              .stamp-box { position: absolute; right: 20px; bottom: 10px; width: 90px; height: 90px; border-radius: 50%; border: 2px solid #333; display: flex; align-items: center; justify-content: center; text-align: center; font-size: 10px; font-weight: bold; color: #333; transform: rotate(-15deg); opacity: 0.7; }
-              .stamp-box::after { content: 'AUTHORIZED SIGNATORY'; position: absolute; font-size: 8px; width: 100%; }
+              .stamp-img { position: absolute; right: 30px; bottom: 5px; height: 120px; width: auto; opacity: 0.9; transform: rotate(-12deg); }
               
               /* Bottom Footer */
               .bottom-footer { display: flex; justify-content: space-between; font-size: 12px; margin-top: 10px; padding: 0 10px; }
@@ -173,8 +209,8 @@ export default function PayrollHistoryPage({ token }: Omit<PayrollHistoryPagePro
                     <tr><td>Designation</td><td>${data.employee.jobTitle || 'Software Developer'}</td></tr>
                   </table>
                   <table class="info-table right-info">
-                    <tr><td>Payable Days</td><td>${30 - (data.deductibleDays ?? 0)}</td></tr>
-                    <tr><td>Basic Rate</td><td>${(data.basicMonthlySalary ?? 0).toLocaleString()}</td></tr>
+                    <tr><td>Payable Days</td><td>${payableDays}</td></tr>
+                    <tr><td>${isIntern ? 'Stipend Rate' : 'Basic Rate'}</td><td>${employeeBasicMonthly.toLocaleString(undefined, {minimumFractionDigits: 2})}</td></tr>
                     <tr><td>PAN</td><td class="bold">${data.employee.panCardNumber || 'Not Provided'}</td></tr>
                     <tr><td>UAN</td><td class="bold">101XXXXXXXXX</td></tr>
                   </table>
@@ -191,34 +227,17 @@ export default function PayrollHistoryPage({ token }: Omit<PayrollHistoryPagePro
                     </tr>
                   </thead>
                   <tbody>
+                    ${isIntern ? `
                     <tr>
-                      <td>Basic Salary</td>
-                      <td class="amt">${(data.netSalary ?? 0).toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
-                      <td>Provident Fund</td>
-                      <td class="amt">${(data.pf ?? 0).toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
-                      <td class="amt" rowspan="10">${grossSalary.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
-                    </tr>
-                    <tr>
-                      <td>Basket Of Allowances</td>
-                      <td class="amt">${(data.totalIncentives ?? 0).toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
-                      <td>Profession Tax</td>
-                      <td class="amt">${(data.pt ?? 0).toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
-                    </tr>
-                    <tr>
-                      <td>Bonus/ Ex-Gratia</td>
-                      <td class="amt">0.00</td>
-                      <td>Gratuity</td>
-                      <td class="amt">${(data.gratuity ?? 0).toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
-                    </tr>
-                    <tr>
-                      <td>Annual Component</td>
-                      <td class="amt">0.00</td>
+                      <td>Stipend</td>
+                      <td class="amt">${basicEarned.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
                       <td>Unpaid Absence</td>
-                      <td class="amt">${(data.deductionAmount ?? 0).toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
+                      <td class="amt">${lwpDeduction.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
+                      <td class="amt" rowspan="10">${totalEarnings.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
                     </tr>
                     <tr>
                       <td>Other Allowance</td>
-                      <td class="amt">0.00</td>
+                      <td class="amt">${incentivesEarned.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
                       <td></td>
                       <td class="amt"></td>
                     </tr>
@@ -227,13 +246,54 @@ export default function PayrollHistoryPage({ token }: Omit<PayrollHistoryPagePro
                     <tr><td></td><td class="amt"></td><td></td><td class="amt"></td></tr>
                     <tr><td></td><td class="amt"></td><td></td><td class="amt"></td></tr>
                     <tr><td></td><td class="amt"></td><td></td><td class="amt"></td></tr>
+                    <tr><td></td><td class="amt"></td><td></td><td class="amt"></td></tr>
+                    <tr><td></td><td class="amt"></td><td></td><td class="amt"></td></tr>
+                    <tr><td></td><td class="amt"></td><td></td><td class="amt"></td></tr>
+                    ` : `
+                    <tr>
+                      <td>Basic Salary</td>
+                      <td class="amt">${basicEarned.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
+                      <td>Provident Fund</td>
+                      <td class="amt">${pfDeduction.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
+                      <td class="amt" rowspan="10">${totalEarnings.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
+                    </tr>
+                    <tr>
+                      <td>Basket Of Allowances</td>
+                      <td class="amt">${allowancesEarned.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
+                      <td>Profession Tax</td>
+                      <td class="amt">${ptDeduction.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
+                    </tr>
+                    <tr>
+                      <td>Bonus/ Ex-Gratia</td>
+                      <td class="amt">0.00</td>
+                      <td>Gratuity</td>
+                      <td class="amt">${gratuityDeduction.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
+                    </tr>
+                    <tr>
+                      <td>Annual Component</td>
+                      <td class="amt">0.00</td>
+                      <td>Unpaid Absence</td>
+                      <td class="amt">${lwpDeduction.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
+                    </tr>
+                    <tr>
+                      <td>Other Allowance</td>
+                      <td class="amt">${incentivesEarned.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
+                      <td>${probationAdjustment > 0 ? 'Probation Adjustment' : ''}</td>
+                      <td class="amt">${probationAdjustment > 0 ? probationAdjustment.toLocaleString(undefined, {minimumFractionDigits: 2}) : ''}</td>
+                    </tr>
+                    <tr><td></td><td class="amt"></td><td></td><td class="amt"></td></tr>
+                    <tr><td></td><td class="amt"></td><td></td><td class="amt"></td></tr>
+                    <tr><td></td><td class="amt"></td><td></td><td class="amt"></td></tr>
+                    <tr><td></td><td class="amt"></td><td></td><td class="amt"></td></tr>
+                    <tr><td></td><td class="amt"></td><td></td><td class="amt"></td></tr>
+                    `}
                     
                     <tr class="totals-row">
                       <td class="amt">Total</td>
-                      <td class="amt">${grossSalary.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
+                      <td class="amt">${totalEarnings.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
                       <td class="amt">Total</td>
                       <td class="amt">${totalDeductions.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
-                      <td class="amt">${grossSalary.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
+                      <td class="amt">${totalEarnings.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
                     </tr>
                     <tr class="net-pay-row">
                       <td class="bold">Net Pay : Rs.</td>
@@ -244,7 +304,7 @@ export default function PayrollHistoryPage({ token }: Omit<PayrollHistoryPagePro
                     <tr class="stamp-row">
                       <td colspan="2"></td>
                       <td colspan="3" class="stamp-container">
-                        <div class="stamp-box">SEAL</div>
+                        <img class="stamp-img" src="/assets/images/stamp.png" alt="Authorized Signatory Stamp" />
                       </td>
                     </tr>
                   </tbody>
@@ -270,14 +330,7 @@ export default function PayrollHistoryPage({ token }: Omit<PayrollHistoryPagePro
               </div>
             </div>
             
-            <script>
-              window.onload = () => {
-                setTimeout(() => {
-                  window.print();
-                  setTimeout(() => window.close(), 500);
-                }, 500);
-              };
-            </script>
+            ${printScript}
           </body>
         </html>
       `);
@@ -287,6 +340,7 @@ export default function PayrollHistoryPage({ token }: Omit<PayrollHistoryPagePro
       alert("Failed to generate payslip.");
     } finally {
       setPrintingId(null);
+      setPreviewingId(null);
     }
   }
 
@@ -336,14 +390,25 @@ export default function PayrollHistoryPage({ token }: Omit<PayrollHistoryPagePro
                         <span className={getStatusClass(record.status)}>{record.status}</span>
                       </td>
                       <td>
-                        <button 
-                          className="payroll-action-button"
-                          onClick={() => handleDownloadPayslip(record)}
-                          disabled={printingId === record.id}
-                        >
-                          <Download size={16} style={{ marginRight: '0.5rem' }} />
-                          {printingId === record.id ? "Loading..." : "Payslip"}
-                        </button>
+                        <div style={{ display: 'flex', gap: '0.5rem' }}>
+                          <button 
+                            className="payroll-action-button"
+                            style={{ background: 'rgba(107, 114, 128, 0.08)', border: '1px solid rgba(107, 114, 128, 0.15)', color: '#4b5563' }}
+                            onClick={() => handleDownloadPayslip(record, false)}
+                            disabled={previewingId === record.id || printingId === record.id}
+                          >
+                            <Eye size={16} style={{ marginRight: '0.5rem' }} />
+                            {previewingId === record.id ? "Loading..." : "Preview"}
+                          </button>
+                          <button 
+                            className="payroll-action-button"
+                            onClick={() => handleDownloadPayslip(record, true)}
+                            disabled={previewingId === record.id || printingId === record.id}
+                          >
+                            <Download size={16} style={{ marginRight: '0.5rem' }} />
+                            {printingId === record.id ? "Loading..." : "Download"}
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))

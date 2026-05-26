@@ -16,6 +16,7 @@ export function useAuth() {
   const [sessionUser, setSessionUser] = useState<SessionUser | null>(null);
   const [loadingSession, setLoadingSession] = useState(Boolean(token));
   const [sessionWarning, setSessionWarning] = useState(false);
+  const [connectionError, setConnectionError] = useState(false);
   const [lastActivity, setLastActivity] = useState<number>(() => {
     const saved = localStorage.getItem(LAST_ACTIVITY_KEY);
     return saved ? parseInt(saved) : Date.now();
@@ -124,20 +125,33 @@ export function useAuth() {
       setSessionUser(response.data.user);
       setSessionTimeout();
       retryCount.current = 0;
+      if (connectionError) {
+        console.log("[AUTH] Connection restored! Dispatching hrms-reconnected event.");
+        window.dispatchEvent(new Event("hrms-reconnected"));
+      }
+      setConnectionError(false);
     } catch (error: any) {
       if (localStorage.getItem(TOKEN_KEY) !== tokenBeingVerified) {
         console.warn("Discarding auth check failure: token has changed since request started.");
         return;
       }
 
-      const isServerError = error.message?.includes('500') || error.status === 500;
-      
-      if (isServerError && retryCount.current < 2) {
+      const isTransientError = 
+        !error.status || 
+        error.status >= 500 || 
+        error.message?.includes('500') || 
+        error.message?.includes('Network Error') || 
+        error.message?.includes('Failed to fetch');
+
+      if (isTransientError) {
+        setConnectionError(true);
+        // Exponential backoff capped at 30 seconds
+        const delay = Math.min(2000 * Math.pow(2, retryCount.current), 30000);
         retryCount.current++;
-        console.warn(`Server error during auth check, retry #${retryCount.current}/2...`);
-        setTimeout(() => fetchSession(true), 5000);
+        console.warn(`Transient server error during bootstrap, retrying in ${delay}ms (retry #${retryCount.current})...`);
+        setTimeout(() => fetchSession(true), delay);
       } else {
-        console.error("Session verification failed, logging out:", error.message);
+        console.error("Session verification failed with non-transient error, logging out:", error.message);
         logout();
       }
     } finally {
@@ -189,6 +203,7 @@ export function useAuth() {
     sessionUser,
     loadingSession,
     sessionWarning,
+    connectionError,
     login,
     logout,
     refreshSession,

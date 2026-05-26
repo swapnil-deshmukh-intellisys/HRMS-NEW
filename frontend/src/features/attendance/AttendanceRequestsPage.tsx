@@ -2,17 +2,18 @@ import "./AttendancePage.css";
 import { useCallback, useEffect, useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { apiRequest } from "../../services/api";
-import type { AttendanceRegularizationRequest, Role } from "../../types";
+import type { AttendanceRegularizationRequest, Role, Employee } from "../../types";
 import { formatAttendanceTime, formatDateLabel, formatDateTime, formatWeekday } from "../../utils/format";
 import Table from "../../components/common/Table";
 import Modal from "../../components/common/Modal";
 import toast from "react-hot-toast";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Calendar, Clock } from "lucide-react";
 
 type AttendanceRequestsPageProps = {
   token: string | null;
   role: Role;
   currentEmployeeId: number | null;
+  currentEmployee?: Employee | null;
 };
 
 function toLocalDateString(value: Date) {
@@ -22,9 +23,107 @@ function toLocalDateString(value: Date) {
   return `${year}-${month}-${day}`;
 }
 
-export default function AttendanceRequestsPage({ token, role, currentEmployeeId }: AttendanceRequestsPageProps) {
+function convertTo24Hour(time12: string, ampm: string): string {
+  if (!time12 || !time12.trim() || time12.includes("-")) return "";
+  
+  const parts = time12.split(":");
+  let hours = parseInt(parts[0], 10);
+  let minutes = 0;
+  
+  if (parts[1]) {
+    minutes = parseInt(parts[1], 10);
+  }
+  
+  if (isNaN(hours)) return "";
+  if (isNaN(minutes)) minutes = 0;
+  
+  if (ampm === "PM" && hours < 12) {
+    hours += 12;
+  } else if (ampm === "AM" && hours === 12) {
+    hours = 0;
+  }
+  
+  return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
+}
+
+function formatTimeInput(value: string, prevValue: string): string {
+  if (!value) {
+    return "--:--";
+  }
+
+  if (!prevValue || prevValue.length !== 5 || prevValue[2] !== ":") {
+    prevValue = "--:--";
+  }
+
+  // Deletion logic
+  if (value.length < prevValue.length) {
+    const nDeleted = prevValue.length - value.length;
+    let start = 0;
+    while (start < value.length && value[start] === prevValue[start]) {
+      start++;
+    }
+
+    const chars = prevValue.split("");
+    for (let i = 0; i < nDeleted; i++) {
+      let delIdx = start + i;
+      if (delIdx === 2) {
+        delIdx = 1;
+      }
+      if (delIdx >= 0 && delIdx < 5) {
+        chars[delIdx] = "-";
+      }
+    }
+    chars[2] = ":";
+    return chars.join("");
+  }
+
+  // Addition logic
+  if (value.length > prevValue.length) {
+    let start = 0;
+    while (start < prevValue.length && value[start] === prevValue[start]) {
+      start++;
+    }
+
+    const insertedChar = value[start];
+    if (!/^\d$/.test(insertedChar)) {
+      return prevValue;
+    }
+
+    const chars = prevValue.split("");
+    let targetIdx = start;
+    if (targetIdx === 2) {
+      targetIdx = 3;
+    }
+
+    if (targetIdx >= 0 && targetIdx < 5) {
+      chars[targetIdx] = insertedChar;
+    }
+    chars[2] = ":";
+    return chars.join("");
+  }
+
+  // Same length but character changes
+  const chars = prevValue.split("");
+  for (let i = 0; i < 5; i++) {
+    if (i === 2) continue;
+    if (value[i] !== prevValue[i]) {
+      if (/^\d$/.test(value[i])) {
+        chars[i] = value[i];
+      } else if (value[i] === "-") {
+        chars[i] = "-";
+      }
+    }
+  }
+  chars[2] = ":";
+  return chars.join("");
+}
+
+export default function AttendanceRequestsPage({ token, role, currentEmployeeId, currentEmployee }: AttendanceRequestsPageProps) {
   const navigate = useNavigate();
   const today = toLocalDateString(new Date());
+  const joiningDateFormatted = currentEmployee?.joiningDate 
+    ? toLocalDateString(new Date(currentEmployee.joiningDate)) 
+    : undefined;
   const [regularizations, setRegularizations] = useState<AttendanceRegularizationRequest[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -39,6 +138,10 @@ export default function AttendanceRequestsPage({ token, role, currentEmployeeId 
     proposedCheckOutTime: "",
     reason: "",
   });
+  const [checkInTime, setCheckInTime] = useState("--:--");
+  const [checkInAmPm, setCheckInAmPm] = useState("AM");
+  const [checkOutTime, setCheckOutTime] = useState("--:--");
+  const [checkOutAmPm, setCheckOutAmPm] = useState("PM");
 
   const reloadRegularizations = useCallback(async () => {
     if (!token) return;
@@ -81,14 +184,17 @@ export default function AttendanceRequestsPage({ token, role, currentEmployeeId 
   }
 
   async function handleRegularizationSubmit() {
+    const checkIn24 = convertTo24Hour(checkInTime, checkInAmPm);
+    const checkOut24 = convertTo24Hour(checkOutTime, checkOutAmPm);
+
     try {
       const response = await apiRequest<AttendanceRegularizationRequest>("/attendance/regularizations", {
         method: "POST",
         token,
         body: {
           attendanceDate: regularizationForm.attendanceDate,
-          proposedCheckInTime: regularizationForm.proposedCheckInTime || undefined,
-          proposedCheckOutTime: regularizationForm.proposedCheckOutTime || undefined,
+          proposedCheckInTime: checkIn24 || undefined,
+          proposedCheckOutTime: checkOut24 || undefined,
           reason: regularizationForm.reason,
         },
       });
@@ -100,6 +206,10 @@ export default function AttendanceRequestsPage({ token, role, currentEmployeeId 
         proposedCheckOutTime: "",
         reason: "",
       });
+      setCheckInTime("--:--");
+      setCheckOutTime("--:--");
+      setCheckInAmPm("AM");
+      setCheckOutAmPm("PM");
       await reloadRegularizations();
     } catch (requestError) {
       toast.error(requestError instanceof Error ? requestError.message : "Failed to submit attendance correction request.");
@@ -267,29 +377,154 @@ export default function AttendanceRequestsPage({ token, role, currentEmployeeId 
         <div className="stack regularization-form">
           <label>
             Date
-            <input
-              type="date"
-              max={today}
-              value={regularizationForm.attendanceDate}
-              onChange={(event) => setRegularizationForm((current) => ({ ...current, attendanceDate: event.target.value }))}
-            />
+            <div className="time-input-container">
+              <Calendar size={16} className="time-input-icon" />
+              <input
+                type="date"
+                className="regularization-time-input"
+                min={joiningDateFormatted}
+                max={today}
+                value={regularizationForm.attendanceDate}
+                onChange={(event) => setRegularizationForm((current) => ({ ...current, attendanceDate: event.target.value }))}
+              />
+            </div>
           </label>
           <div className="regularization-time-grid">
             <label>
               Proposed check in
-              <input
-                type="time"
-                value={regularizationForm.proposedCheckInTime}
-                onChange={(event) => setRegularizationForm((current) => ({ ...current, proposedCheckInTime: event.target.value }))}
-              />
+              <div className="time-input-container">
+                <Clock size={16} className="time-input-icon" />
+                <input
+                  type="text"
+                  className="regularization-time-input"
+                  placeholder="e.g. 09:00"
+                  value={checkInTime}
+                  onChange={(event) => {
+                    const input = event.target;
+                    const oldVal = checkInTime;
+                    const newVal = formatTimeInput(input.value, oldVal);
+                    
+                    let newCursorPos = input.selectionStart || 0;
+                    if (input.value.length > oldVal.length) {
+                      let start = 0;
+                      while (start < oldVal.length && input.value[start] === oldVal[start]) {
+                        start++;
+                      }
+                      newCursorPos = start + 1;
+                      if (newCursorPos === 2) {
+                        newCursorPos = 3;
+                      }
+                    } else if (input.value.length < oldVal.length) {
+                      let start = 0;
+                      while (start < input.value.length && input.value[start] === oldVal[start]) {
+                        start++;
+                      }
+                      const nDeleted = oldVal.length - input.value.length;
+                      if (nDeleted === 1 && start === 2) {
+                        newCursorPos = 1;
+                      } else {
+                        newCursorPos = start;
+                      }
+                    }
+                    
+                    setCheckInTime(newVal);
+                    requestAnimationFrame(() => {
+                      try {
+                        input.setSelectionRange(newCursorPos, newCursorPos);
+                      } catch (e) {}
+                    });
+                  }}
+                />
+                <select
+                  value={checkInAmPm}
+                  onChange={(event) => setCheckInAmPm(event.target.value)}
+                  style={{
+                    border: 'none',
+                    background: 'transparent',
+                    color: 'var(--color-text-strong)',
+                    fontWeight: '700',
+                    fontSize: '13px',
+                    cursor: 'pointer',
+                    outline: 'none',
+                    padding: '0 8px 0 0',
+                    width: 'auto',
+                    minHeight: 'auto',
+                    backgroundImage: 'none',
+                    appearance: 'auto'
+                  }}
+                >
+                  <option value="AM">AM</option>
+                  <option value="PM">PM</option>
+                </select>
+              </div>
             </label>
             <label>
               Proposed check out
-              <input
-                type="time"
-                value={regularizationForm.proposedCheckOutTime}
-                onChange={(event) => setRegularizationForm((current) => ({ ...current, proposedCheckOutTime: event.target.value }))}
-              />
+              <div className="time-input-container">
+                <Clock size={16} className="time-input-icon" />
+                <input
+                  type="text"
+                  className="regularization-time-input"
+                  placeholder="e.g. 06:00"
+                  value={checkOutTime}
+                  onChange={(event) => {
+                    const input = event.target;
+                    const oldVal = checkOutTime;
+                    const newVal = formatTimeInput(input.value, oldVal);
+                    
+                    let newCursorPos = input.selectionStart || 0;
+                    if (input.value.length > oldVal.length) {
+                      let start = 0;
+                      while (start < oldVal.length && input.value[start] === oldVal[start]) {
+                        start++;
+                      }
+                      newCursorPos = start + 1;
+                      if (newCursorPos === 2) {
+                        newCursorPos = 3;
+                      }
+                    } else if (input.value.length < oldVal.length) {
+                      let start = 0;
+                      while (start < input.value.length && input.value[start] === oldVal[start]) {
+                        start++;
+                      }
+                      const nDeleted = oldVal.length - input.value.length;
+                      if (nDeleted === 1 && start === 2) {
+                        newCursorPos = 1;
+                      } else {
+                        newCursorPos = start;
+                      }
+                    }
+                    
+                    setCheckOutTime(newVal);
+                    requestAnimationFrame(() => {
+                      try {
+                        input.setSelectionRange(newCursorPos, newCursorPos);
+                      } catch (e) {}
+                    });
+                  }}
+                />
+                <select
+                  value={checkOutAmPm}
+                  onChange={(event) => setCheckOutAmPm(event.target.value)}
+                  style={{
+                    border: 'none',
+                    background: 'transparent',
+                    color: 'var(--color-text-strong)',
+                    fontWeight: '700',
+                    fontSize: '13px',
+                    cursor: 'pointer',
+                    outline: 'none',
+                    padding: '0 8px 0 0',
+                    width: 'auto',
+                    minHeight: 'auto',
+                    backgroundImage: 'none',
+                    appearance: 'auto'
+                  }}
+                >
+                  <option value="AM">AM</option>
+                  <option value="PM">PM</option>
+                </select>
+              </div>
             </label>
           </div>
           <label>

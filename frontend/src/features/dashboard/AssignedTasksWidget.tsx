@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
-import { Check, ClipboardList, AlertCircle, User } from "lucide-react";
+import { Check, ClipboardList, AlertCircle, User, CheckCircle } from "lucide-react";
 import { apiRequest } from "../../services/api";
 import toast from "react-hot-toast";
 import Modal from "../../components/common/Modal";
+import { Link } from "react-router-dom";
 import "./AssignedTasksWidget.css";
 
 type ManagerTask = {
@@ -114,11 +115,16 @@ export default function AssignedTasksWidget({ token }: { token: string | null })
             Assigned to You
           </h3>
         </div>
-        {totalCount > 0 && (
-          <span className="task-count-badge">
-            {completedCount}/{totalCount} Done
-          </span>
-        )}
+        <div className="button-row row-actions" style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+          <Link to="/tasks/history" className="todo-icon-btn secondary" title="History" style={{ display: "flex", alignItems: "center", justifyContent: "center", width: "36px", height: "36px", borderRadius: "50%", border: "1px solid var(--color-border-subtle)", background: "var(--color-surface-hover)", cursor: "pointer", color: "var(--color-text-strong)" }}>
+            <ClipboardList size={18} />
+          </Link>
+          {totalCount > 0 && (
+            <span className="task-count-badge">
+              {completedCount}/{totalCount} Done
+            </span>
+          )}
+        </div>
       </div>
 
       <div className="assigned-tasks-container">
@@ -145,44 +151,52 @@ export default function AssignedTasksWidget({ token }: { token: string | null })
             </div>
 
             <div className="task-items-checklist">
-              {tasks.map((task) => (
-                <div
-                  key={task.id}
-                  className={`task-checkbox-item ${task.isCompleted ? "checked" : ""}`}
-                  onClick={() => {
-                    setSelectedTask(task);
-                    setIsDetailsOpen(true);
-                  }}
-                  style={{ cursor: "pointer" }}
-                >
-                  <button
-                    className={`item-checkbox ${task.isCompleted ? "checked" : ""} ${
-                      togglingId === task.id ? "toggling" : ""
-                    }`}
-                    aria-label="Toggle completed status"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleToggleTaskItem(task.id, task.isCompleted);
+              {tasks.filter(t => !t.isCompleted).length === 0 ? (
+                <div className="tasks-empty-state" style={{ padding: "var(--space-6) 0", background: "transparent", border: "none", boxShadow: "none" }}>
+                  <CheckCircle size={40} className="empty-icon" style={{ color: "var(--color-success, #10b981)", opacity: 0.8 }} />
+                  <p className="empty-title" style={{ color: "var(--color-success-strong, #15803d)", fontSize: "14px", fontWeight: "bold" }}>All caught up!</p>
+                  <p className="empty-desc" style={{ fontSize: "12px" }}>You've completed all tasks assigned for today.</p>
+                </div>
+              ) : (
+                tasks.filter(t => !t.isCompleted).map((task) => (
+                  <div
+                    key={task.id}
+                    className={`task-checkbox-item ${task.isCompleted ? "checked" : ""}`}
+                    onClick={() => {
+                      setSelectedTask(task);
+                      setIsDetailsOpen(true);
                     }}
+                    style={{ cursor: "pointer" }}
                   >
-                    {task.isCompleted && <Check size={12} strokeWidth={3} />}
-                  </button>
-                  <div className="item-details">
-                    <span className="item-title">{task.title}</span>
-                    {task.description && <span className="item-desc">{task.description}</span>}
-                    
-                    <div className="task-item-meta" style={{ marginTop: "4px", display: "flex", gap: "6px", flexWrap: "wrap" }}>
-                      <span className={`task-badge ${task.employeeId === null ? "badge-general" : "badge-assigned"}`} style={{ fontSize: "9px", padding: "1px 6px" }}>
-                        {task.employeeId === null ? "General" : "Direct"}
-                      </span>
-                      <span className="assigned-by-tag" style={{ fontSize: "10px", color: "var(--color-text-secondary)", display: "flex", alignItems: "center", gap: "3px" }}>
-                        <User size={10} />
-                        By: {task.creator?.firstName || "Manager"} {task.creator?.lastName || ""}
-                      </span>
+                    <button
+                      className={`item-checkbox ${task.isCompleted ? "checked" : ""} ${
+                        togglingId === task.id ? "toggling" : ""
+                      }`}
+                      aria-label="Toggle completed status"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleToggleTaskItem(task.id, task.isCompleted);
+                      }}
+                    >
+                      {task.isCompleted && <Check size={12} strokeWidth={3} />}
+                    </button>
+                    <div className="item-details">
+                      <span className="item-title">{task.title}</span>
+                      {task.description && <span className="item-desc">{task.description}</span>}
+                      
+                      <div className="task-item-meta" style={{ marginTop: "4px", display: "flex", gap: "6px", flexWrap: "wrap" }}>
+                        <span className={`task-badge ${task.employeeId === null ? "badge-general" : "badge-assigned"}`} style={{ fontSize: "9px", padding: "1px 6px" }}>
+                          {task.employeeId === null ? "General" : "Direct"}
+                        </span>
+                        <span className="assigned-by-tag" style={{ fontSize: "10px", color: "var(--color-text-secondary)", display: "flex", alignItems: "center", gap: "3px" }}>
+                          <User size={10} />
+                          By: {task.creator?.firstName || "Manager"} {task.creator?.lastName || ""}
+                        </span>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                ))
+              )}
             </div>
           </div>
         )}

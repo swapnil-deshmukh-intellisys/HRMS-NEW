@@ -458,3 +458,64 @@
     flex: 1 1 auto;
   }
 }
+
+/* Premium Time Input Container styles to match the Todo organizer triggers */
+.time-input-container {
+  display: flex;
+  align-items: center;
+  background: white;
+  border: 1.5px solid var(--color-border-default);
+  border-radius: var(--radius-md);
+  padding: 8px 12px;
+  transition: all var(--transition-normal);
+  gap: 10px;
+  box-shadow: var(--shadow-sm);
+  margin-top: 4px;
+}
+
+/* Remove browser-native rounded styles from date & time input edit segments */
+.regularization-time-input,
+.regularization-time-input::-webkit-datetime-edit,
+.regularization-time-input::-webkit-datetime-edit-fields-wrapper,
+.regularization-time-input::-webkit-datetime-edit-month-field,
+.regularization-time-input::-webkit-datetime-edit-day-field,
+.regularization-time-input::-webkit-datetime-edit-year-field,
+.regularization-time-input::-webkit-datetime-edit-hour-field,
+.regularization-time-input::-webkit-datetime-edit-minute-field,
+.regularization-time-input::-webkit-datetime-edit-ampm-field,
+.regularization-time-input::-webkit-datetime-edit-month-field:focus,
+.regularization-time-input::-webkit-datetime-edit-day-field:focus,
+.regularization-time-input::-webkit-datetime-edit-year-field:focus,
+.regularization-time-input::-webkit-datetime-edit-hour-field:focus,
+.regularization-time-input::-webkit-datetime-edit-minute-field:focus,
+.regularization-time-input::-webkit-datetime-edit-ampm-field:focus {
+  border-radius: 0px !important;
+  -webkit-border-radius: 0px !important;
+}
+
+.time-input-container:focus-within {
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 3px var(--color-accent-soft);
+}
+
+.time-input-icon {
+  color: var(--color-accent);
+  flex-shrink: 0;
+}
+
+.regularization-time-input {
+  border: none !important;
+  background: transparent !important;
+  padding: 0 !important;
+  min-height: auto !important;
+  box-shadow: none !important;
+  outline: none !important;
+  color: var(--color-text-strong);
+  font-family: inherit;
+  font-size: var(--text-sm);
+  font-weight: var(--fw-semibold);
+  width: 100%;
+  cursor: pointer;
+  border-radius: 0px !important;
+  -webkit-border-radius: 0px !important;
+}

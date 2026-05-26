@@ -48,10 +48,6 @@ function getMinSelectableDate() {
 export default function LeaveForm({ form, attachmentName, leaveTypes, balances, isSubmitting = false, onChange, onAttachmentChange, onSubmit }: LeaveFormProps) {
   const [isMultipleDays, setIsMultipleDays] = useState(() => form.startDate !== form.endDate);
 
-  useEffect(() => {
-    setIsMultipleDays(form.startDate !== form.endDate);
-  }, [form.startDate, form.endDate]);
-
   const isSingleDay = !isMultipleDays;
   const reasonWordCount = useMemo(() => countWords(form.reason), [form.reason]);
   const [leaveTypeMenuOpen, setLeaveTypeMenuOpen] = useState(false);

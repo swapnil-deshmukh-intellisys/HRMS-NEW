@@ -5,11 +5,12 @@ import { formatAttendanceTime, formatDateLabel, formatWeekday, isToday } from ".
 import EmployeeAttendanceBreakdownChart from "./charts/EmployeeAttendanceBreakdownChart";
 import EmployeeWorkedHoursChart from "./charts/EmployeeWorkedHoursChart";
 import { useApp } from "../../context/useApp";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 type EmployeeAttendanceTabProps = {
   attendance: Attendance[];
   exceptions?: CalendarException[];
+  joiningDate?: string;
 };
 
 function formatWorkedDuration(workedMinutes: number, checkOutTime?: string | null) {
@@ -36,6 +37,10 @@ function formatWorkedDuration(workedMinutes: number, checkOutTime?: string | nul
 }
 
 function getWorkedDurationLabel(record: any) {
+  if (record.status === "NO_DATA") {
+    return "-";
+  }
+
   if (record.status === "LEAVE") {
     return "-";
   }
@@ -76,6 +81,7 @@ function getStatusClass(status: Attendance["status"] | "OFF" | "HOLIDAY" | "WORK
 
 function getStatusLabel(record: Attendance | { status: string; leaveTypeCode?: string }) {
   const status = record.status;
+  if (status === "NO_DATA") return "No Data Available";
   if (status === "WORKING_SATURDAY") return "Working Saturday";
   if (status === "OFF") return "Off Day";
   if (status === "HOLIDAY") return "Public Holiday";
@@ -90,26 +96,100 @@ function getStatusLabel(record: Attendance | { status: string; leaveTypeCode?: s
   return baseLabel;
 }
 
-export default function EmployeeAttendanceTab({ attendance, exceptions }: EmployeeAttendanceTabProps) {
+export default function EmployeeAttendanceTab({ attendance, exceptions, joiningDate }: EmployeeAttendanceTabProps) {
   const { calendarExceptions: globalExceptions } = useApp();
   const calendarExceptions = exceptions || globalExceptions;
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [selectedUpdate, setSelectedUpdate] = useState<string | null>(null);
 
-  const months = [
-    "January", "February", "March", "April", "May", "June",
-    "July", "August", "September", "October", "November", "December"
-  ];
+  const allMonths = useMemo(() => [
+    { value: 0, name: "January" },
+    { value: 1, name: "February" },
+    { value: 2, name: "March" },
+    { value: 3, name: "April" },
+    { value: 4, name: "May" },
+    { value: 5, name: "June" },
+    { value: 6, name: "July" },
+    { value: 7, name: "August" },
+    { value: 8, name: "September" },
+    { value: 9, name: "October" },
+    { value: 10, name: "November" },
+    { value: 11, name: "December" }
+  ], []);
+
+  const join = useMemo(() => joiningDate ? new Date(joiningDate) : null, [joiningDate]);
+  const joinYear = useMemo(() => join ? join.getFullYear() : null, [join]);
+  const joinMonth = useMemo(() => join ? join.getMonth() : null, [join]);
+
+  const joinDateStr = useMemo(() => {
+    if (!join) return null;
+    const jy = join.getFullYear();
+    const jm = String(join.getMonth() + 1).padStart(2, '0');
+    const jd = String(join.getDate()).padStart(2, '0');
+    return `${jy}-${jm}-${jd}`;
+  }, [join]);
 
   const years = useMemo(() => {
     const currentYear = new Date().getFullYear();
+    const startYear = joinYear !== null ? joinYear : currentYear - 2;
+    
     const yearsArray = [];
-    for (let i = currentYear; i >= currentYear - 2; i--) {
+    for (let i = currentYear; i >= startYear; i--) {
       yearsArray.push(i);
     }
+    if (yearsArray.length === 0) {
+      yearsArray.push(currentYear);
+    }
     return yearsArray;
-  }, []);
+  }, [joinYear]);
+
+  const availableMonths = useMemo(() => {
+    if (joinMonth === null || joinYear === null || selectedYear !== joinYear) {
+      return allMonths;
+    }
+    return allMonths.filter(m => m.value >= joinMonth);
+  }, [allMonths, selectedYear, joinYear, joinMonth]);
+
+  // Adjust selectedMonth if it is no longer available in the newly selected year
+  useEffect(() => {
+    if (joinMonth !== null && joinYear !== null && selectedYear === joinYear && selectedMonth < joinMonth) {
+      setSelectedMonth(joinMonth);
+    }
+  }, [selectedYear, joinYear, joinMonth, selectedMonth]);
+
+  // Adjust selectedYear if it is prior to joinYear
+  useEffect(() => {
+    if (joinYear !== null && selectedYear < joinYear) {
+      setSelectedYear(new Date().getFullYear());
+    }
+  }, [joinYear, selectedYear]);
+
+  const filteredAttendance = useMemo(() => {
+    const cutoffDate = new Date(2026, 3, 1); // April 1, 2026
+    
+    let filtered = attendance;
+
+    if (joiningDate) {
+      const join = new Date(joiningDate);
+      const localJoin = new Date(join.getFullYear(), join.getMonth(), join.getDate());
+      
+      filtered = filtered.filter(a => {
+        const rec = new Date(a.attendanceDate);
+        const localRec = new Date(rec.getFullYear(), rec.getMonth(), rec.getDate());
+        return localRec >= localJoin;
+      });
+    }
+
+    // Exclude records before 1st April 2026
+    filtered = filtered.filter(a => {
+      const rec = new Date(a.attendanceDate);
+      const localRec = new Date(rec.getFullYear(), rec.getMonth(), rec.getDate());
+      return localRec >= cutoffDate;
+    });
+
+    return filtered;
+  }, [attendance, joiningDate]);
 
   const unifiedHistory = useMemo(() => {
     const today = new Date();
@@ -132,7 +212,19 @@ export default function EmployeeAttendanceTab({ attendance, exceptions }: Employ
     
     dates.reverse();
 
-    return dates.map(date => {
+    // Filter dates to only include those on or after joiningDate
+    const filteredDates = joiningDate 
+      ? dates.filter(d => {
+          const localDate = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+          const join = new Date(joiningDate);
+          const localJoin = new Date(join.getFullYear(), join.getMonth(), join.getDate());
+          return localDate >= localJoin;
+        })
+      : dates;
+
+    const cutoffDate = new Date(2026, 3, 1); // April 1, 2026
+
+    return filteredDates.map(date => {
       // Build YYYY-MM-DD from LOCAL date parts to avoid toISOString() UTC conversion
       // which shifts IST dates back by one day (IST midnight = previous day in UTC)
       const y = date.getFullYear();
@@ -140,9 +232,12 @@ export default function EmployeeAttendanceTab({ attendance, exceptions }: Employ
       const d = String(date.getDate()).padStart(2, '0');
       const dateStr = `${y}-${mo}-${d}`;
 
+      const localDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+      const isBeforeCutoff = localDate < cutoffDate;
+
       // Match attendance records by extracting local date parts from the UTC ISO string
       // (safe because app is exclusively used in IST, so browser local = IST)
-      const existingRecord = attendance.find(a => {
+      const existingRecord = filteredAttendance.find(a => {
         const rec = new Date(a.attendanceDate);
         const ry = rec.getFullYear();
         const rm = String(rec.getMonth() + 1).padStart(2, '0');
@@ -182,20 +277,27 @@ export default function EmployeeAttendanceTab({ attendance, exceptions }: Employ
 
       // If there is an exception (Holiday/Working Saturday), it should take visual precedence 
       // over a generic "ABSENT" record.
-      const finalStatus = (exception && existingRecord?.status === "ABSENT") 
+      let finalStatus = (exception && existingRecord?.status === "ABSENT") 
         ? status 
         : (existingRecord ? existingRecord.status : status);
+
+      if (isBeforeCutoff) {
+        finalStatus = "NO_DATA";
+      }
+
+      const isJoiningDay = joinDateStr !== null && dateStr === joinDateStr;
 
       return {
         date: date.toISOString(),
         record: existingRecord,
         status: finalStatus,
-        isOffDay: !existingRecord && (status === "OFF" || status === "HOLIDAY"),
+        isOffDay: !isBeforeCutoff && !existingRecord && (status === "OFF" || status === "HOLIDAY"),
         isWorkingSaturday: status === "WORKING_SATURDAY",
-        exceptionLabel: label
+        exceptionLabel: label,
+        isJoiningDay
       };
     });
-  }, [attendance, calendarExceptions, selectedMonth, selectedYear]);
+  }, [filteredAttendance, calendarExceptions, selectedMonth, selectedYear, joiningDate]);
 
   const { presentCount, absentCount, offCount, workingDaysCount } = useMemo(() => {
     let present = 0;
@@ -203,7 +305,16 @@ export default function EmployeeAttendanceTab({ attendance, exceptions }: Employ
     let off = 0;
     let working = 0;
 
+    const cutoffDate = new Date(2026, 3, 1); // April 1, 2026
+
     unifiedHistory.forEach(item => {
+      // Exclude days before 1st April 2026 from attendance calculations
+      const itemDate = new Date(item.date);
+      const localItemDate = new Date(itemDate.getFullYear(), itemDate.getMonth(), itemDate.getDate());
+      if (localItemDate < cutoffDate) {
+        return;
+      }
+
       const isHoliday = item.status === "HOLIDAY";
       const isOff = item.status === "OFF";
 
@@ -232,17 +343,17 @@ export default function EmployeeAttendanceTab({ attendance, exceptions }: Employ
               value={selectedMonth} 
               onChange={(e) => setSelectedMonth(Number(e.target.value))}
               className="month-selector-dropdown"
-              style={{ padding: '6px 12px', borderRadius: '8px', border: '1px solid #e2e8f0', fontSize: '13px', fontWeight: '600', color: '#1e293b', background: '#f8fafc', cursor: 'pointer', outline: 'none' }}
+              style={{ width: 'auto', padding: '6px 36px 6px 12px', borderRadius: '8px', border: '1px solid #e2e8f0', fontSize: '13px', fontWeight: '600', color: '#1e293b', background: '#f8fafc', cursor: 'pointer', outline: 'none' }}
             >
-              {months.map((name, index) => (
-                <option key={name} value={index}>{name}</option>
+              {availableMonths.map((m) => (
+                <option key={m.name} value={m.value}>{m.name}</option>
               ))}
             </select>
             <select 
               value={selectedYear} 
               onChange={(e) => setSelectedYear(Number(e.target.value))}
               className="month-selector-dropdown"
-              style={{ padding: '6px 12px', borderRadius: '8px', border: '1px solid #e2e8f0', fontSize: '13px', fontWeight: '600', color: '#1e293b', background: '#f8fafc', cursor: 'pointer', outline: 'none' }}
+              style={{ width: 'auto', padding: '6px 36px 6px 12px', borderRadius: '8px', border: '1px solid #e2e8f0', fontSize: '13px', fontWeight: '600', color: '#1e293b', background: '#f8fafc', cursor: 'pointer', outline: 'none' }}
             >
               {years.map(year => (
                 <option key={year} value={year}>{year}</option>
@@ -279,17 +390,34 @@ export default function EmployeeAttendanceTab({ attendance, exceptions }: Employ
           columns={["Date", "Check in", "Check out", "Worked duration", "Today's update", "Status"]}
           getRowClassName={(index) => {
             const item = unifiedHistory[index];
+            if (item.isJoiningDay) return "attendance-row--joining-day";
             if (item.status === "HOLIDAY") return "attendance-row--holiday";
             if (item.status === "OFF") return "attendance-row--off";
             return "";
           }}
           rows={unifiedHistory.map((item) => {
-            const { date, record, status, isOffDay, isWorkingSaturday, exceptionLabel } = item;
+            const { date, record, status, isOffDay, isWorkingSaturday, exceptionLabel, isJoiningDay } = item;
             
             if (isOffDay) {
               return [
                 <div className="table-cell-stack" key={`date-${date}`}>
-                  <span className="table-cell-primary">{formatDateLabel(date)}</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <span className="table-cell-primary">{formatDateLabel(date)}</span>
+                    {isJoiningDay && (
+                      <span style={{
+                        fontSize: '9px',
+                        fontWeight: '800',
+                        color: '#fff',
+                        background: 'var(--color-success)',
+                        padding: '2px 6px',
+                        borderRadius: '4px',
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.04em'
+                      }}>
+                        Joined
+                      </span>
+                    )}
+                  </div>
                   <span className="table-cell-secondary">{formatWeekday(date)}</span>
                 </div>,
                 "-",
@@ -316,7 +444,23 @@ export default function EmployeeAttendanceTab({ attendance, exceptions }: Employ
 
             return [
               <div className="table-cell-stack" key={`date-${date}`}>
-                <span className="table-cell-primary">{isToday(date) ? "Today" : formatDateLabel(date)}</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <span className="table-cell-primary">{isToday(date) ? "Today" : formatDateLabel(date)}</span>
+                  {isJoiningDay && (
+                    <span style={{
+                      fontSize: '9px',
+                      fontWeight: '800',
+                      color: '#fff',
+                      background: 'var(--color-success)',
+                      padding: '2px 6px',
+                      borderRadius: '4px',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.04em'
+                    }}>
+                      Joined
+                    </span>
+                  )}
+                </div>
                 <span className="table-cell-secondary">{formatWeekday(date)}</span>
               </div>,
               displayRecord.status === "LEAVE" ? "-" : formatAttendanceTime(displayRecord.checkInTime),
@@ -355,8 +499,8 @@ export default function EmployeeAttendanceTab({ attendance, exceptions }: Employ
         />
       </div>
       <div className="grid cols-2 employee-profile-chart-grid">
-        <EmployeeAttendanceBreakdownChart attendance={attendance} />
-        <EmployeeWorkedHoursChart attendance={attendance} />
+        <EmployeeAttendanceBreakdownChart attendance={filteredAttendance} />
+        <EmployeeWorkedHoursChart attendance={filteredAttendance} />
       </div>
 
       <Modal open={!!selectedUpdate} title="Today's update" onClose={() => setSelectedUpdate(null)}>

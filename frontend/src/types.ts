@@ -84,6 +84,9 @@ export type Employee = {
   joiningDate: string;
   employmentStatus: "ACTIVE" | "INACTIVE" | "TERMINATED";
   isActive: boolean;
+  employmentType?: string | null;
+  internshipType?: string | null;
+  stipend?: number | null;
   department?: Department;
   manager?: Employee | null;
   user?: {

@@ -189,7 +189,7 @@ export async function createLeaveRequestForEmployee(
       : calculateLeaveDays(startDate, endDate) - (input.startDayDuration === "HALF_DAY" ? 0.5 : 0) - (input.endDayDuration === "HALF_DAY" ? 0.5 : 0);
 
   if (totalDays <= 0) {
-    throw new AppError("Leave duration must include at least half a working day");
+    throw new AppError("Cannot apply for leave on weekends or official holidays.");
   }
   const year = getFinancialYearForDate(startDate);
   const leaveType = await deps.findLeaveType({ leaveTypeId: input.leaveTypeId });

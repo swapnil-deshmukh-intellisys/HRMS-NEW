@@ -111,7 +111,6 @@
 .calendar-board {
   border: 1px solid var(--color-border-subtle);
   border-radius: var(--radius-lg);
-  overflow: hidden;
   background: white;
 }
 
@@ -123,6 +122,8 @@
 .calendar-grid--labels {
   background: var(--color-surface-secondary);
   border-bottom: 1px solid var(--color-border-subtle);
+  border-top-left-radius: calc(var(--radius-lg) - 1px);
+  border-top-right-radius: calc(var(--radius-lg) - 1px);
 }
 
 .calendar-grid__label {
@@ -150,6 +151,18 @@
 
 .calendar-day-card:nth-child(7n) {
   border-right: none;
+}
+
+.calendar-day-card:nth-last-child(-n+7) {
+  border-bottom: none;
+}
+
+.calendar-day-card:nth-last-child(7) {
+  border-bottom-left-radius: calc(var(--radius-lg) - 1px);
+}
+
+.calendar-day-card:last-child {
+  border-bottom-right-radius: calc(var(--radius-lg) - 1px);
 }
 
 .calendar-day-card--blank {

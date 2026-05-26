@@ -3,8 +3,10 @@ import { sendEmail } from "./mailer.js";
 import { 
   getGenericNotificationEmail, 
   getLeaveRequestEmail, 
-  getTaskAssignedEmail, 
-  getAnnouncementEmail 
+  getColleagueBirthdayEmail, 
+  getAnnouncementEmail,
+  getLeaveApprovedEmail,
+  getLeaveRejectedEmail
 } from "../utils/emailTemplates.js";
 
 
@@ -64,14 +66,30 @@ export async function processOutbox() {
               payload.extraData.leaveType, 
               payload.extraData.startDate, 
               payload.extraData.endDate, 
+              fullLink || appUrl,
+              payload.extraData.reason
+            );
+          } else if ((payload.type === "LEAVE_APPROVED" || payload.type === "LEAVE_PROOF_REMINDER") && payload.extraData) {
+            htmlContent = getLeaveApprovedEmail(
+              payload.extraData.employeeName,
+              payload.extraData.leaveType,
+              payload.extraData.startDate,
+              payload.extraData.endDate,
+              payload.extraData.approvedBy,
+              fullLink || appUrl
+            );
+          } else if (payload.type === "LEAVE_REJECTED" && payload.extraData) {
+            htmlContent = getLeaveRejectedEmail(
+              payload.extraData.employeeName,
+              payload.extraData.leaveType,
+              payload.extraData.startDate,
+              payload.extraData.endDate,
+              payload.extraData.rejectedBy,
+              payload.extraData.reason,
               fullLink || appUrl
             );
           } else if (payload.type === "TASK_ASSIGNED" && payload.extraData) {
-            htmlContent = getTaskAssignedEmail(
-              payload.title, 
-              payload.extraData.assignedBy, 
-              fullLink || appUrl
-            );
+            // Bypassed automatic generic notification email for task assignment in outbox
           } else if (payload.type === "ANNOUNCEMENT" && payload.extraData) {
             htmlContent = getAnnouncementEmail(
               payload.title, 
@@ -80,10 +98,12 @@ export async function processOutbox() {
               fullLink || appUrl
             );
           } else {
-            htmlContent = getGenericNotificationEmail(payload.title, payload.message, fullLink);
+            // Bypassed automatic generic notification email fallback in outbox
           }
           
-          await sendEmail(user.email, payload.title, htmlContent);
+          if (htmlContent) {
+            await sendEmail(user.email, payload.title, htmlContent);
+          }
         }
       }
 

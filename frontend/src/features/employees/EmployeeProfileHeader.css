@@ -108,6 +108,23 @@
   margin: 0 2px;
 }
 
+.profile-header__points-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  background: linear-gradient(135deg, #fef3c7, #fde68a);
+  color: #92400e;
+  border: 1px solid #f59e0b;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: var(--fw-bold);
+  letter-spacing: 0.02em;
+  box-shadow: 0 1px 4px rgba(245, 158, 11, 0.2);
+  margin-top: 2px;
+  width: fit-content;
+}
+
 /* --- Action Buttons --- */
 .profile-header__actions {
   display: flex;

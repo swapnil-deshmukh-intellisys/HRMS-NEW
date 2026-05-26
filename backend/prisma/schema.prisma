@@ -70,6 +70,7 @@ model Employee {
   createdAt                         DateTime                          @default(now())
   updatedAt                         DateTime                          @updatedAt
   jobTitle                          String?
+  points                            Int                               @default(0)
   annualPackageLpa                  Float?
   grossMonthlySalary                Float?
   basicMonthlySalary                Float?

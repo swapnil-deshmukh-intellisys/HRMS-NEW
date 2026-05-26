@@ -71,6 +71,7 @@ export type Employee = {
   firstName: string;
   lastName: string;
   jobTitle?: string | null;
+  points?: number | null;
   phone?: string | null;
   annualPackageLpa?: number | null;
   grossMonthlySalary?: number | null;

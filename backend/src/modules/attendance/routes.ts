@@ -1257,6 +1257,7 @@ router.get(
               lastName: true,
               employeeCode: true,
               jobTitle: true,
+              points: true,
               department: { select: { name: true } },
             },
           },

@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
-import { Trophy, Clock, Timer, ArrowLeft, ChevronLeft, ChevronRight, Medal } from "lucide-react";
+import { Trophy, Clock, Timer, ArrowLeft, ChevronLeft, ChevronRight, Medal, Star, Plus, Minus } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { apiRequest } from "../../services/api";
 import toast from "react-hot-toast";
+import Modal from "../../components/common/Modal";
 import "./LeaderboardPage.css";
 
 type LeaderboardEmployee = {
@@ -12,6 +13,7 @@ type LeaderboardEmployee = {
   employeeCode: string;
   jobTitle: string | null;
   department: { name: string } | null;
+  points?: number;
 };
 
 type WorkHoursEntry = {
@@ -44,6 +46,8 @@ const MONTH_NAMES = [
   "July", "August", "September", "October", "November", "December"
 ];
 
+const QUICK_POINTS = [5, 10, 25, 50];
+
 function RankBadge({ rank }: { rank: number }) {
   if (rank === 1) return <span className="lb-rank-badge lb-rank-badge--gold">🥇 1st</span>;
   if (rank === 2) return <span className="lb-rank-badge lb-rank-badge--silver">🥈 2nd</span>;
@@ -69,6 +73,14 @@ export default function LeaderboardPage({ token }: { token: string | null }) {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<"WORK_HOURS" | "ON_TIME">("WORK_HOURS");
 
+  // Points state
+  const [pointsModal, setPointsModal] = useState<LeaderboardEmployee | null>(null);
+  const [pointsMode, setPointsMode] = useState<"add" | "subtract">("add");
+  const [pointsAmount, setPointsAmount] = useState(10);
+  const [isSavingPoints, setIsSavingPoints] = useState(false);
+  // local points map to avoid refetching entire leaderboard
+  const [pointsMap, setPointsMap] = useState<Record<number, number>>({});
+
   useEffect(() => {
     fetchLeaderboard();
   }, [month, year, token]);
@@ -81,6 +93,12 @@ export default function LeaderboardPage({ token }: { token: string | null }) {
         { token }
       );
       setData(res.data);
+      // Seed pointsMap from fetched data
+      const map: Record<number, number> = {};
+      for (const entry of res.data.workHoursRanking) {
+        map[entry.employee.id] = entry.employee.points ?? 0;
+      }
+      setPointsMap(map);
     } catch (err: any) {
       toast.error(err.message || "Failed to load leaderboard");
     } finally {
@@ -101,9 +119,66 @@ export default function LeaderboardPage({ token }: { token: string | null }) {
     else setMonth(m => m + 1);
   }
 
+  async function handleSavePoints() {
+    if (!pointsModal) return;
+    if (pointsAmount <= 0) {
+      toast.error("Points must be greater than 0");
+      return;
+    }
+    try {
+      setIsSavingPoints(true);
+      const res = await apiRequest<{ id: number; points: number }>(
+        `/employees/${pointsModal.id}/points`,
+        {
+          method: "PATCH",
+          token,
+          body: { points: pointsAmount, mode: pointsMode },
+        }
+      );
+      const newPoints = res.data.points;
+      setPointsMap(prev => ({ ...prev, [pointsModal.id]: newPoints }));
+      toast.success(
+        `${pointsMode === "add" ? "+" : "-"}${pointsAmount} pts → ${pointsModal.firstName} now has ${newPoints} pts`
+      );
+      setPointsModal(null);
+      setPointsAmount(10);
+    } catch (err: any) {
+      toast.error(err.message || "Failed to update points");
+    } finally {
+      setIsSavingPoints(false);
+    }
+  }
+
   const isCurrentMonth = month === now.getMonth() + 1 && year === now.getFullYear();
   const maxHours = data?.workHoursRanking[0]?.totalHours ?? 1;
   const maxOnTime = data?.onTimeRanking[0]?.onTimeDays ?? 1;
+
+  function PointsBadge({ employeeId }: { employeeId: number }) {
+    const pts = pointsMap[employeeId] ?? 0;
+    return (
+      <span className="lb-points-badge">
+        <Star size={10} />
+        {pts} pts
+      </span>
+    );
+  }
+
+  function AwardBtn({ employee }: { employee: LeaderboardEmployee }) {
+    return (
+      <button
+        className="lb-award-btn"
+        onClick={() => {
+          setPointsModal(employee);
+          setPointsMode("add");
+          setPointsAmount(10);
+        }}
+        title="Award or deduct points"
+      >
+        <Star size={13} />
+        Points
+      </button>
+    );
+  }
 
   return (
     <div className="lb-page">
@@ -161,7 +236,7 @@ export default function LeaderboardPage({ token }: { token: string | null }) {
                   {data.employeeOfMonth.employee.firstName} {data.employeeOfMonth.employee.lastName}
                 </div>
                 <div className="lb-eom-role">
-                  {data.employeeOfMonth.employee.jobTitle ?? "Employee"} 
+                  {data.employeeOfMonth.employee.jobTitle ?? "Employee"}
                   {data.employeeOfMonth.employee.department && ` · ${data.employeeOfMonth.employee.department.name}`}
                 </div>
                 <div className="lb-eom-stats">
@@ -172,6 +247,10 @@ export default function LeaderboardPage({ token }: { token: string | null }) {
                   <div className="lb-eom-stat">
                     <Clock size={16} />
                     <span><strong>{data.employeeOfMonth.presentDays}</strong> days present</span>
+                  </div>
+                  <div className="lb-eom-stat">
+                    <Star size={16} />
+                    <span><strong>{pointsMap[data.employeeOfMonth.employee.id] ?? 0}</strong> pts total</span>
                   </div>
                 </div>
                 <div className="lb-eom-period">{MONTH_NAMES[month - 1]} {year}</div>
@@ -218,15 +297,19 @@ export default function LeaderboardPage({ token }: { token: string | null }) {
                       <div className="lb-row-name">
                         {entry.employee.firstName} {entry.employee.lastName}
                         <span className="lb-row-code">#{entry.employee.employeeCode}</span>
+                        <PointsBadge employeeId={entry.employee.id} />
                       </div>
                       <div className="lb-row-meta">
                         {entry.employee.jobTitle ?? "Employee"} · {entry.employee.department?.name ?? "—"}
                       </div>
                       <ProgressBar value={entry.totalHours} max={maxHours} color="linear-gradient(90deg, #7c3aed, #a78bfa)" />
                     </div>
-                    <div className="lb-row-stat">
-                      <div className="lb-row-stat-primary">{entry.totalHours}h</div>
-                      <div className="lb-row-stat-sub">{entry.presentDays} days</div>
+                    <div className="lb-row-right">
+                      <div className="lb-row-stat">
+                        <div className="lb-row-stat-primary">{entry.totalHours}h</div>
+                        <div className="lb-row-stat-sub">{entry.presentDays} days</div>
+                      </div>
+                      <AwardBtn employee={entry.employee} />
                     </div>
                   </div>
                 ))}
@@ -260,15 +343,19 @@ export default function LeaderboardPage({ token }: { token: string | null }) {
                         <div className="lb-row-name">
                           {entry.employee.firstName} {entry.employee.lastName}
                           <span className="lb-row-code">#{entry.employee.employeeCode}</span>
+                          <PointsBadge employeeId={entry.employee.id} />
                         </div>
                         <div className="lb-row-meta">
                           {entry.employee.jobTitle ?? "Employee"} · {entry.employee.department?.name ?? "—"}
                         </div>
                         <ProgressBar value={entry.onTimeDays} max={maxOnTime} color="linear-gradient(90deg, #059669, #34d399)" />
                       </div>
-                      <div className="lb-row-stat">
-                        <div className="lb-row-stat-primary" style={{ color: "#059669" }}>{entry.onTimeRate}%</div>
-                        <div className="lb-row-stat-sub">{entry.onTimeDays}/{entry.totalDays} days</div>
+                      <div className="lb-row-right">
+                        <div className="lb-row-stat">
+                          <div className="lb-row-stat-primary" style={{ color: "#059669" }}>{entry.onTimeRate}%</div>
+                          <div className="lb-row-stat-sub">{entry.onTimeDays}/{entry.totalDays} days</div>
+                        </div>
+                        <AwardBtn employee={entry.employee} />
                       </div>
                     </div>
                   ))}
@@ -278,6 +365,92 @@ export default function LeaderboardPage({ token }: { token: string | null }) {
           )}
         </>
       )}
+
+      {/* Points Modal */}
+      <Modal
+        open={pointsModal !== null}
+        title={`Award Points — ${pointsModal?.firstName} ${pointsModal?.lastName}`}
+        onClose={() => { setPointsModal(null); setPointsAmount(10); }}
+      >
+        <div className="lb-points-modal">
+          <div className="lb-points-current">
+            <Star size={16} />
+            <span>Current Points: <strong>{pointsMap[pointsModal?.id ?? -1] ?? 0}</strong></span>
+          </div>
+
+          {/* Mode toggle */}
+          <div className="lb-points-mode">
+            <button
+              className={`lb-mode-btn ${pointsMode === "add" ? "lb-mode-btn--active-add" : ""}`}
+              onClick={() => setPointsMode("add")}
+            >
+              <Plus size={14} /> Add
+            </button>
+            <button
+              className={`lb-mode-btn ${pointsMode === "subtract" ? "lb-mode-btn--active-sub" : ""}`}
+              onClick={() => setPointsMode("subtract")}
+            >
+              <Minus size={14} /> Deduct
+            </button>
+          </div>
+
+          {/* Quick picks */}
+          <div className="lb-quick-points">
+            <span className="lb-quick-label">Quick select</span>
+            <div className="lb-quick-chips">
+              {QUICK_POINTS.map(q => (
+                <button
+                  key={q}
+                  className={`lb-quick-chip ${pointsAmount === q ? "lb-quick-chip--active" : ""}`}
+                  onClick={() => setPointsAmount(q)}
+                >
+                  {q}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Custom amount */}
+          <div className="lb-custom-points">
+            <label className="lb-custom-label">Custom amount</label>
+            <input
+              type="number"
+              min={1}
+              max={1000}
+              value={pointsAmount}
+              onChange={e => setPointsAmount(Math.max(1, parseInt(e.target.value) || 1))}
+              className="lb-custom-input"
+            />
+          </div>
+
+          <div className="lb-points-preview">
+            {pointsMode === "add" ? "+" : "-"}{pointsAmount} pts →{" "}
+            <strong>
+              {pointsMode === "add"
+                ? (pointsMap[pointsModal?.id ?? -1] ?? 0) + pointsAmount
+                : Math.max(0, (pointsMap[pointsModal?.id ?? -1] ?? 0) - pointsAmount)
+              } pts
+            </strong> total
+          </div>
+
+          <div className="lb-points-actions">
+            <button
+              className="button button--secondary"
+              onClick={() => { setPointsModal(null); setPointsAmount(10); }}
+              disabled={isSavingPoints}
+            >
+              Cancel
+            </button>
+            <button
+              className="button button--primary"
+              onClick={handleSavePoints}
+              disabled={isSavingPoints}
+            >
+              {isSavingPoints ? "Saving..." : "Save Points"}
+            </button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }

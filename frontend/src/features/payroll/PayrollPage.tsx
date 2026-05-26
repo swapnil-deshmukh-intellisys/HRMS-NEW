@@ -823,7 +823,7 @@ export default function PayrollPage({ token, role }: PayrollPageProps) {
       </Modal>
  
       <div className="card dense-table-card payroll-table-card">
-        <div className="payroll-table-card__header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+        <div className="payroll-table-card__header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', position: 'relative', zIndex: 110 }}>
           <div>
             <p className="eyebrow">Payroll Overview</p>
             <h3>{getMonthLabel(currentViewMonth)} {currentViewYear}</h3>

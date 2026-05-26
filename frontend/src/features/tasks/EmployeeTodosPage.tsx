@@ -25,6 +25,44 @@ type EmployeeWithTodos = {
   todos: Todo[];
 };
 
+function ExpandableText({ text, maxLength = 100 }: { text: string; maxLength?: number }) {
+  const [expanded, setExpanded] = useState(false);
+
+  if (!text) return null;
+  if (text.length <= maxLength) {
+    return <span style={{ wordBreak: "break-word" }}>{text}</span>;
+  }
+
+  return (
+    <span style={{ wordBreak: "break-word" }}>
+      {expanded ? text : `${text.substring(0, maxLength)}...`}
+      <button
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          setExpanded(!expanded);
+        }}
+        style={{
+          background: "transparent",
+          border: "none",
+          boxShadow: "none",
+          color: "var(--color-accent)",
+          cursor: "pointer",
+          padding: "0 4px",
+          margin: 0,
+          fontSize: "12px",
+          fontWeight: "var(--fw-semibold)",
+          textDecoration: "underline",
+          minHeight: "auto",
+          display: "inline",
+        }}
+      >
+        {expanded ? "View Less" : "View More"}
+      </button>
+    </span>
+  );
+}
+
 export default function EmployeeTodosPage({ token }: { token: string | null }) {
   const navigate = useNavigate();
   const [employees, setEmployees] = useState<EmployeeWithTodos[]>([]);
@@ -109,11 +147,11 @@ export default function EmployeeTodosPage({ token }: { token: string | null }) {
 
                             <div className="stack" style={{ gap: "4px", flex: 1, minWidth: 0 }}>
                               <h4 className="list-title" style={{ textDecoration: todo.isCompleted ? "line-through" : "none", opacity: todo.isCompleted ? 0.6 : 1 }}>
-                                {todo.title}
+                                <ExpandableText text={todo.title} maxLength={60} />
                               </h4>
                               {todo.description && (
                                 <p className="list-desc" style={{ opacity: todo.isCompleted ? 0.6 : 1 }}>
-                                  {todo.description}
+                                  <ExpandableText text={todo.description} maxLength={100} />
                                 </p>
                               )}
                               <div className="assignment-meta-row" style={{ marginTop: "6px" }}>

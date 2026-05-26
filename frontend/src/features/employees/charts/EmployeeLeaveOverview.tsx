@@ -298,7 +298,6 @@ export default function EmployeeLeaveOverview({ balances, leaves }: EmployeeLeav
                 </div>
 
                 <div className="employee-leave-progress-card__available-row">
-                  <span className="employee-leave-progress-card__available-text">Available to apply</span>
                   <span className="employee-leave-progress-card__available-val">{formatLeaveDays(remaining)}</span>
                 </div>
               </div>

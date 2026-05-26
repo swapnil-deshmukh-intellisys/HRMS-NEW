@@ -94,6 +94,8 @@ export default function ManagementDashboard({ token, role }: { token: string | n
           .map(([key, value]) => {
             const getNavigationPath = () => {
               switch (key) {
+                case "teamCount": return "/team";
+                case "pendingApprovals": return "/attendance/requests";
                 case "employees": return "/employees";
                 case "pendingLeaves": return "/leaves";
                 case "teamPresentToday": return "/team";

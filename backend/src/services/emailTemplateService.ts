@@ -81,7 +81,7 @@ const DEFAULT_TEMPLATES: Record<string, EmailTemplateConfig> = {
     name: "New Leave Request",
     description: "Dispatched to managers/HR when an employee submits a leave request.",
     subject: "New Leave Request 📅",
-    variables: ["employeeName", "leaveType", "startDate", "endDate", "link", "reason", "durationDays", "formattedRange"],
+    variables: ["employeeName", "leaveType", "startDate", "endDate", "link", "reason", "durationDays", "formattedRange", "isSingleDay"],
     raw: true,
     body: `<style>
   @media only screen and (max-width: 600px) {
@@ -209,6 +209,21 @@ const DEFAULT_TEMPLATES: Record<string, EmailTemplateConfig> = {
 
       <!-- Info Card -->
       <div class="mob-info-card" style="background-color: #f7faf8; border: 1px solid #e1eae4; border-radius: 14px; padding: 16px; margin-bottom: 20px;">
+        {{#if isSingleDay}}
+        <table style="width: 100%; border-collapse: collapse; margin-bottom: 14px;">
+          <tr>
+            <td style="width: 50%; vertical-align: top; padding-right: 6px;">
+              <span class="mob-label" style="display: block; font-size: 9.5px; font-weight: 700; color: #3a5f4b; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 5px;">TYPE</span>
+              <span class="mob-type-badge" style="background-color: #e6f7ed; color: #11693c; font-size: 12px; font-weight: 600; padding: 4px 10px; border-radius: 8px; border: 1px solid #c2edd5; display: inline-block; white-space: nowrap;">📅 {{leaveType}}</span>
+            </td>
+            <td style="width: 50%; vertical-align: top; padding-left: 6px; padding-top: 2px;">
+              <span class="mob-label" style="display: block; font-size: 9.5px; font-weight: 700; color: #3a5f4b; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 5px;">DATE</span>
+              <span class="mob-date-val" style="font-size: 13px; font-weight: 600; color: #1a2b21;">{{startDate}}</span>
+            </td>
+          </tr>
+        </table>
+        {{/if}}
+        {{#unless isSingleDay}}
         <table style="width: 100%; border-collapse: collapse; margin-bottom: 14px;">
           <tr>
             <td colspan="2" style="vertical-align: top; padding-bottom: 14px;">
@@ -227,6 +242,7 @@ const DEFAULT_TEMPLATES: Record<string, EmailTemplateConfig> = {
             </td>
           </tr>
         </table>
+        {{/unless}}
         <div style="border-top: 1px solid #e1eae4; margin-bottom: 14px;"></div>
         <div>
           <span class="mob-label" style="display: block; font-size: 9.5px; font-weight: 700; color: #3a5f4b; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 7px;">REASON FOR LEAVE</span>
@@ -251,8 +267,7 @@ const DEFAULT_TEMPLATES: Record<string, EmailTemplateConfig> = {
     <div class="mob-footer-div" style="background-color: #f9fafb; border-top: 1px solid #e1eae4; padding: 14px 20px;">
       <table style="width: 100%; border-collapse: collapse;">
         <tr>
-          <td class="mob-footer-text" style="font-size: 11px; color: #6e7d75; font-weight: 500; vertical-align: middle;">🛡️ Sent via <strong>HR Portal</strong></td>
-          <td class="mob-footer-link" style="text-align: right; vertical-align: middle;"><a href="{{link}}" style="color: #6e7d75; font-size: 11px; font-weight: 500; text-decoration: none;">View in portal</a></td>
+          <td class="mob-footer-text" style="font-size: 11px; color: #6e7d75; font-weight: 500; vertical-align: middle;">🛡️ Sent via <strong>IntelliHRMS Portal</strong></td>
         </tr>
       </table>
     </div>
@@ -265,7 +280,7 @@ const DEFAULT_TEMPLATES: Record<string, EmailTemplateConfig> = {
     name: "Leave Approved",
     description: "Sent to employees notifying them that their leave request has been fully approved (both manager & HR sign-off complete).",
     subject: "Leave Approved! ✅",
-    variables: ["employeeName", "leaveType", "startDate", "endDate", "approvedBy", "link", "durationDays", "formattedRange"],
+    variables: ["employeeName", "leaveType", "startDate", "endDate", "approvedBy", "link", "durationDays", "formattedRange", "isSingleDay"],
     raw: true,
     body: `<style>
   @media only screen and (max-width: 600px) {
@@ -379,6 +394,21 @@ const DEFAULT_TEMPLATES: Record<string, EmailTemplateConfig> = {
 
       <!-- Info Card -->
       <div class="mob-info-card" style="background-color: #f2faf5; border: 1px solid #d2e7db; border-radius: 14px; padding: 16px; margin-bottom: 20px;">
+        {{#if isSingleDay}}
+        <table style="width: 100%; border-collapse: collapse;">
+          <tr>
+            <td style="width: 50%; vertical-align: top; padding-right: 6px;">
+              <span class="mob-label" style="display: block; font-size: 9.5px; font-weight: 700; color: #2b5c43; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 5px;">TYPE</span>
+              <span class="mob-type-badge" style="background-color: #e2f4ea; color: #0f7642; font-size: 12px; font-weight: 600; padding: 4px 10px; border-radius: 8px; border: 1px solid #c2e8d3; display: inline-block; white-space: nowrap;">📅 {{leaveType}}</span>
+            </td>
+            <td style="width: 50%; vertical-align: top; padding-left: 6px; padding-top: 2px;">
+              <span class="mob-label" style="display: block; font-size: 9.5px; font-weight: 700; color: #2b5c43; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 5px;">DATE</span>
+              <span class="mob-date-val" style="font-size: 13px; font-weight: 600; color: #0e291b;">{{startDate}}</span>
+            </td>
+          </tr>
+        </table>
+        {{/if}}
+        {{#unless isSingleDay}}
         <table style="width: 100%; border-collapse: collapse; margin-bottom: 14px;">
           <tr>
             <td colspan="2" style="vertical-align: top; padding-bottom: 14px;">
@@ -397,6 +427,7 @@ const DEFAULT_TEMPLATES: Record<string, EmailTemplateConfig> = {
             </td>
           </tr>
         </table>
+        {{/unless}}
       </div>
 
       <!-- CTA Button -->
@@ -409,8 +440,7 @@ const DEFAULT_TEMPLATES: Record<string, EmailTemplateConfig> = {
     <div class="mob-footer-div" style="background-color: #f9fafb; border-top: 1px solid #e1eae4; padding: 14px 20px;">
       <table style="width: 100%; border-collapse: collapse;">
         <tr>
-          <td class="mob-footer-text" style="font-size: 11px; color: #6e7d75; font-weight: 500; vertical-align: middle;">🛡️ Sent via <strong>HR Portal</strong></td>
-          <td class="mob-footer-link" style="text-align: right; vertical-align: middle;"><a href="{{link}}" style="color: #6e7d75; font-size: 11px; font-weight: 500; text-decoration: none;">View in portal</a></td>
+          <td class="mob-footer-text" style="font-size: 11px; color: #6e7d75; font-weight: 500; vertical-align: middle;">🛡️ Sent via <strong>IntelliHRMS Portal</strong></td>
         </tr>
       </table>
     </div>
@@ -423,7 +453,7 @@ const DEFAULT_TEMPLATES: Record<string, EmailTemplateConfig> = {
     name: "Leave Rejected",
     description: "Sent to employees notifying them that their leave request has been rejected.",
     subject: "Leave Request Rejected ❌",
-    variables: ["employeeName", "leaveType", "startDate", "endDate", "rejectedBy", "reason", "link", "durationDays", "formattedRange"],
+    variables: ["employeeName", "leaveType", "startDate", "endDate", "rejectedBy", "reason", "link", "durationDays", "formattedRange", "isSingleDay"],
     raw: true,
     body: `<style>
   @media only screen and (max-width: 600px) {
@@ -540,6 +570,21 @@ const DEFAULT_TEMPLATES: Record<string, EmailTemplateConfig> = {
 
       <!-- Info Card -->
       <div class="mob-info-card" style="background-color: #fff5f5; border: 1px solid #fee2e2; border-radius: 14px; padding: 16px; margin-bottom: 20px;">
+        {{#if isSingleDay}}
+        <table style="width: 100%; border-collapse: collapse; margin-bottom: 14px;">
+          <tr>
+            <td style="width: 50%; vertical-align: top; padding-right: 6px;">
+              <span class="mob-label" style="display: block; font-size: 9.5px; font-weight: 700; color: #991b1b; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 5px;">TYPE</span>
+              <span class="mob-type-badge" style="background-color: #ffe4e6; color: #b91c1c; font-size: 12px; font-weight: 600; padding: 4px 10px; border-radius: 8px; border: 1px solid #fecdd3; display: inline-block; white-space: nowrap;">📅 {{leaveType}}</span>
+            </td>
+            <td style="width: 50%; vertical-align: top; padding-left: 6px; padding-top: 2px;">
+              <span class="mob-label" style="display: block; font-size: 9.5px; font-weight: 700; color: #991b1b; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 5px;">DATE</span>
+              <span class="mob-date-val" style="font-size: 13px; font-weight: 600; color: #7f1d1d;">{{startDate}}</span>
+            </td>
+          </tr>
+        </table>
+        {{/if}}
+        {{#unless isSingleDay}}
         <table style="width: 100%; border-collapse: collapse; margin-bottom: 14px;">
           <tr>
             <td colspan="2" style="vertical-align: top; padding-bottom: 14px;">
@@ -558,6 +603,7 @@ const DEFAULT_TEMPLATES: Record<string, EmailTemplateConfig> = {
             </td>
           </tr>
         </table>
+        {{/unless}}
         <div style="border-top: 1px solid #fee2e2; margin-bottom: 14px;"></div>
         <div>
           <span class="mob-label" style="display: block; font-size: 9.5px; font-weight: 700; color: #991b1b; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 7px;">REASON FOR REJECTION</span>
@@ -577,8 +623,7 @@ const DEFAULT_TEMPLATES: Record<string, EmailTemplateConfig> = {
     <div class="mob-footer-div" style="background-color: #f9fafb; border-top: 1px solid #e1eae4; padding: 14px 20px;">
       <table style="width: 100%; border-collapse: collapse;">
         <tr>
-          <td class="mob-footer-text" style="font-size: 11px; color: #6e7d75; font-weight: 500; vertical-align: middle;">🛡️ Sent via <strong>HR Portal</strong></td>
-          <td class="mob-footer-link" style="text-align: right; vertical-align: middle;"><a href="{{link}}" style="color: #6e7d75; font-size: 11px; font-weight: 500; text-decoration: none;">View in portal</a></td>
+          <td class="mob-footer-text" style="font-size: 11px; color: #6e7d75; font-weight: 500; vertical-align: middle;">🛡️ Sent via <strong>IntelliHRMS Portal</strong></td>
         </tr>
       </table>
     </div>
@@ -724,7 +769,7 @@ const DEFAULT_TEMPLATES: Record<string, EmailTemplateConfig> = {
     <div class="mob-footer-div" style="background-color: #f9fafb; border-top: 1px solid #e1eae4; padding: 14px 20px;">
       <table style="width: 100%; border-collapse: collapse;">
         <tr>
-          <td class="mob-footer-text" style="font-size: 11px; color: #6e7d75; font-weight: 500; vertical-align: middle;">🛡️ Sent via <strong>HR Portal</strong></td>
+          <td class="mob-footer-text" style="font-size: 11px; color: #6e7d75; font-weight: 500; vertical-align: middle;">🛡️ Sent via <strong>IntelliHRMS Portal</strong></td>
         </tr>
       </table>
     </div>
@@ -996,6 +1041,7 @@ class EmailTemplateService {
         const diffTime = Math.abs(end.getTime() - start.getTime());
         const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
         renderVars.durationDays = diffDays;
+        renderVars.isSingleDay = (variables.startDate === variables.endDate) || (diffDays === 1);
 
         const formatOptions: Intl.DateTimeFormatOptions = { day: 'numeric', month: 'short', year: 'numeric' };
         const startStr = start.toLocaleDateString('en-US', formatOptions);
@@ -1013,6 +1059,7 @@ class EmailTemplateService {
         renderVars.formattedRange = range;
       } catch (err) {
         renderVars.durationDays = 2;
+        renderVars.isSingleDay = false;
         renderVars.formattedRange = "May 23 – May 24, 2026";
       }
     }

@@ -23,6 +23,8 @@ const AssignedTasksHistoryPage = lazy(() => import("../features/dashboard/Assign
 const ManageTasksPage = lazy(() => import("../features/tasks/ManageTasksPage"));
 const EmployeeTodosPage = lazy(() => import("../features/tasks/EmployeeTodosPage"));
 const NotificationsPage = lazy(() => import("../features/notifications/NotificationsPage"));
+const EmailTemplatesPage = lazy(() => import("../features/templates/EmailTemplatesPage"));
+const EmailBroadcasterPage = lazy(() => import("../features/templates/EmailBroadcasterPage"));
 const AppLayout = lazy(() => import("../layout/AppLayout"));
 import { AppProvider } from "../context/AppContext";
 
@@ -222,6 +224,16 @@ function AppRoutes() {
           <Route path="/notifications" element={
             <Page context="Notifications">
               <NotificationsPage />
+            </Page>
+          } />
+          <Route path="/templates" element={
+            <Page context="Templates">
+              <EmailTemplatesPage token={token || ""} />
+            </Page>
+          } />
+          <Route path="/email-broadcaster" element={
+            <Page context="Broadcaster">
+              <EmailBroadcasterPage token={token || ""} />
             </Page>
           } />
         </Route>

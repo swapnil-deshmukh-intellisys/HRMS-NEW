@@ -350,8 +350,9 @@
 }
 
 .calendar-day-card--today {
-  border: 2px solid var(--color-accent);
+  border: 2px solid var(--color-accent) !important;
   box-shadow: 0 0 15px var(--color-accent-glow), inset 0 0 10px rgba(22, 50, 112, 0.05);
+  z-index: 2;
 }
 
 .calendar-day-card--today .calendar-day-card__header strong {

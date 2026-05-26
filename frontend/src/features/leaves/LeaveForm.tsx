@@ -227,56 +227,33 @@ export default function LeaveForm({ form, attachmentName, leaveTypes, balances, 
           </div>
         ) : null}
       </div>
-      <div className="leave-duration-type-selector" style={{
-        display: "flex",
-        background: "var(--color-surface-secondary)",
-        padding: "6px",
-        borderRadius: "var(--radius-md)",
-        border: "1.5px solid var(--color-border-default)",
-        gap: "6px",
-        marginTop: "4px"
-      }}>
+      <div className="leave-duration-type-selector">
         <button
           type="button"
+          className={`leave-duration-tab ${!isMultipleDays ? "active" : ""}`}
           disabled={isSubmitting}
           onClick={() => {
             setIsMultipleDays(false);
             onChange({ ...form, endDate: form.startDate, endDayDuration: form.startDayDuration });
-          }}
-          style={{
-            flex: 1,
-            padding: "10px 14px",
-            borderRadius: "var(--radius-sm)",
-            border: "none",
-            fontSize: "var(--text-xs)",
-            fontWeight: "var(--fw-bold)",
-            cursor: "pointer",
-            background: !isMultipleDays ? "var(--color-accent)" : "transparent",
-            color: !isMultipleDays ? "white" : "var(--color-text-secondary)",
-            boxShadow: !isMultipleDays ? "var(--shadow-sm)" : "none",
-            transition: "all var(--transition-fast)"
           }}
         >
           One Day Leave
         </button>
         <button
           type="button"
+          className={`leave-duration-tab ${isMultipleDays ? "active" : ""}`}
           disabled={isSubmitting}
           onClick={() => {
             setIsMultipleDays(true);
-          }}
-          style={{
-            flex: 1,
-            padding: "10px 14px",
-            borderRadius: "var(--radius-sm)",
-            border: "none",
-            fontSize: "var(--text-xs)",
-            fontWeight: "var(--fw-bold)",
-            cursor: "pointer",
-            background: isMultipleDays ? "var(--color-accent)" : "transparent",
-            color: isMultipleDays ? "white" : "var(--color-text-secondary)",
-            boxShadow: isMultipleDays ? "var(--shadow-sm)" : "none",
-            transition: "all var(--transition-fast)"
+            try {
+              const d = new Date(form.startDate);
+              d.setDate(d.getDate() + 1);
+              const tomorrowStr = formatLocalIsoDate(d);
+              onChange({ ...form, endDate: tomorrowStr });
+            } catch (err) {
+              const tomorrowStr = "2026-05-24";
+              onChange({ ...form, endDate: tomorrowStr });
+            }
           }}
         >
           Multiple Days Leave

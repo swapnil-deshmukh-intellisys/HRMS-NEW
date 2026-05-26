@@ -107,7 +107,7 @@ export async function createNotification(params: {
         const user = await prisma.user.findUnique({ where: { id: params.userId } });
         if (user && user.email) {
           let htmlContent = "";
-          const appUrl = process.env.FRONTEND_URL || "http://localhost:5173";
+          const appUrl = process.env.FRONTEND_URL || "https://hrms-new-frontend.vercel.app";
           const fullLink = params.link ? `${appUrl}${params.link}` : undefined;
 
           if ((params.type === "LEAVE_REQUEST" || params.type === "LEAVE_REQUESTED") && params.extraData) {

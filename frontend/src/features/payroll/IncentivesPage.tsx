@@ -1,4 +1,5 @@
 import "./IncentivesPage.css";
+import "../../components/common/Table.css";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import { apiRequest } from "../../services/api";
@@ -188,6 +189,7 @@ function IncentivesPage({ token, role }: IncentivesPageProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [formError, setFormError] = useState<string | null>(null);
   const [formValues, setFormValues] = useState<IncentiveFormValues>(initialIncentiveForm());
   const [reviewFormValues, setReviewFormValues] = useState<IncentiveReviewValues>({
     status: "APPROVED",
@@ -204,7 +206,7 @@ function IncentivesPage({ token, role }: IncentivesPageProps) {
   const canCreateIncentive = role === "ADMIN" || role === "HR";
   const canReviewIncentive = role === "ADMIN" || role === "HR";
   const currentYear = new Date().getFullYear();
-  const yearOptions = [currentYear - 1, currentYear, currentYear + 1, currentYear + 2];
+  const yearOptions = Array.from({ length: Math.max(1, currentYear - 2024 + 1) }, (_, i) => 2024 + i);
 
   // Fetch employees (for dropdown)
   const fetchEmployees = useCallback(async () => {
@@ -285,6 +287,7 @@ function IncentivesPage({ token, role }: IncentivesPageProps) {
     if (!token) return;
 
     setLoading(true);
+    setFormError(null);
     setError(null);
     setSuccess(null);
 
@@ -307,7 +310,7 @@ function IncentivesPage({ token, role }: IncentivesPageProps) {
         fetchIncentives();
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to create incentive");
+      setFormError(err instanceof Error ? err.message : "Failed to create incentive");
     } finally {
       setLoading(false);
     }
@@ -342,6 +345,7 @@ function IncentivesPage({ token, role }: IncentivesPageProps) {
     if (!token || !selectedIncentive) return;
 
     setLoading(true);
+    setFormError(null);
     setError(null);
     setSuccess(null);
 
@@ -360,7 +364,7 @@ function IncentivesPage({ token, role }: IncentivesPageProps) {
         fetchIncentives();
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to review incentive");
+      setFormError(err instanceof Error ? err.message : "Failed to review incentive");
     } finally {
       setLoading(false);
     }
@@ -444,7 +448,10 @@ function IncentivesPage({ token, role }: IncentivesPageProps) {
             <button
               type="button"
               className="incentives-action-button incentives-action-button--primary"
-              onClick={() => setShowCreateModal(true)}
+              onClick={() => {
+                setFormError(null);
+                setShowCreateModal(true);
+              }}
             >
               Create Incentive
             </button>
@@ -458,7 +465,7 @@ function IncentivesPage({ token, role }: IncentivesPageProps) {
                 <IncentiveSelectField
                   label=""
                   value={filterEmployeeId}
-                  options={employeeOptions}
+                  options={[{ value: "", label: "Any employee" }, ...employeeOptions]}
                   onChange={setFilterEmployeeId}
                   placeholder="Any employee"
                   searchable
@@ -586,6 +593,7 @@ function IncentivesPage({ token, role }: IncentivesPageProps) {
                               onClick={() => {
                                 setSelectedIncentive(incentive);
                                 setReviewFormValues({ status: "REJECTED", rejectionReason: "" });
+                                setFormError(null);
                                 setShowReviewModal(true);
                               }}
                             >
@@ -605,8 +613,12 @@ function IncentivesPage({ token, role }: IncentivesPageProps) {
         )}
       </div>
 
-      <Modal open={showCreateModal} title="Create Incentive" className="incentive-modal" onClose={() => setShowCreateModal(false)}>
+      <Modal open={showCreateModal} title="Create Incentive" className="incentive-modal" onClose={() => {
+        setShowCreateModal(false);
+        setFormError(null);
+      }}>
         <form onSubmit={handleCreateIncentive} className="incentive-form">
+          {formError && <div className="error-message">{formError}</div>}
           <div className="form-row grid cols-2">
             <IncentiveSelectField
               label="Employee *"
@@ -681,7 +693,10 @@ function IncentivesPage({ token, role }: IncentivesPageProps) {
             <button
               type="button"
               className="secondary"
-              onClick={() => setShowCreateModal(false)}
+              onClick={() => {
+                setShowCreateModal(false);
+                setFormError(null);
+              }}
             >
               Cancel
             </button>
@@ -692,6 +707,7 @@ function IncentivesPage({ token, role }: IncentivesPageProps) {
       <Modal open={showReviewModal} title="Review Incentive" className="incentive-modal" onClose={() => {
         setShowReviewModal(false);
         setSelectedIncentive(null);
+        setFormError(null);
       }}>
         {selectedIncentive && (
           <div className="stack">
@@ -722,6 +738,7 @@ function IncentivesPage({ token, role }: IncentivesPageProps) {
               )}
             </div>
             <form onSubmit={handleReviewIncentive} className="stack">
+              {formError && <div className="error-message">{formError}</div>}
               <div className="form-field">
                 <label>Rejection Reason *</label>
                 <textarea
@@ -743,6 +760,7 @@ function IncentivesPage({ token, role }: IncentivesPageProps) {
                   onClick={() => {
                     setShowReviewModal(false);
                     setSelectedIncentive(null);
+                    setFormError(null);
                   }}
                 >
                   Cancel

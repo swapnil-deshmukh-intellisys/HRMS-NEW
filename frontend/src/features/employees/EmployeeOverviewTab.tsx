@@ -149,70 +149,72 @@ export default function EmployeeOverviewTab({ employee, token }: EmployeeOvervie
         ))}
       </div>
 
-      <section className="overview-integrations">
-        <div className="overview-integrations__header">
-          <div className="overview-section-card__icon">
-            <Link2 size={18} />
+      {false && (
+        <section className="overview-integrations">
+          <div className="overview-integrations__header">
+            <div className="overview-section-card__icon">
+              <Link2 size={18} />
+            </div>
+            <h4>Integrations & Connectivity</h4>
           </div>
-          <h4>Integrations & Connectivity</h4>
-        </div>
-        <div className="overview-integrations__grid">
-          <div className={`overview-integration-tile${isGoogleLinked ? " overview-integration-tile--connected" : ""}`}>
-            <div className="overview-integration-tile__icon google">
-              <Calendar size={20} />
-            </div>
-            <div className="overview-integration-tile__content">
-              <div className="overview-integration-tile__header">
-                <strong>Google Workspace</strong>
-                <span className={`overview-integration-status${isGoogleLinked ? " connected" : ""}`}>
-                  <span className="overview-integration-status__dot" />
-                  {isGoogleLinked ? "Connected" : "Not connected"}
-                </span>
+          <div className="overview-integrations__grid">
+            <div className={`overview-integration-tile${isGoogleLinked ? " overview-integration-tile--connected" : ""}`}>
+              <div className="overview-integration-tile__icon google">
+                <Calendar size={20} />
               </div>
-              <p>{isGoogleLinked ? `Linked to ${employee.user?.googleEmail || "Workspace"}` : "Connect to sync Calendar & Meet"}</p>
+              <div className="overview-integration-tile__content">
+                <div className="overview-integration-tile__header">
+                  <strong>Google Workspace</strong>
+                  <span className={`overview-integration-status${isGoogleLinked ? " connected" : ""}`}>
+                    <span className="overview-integration-status__dot" />
+                    {isGoogleLinked ? "Connected" : "Not connected"}
+                  </span>
+                </div>
+                <p>{isGoogleLinked ? `Linked to ${employee.user?.googleEmail || "Workspace"}` : "Connect to sync Calendar & Meet"}</p>
+              </div>
+              <div className="overview-integration-tile__actions">
+                {isGoogleLinked ? (
+                  <>
+                    <button className="overview-integration-btn" onClick={handleSyncHolidays} disabled={isSyncingHolidays}>
+                      {isSyncingHolidays ? "Syncing..." : "Sync Schedule"}
+                    </button>
+                    <button className="overview-integration-btn overview-integration-btn--danger" onClick={handleUnlinkGoogle} disabled={isConnecting}>
+                      Disconnect
+                    </button>
+                  </>
+                ) : (
+                  <button className="overview-integration-btn overview-integration-btn--primary" onClick={handleConnectGoogle} disabled={isConnecting}>
+                    {isConnecting ? "Connecting..." : "Connect"}
+                    <ChevronRight size={14} />
+                  </button>
+                )}
+              </div>
             </div>
-            <div className="overview-integration-tile__actions">
-              {isGoogleLinked ? (
-                <>
-                  <button className="overview-integration-btn" onClick={handleSyncHolidays} disabled={isSyncingHolidays}>
-                    {isSyncingHolidays ? "Syncing..." : "Sync Schedule"}
-                  </button>
-                  <button className="overview-integration-btn overview-integration-btn--danger" onClick={handleUnlinkGoogle} disabled={isConnecting}>
-                    Disconnect
-                  </button>
-                </>
-              ) : (
-                <button className="overview-integration-btn overview-integration-btn--primary" onClick={handleConnectGoogle} disabled={isConnecting}>
-                  {isConnecting ? "Connecting..." : "Connect"}
+
+            <div className="overview-integration-tile">
+              <div className="overview-integration-tile__icon notifications">
+                <Bell size={20} />
+              </div>
+              <div className="overview-integration-tile__content">
+                <div className="overview-integration-tile__header">
+                  <strong>Desktop Notifications</strong>
+                  <span className="overview-integration-status">
+                    <Shield size={12} />
+                    Browser permission
+                  </span>
+                </div>
+                <p>Receive background alerts for leave status, announcements, and more.</p>
+              </div>
+              <div className="overview-integration-tile__actions">
+                <button className="overview-integration-btn overview-integration-btn--primary" onClick={handleEnableNotifications} disabled={isSubscribing}>
+                  {isSubscribing ? "Enabling..." : "Enable"}
                   <ChevronRight size={14} />
                 </button>
-              )}
-            </div>
-          </div>
-
-          <div className="overview-integration-tile">
-            <div className="overview-integration-tile__icon notifications">
-              <Bell size={20} />
-            </div>
-            <div className="overview-integration-tile__content">
-              <div className="overview-integration-tile__header">
-                <strong>Desktop Notifications</strong>
-                <span className="overview-integration-status">
-                  <Shield size={12} />
-                  Browser permission
-                </span>
               </div>
-              <p>Receive background alerts for leave status, announcements, and more.</p>
-            </div>
-            <div className="overview-integration-tile__actions">
-              <button className="overview-integration-btn overview-integration-btn--primary" onClick={handleEnableNotifications} disabled={isSubscribing}>
-                {isSubscribing ? "Enabling..." : "Enable"}
-                <ChevronRight size={14} />
-              </button>
             </div>
           </div>
-        </div>
-      </section>
+        </section>
+      )}
     </div>
   );
 }

@@ -22,6 +22,7 @@ const updateTaskSchema = z.object({
   description: z.string().optional().nullable(),
   employeeId: z.number().nullable().optional(),
   isCompleted: z.boolean().optional(),
+  revertReason: z.string().optional().nullable(),
 });
 
 // GET /api/tasks - Employees fetch their assigned and general tasks
@@ -311,7 +312,7 @@ router.post("/manager", authenticate, requireRolesOrCapability(["MANAGER", "ADMI
                 title: "New Task Assignment",
                 message: `You have been assigned a new task: "${t.title}"`,
                 type: "TASK_ASSIGNED",
-                link: "/dashboard",
+                link: "/",
                 sendEmail: true,
                 extraData: { assignedBy: "Your Manager" }
               })
@@ -333,7 +334,7 @@ router.post("/manager", authenticate, requireRolesOrCapability(["MANAGER", "ADMI
               title: "New Company General Task",
               message: `A new general task is available: "${t.title}"`,
               type: "TASK",
-              link: "/dashboard"
+              link: "/"
             });
           }
         }
@@ -380,7 +381,9 @@ router.put("/manager/:id", authenticate, requireRolesOrCapability(["MANAGER", "A
       throw new AppError("You are not authorized to edit this task", 403);
     }
 
-    const { title, description, employeeId, isCompleted } = request.body;
+    const { title, description, employeeId, isCompleted, revertReason } = request.body;
+
+    const isReverting = existingTask.isCompleted === true && isCompleted === false;
 
     const updatedTask = await prisma.managerTask.update({
       where: { id },
@@ -391,6 +394,7 @@ router.put("/manager/:id", authenticate, requireRolesOrCapability(["MANAGER", "A
         isCompleted: isCompleted !== undefined ? isCompleted : existingTask.isCompleted,
         completedAt: isCompleted === true ? new Date() : isCompleted === false ? null : existingTask.completedAt,
         completedById: isCompleted === true ? creatorId : isCompleted === false ? null : existingTask.completedById,
+        revertReason: isCompleted === true ? null : (isReverting ? (revertReason || null) : (revertReason !== undefined ? revertReason : existingTask.revertReason)),
       },
       include: {
         employee: {

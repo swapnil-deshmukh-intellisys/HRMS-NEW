@@ -44,7 +44,8 @@
   gap: var(--space-4);
   max-height: 480px;
   overflow-y: auto;
-  padding-right: 4px;
+  padding: 4px;
+  margin: -4px;
 }
 
 /* Custom Scrollbar for container */

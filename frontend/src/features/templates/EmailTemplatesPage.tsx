@@ -219,6 +219,7 @@ export default function EmailTemplatesPage({ token }: EmailTemplatesPageProps) {
         const diffTime = Math.abs(end.getTime() - start.getTime());
         const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
         renderVars.durationDays = diffDays;
+        renderVars.isSingleDay = (mockVars.startDate === mockVars.endDate) || (diffDays === 1);
 
         const formatOptions: Intl.DateTimeFormatOptions = { day: 'numeric', month: 'short', year: 'numeric' };
         const startStr = start.toLocaleDateString('en-US', formatOptions);
@@ -236,6 +237,7 @@ export default function EmailTemplatesPage({ token }: EmailTemplatesPageProps) {
         renderVars.formattedRange = range;
       } catch (err) {
         renderVars.durationDays = 2;
+        renderVars.isSingleDay = false;
         renderVars.formattedRange = "May 23 – May 24, 2026";
       }
     }
@@ -463,10 +465,17 @@ export default function EmailTemplatesPage({ token }: EmailTemplatesPageProps) {
   };
 
   const handleMockVarChange = (key: string, value: any) => {
-    setMockVars((prev) => ({
-      ...prev,
-      [key]: value,
-    }));
+    setMockVars((prev) => {
+      const updated = {
+        ...prev,
+        [key]: value,
+      };
+      const isLeave = selectedId === "leave_request" || selectedId === "leave_approved" || selectedId === "leave_rejected";
+      if (isLeave && key === "startDate" && prev.startDate === prev.endDate) {
+        updated.endDate = value;
+      }
+      return updated;
+    });
   };
 
   if (loading) {
@@ -699,52 +708,99 @@ export default function EmailTemplatesPage({ token }: EmailTemplatesPageProps) {
             <p className="sandbox-helper-text">Customize the parameters below to verify how different fields impact the visual email wrapper output in real time.</p>
             
             <div className="sandbox-grid">
-              {Object.entries(mockVars).map(([key, value]) => (
-                <div key={key} className="sandbox-field-group">
-                  <label htmlFor={`sandbox-val-${key}`}>{key}</label>
-                  
-                  {key === "theme" && selectedId === "birthday_wish" ? (
-                    <select 
-                      id={`sandbox-val-${key}`}
-                      value={value} 
-                      onChange={(e) => handleMockVarChange(key, e.target.value)}
-                      className="sandbox-input select-sandbox"
-                    >
-                      <option value="default">Default (Confetti Pink)</option>
-                      <option value="gold">Gold Theme</option>
-                      <option value="neon">Neon Theme</option>
-                      <option value="cozy">Cozy Warm Theme</option>
-                    </select>
-                  ) : key === "priority" && selectedId === "announcement" ? (
-                    <select
-                      id={`sandbox-val-${key}`}
-                      value={value}
-                      onChange={(e) => handleMockVarChange(key, e.target.value)}
-                      className="sandbox-input select-sandbox"
-                    >
-                      <option value="NORMAL">Normal Priority</option>
-                      <option value="HIGH">High Priority</option>
-                      <option value="URGENT">Urgent Priority</option>
-                    </select>
-                  ) : key === "contentStr" || key === "message" || key === "reason" ? (
-                    <textarea
-                      id={`sandbox-val-${key}`}
-                      value={value}
-                      onChange={(e) => handleMockVarChange(key, e.target.value)}
-                      className="sandbox-input textarea-sandbox"
-                      rows={3}
-                    />
-                  ) : (
-                    <input 
-                      id={`sandbox-val-${key}`}
-                      type="text"
-                      value={value}
-                      onChange={(e) => handleMockVarChange(key, e.target.value)}
-                      className="sandbox-input"
-                    />
-                  )}
+              {(selectedId === "leave_request" || selectedId === "leave_approved" || selectedId === "leave_rejected") && (
+                <div style={{ gridColumn: "span 2", display: "flex", flexDirection: "row", alignItems: "center", gap: "8px", marginBottom: "8px" }}>
+                  <input
+                    id="sandbox-one-day-toggle"
+                    type="checkbox"
+                    checked={mockVars.startDate === mockVars.endDate}
+                    onChange={() => {
+                      const isOneDay = mockVars.startDate === mockVars.endDate;
+                      if (!isOneDay) {
+                        setMockVars((prev) => ({
+                          ...prev,
+                          endDate: prev.startDate,
+                        }));
+                      } else {
+                        try {
+                          const d = new Date(mockVars.startDate || "2026-05-23");
+                          d.setDate(d.getDate() + 1);
+                          const tomorrowStr = d.toISOString().split('T')[0];
+                          setMockVars((prev) => ({
+                            ...prev,
+                            endDate: tomorrowStr,
+                          }));
+                        } catch (err) {
+                          setMockVars((prev) => ({
+                            ...prev,
+                            endDate: "2026-05-24",
+                          }));
+                        }
+                      }
+                    }}
+                    style={{ width: "16px", height: "16px", cursor: "pointer" }}
+                  />
+                  <label htmlFor="sandbox-one-day-toggle" style={{ fontWeight: "600", cursor: "pointer", fontSize: "13px", color: "var(--studio-text-strong)", margin: 0 }}>
+                    One Day Leave / Single Date Request
+                  </label>
                 </div>
-              ))}
+              )}
+              {Object.entries(mockVars)
+                .filter(([key]) => !((mockVars.startDate === mockVars.endDate) && (selectedId === "leave_request" || selectedId === "leave_approved" || selectedId === "leave_rejected") && key === "endDate"))
+                .map(([key, value]) => (
+                  <div key={key} className="sandbox-field-group">
+                    <label htmlFor={`sandbox-val-${key}`}>{key}</label>
+                    
+                    {key === "theme" && selectedId === "birthday_wish" ? (
+                      <select 
+                        id={`sandbox-val-${key}`}
+                        value={value} 
+                        onChange={(e) => handleMockVarChange(key, e.target.value)}
+                        className="sandbox-input select-sandbox"
+                      >
+                        <option value="default">Default (Confetti Pink)</option>
+                        <option value="gold">Gold Theme</option>
+                        <option value="neon">Neon Theme</option>
+                        <option value="cozy">Cozy Warm Theme</option>
+                      </select>
+                    ) : key === "priority" && selectedId === "announcement" ? (
+                      <select
+                        id={`sandbox-val-${key}`}
+                        value={value}
+                        onChange={(e) => handleMockVarChange(key, e.target.value)}
+                        className="sandbox-input select-sandbox"
+                      >
+                        <option value="NORMAL">Normal Priority</option>
+                        <option value="HIGH">High Priority</option>
+                        <option value="URGENT">Urgent Priority</option>
+                      </select>
+                    ) : key === "contentStr" || key === "message" || key === "reason" ? (
+                      <textarea
+                        id={`sandbox-val-${key}`}
+                        value={value}
+                        onChange={(e) => handleMockVarChange(key, e.target.value)}
+                        className="sandbox-input textarea-sandbox"
+                        rows={3}
+                      />
+                    ) : (key === "startDate" || key === "endDate") ? (
+                      <input 
+                        id={`sandbox-val-${key}`}
+                        type="date"
+                        value={value}
+                        onChange={(e) => handleMockVarChange(key, e.target.value)}
+                        className="sandbox-input"
+                      />
+                    ) : (
+                      <input 
+                        id={`sandbox-val-${key}`}
+                        type="text"
+                        value={value}
+                        onChange={(e) => handleMockVarChange(key, e.target.value)}
+                        className="sandbox-input"
+                      />
+                    )}
+                  </div>
+                ))}
             </div>
           </div>
 

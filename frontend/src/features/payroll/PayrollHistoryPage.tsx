@@ -393,7 +393,7 @@ export default function PayrollHistoryPage({ token }: Omit<PayrollHistoryPagePro
                         <div style={{ display: 'flex', gap: '0.5rem' }}>
                           <button 
                             className="payroll-action-button"
-                            style={{ background: 'rgba(107, 114, 128, 0.08)', border: '1px solid rgba(107, 114, 128, 0.15)', color: '#4b5563' }}
+                            style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(107, 114, 128, 0.08)', border: '1px solid rgba(107, 114, 128, 0.15)', color: '#4b5563' }}
                             onClick={() => handleDownloadPayslip(record, false)}
                             disabled={previewingId === record.id || printingId === record.id}
                           >
@@ -402,6 +402,7 @@ export default function PayrollHistoryPage({ token }: Omit<PayrollHistoryPagePro
                           </button>
                           <button 
                             className="payroll-action-button"
+                            style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
                             onClick={() => handleDownloadPayslip(record, true)}
                             disabled={previewingId === record.id || printingId === record.id}
                           >

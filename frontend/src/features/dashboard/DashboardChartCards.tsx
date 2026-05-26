@@ -1,5 +1,6 @@
 import { memo, useEffect, useMemo, useState } from "react";
 import { Bar, BarChart, CartesianGrid, Cell, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { CalendarDays, AlertTriangle } from "lucide-react";
 import type { Attendance, LeaveBalance } from "../../types";
 import { formatAttendanceTime, formatLeaveDays } from "../../utils/format";
 import { formatWorkedDuration } from "./dashboardUtils";
@@ -122,7 +123,7 @@ export function EmployeeAttendanceWidgetCard(props: {
 
     return 0;
   }, [now, selfAttendance]);
-  const progressPercent = Math.min(100, Math.round((workedTodayMinutes / shiftTargetMinutes) * 100));
+  const progressPercent = Math.round((workedTodayMinutes / shiftTargetMinutes) * 100);
   const workedTodayDisplay = selfAttendance?.status === "LEAVE" ? "-" : formatWorkedDuration(workedTodayMinutes);
   const progressData = selfAttendance?.status === "LEAVE"
     ? [{ key: "leave", value: 1, color: "#f59e0b" }]
@@ -131,7 +132,11 @@ export function EmployeeAttendanceWidgetCard(props: {
       : selfAttendance?.checkInTime || selfAttendance?.checkOutTime
         ? [
             { key: "worked", value: Math.max(workedTodayMinutes, 1), color: "#16a34a" },
-            { key: "remaining", value: Math.max(shiftTargetMinutes - workedTodayMinutes, 0), color: "#e5e7eb" },
+            { 
+              key: "remaining", 
+              value: Math.max(shiftTargetMinutes - workedTodayMinutes, 0), 
+              color: selfAttendance?.checkOutTime && progressPercent < 100 ? "#b91c1c" : "#e5e7eb" 
+            },
           ]
         : [{ key: "unmarked", value: 1, color: "#e5e7eb" }];
   const centerPrimary =
@@ -144,7 +149,9 @@ export function EmployeeAttendanceWidgetCard(props: {
           : "Not marked";
   const centerSecondary =
     selfAttendance?.checkInTime || selfAttendance?.checkOutTime
-      ? "today done"
+      ? workedTodayMinutes > shiftTargetMinutes
+        ? "overtime done"
+        : "today done"
       : selfAttendance?.status === "LEAVE"
         ? "paid day"
         : selfAttendance?.status === "ABSENT"
@@ -179,46 +186,66 @@ export function EmployeeAttendanceWidgetCard(props: {
               </Pie>
             </PieChart>
           </ResponsiveContainer>
-          <div className="dashboard-attendance-progress__center">
+          <div className={`dashboard-attendance-progress__center ${workedTodayMinutes > shiftTargetMinutes ? 'dashboard-attendance-progress__center--overtime' : ''}`}>
             <strong>{centerPrimary}</strong>
             <span>{centerSecondary}</span>
           </div>
         </div>
         <div className="dashboard-attendance-progress__details">
-          <div className="dashboard-attendance-progress__summary">
-            <span>Shift target</span>
-            <strong>{shiftTargetDisplay}</strong>
-          </div>
-          <div className="dashboard-attendance-progress__stats">
-            <div className="table-cell-stack">
-              <span className="table-cell-secondary">Check in</span>
-              <span className="table-cell-primary">{formatAttendanceTime(selfAttendance?.checkInTime)}</span>
+          {selfAttendance?.status === "LEAVE" || selfAttendance?.status === "ABSENT" ? (
+            <div className={`dashboard-attendance-status-banner dashboard-attendance-status-banner--${selfAttendance.status.toLowerCase()}`}>
+              <div className="dashboard-attendance-status-banner__icon">
+                {selfAttendance.status === "LEAVE" ? <CalendarDays size={18} /> : <AlertTriangle size={18} />}
+              </div>
+              <div className="dashboard-attendance-status-banner__content">
+                <span className="dashboard-attendance-status-banner__title">
+                  {selfAttendance.status === "LEAVE" ? "Excused Paid Leave" : "Recorded Absence"}
+                </span>
+                <span className="dashboard-attendance-status-banner__desc">
+                  {selfAttendance.status === "LEAVE" 
+                    ? "Approved paid day off — No shift target required today." 
+                    : "Absent for today's scheduled shift."}
+                </span>
+              </div>
             </div>
-            <div className="table-cell-stack">
-              <span className="table-cell-secondary">Check out</span>
-              <span className="table-cell-primary">{formatAttendanceTime(selfAttendance?.checkOutTime)}</span>
-            </div>
-            <div className="table-cell-stack">
-              <span className="table-cell-secondary">Worked</span>
-              <span className="table-cell-primary">{workedTodayDisplay}</span>
-            </div>
-            <div className="table-cell-stack">
-              <span className="table-cell-secondary">Progress</span>
-              <span className="table-cell-primary">
-                {selfAttendance?.checkInTime || selfAttendance?.checkOutTime ? `${progressPercent}%` : "-"}
-              </span>
-            </div>
-          </div>
-          <div className="dashboard-attendance-progress__bar">
-            <div
-              className="dashboard-attendance-progress__bar-fill"
-              style={{ width: `${selfAttendance?.checkInTime || selfAttendance?.checkOutTime ? progressPercent : 0}%` }}
-            />
-          </div>
-          <div className="dashboard-inline-row">
-            <span>Worked vs target</span>
-            <strong>{workedTodayDisplay === "-" ? "-" : `${workedTodayDisplay} / ${shiftTargetDisplay}`}</strong>
-          </div>
+          ) : (
+            <>
+              <div className="dashboard-attendance-progress__summary">
+                <span>Shift target</span>
+                <strong>{shiftTargetDisplay}</strong>
+              </div>
+              <div className="dashboard-attendance-progress__stats">
+                <div className="table-cell-stack">
+                  <span className="table-cell-secondary">Check in</span>
+                  <span className="table-cell-primary">{formatAttendanceTime(selfAttendance?.checkInTime)}</span>
+                </div>
+                <div className="table-cell-stack">
+                  <span className="table-cell-secondary">Check out</span>
+                  <span className="table-cell-primary">{formatAttendanceTime(selfAttendance?.checkOutTime)}</span>
+                </div>
+                <div className="table-cell-stack">
+                  <span className="table-cell-secondary">Worked</span>
+                  <span className="table-cell-primary">{workedTodayDisplay}</span>
+                </div>
+                <div className="table-cell-stack">
+                  <span className="table-cell-secondary">Progress</span>
+                  <span className="table-cell-primary">
+                    {selfAttendance?.checkInTime || selfAttendance?.checkOutTime ? `${progressPercent}%` : "-"}
+                  </span>
+                </div>
+              </div>
+              <div className={`dashboard-attendance-progress__bar ${selfAttendance?.checkOutTime && progressPercent < 100 ? 'dashboard-attendance-progress__bar--early-checkout' : workedTodayMinutes > shiftTargetMinutes ? 'dashboard-attendance-progress__bar--overtime' : ''}`}>
+                <div
+                  className="dashboard-attendance-progress__bar-fill"
+                  style={{ width: `${selfAttendance?.checkInTime || selfAttendance?.checkOutTime ? Math.min(100, progressPercent) : 0}%` }}
+                />
+              </div>
+              <div className="dashboard-inline-row">
+                <span>Worked vs target</span>
+                <strong>{workedTodayDisplay === "-" ? "-" : `${workedTodayDisplay} / ${shiftTargetDisplay}`}</strong>
+              </div>
+            </>
+          )}
         </div>
       </div>
     </article>

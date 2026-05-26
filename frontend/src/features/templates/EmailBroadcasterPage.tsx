@@ -205,7 +205,6 @@ export default function EmailBroadcasterPage({ token }: EmailBroadcasterPageProp
                 style={{ flex: 1 }}
               >
                 <option value="all">📢 Broadcast to All Employees</option>
-                <option value="department">🏢 Filter by Department</option>
                 <option value="single">👤 Send to Specific Employee</option>
               </select>
             </div>

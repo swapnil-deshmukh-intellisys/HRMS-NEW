@@ -15,6 +15,7 @@ type ManagerTask = {
   isCompleted: boolean;
   completedAt: string | null;
   completedById: number | null;
+  revertReason?: string | null;
   createdAt: string;
   updatedAt: string;
   employee: {
@@ -243,6 +244,11 @@ export default function ManageTasksPage({ token }: { token: string | null }) {
   const [isEditModalOpen, setEditModalOpen] = useState(false);
   const [selectedTask, setSelectedTask] = useState<ManagerTask | null>(null);
 
+  // Revert Prompt States
+  const [revertPromptOpen, setRevertPromptOpen] = useState(false);
+  const [taskToRevert, setTaskToRevert] = useState<number | null>(null);
+  const [revertReasonInput, setRevertReasonInput] = useState("");
+
   // Details Modal States
   const [isDetailsModalOpen, setDetailsModalOpen] = useState(false);
   const [detailedTask, setDetailedTask] = useState<ManagerTask | null>(null);
@@ -256,6 +262,7 @@ export default function ManageTasksPage({ token }: { token: string | null }) {
   const [editDescription, setEditDescription] = useState("");
   const [editEmployeeId, setEditEmployeeId] = useState<string>("general");
   const [editIsCompleted, setEditIsCompleted] = useState(false);
+  const [editRevertReason, setEditRevertReason] = useState("");
 
   const [submitting, setSubmitting] = useState(false);
 
@@ -317,6 +324,7 @@ export default function ManageTasksPage({ token }: { token: string | null }) {
     setEditDescription(task.description || "");
     setEditEmployeeId(task.employeeId ? String(task.employeeId) : "general");
     setEditIsCompleted(task.isCompleted);
+    setEditRevertReason(task.revertReason || "");
     setEditModalOpen(true);
   }
 
@@ -365,6 +373,7 @@ export default function ManageTasksPage({ token }: { token: string | null }) {
         description: editDescription || null,
         employeeId: editEmployeeId === "general" ? null : Number(editEmployeeId),
         isCompleted: editIsCompleted,
+        ...(selectedTask.isCompleted && !editIsCompleted ? { revertReason: editRevertReason } : {}),
       };
 
       await apiRequest(`/tasks/manager/${selectedTask.id}`, {
@@ -404,17 +413,21 @@ export default function ManageTasksPage({ token }: { token: string | null }) {
     if (!currentCompleted) {
       const confirmToggle = window.confirm("Are you sure you want to mark this task as completed?");
       if (!confirmToggle) return;
+      await submitToggleTask(taskId, false);
     } else {
-      const confirmToggle = window.confirm("Are you sure you want to mark this task as pending?");
-      if (!confirmToggle) return;
+      setTaskToRevert(taskId);
+      setRevertReasonInput("");
+      setRevertPromptOpen(true);
     }
+  }
 
+  async function submitToggleTask(taskId: number, currentCompleted: boolean, revertReason?: string) {
     try {
       const targetState = !currentCompleted;
       const response = await apiRequest<ManagerTask>(`/tasks/manager/${taskId}`, {
         method: "PUT",
         token,
-        body: { isCompleted: targetState },
+        body: { isCompleted: targetState, revertReason },
       });
 
       setTasks((prev) => prev.map((t) => (t.id === taskId ? response.data : t)));
@@ -866,12 +879,53 @@ export default function ManageTasksPage({ token }: { token: string | null }) {
             Mark as Completed
           </label>
 
+          {selectedTask?.isCompleted && !editIsCompleted && (
+            <label style={{ marginTop: "var(--space-4)" }}>
+              Reason for Reverting *
+              <textarea
+                required
+                value={editRevertReason}
+                onChange={(e) => setEditRevertReason(e.target.value)}
+                placeholder="Why is this task being reverted to pending?"
+              />
+            </label>
+          )}
+
           <div className="button-row" style={{ marginTop: "var(--space-6)" }}>
             <button type="button" className="secondary" onClick={() => setEditModalOpen(false)}>
               Cancel
             </button>
             <button type="submit" disabled={submitting}>
               {submitting ? "Updating..." : "Save Changes"}
+            </button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* Modal - Revert Task Reason */}
+      <Modal open={revertPromptOpen} onClose={() => setRevertPromptOpen(false)} title="Revert Task to Pending">
+        <form className="task-list-form" onSubmit={(e) => {
+          e.preventDefault();
+          if (taskToRevert) {
+            submitToggleTask(taskToRevert, true, revertReasonInput);
+            setRevertPromptOpen(false);
+          }
+        }}>
+          <label>
+            Reason for Reverting *
+            <textarea
+              required
+              value={revertReasonInput}
+              onChange={(e) => setRevertReasonInput(e.target.value)}
+              placeholder="Why is this task being reverted to pending?"
+            />
+          </label>
+          <div className="button-row" style={{ marginTop: "var(--space-6)" }}>
+            <button type="button" className="secondary" onClick={() => setRevertPromptOpen(false)}>
+              Cancel
+            </button>
+            <button type="submit">
+              Submit & Revert
             </button>
           </div>
         </form>

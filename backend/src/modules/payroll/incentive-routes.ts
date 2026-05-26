@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { z } from "zod";
+import { IncentiveType } from "@prisma/client";
 import { prisma } from "../../config/prisma.js";
 import { authenticate, requireRoles } from "../../middleware/auth.js";
 import { validate } from "../../middleware/validate.js";
@@ -15,7 +16,7 @@ const router = Router();
 
 const incentiveCreateSchema = z.object({
   employeeId: z.coerce.number().int().positive(),
-  type: z.nativeEnum("PERFORMANCE_BONUS" as any),
+  type: z.nativeEnum(IncentiveType),
   amount: z.coerce.number().positive(),
   reason: z.string().trim().min(1),
   description: z.string().trim().optional(),

@@ -77,7 +77,12 @@ export default function ManagementDashboard({ token, role }: { token: string | n
         </div>
       </article>
 
-      <WorkdayTimeline checkInTime={summary?.attendanceToday?.checkInTime ?? null} token={token} />
+      <WorkdayTimeline 
+        checkInTime={summary?.attendanceToday?.checkInTime ?? null} 
+        checkOutTime={summary?.attendanceToday?.checkOutTime ?? null}
+        workedMinutes={summary?.attendanceToday?.workedMinutes ?? null}
+        token={token} 
+      />
 
       <Modal open={isAnnouncementModalOpen} onClose={() => setAnnouncementModalOpen(false)} className="broadcast-studio-modal">
         <AnnouncementForm token={token} onCreated={() => { setAnnouncementKey(k => k + 1); setAnnouncementModalOpen(false); }} />

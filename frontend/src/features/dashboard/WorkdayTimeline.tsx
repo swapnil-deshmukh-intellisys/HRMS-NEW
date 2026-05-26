@@ -8,6 +8,8 @@ interface WorkdayTimelineProps {
   endTime?: string;
   lateThreshold?: string;
   checkInTime?: string | Date | null;
+  checkOutTime?: string | Date | null;
+  workedMinutes?: number | null;
   token?: string | null;
 }
 
@@ -36,6 +38,8 @@ const WorkdayTimeline: React.FC<WorkdayTimelineProps> = ({
   endTime = "18:00",
   lateThreshold = "09:10",
   checkInTime = null,
+  checkOutTime = null,
+  workedMinutes = null,
   token = null,
 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
@@ -79,18 +83,35 @@ const WorkdayTimeline: React.FC<WorkdayTimelineProps> = ({
       const late = new Date(now); late.setHours(lateH, lateM, 0, 0);
 
       const totalMs = end.getTime() - start.getTime();
-      const elapsedMs = now.getTime() - start.getTime();
-      const pct = Math.max(0, Math.min(100, (elapsedMs / totalMs) * 100));
+      
+      let elapsedMs = now.getTime() - start.getTime();
+      if (checkOutTime) {
+        const co = new Date(checkOutTime);
+        const coToday = new Date(now);
+        coToday.setHours(co.getHours(), co.getMinutes(), co.getSeconds(), 0);
+        elapsedMs = coToday.getTime() - start.getTime();
+      }
+
+      const pct = Math.max(0, (elapsedMs / totalMs) * 100);
       setProgress(checkInTime ? pct : 0);
-      setIsShiftOver(now > end);
+      setIsShiftOver(checkOutTime ? true : now > end);
       setIsShiftPending(now < start);
 
       if (checkInTime) {
         const ci = new Date(checkInTime);
         const ciToday = new Date(now);
         ciToday.setHours(ci.getHours(), ci.getMinutes(), ci.getSeconds(), 0);
-        const workedMs = Math.max(0, now.getTime() - ciToday.getTime());
-        const workedMins = Math.floor(workedMs / 60000);
+        
+        let workedMins = Math.max(0, Math.floor((now.getTime() - ciToday.getTime()) / 60000));
+        if (checkOutTime && typeof workedMinutes === 'number') {
+          workedMins = workedMinutes;
+        } else if (checkOutTime) {
+          const co = new Date(checkOutTime);
+          const coToday = new Date(now);
+          coToday.setHours(co.getHours(), co.getMinutes(), co.getSeconds(), 0);
+          workedMins = Math.max(0, Math.floor((coToday.getTime() - ciToday.getTime()) / 60000));
+        }
+
         setWorkedTime({ hours: Math.floor(workedMins / 60), minutes: workedMins % 60 });
         const ciPct = Math.max(0, Math.min(100, ((ciToday.getTime() - start.getTime()) / totalMs) * 100));
         setCheckInPct(ciPct);
@@ -102,9 +123,14 @@ const WorkdayTimeline: React.FC<WorkdayTimelineProps> = ({
     };
 
     calculate();
+
+    if (checkOutTime) {
+      return;
+    }
+
     const iv = setInterval(calculate, 30000);
     return () => clearInterval(iv);
-  }, [startTime, endTime, lateThreshold, checkInTime]);
+  }, [startTime, endTime, lateThreshold, checkInTime, checkOutTime, workedMinutes]);
 
   const breakSessionsMapped = breakSessions.map(s => {
     const now = new Date();
@@ -181,9 +207,10 @@ const WorkdayTimeline: React.FC<WorkdayTimelineProps> = ({
   };
 
   const formatDuration = (h: number, m: number) => h > 0 ? `${h}h ${m}m` : `${m}m`;
+  const isOvertime = workedTime ? (workedTime.hours * 60 + workedTime.minutes) > 540 : false;
 
-  const statusLabel = isShiftOver ? 'Shift Ended' : isShiftPending ? 'Pending' : checkInIsLate ? 'Late' : checkInPct !== null ? 'Present' : 'Active';
-  const statusClass = isShiftOver ? 'over' : isShiftPending ? 'pending' : checkInIsLate ? 'late' : 'active';
+  const statusLabel = checkOutTime ? 'Completed' : isShiftOver ? 'Shift Ended' : isShiftPending ? 'Pending' : checkInIsLate ? 'Late' : checkInPct !== null ? 'Present' : 'Active';
+  const statusClass = checkOutTime ? 'over' : isShiftOver ? 'over' : isShiftPending ? 'pending' : checkInIsLate ? 'late' : 'active';
 
   return (
     <div className={`card wdt-premium-v2 ${isExpanded ? 'is-expanded' : 'is-collapsed'}`}>
@@ -202,6 +229,14 @@ const WorkdayTimeline: React.FC<WorkdayTimelineProps> = ({
             {workedTime && (
               <span className="wdt-time-compact">
                 {formatDuration(workedTime.hours, workedTime.minutes)} worked
+                {isOvertime && (
+                  <span className="wdt-overtime-badge">
+                    +{formatDuration(
+                      Math.floor((workedTime.hours * 60 + workedTime.minutes - 540) / 60),
+                      (workedTime.hours * 60 + workedTime.minutes - 540) % 60
+                    )} OT
+                  </span>
+                )}
               </span>
             )}
           </div>
@@ -212,7 +247,7 @@ const WorkdayTimeline: React.FC<WorkdayTimelineProps> = ({
         <div className="wdt-gauge-area">
           <div className="wdt-gauge-container">
             <div
-              className="wdt-main-rail"
+              className={`wdt-main-rail ${isOvertime ? 'wdt-main-rail--overtime' : ''}`}
               onMouseMove={handleMouseMove}
               onMouseLeave={() => setHoverText(null)}
             >
@@ -242,11 +277,21 @@ const WorkdayTimeline: React.FC<WorkdayTimelineProps> = ({
                   className={`wdt-fill-worked ${checkInPct !== null && checkInIsLate ? 'is-segmented' : ''}`}
                   style={{
                     left: `${checkInPct || 0}%`,
-                    width: `${Math.max(0, progress - (checkInPct || 0))}%`
+                    width: `${Math.max(0, Math.min(100 - (checkInPct || 0), progress - (checkInPct || 0)))}%`
                   }}
                 >
                   <div className="wdt-fill-glow" />
                 </div>
+
+                {checkOutTime && progress < 100 && (
+                  <div
+                    className="wdt-fill-early-checkout-unfilled"
+                    style={{
+                      left: `${progress}%`,
+                      width: `${100 - progress}%`
+                    }}
+                  />
+                )}
 
                 {breakSessionsMapped.map((seg) => (
                   <div

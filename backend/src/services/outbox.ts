@@ -57,7 +57,7 @@ export async function processOutbox() {
         const user = await prisma.user.findUnique({ where: { id: payload.userId } });
         if (user && user.email) {
           let htmlContent = "";
-          const appUrl = process.env.FRONTEND_URL || "http://localhost:5173";
+          const appUrl = process.env.FRONTEND_URL || "https://hrms-new-frontend.vercel.app";
           const fullLink = payload.link ? `${appUrl}${payload.link}` : undefined;
 
           if (payload.type === "LEAVE_REQUESTED" && payload.extraData) {

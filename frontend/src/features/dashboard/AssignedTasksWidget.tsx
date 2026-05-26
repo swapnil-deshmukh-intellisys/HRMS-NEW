@@ -15,6 +15,7 @@ type ManagerTask = {
   isCompleted: boolean;
   completedAt: string | null;
   completedById: number | null;
+  revertReason?: string | null;
   createdAt: string;
   updatedAt: string;
   creator: {
@@ -184,7 +185,7 @@ export default function AssignedTasksWidget({ token }: { token: string | null })
                       <span className="item-title">{task.title}</span>
                       {task.description && <span className="item-desc">{task.description}</span>}
                       
-                      <div className="task-item-meta" style={{ marginTop: "4px", display: "flex", gap: "6px", flexWrap: "wrap" }}>
+                      <div className="task-item-meta" style={{ marginTop: "4px", display: "flex", gap: "6px", flexWrap: "wrap", alignItems: "center" }}>
                         <span className={`task-badge ${task.employeeId === null ? "badge-general" : "badge-assigned"}`} style={{ fontSize: "9px", padding: "1px 6px" }}>
                           {task.employeeId === null ? "General" : "Direct"}
                         </span>
@@ -193,6 +194,12 @@ export default function AssignedTasksWidget({ token }: { token: string | null })
                           By: {task.creator?.firstName || "Manager"} {task.creator?.lastName || ""}
                         </span>
                       </div>
+                      
+                      {task.revertReason && (
+                        <div style={{ marginTop: "6px", fontSize: "10px", color: "var(--color-warning-strong)", background: "var(--color-warning-soft)", padding: "4px 8px", borderRadius: "var(--radius-sm)", display: "inline-flex", alignItems: "center", gap: "4px", border: "1px solid var(--color-warning-border)" }}>
+                          <AlertCircle size={10} /> Reverted: {task.revertReason.length > 50 ? task.revertReason.substring(0, 50) + "..." : task.revertReason}
+                        </div>
+                      )}
                     </div>
                   </div>
                 ))
@@ -284,6 +291,15 @@ export default function AssignedTasksWidget({ token }: { token: string | null })
               {selectedTask.isCompleted && selectedTask.completedAt && (
                 <div style={{ gridColumn: "span 2", background: "#f0fdf4", padding: "8px 12px", borderRadius: "var(--radius-sm)", border: "1px solid #bbf7d0", color: "#166534" }}>
                   Completed on <strong>{new Date(selectedTask.completedAt).toLocaleDateString()}</strong> at <strong>{new Date(selectedTask.completedAt).toLocaleTimeString()}</strong>
+                </div>
+              )}
+
+              {!selectedTask.isCompleted && selectedTask.revertReason && (
+                <div style={{ gridColumn: "span 2", background: "var(--color-warning-soft)", padding: "8px 12px", borderRadius: "var(--radius-sm)", border: "1px solid var(--color-warning-border)", color: "var(--color-warning-strong)" }}>
+                  <div style={{ fontWeight: "bold", marginBottom: "4px", display: "flex", alignItems: "center", gap: "4px" }}>
+                    <AlertCircle size={14} /> Task Reverted
+                  </div>
+                  <div>{selectedTask.revertReason}</div>
                 </div>
               )}
             </div>

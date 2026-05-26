@@ -30,7 +30,7 @@ describe("EmployeeProfilePage", () => {
     expect(await screen.findByRole("tab", { name: /overview/i })).toBeInTheDocument();
     expect(screen.queryByRole("tab", { name: /payroll/i })).not.toBeInTheDocument();
     expect(await screen.findByText("Employment")).toBeInTheDocument();
-    expect(screen.getByText("Integrations & Connectivity")).toBeInTheDocument();
+    expect(screen.queryByText("Integrations & Connectivity")).not.toBeInTheDocument();
   });
 
   test("does not show attendance dates before the employee joining date", async () => {

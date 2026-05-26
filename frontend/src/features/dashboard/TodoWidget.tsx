@@ -39,6 +39,8 @@ export default function TodoWidget({ token }: { token: string | null }) {
   const [completingTodoId, setCompletingTodoId] = useState<number | null>(null);
   const [todoToConfirm, setTodoToConfirm] = useState<Todo | null>(null);
   const [todoToDelete, setTodoToDelete] = useState<Todo | null>(null);
+  const [selectedTodo, setSelectedTodo] = useState<Todo | null>(null);
+  const [isDetailsOpen, setIsDetailsOpen] = useState(false);
 
 
   useEffect(() => {
@@ -287,7 +289,13 @@ export default function TodoWidget({ token }: { token: string | null }) {
               >
                 <Check size={14} />
               </div>
-              <div className="todo-content" onClick={() => openEditModal(todo)}>
+              <div 
+                className="todo-content" 
+                onClick={() => {
+                  setSelectedTodo(todo);
+                  setIsDetailsOpen(true);
+                }}
+              >
                 <span className="todo-title">{todo.title}</span>
                 {todo.description && <span className="todo-description">{todo.description}</span>}
                 <div className="todo-meta-row">
@@ -298,6 +306,9 @@ export default function TodoWidget({ token }: { token: string | null }) {
                     <span className="todo-reminder-tag">
                       ⏰ {new Date(todo.reminderTime).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
                     </span>
+                  )}
+                  {(todo.title.length > 50 || (todo.description && todo.description.length > 80)) && (
+                    <span className="todo-more-link" style={{ marginLeft: "auto", color: "var(--color-accent)", fontWeight: "bold", textDecoration: "underline", fontSize: "10px" }}>More...</span>
                   )}
                 </div>
               </div>
@@ -459,6 +470,108 @@ export default function TodoWidget({ token }: { token: string | null }) {
             </button>
           </div>
         </div>
+      </Modal>
+
+      {/* Todo Details Modal */}
+      <Modal 
+        open={isDetailsOpen} 
+        onClose={() => setIsDetailsOpen(false)} 
+        title="Todo Task Details"
+      >
+        {selectedTodo && (
+          <div className="todo-detail-popup" style={{ display: "flex", flexDirection: "column", gap: "var(--space-4)" }}>
+            <h3 style={{ margin: 0, color: "var(--color-text-strong)", wordBreak: "break-word", overflowWrap: "break-word" }}>
+              {selectedTodo.title}
+            </h3>
+            
+            {selectedTodo.description ? (
+              <div style={{ 
+                padding: "var(--space-3)", 
+                background: "var(--color-surface-page)", 
+                border: "1px solid var(--color-border-default)", 
+                borderRadius: "var(--radius-md)",
+                fontSize: "var(--text-sm)",
+                lineHeight: "1.6",
+                whiteSpace: "pre-wrap",
+                color: "var(--color-text-strong)",
+                wordBreak: "break-word",
+                overflowWrap: "break-word"
+              }}>
+                {selectedTodo.description}
+              </div>
+            ) : (
+              <p style={{ fontStyle: "italic", color: "var(--color-text-secondary)" }}>No additional description provided.</p>
+            )}
+
+            <div className="meta-info-grid" style={{ 
+              display: "grid", 
+              gridTemplateColumns: "1fr 1fr", 
+              gap: "12px", 
+              fontSize: "12px",
+              borderTop: "1px solid var(--color-border-subtle)",
+              paddingTop: "var(--space-3)" 
+            }}>
+              <div>
+                <span style={{ color: "var(--color-text-secondary)", fontWeight: "bold" }}>Priority:</span>
+                <div style={{ marginTop: "4px" }}>
+                  <span className={`todo-priority todo-priority--${selectedTodo.priority.toLowerCase()}`} style={{ fontSize: "10px", padding: "2px 8px", borderRadius: "4px" }}>
+                    {selectedTodo.priority}
+                  </span>
+                </div>
+              </div>
+
+              <div>
+                <span style={{ color: "var(--color-text-secondary)", fontWeight: "bold" }}>Reminder:</span>
+                <div style={{ marginTop: "4px", display: "flex", alignItems: "center", gap: "4px" }}>
+                  {selectedTodo.reminderTime ? (
+                    <span className="todo-reminder-tag" style={{ fontSize: "11px", margin: 0 }}>
+                      ⏰ {new Date(selectedTodo.reminderTime).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                    </span>
+                  ) : (
+                    <span style={{ color: "var(--color-text-muted)", fontStyle: "italic" }}>No reminder set</span>
+                  )}
+                </div>
+              </div>
+
+              <div>
+                <span style={{ color: "var(--color-text-secondary)", fontWeight: "bold" }}>Created On:</span>
+                <div style={{ fontWeight: "bold", marginTop: "4px", color: "var(--color-text-strong)" }}>
+                  {new Date(selectedTodo.createdAt).toLocaleDateString()}
+                </div>
+              </div>
+            </div>
+
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: "8px", marginTop: "var(--space-4)" }}>
+              <button 
+                className="button button--danger"
+                onClick={() => {
+                  setIsDetailsOpen(false);
+                  setTodoToDelete(selectedTodo);
+                }}
+                style={{ padding: "8px 16px", background: "var(--color-danger, #ef4444)", color: "white" }}
+              >
+                Delete
+              </button>
+              <button 
+                className="button button--primary"
+                onClick={() => {
+                  setIsDetailsOpen(false);
+                  openEditModal(selectedTodo);
+                }}
+                style={{ padding: "8px 16px" }}
+              >
+                Edit
+              </button>
+              <button 
+                className="button button--secondary"
+                onClick={() => setIsDetailsOpen(false)}
+                style={{ padding: "8px 16px" }}
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        )}
       </Modal>
     </article>
   );

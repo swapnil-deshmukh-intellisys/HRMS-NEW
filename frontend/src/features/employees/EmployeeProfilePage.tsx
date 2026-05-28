@@ -48,6 +48,7 @@ function toEmployeeForm(employee: Employee): EmployeeFormValues {
     employmentType: employee.employmentType ?? "FULL_TIME",
     internshipType: employee.internshipType ?? "PAID",
     stipend: employee.stipend ? String(employee.stipend) : "",
+    maritalStatus: employee.maritalStatus ?? "",
   };
 }
 

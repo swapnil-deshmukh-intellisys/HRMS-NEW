@@ -187,8 +187,58 @@ export default function AttendancePage({ token, role, currentEmployeeId, current
   const [checkInAmPm, setCheckInAmPm] = useState("AM");
   const [checkOutTime, setCheckOutTime] = useState("--:--");
   const [checkOutAmPm, setCheckOutAmPm] = useState("PM");
+  const [showCheckInDropdown, setShowCheckInDropdown] = useState(false);
+  const [showCheckOutDropdown, setShowCheckOutDropdown] = useState(false);
   const [selectedUpdate, setSelectedUpdate] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      const target = event.target as HTMLElement;
+      if (!target.closest(".time-input-container--checkin")) {
+        setShowCheckInDropdown(false);
+      }
+      if (!target.closest(".time-input-container--checkout")) {
+        setShowCheckOutDropdown(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
+  const handleTimeSelect = (
+    type: "checkin" | "checkout",
+    part: "hour" | "minute" | "ampm",
+    val: string
+  ) => {
+    if (type === "checkin") {
+      let [h, m] = checkInTime.split(":");
+      if (h === "--" || !h) h = "09";
+      if (m === "--" || !m) m = "00";
+
+      if (part === "hour") {
+        setCheckInTime(`${val}:${m}`);
+      } else if (part === "minute") {
+        setCheckInTime(`${h}:${val}`);
+      } else if (part === "ampm") {
+        setCheckInAmPm(val);
+      }
+    } else {
+      let [h, m] = checkOutTime.split(":");
+      if (h === "--" || !h) h = "06";
+      if (m === "--" || !m) m = "00";
+
+      if (part === "hour") {
+        setCheckOutTime(`${val}:${m}`);
+      } else if (part === "minute") {
+        setCheckOutTime(`${h}:${val}`);
+      } else if (part === "ampm") {
+        setCheckOutAmPm(val);
+      }
+    }
+  };
+
   const isTeamLead = Boolean(currentEmployee?.capabilities?.some((capability) => capability.capability === "TEAM_LEAD"));
   const canManageOthers = role !== "EMPLOYEE" || isTeamLead;
   const showTeamWorkspace = role === "EMPLOYEE" && isTeamLead;
@@ -856,8 +906,12 @@ export default function AttendancePage({ token, role, currentEmployeeId, current
           <div className="regularization-time-grid">
             <label>
               Proposed check in
-              <div className="time-input-container">
-                <Clock size={16} className="time-input-icon" />
+              <div className="time-input-container time-input-container--checkin" style={{ position: 'relative' }}>
+                <Clock
+                  size={16}
+                  className="time-input-icon time-input-icon--clickable"
+                  onClick={() => setShowCheckInDropdown((prev) => !prev)}
+                />
                 <input
                   type="text"
                   className="regularization-time-input"
@@ -920,12 +974,88 @@ export default function AttendancePage({ token, role, currentEmployeeId, current
                   <option value="AM">AM</option>
                   <option value="PM">PM</option>
                 </select>
+
+                {showCheckInDropdown && (
+                  <div className="time-picker-popover">
+                    <div className="time-picker-columns">
+                      <div className="time-picker-column">
+                        <div className="time-picker-column-header">Hour</div>
+                        <div className="time-picker-options-scroll">
+                          {Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, "0")).map((hr) => {
+                            const [currentHour] = checkInTime.split(":");
+                            const isSelected = currentHour === hr;
+                            return (
+                              <button
+                                key={hr}
+                                type="button"
+                                className={`time-picker-option ${isSelected ? "time-picker-option--active" : ""}`}
+                                onClick={() => handleTimeSelect("checkin", "hour", hr)}
+                              >
+                                {hr}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                      <div className="time-picker-column">
+                        <div className="time-picker-column-header">Min</div>
+                        <div className="time-picker-options-scroll">
+                          {Array.from({ length: 60 }, (_, i) => String(i).padStart(2, "0")).map((min) => {
+                            const [, currentMin] = checkInTime.split(":");
+                            const isSelected = currentMin === min;
+                            return (
+                              <button
+                                key={min}
+                                type="button"
+                                className={`time-picker-option ${isSelected ? "time-picker-option--active" : ""}`}
+                                onClick={() => handleTimeSelect("checkin", "minute", min)}
+                              >
+                                {min}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                      <div className="time-picker-column">
+                        <div className="time-picker-column-header">Period</div>
+                        <div className="time-picker-options-scroll">
+                          {["AM", "PM"].map((period) => {
+                            const isSelected = checkInAmPm === period;
+                            return (
+                              <button
+                                key={period}
+                                type="button"
+                                className={`time-picker-option ${isSelected ? "time-picker-option--active" : ""}`}
+                                onClick={() => handleTimeSelect("checkin", "ampm", period)}
+                              >
+                                {period}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="time-picker-footer">
+                      <button
+                        type="button"
+                        className="time-picker-done-btn"
+                        onClick={() => setShowCheckInDropdown(false)}
+                      >
+                        Done
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             </label>
             <label>
               Proposed check out
-              <div className="time-input-container">
-                <Clock size={16} className="time-input-icon" />
+              <div className="time-input-container time-input-container--checkout" style={{ position: 'relative' }}>
+                <Clock
+                  size={16}
+                  className="time-input-icon time-input-icon--clickable"
+                  onClick={() => setShowCheckOutDropdown((prev) => !prev)}
+                />
                 <input
                   type="text"
                   className="regularization-time-input"
@@ -988,6 +1118,78 @@ export default function AttendancePage({ token, role, currentEmployeeId, current
                   <option value="AM">AM</option>
                   <option value="PM">PM</option>
                 </select>
+
+                {showCheckOutDropdown && (
+                  <div className="time-picker-popover">
+                    <div className="time-picker-columns">
+                      <div className="time-picker-column">
+                        <div className="time-picker-column-header">Hour</div>
+                        <div className="time-picker-options-scroll">
+                          {Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, "0")).map((hr) => {
+                            const [currentHour] = checkOutTime.split(":");
+                            const isSelected = currentHour === hr;
+                            return (
+                              <button
+                                key={hr}
+                                type="button"
+                                className={`time-picker-option ${isSelected ? "time-picker-option--active" : ""}`}
+                                onClick={() => handleTimeSelect("checkout", "hour", hr)}
+                              >
+                                {hr}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                      <div className="time-picker-column">
+                        <div className="time-picker-column-header">Min</div>
+                        <div className="time-picker-options-scroll">
+                          {Array.from({ length: 60 }, (_, i) => String(i).padStart(2, "0")).map((min) => {
+                            const [, currentMin] = checkOutTime.split(":");
+                            const isSelected = currentMin === min;
+                            return (
+                              <button
+                                key={min}
+                                type="button"
+                                className={`time-picker-option ${isSelected ? "time-picker-option--active" : ""}`}
+                                onClick={() => handleTimeSelect("checkout", "minute", min)}
+                              >
+                                {min}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                      <div className="time-picker-column">
+                        <div className="time-picker-column-header">Period</div>
+                        <div className="time-picker-options-scroll">
+                          {["AM", "PM"].map((period) => {
+                            const isSelected = checkOutAmPm === period;
+                            return (
+                              <button
+                                key={period}
+                                type="button"
+                                className={`time-picker-option ${isSelected ? "time-picker-option--active" : ""}`}
+                                onClick={() => handleTimeSelect("checkout", "ampm", period)}
+                              >
+                                {period}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="time-picker-footer">
+                      <button
+                        type="button"
+                        className="time-picker-done-btn"
+                        onClick={() => setShowCheckOutDropdown(false)}
+                      >
+                        Done
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             </label>
           </div>

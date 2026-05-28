@@ -81,6 +81,7 @@ export type Employee = {
   probationEndDate?: string | null;
   panCardNumber?: string | null;
   dateOfBirth?: string | null;
+  maritalStatus?: string | null;
   departmentId: number;
   managerId?: number | null;
   joiningDate: string;

@@ -207,8 +207,38 @@ router.put("/items/:itemId", authenticate, async (request, response, next) => {
 // GET /api/tasks/employees - Fetch all active employees (for manager assignments)
 router.get("/employees", authenticate, requireRolesOrCapability(["MANAGER", "ADMIN"], ["TEAM_LEAD"]), async (request, response, next) => {
   try {
+    const userRole = request.user!.role;
+    const employeeId = request.user!.employeeId;
+
+    let whereClause: any = { isActive: true };
+
+    if (userRole !== "ADMIN") {
+      let scopedIds: number[] = [];
+      if (employeeId) {
+        const { getScopedEmployeeIdsForTeamLead } = await import("../../utils/team-lead.js");
+        scopedIds = await getScopedEmployeeIdsForTeamLead(prisma, employeeId);
+      }
+
+      const orConditions: any[] = [];
+      if (employeeId) {
+        orConditions.push({ managerId: employeeId });
+      }
+      if (scopedIds.length > 0) {
+        orConditions.push({ id: { in: scopedIds } });
+      }
+
+      if (orConditions.length > 0) {
+        whereClause = {
+          isActive: true,
+          OR: orConditions
+        };
+      } else {
+        whereClause = { id: -1 };
+      }
+    }
+
     const employees = await prisma.employee.findMany({
-      where: { isActive: true },
+      where: whereClause,
       select: {
         id: true,
         firstName: true,
@@ -282,6 +312,25 @@ router.post("/manager", authenticate, requireRolesOrCapability(["MANAGER", "ADMI
     }
 
     const { employeeId, tasks } = request.body;
+
+    if (employeeId && request.user!.role !== "ADMIN") {
+      const { getScopedEmployeeIdsForTeamLead } = await import("../../utils/team-lead.js");
+      const scopedIds = await getScopedEmployeeIdsForTeamLead(prisma, creatorId);
+
+      const isManaged = await prisma.employee.findFirst({
+        where: {
+          id: employeeId,
+          OR: [
+            { managerId: creatorId },
+            { id: { in: scopedIds } }
+          ]
+        }
+      });
+
+      if (!isManaged) {
+        throw new AppError("You can only assign tasks to employees within your scoped team", 403);
+      }
+    }
 
     const createdTasks = await Promise.all(
       tasks.map((task: any) =>
@@ -382,6 +431,25 @@ router.put("/manager/:id", authenticate, requireRolesOrCapability(["MANAGER", "A
     }
 
     const { title, description, employeeId, isCompleted, revertReason } = request.body;
+
+    if (employeeId && request.user!.role !== "ADMIN") {
+      const { getScopedEmployeeIdsForTeamLead } = await import("../../utils/team-lead.js");
+      const scopedIds = await getScopedEmployeeIdsForTeamLead(prisma, creatorId);
+
+      const isManaged = await prisma.employee.findFirst({
+        where: {
+          id: employeeId,
+          OR: [
+            { managerId: creatorId },
+            { id: { in: scopedIds } }
+          ]
+        }
+      });
+
+      if (!isManaged) {
+        throw new AppError("You can only assign tasks to employees within your scoped team", 403);
+      }
+    }
 
     const isReverting = existingTask.isCompleted === true && isCompleted === false;
 

@@ -125,6 +125,7 @@ model Employee {
   employmentStatus EmploymentStatus @default(ACTIVE)
   isActive         Boolean          @default(true)
   deletedAt        DateTime?
+  maritalStatus    String?
   createdAt        DateTime         @default(now())
   updatedAt        DateTime         @updatedAt
 

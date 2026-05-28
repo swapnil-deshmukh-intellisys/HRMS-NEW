@@ -28,6 +28,7 @@ export type EmployeeFormValues = {
   employmentType: string;
   internshipType: string;
   stipend: string;
+  maritalStatus: string;
 };
 
 type EmployeeFormProps = {
@@ -124,6 +125,19 @@ export default function EmployeeForm({
               <option value="MALE">Male</option>
               <option value="FEMALE">Female</option>
               <option value="OTHER">Other</option>
+            </select>
+          </label>
+          <label>
+            Marital status
+            <select
+              value={form.maritalStatus || ""}
+              onChange={(event) => onChange({ ...form, maritalStatus: event.target.value })}
+            >
+              <option value="">Select status</option>
+              <option value="SINGLE">Single</option>
+              <option value="MARRIED">Married</option>
+              <option value="DIVORCED">Divorced</option>
+              <option value="WIDOWED">Widowed</option>
             </select>
           </label>
           <label>

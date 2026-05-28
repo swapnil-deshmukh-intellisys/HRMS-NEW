@@ -1,32 +1,55 @@
 import { lazy, Suspense } from "react";
+import type { ComponentType } from "react";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
 import { ErrorBoundary } from "../components/ErrorBoundary";
 
-const LoginPage = lazy(() => import("../features/auth/LoginPage"));
-const AttendancePage = lazy(() => import("../features/attendance/AttendancePage"));
-const AttendanceRequestsPage = lazy(() => import("../features/attendance/AttendanceRequestsPage"));
-const AnalyticsPage = lazy(() => import("../features/dashboard/AnalyticsPage"));
-const DashboardPage = lazy(() => import("../features/dashboard/DashboardPage"));
-const CalendarPage = lazy(() => import("../features/calendar/CalendarPage"));
-const DepartmentsPage = lazy(() => import("../features/departments/DepartmentsPage"));
-const EmployeeProfilePage = lazy(() => import("../features/employees/EmployeeProfilePage"));
-const EmployeesPage = lazy(() => import("../features/employees/EmployeesPage"));
-const LeavesPage = lazy(() => import("../features/leaves/LeavesPage"));
-const TeamPage = lazy(() => import("../features/team/TeamPage"));
-const LeaderboardPage = lazy(() => import("../features/team/LeaderboardPage"));
-const PayrollPage = lazy(() => import("../features/payroll/PayrollPage"));
-const PayrollHistoryPage = lazy(() => import("../features/payroll/PayrollHistoryPage"));
-const IncentivesPage = lazy(() => import("../features/payroll/IncentivesPage"));
-const GoogleCallbackPage = lazy(() => import("../features/google/GoogleCallbackPage"));
-const TodoHistoryPage = lazy(() => import("../features/dashboard/TodoHistoryPage"));
-const AssignedTasksHistoryPage = lazy(() => import("../features/dashboard/AssignedTasksHistoryPage"));
-const ManageTasksPage = lazy(() => import("../features/tasks/ManageTasksPage"));
-const EmployeeTodosPage = lazy(() => import("../features/tasks/EmployeeTodosPage"));
-const NotificationsPage = lazy(() => import("../features/notifications/NotificationsPage"));
-const EmailTemplatesPage = lazy(() => import("../features/templates/EmailTemplatesPage"));
-const EmailBroadcasterPage = lazy(() => import("../features/templates/EmailBroadcasterPage"));
-const AppLayout = lazy(() => import("../layout/AppLayout"));
+function lazyWithRetry<T extends ComponentType<any>>(
+  componentImport: () => Promise<{ default: T }>
+) {
+  return lazy(async () => {
+    const hasReloadedKey = `chunk-reloaded-${window.location.pathname}`;
+    try {
+      const component = await componentImport();
+      sessionStorage.removeItem(hasReloadedKey);
+      return component;
+    } catch (error) {
+      console.error("Dynamic import failed, checking reload state...", error);
+      const hasReloaded = sessionStorage.getItem(hasReloadedKey);
+      if (!hasReloaded) {
+        sessionStorage.setItem(hasReloadedKey, "true");
+        window.location.reload();
+        return new Promise<{ default: T }>(() => {});
+      }
+      throw error;
+    }
+  });
+}
+
+const LoginPage = lazyWithRetry(() => import("../features/auth/LoginPage"));
+const AttendancePage = lazyWithRetry(() => import("../features/attendance/AttendancePage"));
+const AttendanceRequestsPage = lazyWithRetry(() => import("../features/attendance/AttendanceRequestsPage"));
+const AnalyticsPage = lazyWithRetry(() => import("../features/dashboard/AnalyticsPage"));
+const DashboardPage = lazyWithRetry(() => import("../features/dashboard/DashboardPage"));
+const CalendarPage = lazyWithRetry(() => import("../features/calendar/CalendarPage"));
+const DepartmentsPage = lazyWithRetry(() => import("../features/departments/DepartmentsPage"));
+const EmployeeProfilePage = lazyWithRetry(() => import("../features/employees/EmployeeProfilePage"));
+const EmployeesPage = lazyWithRetry(() => import("../features/employees/EmployeesPage"));
+const LeavesPage = lazyWithRetry(() => import("../features/leaves/LeavesPage"));
+const TeamPage = lazyWithRetry(() => import("../features/team/TeamPage"));
+const LeaderboardPage = lazyWithRetry(() => import("../features/team/LeaderboardPage"));
+const PayrollPage = lazyWithRetry(() => import("../features/payroll/PayrollPage"));
+const PayrollHistoryPage = lazyWithRetry(() => import("../features/payroll/PayrollHistoryPage"));
+const IncentivesPage = lazyWithRetry(() => import("../features/payroll/IncentivesPage"));
+const GoogleCallbackPage = lazyWithRetry(() => import("../features/google/GoogleCallbackPage"));
+const TodoHistoryPage = lazyWithRetry(() => import("../features/dashboard/TodoHistoryPage"));
+const AssignedTasksHistoryPage = lazyWithRetry(() => import("../features/dashboard/AssignedTasksHistoryPage"));
+const ManageTasksPage = lazyWithRetry(() => import("../features/tasks/ManageTasksPage"));
+const EmployeeTodosPage = lazyWithRetry(() => import("../features/tasks/EmployeeTodosPage"));
+const NotificationsPage = lazyWithRetry(() => import("../features/notifications/NotificationsPage"));
+const EmailTemplatesPage = lazyWithRetry(() => import("../features/templates/EmailTemplatesPage"));
+const EmailBroadcasterPage = lazyWithRetry(() => import("../features/templates/EmailBroadcasterPage"));
+const AppLayout = lazyWithRetry(() => import("../layout/AppLayout"));
 import { AppProvider } from "../context/AppContext";
 
 function RouteLoadingFallback() {

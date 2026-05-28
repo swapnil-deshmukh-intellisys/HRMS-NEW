@@ -80,4 +80,5 @@ export const createInitialEmployeeForm = (): EmployeeFormValues => ({
   employmentType: "FULL_TIME",
   internshipType: "PAID",
   stipend: "",
+  maritalStatus: "",
 });

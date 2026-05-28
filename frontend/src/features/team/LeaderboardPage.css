@@ -177,7 +177,7 @@
   box-shadow: none;
 }
 
-.lb-tab:hover {
+.lb-tab:not(.lb-tab--active):hover {
   background: var(--color-surface-hover);
   color: var(--color-text-strong);
 }

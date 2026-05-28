@@ -479,6 +479,9 @@ export default function LeaveTable({
                                     <span className="table-cell-secondary" style={{ fontSize: '12px' }}>
                                       {`${formatLeaveDays(leave.paidDays)} Paid / ${formatLeaveDays(leave.unpaidDays)} Unpaid`}
                                     </span>
+                                    <span className="table-cell-secondary" style={{ fontSize: '12px', marginTop: '4px', display: 'block' }}>
+                                      Requested: {leave.createdAt ? formatDateTime(leave.createdAt) : "N/A"}
+                                    </span>
                                   </div>
 
                                   {leave.attachmentPath ? (
@@ -511,12 +514,31 @@ export default function LeaveTable({
 
                                   {leave.medicalProofRequired ? (
                                     <div className="detail-block" style={{ gridColumn: "span 3" }}>
-                                      <span className="table-cell-secondary">Medical Proof Requirement</span>
-                                      <div style={{ display: "flex", gap: "16px", alignItems: "center", marginTop: "4px" }}>
-                                        <span className="table-cell-primary">{getMedicalProofStatusLabel(leave)}</span>
-                                        {leave.medicalProofDueAt ? (
-                                          <span className="table-cell-secondary" style={{ fontSize: '12px' }}>Due: {formatDateTime(leave.medicalProofDueAt)}</span>
-                                        ) : null}
+                                      <span className="table-cell-secondary">Medical Proof Requirement & Submission Timeline</span>
+                                      <div style={{ display: "flex", flexDirection: "column", gap: "8px", marginTop: "4px" }}>
+                                        <div style={{ display: "flex", gap: "16px", alignItems: "center" }}>
+                                          <span className="table-cell-primary" style={{ fontWeight: "600" }}>Status: {getMedicalProofStatusLabel(leave)}</span>
+                                        </div>
+                                        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "12px", background: "var(--color-surface-hover)", padding: "12px 16px", borderRadius: "var(--radius-md)", border: "1.5px solid var(--color-border-default)" }}>
+                                          <div>
+                                            <span className="table-cell-secondary" style={{ fontSize: "11px", textTransform: "uppercase", letterSpacing: "0.05em", display: "block" }}>Request Submitted At</span>
+                                            <span className="table-cell-primary" style={{ fontSize: "13px", display: "block", marginTop: "2px", fontWeight: "500" }}>
+                                              {leave.createdAt ? formatDateTime(leave.createdAt) : "N/A"}
+                                            </span>
+                                          </div>
+                                          <div>
+                                            <span className="table-cell-secondary" style={{ fontSize: "11px", textTransform: "uppercase", letterSpacing: "0.05em", display: "block" }}>Proof Document Uploaded At</span>
+                                            <span className="table-cell-primary" style={{ fontSize: "13px", display: "block", marginTop: "2px", fontWeight: "500" }}>
+                                              {leave.medicalProofSubmittedAt ? formatDateTime(leave.medicalProofSubmittedAt) : "Not uploaded yet"}
+                                            </span>
+                                          </div>
+                                          <div>
+                                            <span className="table-cell-secondary" style={{ fontSize: "11px", textTransform: "uppercase", letterSpacing: "0.05em", display: "block" }}>Proof Upload Deadline</span>
+                                            <span className="table-cell-primary" style={{ fontSize: "13px", display: "block", marginTop: "2px", fontWeight: "600", color: leave.medicalProofStatus === "EXPIRED" ? "var(--color-error)" : "inherit" }}>
+                                              {leave.medicalProofDueAt ? formatDateTime(leave.medicalProofDueAt) : "N/A"}
+                                            </span>
+                                          </div>
+                                        </div>
                                       </div>
                                       
                                       {leave.medicalProofRejectionReason ? (

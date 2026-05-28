@@ -5,7 +5,7 @@ import type { FormEvent } from "react";
 import toast from "react-hot-toast";
 import Modal from "../../components/common/Modal";
 import { apiRequest } from "../../services/api";
-import type { LeaveBalance, LeaveRequest, LeaveType, Role } from "../../types";
+import type { Employee, LeaveBalance, LeaveRequest, LeaveType, Role } from "../../types";
 import { formatLeaveDays } from "../../utils/format";
 import LeaveForm, { type LeaveFormValues } from "./LeaveForm";
 import LeaveTable from "./LeaveTable";
@@ -15,6 +15,7 @@ type LeavesPageProps = {
   token: string | null;
   role: Role;
   currentEmployeeId: number | null;
+  currentEmployee?: Employee | null;
 };
 
 const initialLeaveForm = (): LeaveFormValues => {
@@ -33,6 +34,8 @@ const initialLeaveForm = (): LeaveFormValues => {
     endDate: dateStr,
     startDayDuration: "FULL_DAY",
     endDayDuration: "FULL_DAY",
+    startHalfDayPeriod: "FIRST_HALF",
+    endHalfDayPeriod: "FIRST_HALF",
     reason: "",
   };
 };
@@ -44,7 +47,7 @@ function formatLocalIsoDate(date: Date) {
   return `${year}-${month}-${day}`;
 }
 
-export default function LeavesPage({ token, role, currentEmployeeId }: LeavesPageProps) {
+export default function LeavesPage({ token, role, currentEmployeeId, currentEmployee }: LeavesPageProps) {
   const navigate = useNavigate();
   const [leaveTypes, setLeaveTypes] = useState<LeaveType[]>([]);
   const [balances, setBalances] = useState<LeaveBalance[]>([]);
@@ -126,14 +129,6 @@ export default function LeavesPage({ token, role, currentEmployeeId }: LeavesPag
 
   const pendingCount = getPendingLeavesCount();
   const today = new Date();
-  const currentQuarterLabel =
-    today.getMonth() >= 3 && today.getMonth() <= 5
-      ? "Q1 · Apr to Jun"
-      : today.getMonth() >= 6 && today.getMonth() <= 8
-        ? "Q2 · Jul to Sep"
-        : today.getMonth() >= 9 && today.getMonth() <= 11
-          ? "Q3 · Oct to Dec"
-          : "Q4 · Jan to Mar";
 
   const getPreviousQuarterInfo = () => {
     const currentMonth = today.getMonth(); // 0-indexed
@@ -181,14 +176,25 @@ export default function LeavesPage({ token, role, currentEmployeeId }: LeavesPag
 
     let totalPaid = 0;
     let totalUnpaid = 0;
+    const typeBreakdown: Record<string, { name: string; days: number }> = {};
 
     for (const leave of prevQLeaves) {
       totalPaid += leave.paidDays;
       totalUnpaid += leave.unpaidDays;
+      const code = leave.leaveType.code;
+      if (!typeBreakdown[code]) {
+        typeBreakdown[code] = { name: leave.leaveType.name, days: 0 };
+      }
+      typeBreakdown[code].days += leave.totalDays;
     }
 
     const totalTaken = totalPaid + totalUnpaid;
     const exceeded = totalUnpaid > 0;
+    const breakdown = Object.entries(typeBreakdown).map(([code, item]) => ({
+      code,
+      name: item.name,
+      days: item.days,
+    }));
 
     return {
       label: prevQ.label,
@@ -196,10 +202,71 @@ export default function LeavesPage({ token, role, currentEmployeeId }: LeavesPag
       totalPaid,
       totalUnpaid,
       exceeded,
+      breakdown,
     };
   };
 
   const prevStats = getPreviousQuarterStats();
+
+  const getCurrentQuarterStats = () => {
+    const currentMonth = today.getMonth(); // 0-indexed
+    const currentYear = today.getFullYear();
+    let currentQ = { label: "", months: [] as number[], year: currentYear };
+
+    if (currentMonth >= 3 && currentMonth <= 5) {
+      currentQ = { label: "Q1 · Apr to Jun", months: [3, 4, 5], year: currentYear };
+    } else if (currentMonth >= 6 && currentMonth <= 8) {
+      currentQ = { label: "Q2 · Jul to Sep", months: [6, 7, 8], year: currentYear };
+    } else if (currentMonth >= 9 && currentMonth <= 11) {
+      currentQ = { label: "Q3 · Oct to Dec", months: [9, 10, 11], year: currentYear };
+    } else {
+      currentQ = { label: "Q4 · Jan to Mar", months: [0, 1, 2], year: currentYear };
+    }
+
+    const ownApprovedLeaves = leaves.filter(
+      (leave) =>
+        leave.employee.id === currentEmployeeId &&
+        leave.status === "APPROVED"
+    );
+
+    const currentQLeaves = ownApprovedLeaves.filter((leave) => {
+      const sDate = new Date(leave.startDate);
+      return sDate.getFullYear() === currentQ.year && currentQ.months.includes(sDate.getMonth());
+    });
+
+    let totalPaid = 0;
+    let totalUnpaid = 0;
+    const typeBreakdown: Record<string, { name: string; days: number }> = {};
+
+    for (const leave of currentQLeaves) {
+      totalPaid += leave.paidDays;
+      totalUnpaid += leave.unpaidDays;
+      const code = leave.leaveType.code;
+      if (!typeBreakdown[code]) {
+        typeBreakdown[code] = { name: leave.leaveType.name, days: 0 };
+      }
+      typeBreakdown[code].days += leave.totalDays;
+    }
+
+    const totalTaken = totalPaid + totalUnpaid;
+    const exceeded = totalUnpaid > 0;
+    const breakdown = Object.entries(typeBreakdown).map(([code, item]) => ({
+      code,
+      name: item.name,
+      days: item.days,
+    }));
+
+    return {
+      label: currentQ.label,
+      totalTaken,
+      totalPaid,
+      totalUnpaid,
+      exceeded,
+      breakdown,
+    };
+  };
+
+  const currentStats = getCurrentQuarterStats();
 
   const loadLeaveTypes = useCallback(async () => {
     if (leaveTypes.length) {
@@ -277,13 +344,35 @@ export default function LeavesPage({ token, role, currentEmployeeId }: LeavesPag
         return;
       }
 
+      // Prepare half-day nested period tags to prepend to reason
+      let periodPrefix = "";
+      if (form.startDate === form.endDate) {
+        if (form.startDayDuration === "HALF_DAY") {
+          const p = form.startHalfDayPeriod === "SECOND_HALF" ? "Second Half" : "First Half";
+          periodPrefix = `[Single Day: ${p}] `;
+        }
+      } else {
+        const parts: string[] = [];
+        if (form.startDayDuration === "HALF_DAY") {
+          const p = form.startHalfDayPeriod === "SECOND_HALF" ? "Second Half" : "First Half";
+          parts.push(`Start Day: ${p}`);
+        }
+        if (form.endDayDuration === "HALF_DAY") {
+          const p = form.endHalfDayPeriod === "SECOND_HALF" ? "Second Half" : "First Half";
+          parts.push(`End Day: ${p}`);
+        }
+        if (parts.length > 0) {
+          periodPrefix = `[${parts.join(", ")}] `;
+        }
+      }
+
       const formData = new FormData();
       formData.append("leaveTypeId", String(Number(form.leaveTypeId)));
       formData.append("startDate", form.startDate);
       formData.append("endDate", form.endDate);
       formData.append("startDayDuration", form.startDayDuration);
       formData.append("endDayDuration", form.endDayDuration);
-      formData.append("reason", form.reason);
+      formData.append("reason", periodPrefix + form.reason);
       if (attachmentFile) {
         formData.append("attachment", attachmentFile);
       }
@@ -476,6 +565,7 @@ export default function LeavesPage({ token, role, currentEmployeeId }: LeavesPag
             leaveTypes={leaveTypes}
             balances={balances}
             isSubmitting={submittingLeave}
+            currentEmployee={currentEmployee}
             onChange={setForm}
             onAttachmentChange={setAttachmentFile}
             onSubmit={handleSubmit}
@@ -514,42 +604,124 @@ export default function LeavesPage({ token, role, currentEmployeeId }: LeavesPag
               <p className="muted">
                 Live balance for the current financial year. Paid leave is shown here based on your latest approved requests.
               </p>
-              <div style={{ display: "flex", gap: "16px", flexWrap: "wrap", marginTop: "16px" }}>
+              <div className="leave-balance-indicators-grid">
                 {/* Current Quarter Card */}
-                <div className="leave-balance-quarter-indicator">
-                  <span className="leave-balance-quarter-indicator__label">Current quarter</span>
-                  <strong>{currentQuarterLabel}</strong>
-                  <span className="leave-balance-quarter-indicator__subtext">Active Allocation</span>
-                </div>
+                {(() => {
+                  const currentParts = currentStats.label.split(" · ");
+                  const currentBadge = currentParts[0];
+                  const currentMonths = currentParts[1];
+                  return (
+                    <div className="leave-balance-quarter-card">
+                      <div className="quarter-card-header">
+                        <span className="quarter-card-title">Current Quarter</span>
+                        <span className="quarter-card-badge">{currentBadge}</span>
+                      </div>
+                      <div className="quarter-card-months">{currentMonths}</div>
+                      <div className="quarter-card-sublabel">Current evaluation period</div>
+                      <div className="quarter-card-total-days">
+                        <span className="large-number">{formatLeaveDays(currentStats.totalTaken)}</span>
+                        <span className="inline-label">
+                          {currentStats.totalTaken === 1 ? "day taken this quarter" : "days taken this quarter"}
+                        </span>
+                      </div>
+                      {currentStats.breakdown.length > 0 ? (
+                        <div className="quarter-card-breakdown-list">
+                          {currentStats.breakdown.map((item) => (
+                            <div key={item.code} className="breakdown-row">
+                              <div className="breakdown-row-info">
+                                <span className="breakdown-type-name">{item.name} ({item.code})</span>
+                                <span className="breakdown-type-days">{formatLeaveDays(item.days)} {item.days === 1 ? "day" : "days"}</span>
+                              </div>
+                              <div className="breakdown-progress-bar">
+                                <div 
+                                  className="breakdown-progress-fill" 
+                                  style={{ width: `${Math.min((item.days / 10) * 100, 100)}%` }}
+                                />
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="quarter-card-empty-state">
+                          <span className="empty-icon">🏖️</span>
+                          <span className="empty-text">No leave taken this quarter</span>
+                        </div>
+                      )}
+                      <div className="quarter-card-footer">
+                        {currentStats.exceeded ? (
+                          <span className="status-badge status-badge--exceeded">
+                            <span className="status-dot status-dot--red" />
+                            Exceeded ({formatLeaveDays(currentStats.totalUnpaid)} unpaid)
+                          </span>
+                        ) : (
+                          <span className="status-badge status-badge--in-progress">
+                            <span className="status-dot status-dot--blue" />
+                            In progress
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })()}
 
                 {/* Previous Quarter Card */}
-                <div 
-                  className="leave-balance-quarter-indicator"
-                  style={prevStats.exceeded ? {
-                    background: "rgba(239, 68, 68, 0.22)",
-                    border: "1px solid rgba(239, 68, 68, 0.45)",
-                    boxShadow: "0 4px 12px rgba(239, 68, 68, 0.12)",
-                  } : undefined}
-                >
-                  <span 
-                    className="leave-balance-quarter-indicator__label"
-                    style={prevStats.exceeded ? { color: "#ff9c9c" } : undefined}
-                  >
-                    Previous Quarter ({prevStats.label.split(" · ")[0]})
-                  </span>
-                  <strong style={prevStats.exceeded ? { color: "#ffccd2" } : undefined}>
-                    {prevStats.totalTaken} {prevStats.totalTaken === 1 ? "day" : "days"} taken
-                  </strong>
-                  <span 
-                    className="leave-balance-quarter-indicator__subtext"
-                    style={{ color: prevStats.exceeded ? "#ffb3b8" : "rgba(255, 255, 255, 0.6)" }}
-                  >
-                    {prevStats.exceeded 
-                      ? `Exceeded! (${prevStats.totalUnpaid} unpaid)`
-                      : "Within quarterly quota"
-                    }
-                  </span>
-                </div>
+                {(() => {
+                  const prevParts = prevStats.label.split(" · ");
+                  const prevBadge = prevParts[0];
+                  const prevMonths = prevParts[1];
+                  return (
+                    <div className="leave-balance-quarter-card">
+                      <div className="quarter-card-header">
+                        <span className="quarter-card-title">Previous Quarter</span>
+                        <span className="quarter-card-badge">{prevBadge}</span>
+                      </div>
+                      <div className="quarter-card-months">{prevMonths}</div>
+                      <div className="quarter-card-sublabel">Completed evaluation period</div>
+                      <div className="quarter-card-total-days">
+                        <span className="large-number">{formatLeaveDays(prevStats.totalTaken)}</span>
+                        <span className="inline-label">
+                          {prevStats.totalTaken === 1 ? "day taken that quarter" : "days taken that quarter"}
+                        </span>
+                      </div>
+                      {prevStats.breakdown.length > 0 ? (
+                        <div className="quarter-card-breakdown-list">
+                          {prevStats.breakdown.map((item) => (
+                            <div key={item.code} className="breakdown-row">
+                              <div className="breakdown-row-info">
+                                <span className="breakdown-type-name">{item.name} ({item.code})</span>
+                                <span className="breakdown-type-days">{formatLeaveDays(item.days)} {item.days === 1 ? "day" : "days"}</span>
+                              </div>
+                              <div className="breakdown-progress-bar">
+                                <div 
+                                  className="breakdown-progress-fill" 
+                                  style={{ width: `${Math.min((item.days / 10) * 100, 100)}%` }}
+                                />
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="quarter-card-empty-state">
+                          <span className="empty-icon">🏖️</span>
+                          <span className="empty-text">No leave taken that quarter</span>
+                        </div>
+                      )}
+                      <div className="quarter-card-footer">
+                        {prevStats.exceeded ? (
+                          <span className="status-badge status-badge--exceeded">
+                            <span className="status-dot status-dot--red" />
+                            Exceeded ({formatLeaveDays(prevStats.totalUnpaid)} unpaid)
+                          </span>
+                        ) : (
+                          <span className="status-badge status-badge--within-quota">
+                            <span className="status-dot status-dot--green" />
+                            Within quota
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
             </div>
           </section>

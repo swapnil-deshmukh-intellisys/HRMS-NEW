@@ -208,7 +208,7 @@
   transform: none !important;
 }
 
-.leave-duration-tab:hover:not(:disabled) {
+.leave-duration-tab:hover:not(.active):not(:disabled) {
   transform: none !important;
   box-shadow: none !important;
   background: rgba(37, 99, 235, 0.08) !important;

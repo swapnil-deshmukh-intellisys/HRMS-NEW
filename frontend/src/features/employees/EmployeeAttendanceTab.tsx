@@ -1,6 +1,6 @@
 import Table from "../../components/common/Table";
 import Modal from "../../components/common/Modal";
-import type { Attendance, CalendarException } from "../../types";
+import type { Attendance, CalendarException, LeaveRequest } from "../../types";
 import { formatAttendanceTime, formatDateLabel, formatWeekday, isToday } from "../../utils/format";
 import EmployeeAttendanceBreakdownChart from "./charts/EmployeeAttendanceBreakdownChart";
 import EmployeeWorkedHoursChart from "./charts/EmployeeWorkedHoursChart";
@@ -11,6 +11,7 @@ type EmployeeAttendanceTabProps = {
   attendance: Attendance[];
   exceptions?: CalendarException[];
   joiningDate?: string;
+  leaves?: LeaveRequest[];
 };
 
 function formatWorkedDuration(workedMinutes: number, checkOutTime?: string | null) {
@@ -36,6 +37,7 @@ function formatWorkedDuration(workedMinutes: number, checkOutTime?: string | nul
   return `${minutes}m`;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function getWorkedDurationLabel(record: any) {
   if (record.status === "NO_DATA") {
     return "-";
@@ -96,7 +98,7 @@ function getStatusLabel(record: Attendance | { status: string; leaveTypeCode?: s
   return baseLabel;
 }
 
-export default function EmployeeAttendanceTab({ attendance, exceptions, joiningDate }: EmployeeAttendanceTabProps) {
+export default function EmployeeAttendanceTab({ attendance, exceptions, joiningDate, leaves }: EmployeeAttendanceTabProps) {
   const { calendarExceptions: globalExceptions } = useApp();
   const calendarExceptions = exceptions || globalExceptions;
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
@@ -191,6 +193,21 @@ export default function EmployeeAttendanceTab({ attendance, exceptions, joiningD
     return filtered;
   }, [attendance, joiningDate]);
 
+  const approvedLeaves = useMemo(() => {
+    if (!leaves) return [];
+    return leaves
+      .filter(l => l.status === "APPROVED")
+      .map(l => {
+        const start = new Date(l.startDate);
+        const end = new Date(l.endDate);
+        return {
+          code: l.leaveType?.code || undefined,
+          startMs: new Date(start.getFullYear(), start.getMonth(), start.getDate()).getTime(),
+          endMs: new Date(end.getFullYear(), end.getMonth(), end.getDate()).getTime()
+        };
+      });
+  }, [leaves]);
+
   const unifiedHistory = useMemo(() => {
     const today = new Date();
     // Start of the selected month
@@ -252,26 +269,34 @@ export default function EmployeeAttendanceTab({ attendance, exceptions, joiningD
                exDate.getMonth() === date.getMonth() &&
                exDate.getDate() === date.getDate();
       });
+
+      const checkMs = localDate.getTime();
+      const matchedLeave = approvedLeaves.find(l => checkMs >= l.startMs && checkMs <= l.endMs);
+      const isApprovedLeave = !!matchedLeave;
+      const leaveTypeCode = matchedLeave?.code;
       const dayOfWeek = date.getDay();
-      
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       let status: any = "ABSENT";
       let label = "";
 
       if (exception) {
         status = exception.type;
         label = exception.name || "";
+      } else if (isApprovedLeave) {
+        status = "LEAVE";
+        label = `Approved Leave (${leaveTypeCode})`;
       } else if (dayOfWeek === 0 || dayOfWeek === 6) {
         status = "OFF";
       }
 
-      // If it's today and there's no check-in yet, don't mark as ABSENT.
+      // If it's today or in the future, and there's no check-in yet, don't mark as ABSENT.
       // We'll call it "SCHEDULED" for the UI.
       const now = new Date();
-      const isActuallyToday = date.getFullYear() === now.getFullYear() &&
-                              date.getMonth() === now.getMonth() &&
-                              date.getDate() === now.getDate();
+      const todayMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const isTodayOrFuture = localDate >= todayMidnight;
                               
-      if (isActuallyToday && status === "ABSENT" && !existingRecord) {
+      if (isTodayOrFuture && status === "ABSENT" && !existingRecord) {
         status = "SCHEDULED";
       }
 
@@ -294,10 +319,11 @@ export default function EmployeeAttendanceTab({ attendance, exceptions, joiningD
         isOffDay: !isBeforeCutoff && !existingRecord && (status === "OFF" || status === "HOLIDAY"),
         isWorkingSaturday: status === "WORKING_SATURDAY",
         exceptionLabel: label,
-        isJoiningDay
+        isJoiningDay,
+        leaveTypeCode
       };
     });
-  }, [filteredAttendance, calendarExceptions, selectedMonth, selectedYear, joiningDate]);
+  }, [filteredAttendance, calendarExceptions, selectedMonth, selectedYear, joiningDate, approvedLeaves, joinDateStr]);
 
   const { presentCount, absentCount, offCount, workingDaysCount } = useMemo(() => {
     let present = 0;
@@ -333,8 +359,24 @@ export default function EmployeeAttendanceTab({ attendance, exceptions, joiningD
     return { presentCount: present, absentCount: absent, offCount: off, workingDaysCount: working };
   }, [unifiedHistory]);
 
+  const monthlyAttendance = useMemo(() => {
+    return unifiedHistory
+      .filter(item => ["PRESENT", "HALF_DAY", "ABSENT", "LEAVE"].includes(item.status))
+      .map(item => ({
+        status: item.status as Attendance["status"]
+      }));
+  }, [unifiedHistory]);
+
   return (
     <div className="stack">
+      <div className="grid cols-2 employee-profile-chart-grid">
+        <EmployeeAttendanceBreakdownChart 
+          attendance={filteredAttendance} 
+          monthlyAttendance={monthlyAttendance} 
+        />
+        <EmployeeWorkedHoursChart attendance={filteredAttendance} />
+      </div>
+
       <div className="card employee-profile-section">
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
           <h3 style={{ margin: 0 }}>Attendance history</h3>
@@ -393,6 +435,9 @@ export default function EmployeeAttendanceTab({ attendance, exceptions, joiningD
             if (item.isJoiningDay) return "attendance-row--joining-day";
             if (item.status === "HOLIDAY") return "attendance-row--holiday";
             if (item.status === "OFF") return "attendance-row--off";
+            if (item.status === "ABSENT") return "attendance-row--absent";
+            if (item.status === "LEAVE") return "attendance-row--leave";
+            if (item.status === "HALF_DAY") return "attendance-row--half-day";
             return "";
           }}
           rows={unifiedHistory.map((item) => {
@@ -440,6 +485,7 @@ export default function EmployeeAttendanceTab({ attendance, exceptions, joiningD
               checkInTime: null,
               checkOutTime: null,
               workedMinutes: 0
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
             } as any);
 
             return [
@@ -487,20 +533,16 @@ export default function EmployeeAttendanceTab({ attendance, exceptions, joiningD
                   }
                 }}
               >
-                {displayRecord.todaysUpdate || (isWorkingSaturday ? "Working Weekend" : "-")}
+                {displayRecord.todaysUpdate || (isWorkingSaturday ? "Working Weekend" : exceptionLabel || "-")}
               </span>,
               <div className="table-cell-stack" key={`status-${date}`}>
                 <span className={getStatusClass(status)}>
-                  {getStatusLabel(record || { status })}
+                  {getStatusLabel(record || { status, leaveTypeCode: item.leaveTypeCode })}
                 </span>
               </div>,
             ];
           })}
         />
-      </div>
-      <div className="grid cols-2 employee-profile-chart-grid">
-        <EmployeeAttendanceBreakdownChart attendance={filteredAttendance} />
-        <EmployeeWorkedHoursChart attendance={filteredAttendance} />
       </div>
 
       <Modal open={!!selectedUpdate} title="Today's update" onClose={() => setSelectedUpdate(null)}>

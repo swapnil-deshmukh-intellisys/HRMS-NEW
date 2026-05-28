@@ -1,6 +1,6 @@
 import "./EmployeeProfileTabs.css";
 
-export type EmployeeProfileTabKey = "overview" | "attendance" | "leaves" | "payroll";
+export type EmployeeProfileTabKey = "overview" | "attendance" | "leaves" | "payroll" | "documents";
 
 type EmployeeProfileTabsProps = {
   activeTab: EmployeeProfileTabKey;
@@ -13,6 +13,7 @@ const defaultTabs: Array<{ key: EmployeeProfileTabKey; label: string }> = [
   { key: "attendance", label: "Attendance" },
   { key: "leaves", label: "Leaves" },
   { key: "payroll", label: "Payroll" },
+  { key: "documents", label: "Documents" },
 ];
 
 export default function EmployeeProfileTabs({ activeTab, tabs = defaultTabs, onChange }: EmployeeProfileTabsProps) {

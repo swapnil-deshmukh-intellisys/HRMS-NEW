@@ -191,33 +191,36 @@ export default function LeaderboardPage({ token, role = "EMPLOYEE" }: { token: s
   return (
     <div className="lb-page">
       {/* Header */}
-      <header className="lb-page-header">
+      <header className="lb-page-header" style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'center', width: '100%' }}>
         <div className="stack" style={{ gap: "4px" }}>
           <span className="eyebrow eyebrow--purple">Team Activity</span>
           <h2 className="page-title">Leaderboard</h2>
         </div>
-        <button
-          className="button button--secondary"
-          onClick={() => navigate("/team")}
-          style={{ display: "flex", alignItems: "center", gap: "8px" }}
-        >
-          <ArrowLeft size={18} />
-          Back to Team
-        </button>
-      </header>
 
-      {/* Month Navigator */}
-      <div className="lb-month-nav">
-        <button className="lb-month-btn" onClick={prevMonth}>
-          <ChevronLeft size={18} />
-        </button>
-        <span className="lb-month-label">
-          {MONTH_NAMES[month - 1]} {year}
-        </span>
-        <button className="lb-month-btn" onClick={nextMonth} disabled={isCurrentMonth}>
-          <ChevronRight size={18} />
-        </button>
-      </div>
+        {/* Month Navigator */}
+        <div className="lb-month-nav">
+          <button className="lb-month-btn" onClick={prevMonth}>
+            <ChevronLeft size={18} />
+          </button>
+          <span className="lb-month-label">
+            {MONTH_NAMES[month - 1]} {year}
+          </span>
+          <button className="lb-month-btn" onClick={nextMonth} disabled={isCurrentMonth}>
+            <ChevronRight size={18} />
+          </button>
+        </div>
+
+        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+          <button
+            className="button button--secondary"
+            onClick={() => navigate(role === "MANAGER" ? "/team" : "/")}
+            style={{ display: "flex", alignItems: "center", gap: "8px" }}
+          >
+            <ArrowLeft size={18} />
+            {role === "MANAGER" ? "Back to Team" : "Back to Dashboard"}
+          </button>
+        </div>
+      </header>
 
       {loading ? (
         <div className="lb-loading">

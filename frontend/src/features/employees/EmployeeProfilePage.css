@@ -229,9 +229,24 @@
   background-color: #eff6ff !important; /* Premium light blue highlight for Joining Day */
 }
 
+.attendance-row--absent {
+  background-color: #fef2f2 !important; /* Premium light red/rose highlight for Absent Day */
+}
+
+.attendance-row--leave {
+  background-color: #fffbeb !important; /* Premium light orange/amber highlight for Leave Day */
+}
+
+.attendance-row--half-day {
+  background-color: #f0f9ff !important; /* Premium soft sky-blue highlight for Half Day */
+}
+
 .attendance-row--off td,
 .attendance-row--holiday td,
-.attendance-row--joining-day td {
+.attendance-row--joining-day td,
+.attendance-row--absent td,
+.attendance-row--leave td,
+.attendance-row--half-day td {
   border-bottom-color: #e2e8f0;
 }
 

@@ -12,6 +12,7 @@ import EmployeeAttendanceTab from "./EmployeeAttendanceTab";
 import EmployeeLeavesTab from "./EmployeeLeavesTab";
 import EmployeeOverviewTab from "./EmployeeOverviewTab";
 import EmployeePayrollTab from "./EmployeePayrollTab";
+import EmployeeDocumentsTab from "./EmployeeDocumentsTab";
 import EmployeeProfileHeader from "./EmployeeProfileHeader";
 import EmployeeProfileTabs, { type EmployeeProfileTabKey } from "./EmployeeProfileTabs";
 import { createInitialEmployeeForm, formatStoredDateForInput, formatStoredDateTimeForInput, serializeLocalDateTime } from "./employeeFormUtils";
@@ -32,6 +33,7 @@ function toEmployeeForm(employee: Employee): EmployeeFormValues {
     lastName: employee.lastName ?? "",
     jobTitle: employee.jobTitle ?? "",
     phone: employee.phone ?? "",
+    gender: employee.gender ?? "",
     annualPackageLpa: employee.annualPackageLpa ? String(employee.annualPackageLpa) : "",
     isOnProbation: Boolean(employee.isOnProbation),
     probationEndDate: employee.probationEndDate ? formatStoredDateForInput(employee.probationEndDate) : "",
@@ -64,8 +66,8 @@ export default function EmployeeProfilePage({ token, role, currentEmployeeId }: 
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<EmployeeProfileTabKey>(() => {
     const requestedTab = searchParams.get("tab");
-    return requestedTab === "attendance" || requestedTab === "leaves" || requestedTab === "payroll" || requestedTab === "overview"
-      ? requestedTab
+    return requestedTab === "attendance" || requestedTab === "leaves" || requestedTab === "payroll" || requestedTab === "overview" || requestedTab === "documents"
+      ? (requestedTab as EmployeeProfileTabKey)
       : "overview";
   });
   const [employeeModalOpen, setEmployeeModalOpen] = useState(false);
@@ -135,8 +137,8 @@ export default function EmployeeProfilePage({ token, role, currentEmployeeId }: 
   useEffect(() => {
     const requestedTab = searchParams.get("tab");
 
-    if (requestedTab === "attendance" || requestedTab === "leaves" || requestedTab === "payroll" || requestedTab === "overview") {
-      setActiveTab(requestedTab);
+    if (requestedTab === "attendance" || requestedTab === "leaves" || requestedTab === "payroll" || requestedTab === "overview" || requestedTab === "documents") {
+      setActiveTab(requestedTab as EmployeeProfileTabKey);
     }
   }, [searchParams]);
 
@@ -292,6 +294,7 @@ export default function EmployeeProfilePage({ token, role, currentEmployeeId }: 
         { key: "overview", label: "Overview" },
         { key: "attendance", label: "Attendance" },
         { key: "leaves", label: "Leaves" },
+        { key: "documents", label: "Documents" },
       ];
 
   return (
@@ -320,11 +323,12 @@ export default function EmployeeProfilePage({ token, role, currentEmployeeId }: 
       />
       <EmployeeProfileTabs activeTab={activeTab} tabs={visibleTabs} onChange={setActiveTab} />
       {activeTab === "overview" ? <EmployeeOverviewTab employee={employee} token={token} /> : null}
-      {activeTab === "attendance" ? <EmployeeAttendanceTab attendance={attendance} exceptions={localExceptions} joiningDate={employee.joiningDate} /> : null}
+      {activeTab === "attendance" ? <EmployeeAttendanceTab attendance={attendance} exceptions={localExceptions} joiningDate={employee.joiningDate} leaves={leaves} /> : null}
       {activeTab === "leaves" ? (
         <EmployeeLeavesTab balances={balances} leaves={leaves} role={role} viewerEmployeeId={currentEmployeeId} />
       ) : null}
       {canViewPayroll && activeTab === "payroll" ? <EmployeePayrollTab payroll={visiblePayroll} token={token} /> : null}
+      {activeTab === "documents" ? <EmployeeDocumentsTab employeeId={employee.id} token={token} role={role} currentEmployeeId={currentEmployeeId} /> : null}
       <Modal open={employeeModalOpen} title="Edit employee" className="employee-profile-modal" onClose={() => setEmployeeModalOpen(false)}>
         <EmployeeForm
           form={form}

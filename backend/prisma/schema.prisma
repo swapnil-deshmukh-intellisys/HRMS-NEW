@@ -61,6 +61,7 @@ model Employee {
   firstName                         String
   lastName                          String
   phone                             String?
+  gender                            String?
   departmentId                      Int
   managerId                         Int?
   joiningDate                       DateTime
@@ -110,6 +111,7 @@ model Employee {
   generalTaskCompletions            GeneralTaskCompletion[]
   pointHistory                      PointHistory[]                    @relation("EmployeePointHistory")
   givenPointHistory                 PointHistory[]                    @relation("GivenPointHistory")
+  documents                         EmployeeDocument[]                @relation("EmployeeDocuments")
 
   @@index([departmentId])
   @@index([managerId])
@@ -596,4 +598,20 @@ model PointHistory {
 
   @@index([employeeId])
   @@index([givenById])
+}
+
+model EmployeeDocument {
+  id           Int      @id @default(autoincrement())
+  employeeId   Int
+  name         String
+  originalName String
+  filePath     String
+  mimeType     String
+  size         Int
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  
+  employee     Employee @relation("EmployeeDocuments", fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@index([employeeId])
 }

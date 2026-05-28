@@ -65,6 +65,7 @@ export const createInitialEmployeeForm = (): EmployeeFormValues => ({
   lastName: "",
   jobTitle: "Software Developer",
   phone: "",
+  gender: "",
   annualPackageLpa: "",
   isOnProbation: false,
   probationEndDate: "",

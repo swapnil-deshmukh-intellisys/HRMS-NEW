@@ -672,7 +672,7 @@ async function finalizeApprovedLeave(
       deductedDays,
       fullQuotaDeducted: policyActive && leaveRequest.leaveType.deductFullQuotaOnApproval,
       medicalProofStatus: leaveRequest.medicalProofRequired ? leaveRequest.medicalProofStatus : MEDICAL_PROOF_STATUS.NOT_REQUIRED,
-      medicalProofDueAt: leaveRequest.medicalProofRequired ? getMedicalProofDueAt(new Date()) : null,
+      medicalProofDueAt: leaveRequest.medicalProofRequired ? getMedicalProofDueAt(leaveRequest.startDate) : null,
       ...(actor.role === "HR"
         ? {
           hrApprovedById: actor.employeeId,

@@ -7,7 +7,8 @@
   background: white;
   border: 1px solid var(--color-border-subtle);
   padding: 20px;
-  height: 100%;
+  height: 500px;
+  box-sizing: border-box;
 }
 
 .birthday-card__header {
@@ -39,6 +40,25 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-5);
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+/* Custom Scrollbar for birthday-content */
+.birthday-content::-webkit-scrollbar {
+  width: 6px;
+}
+.birthday-content::-webkit-scrollbar-track {
+  background: transparent;
+}
+.birthday-content::-webkit-scrollbar-thumb {
+  background: var(--color-border-subtle);
+  border-radius: var(--radius-full);
+}
+.birthday-content::-webkit-scrollbar-thumb:hover {
+  background: var(--color-border-default);
 }
 
 /* Today's Birthday Style */

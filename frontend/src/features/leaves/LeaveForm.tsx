@@ -1,7 +1,7 @@
 import "./LeaveForm.css";
 import { Check, ChevronDown } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
-import type { LeaveBalance, LeaveType } from "../../types";
+import type { Employee, LeaveBalance, LeaveType } from "../../types";
 import { countWords, LEAVE_REASON_MAX_WORDS, LEAVE_REASON_MIN_WORDS } from "./reasonValidation";
 import { formatLeaveDays } from "../../utils/format";
 
@@ -11,6 +11,8 @@ export type LeaveFormValues = {
   endDate: string;
   startDayDuration: "FULL_DAY" | "HALF_DAY";
   endDayDuration: "FULL_DAY" | "HALF_DAY";
+  startHalfDayPeriod?: "FIRST_HALF" | "SECOND_HALF";
+  endHalfDayPeriod?: "FIRST_HALF" | "SECOND_HALF";
   reason: string;
 };
 
@@ -20,6 +22,7 @@ type LeaveFormProps = {
   leaveTypes: LeaveType[];
   balances?: LeaveBalance[];
   isSubmitting?: boolean;
+  currentEmployee?: Employee | null;
   onChange: (nextForm: LeaveFormValues) => void;
   onAttachmentChange: (file: File | null) => void;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
@@ -45,7 +48,7 @@ function getMinSelectableDate() {
   return formatLocalIsoDate(now);
 }
 
-export default function LeaveForm({ form, attachmentName, leaveTypes, balances, isSubmitting = false, onChange, onAttachmentChange, onSubmit }: LeaveFormProps) {
+export default function LeaveForm({ form, attachmentName, leaveTypes, balances, isSubmitting = false, currentEmployee, onChange, onAttachmentChange, onSubmit }: LeaveFormProps) {
   const [isMultipleDays, setIsMultipleDays] = useState(() => form.startDate !== form.endDate);
 
   const isSingleDay = !isMultipleDays;
@@ -58,6 +61,21 @@ export default function LeaveForm({ form, attachmentName, leaveTypes, balances, 
     [],
   );
 
+  const allowedLeaveTypes = useMemo(() => {
+    const gender = currentEmployee?.gender?.trim().toUpperCase() ?? "";
+    return leaveTypes.filter((leaveType) => {
+      const name = leaveType.name.toLowerCase();
+      const code = leaveType.code.toLowerCase();
+      if (gender === "MALE" && (name.includes("maternity") || code.includes("maternity"))) {
+        return false;
+      }
+      if (gender === "FEMALE" && (name.includes("paternity") || code.includes("paternity"))) {
+        return false;
+      }
+      return true;
+    });
+  }, [leaveTypes, currentEmployee?.gender]);
+
   const primaryLeaveTypes = useMemo(
     () => {
       const getPriority = (leaveType: LeaveType) => {
@@ -69,24 +87,24 @@ export default function LeaveForm({ form, attachmentName, leaveTypes, balances, 
         );
       };
 
-      return [...leaveTypes]
+      return [...allowedLeaveTypes]
         .map((leaveType) => ({ leaveType, priority: getPriority(leaveType) }))
         .filter((item) => item.priority !== -1)
         .sort((left, right) => left.priority - right.priority)
         .map((item) => item.leaveType);
     },
-    [leaveTypePriority, leaveTypes],
+    [leaveTypePriority, allowedLeaveTypes],
   );
 
   const remainingLeaveTypes = useMemo(
-    () => leaveTypes.filter((leaveType) => !primaryLeaveTypes.some((primaryType) => primaryType.id === leaveType.id)),
-    [leaveTypes, primaryLeaveTypes],
+    () => allowedLeaveTypes.filter((leaveType) => !primaryLeaveTypes.some((primaryType) => primaryType.id === leaveType.id)),
+    [allowedLeaveTypes, primaryLeaveTypes],
   );
 
-  const visibleLeaveTypes = showAllLeaveTypes ? leaveTypes : primaryLeaveTypes;
+  const visibleLeaveTypes = showAllLeaveTypes ? allowedLeaveTypes : primaryLeaveTypes;
   const selectedLeaveType = useMemo(
-    () => leaveTypes.find((leaveType) => String(leaveType.id) === form.leaveTypeId) ?? null,
-    [form.leaveTypeId, leaveTypes],
+    () => allowedLeaveTypes.find((leaveType) => String(leaveType.id) === form.leaveTypeId) ?? null,
+    [form.leaveTypeId, allowedLeaveTypes],
   );
 
   useEffect(() => {
@@ -338,44 +356,92 @@ export default function LeaveForm({ form, attachmentName, leaveTypes, balances, 
         </label>
       )}
       {isSingleDay ? (
-        <label>
-          Duration
-          <select className="leave-form-card__select"
-            value={form.startDayDuration}
-            disabled={isSubmitting}
-            onChange={(event) => {
-              const nextDuration = event.target.value as LeaveFormValues["startDayDuration"];
-              onChange({ ...form, startDayDuration: nextDuration, endDayDuration: nextDuration });
-            }}
-          >
-            <option value="FULL_DAY">Full day</option>
-            <option value="HALF_DAY">Half day</option>
-          </select>
-        </label>
-      ) : (
-        <div className="grid cols-2">
+        <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
           <label>
-            Start day
+            Duration
             <select className="leave-form-card__select"
               value={form.startDayDuration}
               disabled={isSubmitting}
-              onChange={(event) => onChange({ ...form, startDayDuration: event.target.value as LeaveFormValues["startDayDuration"] })}
+              onChange={(event) => {
+                const nextDuration = event.target.value as LeaveFormValues["startDayDuration"];
+                onChange({ ...form, startDayDuration: nextDuration, endDayDuration: nextDuration });
+              }}
             >
               <option value="FULL_DAY">Full day</option>
               <option value="HALF_DAY">Half day</option>
             </select>
           </label>
-          <label>
-            End day
-            <select className="leave-form-card__select"
-              value={form.endDayDuration}
-              disabled={isSubmitting}
-              onChange={(event) => onChange({ ...form, endDayDuration: event.target.value as LeaveFormValues["endDayDuration"] })}
-            >
-              <option value="FULL_DAY">Full day</option>
-              <option value="HALF_DAY">Half day</option>
-            </select>
-          </label>
+          {form.startDayDuration === "HALF_DAY" && (
+            <label style={{ marginLeft: "16px", marginTop: "-4px" }}>
+              Half Day Period
+              <select className="leave-form-card__select"
+                value={form.startHalfDayPeriod ?? "FIRST_HALF"}
+                disabled={isSubmitting}
+                onChange={(event) => {
+                  const val = event.target.value as "FIRST_HALF" | "SECOND_HALF";
+                  onChange({ ...form, startHalfDayPeriod: val, endHalfDayPeriod: val });
+                }}
+              >
+                <option value="FIRST_HALF">First Half (Morning)</option>
+                <option value="SECOND_HALF">Second Half (Afternoon)</option>
+              </select>
+            </label>
+          )}
+        </div>
+      ) : (
+        <div className="grid cols-2">
+          <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+            <label>
+              Start day
+              <select className="leave-form-card__select"
+                value={form.startDayDuration}
+                disabled={isSubmitting}
+                onChange={(event) => onChange({ ...form, startDayDuration: event.target.value as LeaveFormValues["startDayDuration"] })}
+              >
+                <option value="FULL_DAY">Full day</option>
+                <option value="HALF_DAY">Half day</option>
+              </select>
+            </label>
+            {form.startDayDuration === "HALF_DAY" && (
+              <label style={{ marginLeft: "16px", marginTop: "-4px" }}>
+                Start Day Period
+                <select className="leave-form-card__select"
+                  value={form.startHalfDayPeriod ?? "FIRST_HALF"}
+                  disabled={isSubmitting}
+                  onChange={(event) => onChange({ ...form, startHalfDayPeriod: event.target.value as "FIRST_HALF" | "SECOND_HALF" })}
+                >
+                  <option value="FIRST_HALF">First Half</option>
+                  <option value="SECOND_HALF">Second Half</option>
+                </select>
+              </label>
+            )}
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+            <label>
+              End day
+              <select className="leave-form-card__select"
+                value={form.endDayDuration}
+                disabled={isSubmitting}
+                onChange={(event) => onChange({ ...form, endDayDuration: event.target.value as LeaveFormValues["endDayDuration"] })}
+              >
+                <option value="FULL_DAY">Full day</option>
+                <option value="HALF_DAY">Half day</option>
+              </select>
+            </label>
+            {form.endDayDuration === "HALF_DAY" && (
+              <label style={{ marginLeft: "16px", marginTop: "-4px" }}>
+                End Day Period
+                <select className="leave-form-card__select"
+                  value={form.endHalfDayPeriod ?? "FIRST_HALF"}
+                  disabled={isSubmitting}
+                  onChange={(event) => onChange({ ...form, endHalfDayPeriod: event.target.value as "FIRST_HALF" | "SECOND_HALF" })}
+                >
+                  <option value="FIRST_HALF">First Half</option>
+                  <option value="SECOND_HALF">Second Half</option>
+                </select>
+              </label>
+            )}
+          </div>
         </div>
       )}
       <label>

@@ -1,3 +1,8 @@
+import crypto from "node:crypto";
+import fs from "node:fs/promises";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+import multer, { type FileFilterCallback, type StorageEngine } from "multer";
 import { EmployeeCapabilityType, EmploymentStatus, RoleName } from "@prisma/client";
 import { Router } from "express";
 import { z } from "zod";
@@ -22,6 +27,7 @@ const employeeSchema = z.object({
   lastName: z.string().optional().nullable(),
   jobTitle: z.string().trim().optional().nullable(),
   phone: z.string().optional().nullable(),
+  gender: z.string().optional().nullable(),
   annualPackageLpa: z.union([z.coerce.number().positive(), z.null()]).optional(),
   isOnProbation: z.boolean().optional(),
   probationEndDate: z.string().datetime().nullable().optional(),
@@ -257,6 +263,7 @@ router.post("/", requireRoles("ADMIN", "HR"), validate(employeeSchema), async (r
           lastName: finalLastName,
           jobTitle: employeeData.jobTitle,
           phone: employeeData.phone,
+          gender: employeeData.gender || null,
           ...compensationData,
           isOnProbation: employeeData.isOnProbation ?? false,
           probationEndDate: employeeData.probationEndDate ? new Date(employeeData.probationEndDate) : null,
@@ -781,6 +788,186 @@ router.get("/:id/points-history", requireRoles("ADMIN", "HR", "MANAGER", "EMPLOY
     });
 
     return sendSuccess(response, "Points history fetched successfully", history);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// ── Employee Documents ───────────────────────────────────────────────────────
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const documentsUploadsDir = path.resolve(__dirname, "../../../uploads/documents");
+
+const documentUpload = multer({
+  storage: multer.diskStorage({
+    destination: (
+      _request: Express.Request,
+      _file: Express.Multer.File,
+      callback: (error: Error | null, destination: string) => void,
+    ) => callback(null, documentsUploadsDir),
+    filename: (
+      _request: Express.Request,
+      file: Express.Multer.File,
+      callback: (error: Error | null, filename: string) => void,
+    ) => {
+      const extension = path.extname(file.originalname);
+      const baseName = path.basename(file.originalname, extension).replace(/[^a-zA-Z0-9-_]/g, "_");
+      callback(null, `${crypto.randomUUID()}-${baseName}${extension}`);
+    },
+  }) satisfies StorageEngine,
+  limits: {
+    fileSize: 10 * 1024 * 1024, // 10MB
+  },
+  fileFilter: (_request: Express.Request, file: Express.Multer.File, callback: FileFilterCallback) => {
+    callback(null, true);
+  },
+});
+
+router.get("/:id/documents", requireRoles("ADMIN", "HR", "MANAGER", "EMPLOYEE"), async (request, response, next) => {
+  try {
+    const employeeId = Number(request.params.id);
+
+    // Basic access control
+    if (request.user?.role === "EMPLOYEE" && request.user.employeeId !== employeeId) {
+       throw new AppError("You are not authorized to view these documents", 403);
+    }
+    if (request.user?.role === "MANAGER") {
+      const employee = await prisma.employee.findUnique({ where: { id: employeeId }, select: { managerId: true } });
+      if (employee?.managerId !== request.user.employeeId && request.user.employeeId !== employeeId) {
+        throw new AppError("You are not authorized to view these documents", 403);
+      }
+    }
+
+    const documents = await prisma.employeeDocument.findMany({
+      where: { employeeId },
+      orderBy: { createdAt: "desc" },
+    });
+
+    return sendSuccess(response, "Documents fetched successfully", documents);
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.post("/:id/documents", requireRoles("ADMIN", "HR", "MANAGER", "EMPLOYEE"), documentUpload.single("document"), async (request, response, next) => {
+  try {
+    const employeeId = Number(request.params.id);
+
+    // Basic access control (Admin/HR can upload for anyone, Employee can upload for themselves)
+    if (request.user?.role === "EMPLOYEE" && request.user.employeeId !== employeeId) {
+       throw new AppError("You can only upload documents to your own profile", 403);
+    }
+
+    if (!request.file) {
+      throw new AppError("No document provided", 400);
+    }
+
+    const { name } = request.body;
+
+    const document = await prisma.employeeDocument.create({
+      data: {
+        employeeId,
+        name: name || request.file.originalname,
+        originalName: request.file.originalname,
+        filePath: `/uploads/documents/${request.file.filename}`,
+        mimeType: request.file.mimetype,
+        size: request.file.size,
+      },
+    });
+
+    return sendSuccess(response, "Document uploaded successfully", document, 201);
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.delete("/:id/documents/:documentId", requireRoles("ADMIN", "HR", "EMPLOYEE"), async (request, response, next) => {
+  try {
+    const employeeId = Number(request.params.id);
+    const documentId = Number(request.params.documentId);
+
+    if (request.user?.role === "EMPLOYEE" && request.user.employeeId !== employeeId) {
+       throw new AppError("You can only delete your own documents", 403);
+    }
+
+    const document = await prisma.employeeDocument.findUnique({
+      where: { id: documentId },
+    });
+
+    if (!document || document.employeeId !== employeeId) {
+      throw new AppError("Document not found", 404);
+    }
+    await prisma.employeeDocument.delete({
+      where: { id: documentId },
+    });
+
+    try {
+      const fullPath = path.resolve(__dirname, "../../..", document.filePath.replace(/^\//, ""));
+      await fs.unlink(fullPath);
+    } catch (err) {
+      console.error("Failed to delete file from disk:", err);
+    }
+
+    return sendSuccess(response, "Document deleted successfully", null);
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.patch("/:id/documents/:documentId", requireRoles("ADMIN", "HR", "EMPLOYEE"), validate(z.object({ name: z.string().trim().min(1, "Name is required") })), async (request, response, next) => {
+  try {
+    const employeeId = Number(request.params.id);
+    const documentId = Number(request.params.documentId);
+
+    if (request.user?.role === "EMPLOYEE" && request.user.employeeId !== employeeId) {
+       throw new AppError("You can only rename your own documents", 403);
+    }
+
+    const document = await prisma.employeeDocument.findUnique({
+      where: { id: documentId },
+    });
+
+    if (!document || document.employeeId !== employeeId) {
+      throw new AppError("Document not found", 404);
+    }
+
+    const updated = await prisma.employeeDocument.update({
+      where: { id: documentId },
+      data: { name: request.body.name },
+    });
+
+    return sendSuccess(response, "Document renamed successfully", updated);
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.get("/:id/documents/:documentId/download", requireRoles("ADMIN", "HR", "MANAGER", "EMPLOYEE"), async (request, response, next) => {
+  try {
+    const employeeId = Number(request.params.id);
+    const documentId = Number(request.params.documentId);
+
+    // Access control
+    if (request.user?.role === "EMPLOYEE" && request.user.employeeId !== employeeId) {
+       throw new AppError("You are not authorized to view this document", 403);
+    }
+    if (request.user?.role === "MANAGER") {
+      const employee = await prisma.employee.findUnique({ where: { id: employeeId }, select: { managerId: true } });
+      if (employee?.managerId !== request.user.employeeId && request.user.employeeId !== employeeId) {
+        throw new AppError("You are not authorized to view this document", 403);
+      }
+    }
+
+    const document = await prisma.employeeDocument.findUnique({
+      where: { id: documentId },
+    });
+
+    if (!document || document.employeeId !== employeeId) {
+      throw new AppError("Document not found", 404);
+    }
+
+    const fullPath = path.resolve(__dirname, "../../..", document.filePath.replace(/^\//, ""));
+    response.download(fullPath, document.originalName);
   } catch (error) {
     next(error);
   }

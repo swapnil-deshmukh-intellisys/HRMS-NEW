@@ -13,6 +13,7 @@ export type EmployeeFormValues = {
   lastName: string;
   jobTitle: string;
   phone: string;
+  gender: string;
   annualPackageLpa: string;
   isOnProbation: boolean;
   probationEndDate: string;
@@ -112,6 +113,18 @@ export default function EmployeeForm({
           <label>
             Mobile number
             <input value={form.phone} onChange={(event) => onChange({ ...form, phone: event.target.value })} placeholder="+91 98765 43210" />
+          </label>
+          <label>
+            Gender
+            <select
+              value={form.gender || ""}
+              onChange={(event) => onChange({ ...form, gender: event.target.value })}
+            >
+              <option value="">Select gender</option>
+              <option value="MALE">Male</option>
+              <option value="FEMALE">Female</option>
+              <option value="OTHER">Other</option>
+            </select>
           </label>
           <label>
             Date of birth

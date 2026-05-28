@@ -8,6 +8,7 @@ const __dirname = path.dirname(__filename);
 const DIRS = [
   path.resolve(__dirname, "../../uploads"),
   path.resolve(__dirname, "../../uploads/leaves"),
+  path.resolve(__dirname, "../../uploads/documents"),
 ];
 
 export function initDirectories() {

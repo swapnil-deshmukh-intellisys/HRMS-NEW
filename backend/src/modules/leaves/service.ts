@@ -247,7 +247,7 @@ export async function createLeaveRequestForEmployee(
   }
 
   const medicalProofRequired = requiresMedicalProof(leaveType.code, totalDays);
-  const medicalProofDueAt = medicalProofRequired ? getMedicalProofDueAt(new Date()) : null;
+  const medicalProofDueAt = medicalProofRequired ? getMedicalProofDueAt(startDate) : null;
   const medicalProofStatus = medicalProofRequired ? MEDICAL_PROOF_STATUS.PENDING_UPLOAD : MEDICAL_PROOF_STATUS.NOT_REQUIRED;
 
   if (isPolicyActiveForYear(leaveType, year) && leaveType.maxUsagesPerYear !== null) {

@@ -73,6 +73,7 @@ export type Employee = {
   jobTitle?: string | null;
   points?: number | null;
   phone?: string | null;
+  gender?: string | null;
   annualPackageLpa?: number | null;
   grossMonthlySalary?: number | null;
   basicMonthlySalary?: number | null;
@@ -106,6 +107,19 @@ export type Employee = {
   }>;
   teamMembers?: Employee[];
   outlookEmails?: OutlookEmail[];
+  documents?: EmployeeDocument[];
+};
+
+export type EmployeeDocument = {
+  id: number;
+  employeeId: number;
+  name: string;
+  originalName: string;
+  filePath: string;
+  mimeType: string;
+  size: number;
+  createdAt: string;
+  updatedAt: string;
 };
 
 export type LeaveType = {
@@ -139,6 +153,7 @@ export type LeaveRequest = {
   id: number;
   startDate: string;
   endDate: string;
+  createdAt?: string;
   startDayDuration: "FULL_DAY" | "HALF_DAY";
   endDayDuration: "FULL_DAY" | "HALF_DAY";
   totalDays: number;

@@ -181,16 +181,7 @@ export function initScheduler() {
     timezone: "Asia/Kolkata"
   });
 
-  // ☕ Scheduled Break Reminder: 5:00 PM IST (Mon-Fri)
-  cron.schedule("0 17 * * 1-5", async () => {
-    console.log("[Scheduler] Triggering 5:00 PM Break Reminder...");
-    await broadcastBreakReminder(
-      "☕ Personal Break Time!",
-      "It's 5:00 PM. Time to step away and recharge. Would you like to start your break?"
-    );
-  }, {
-    timezone: "Asia/Kolkata"
-  });
+
 
   // 🕒 Automated Attendance Finalization: 12:00 AM IST daily
   // Runs at midnight to finalize the PREVIOUS day's records.

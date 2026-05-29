@@ -15,6 +15,55 @@ export function AppProvider({ children, token, role }: { children: ReactNode; to
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
+  const [serverTimeOffset, setServerTimeOffset] = useState<number>(0);
+  const [isTimeDrifted, setIsTimeDrifted] = useState<boolean>(false);
+  const [timeSyncLoading, setTimeSyncLoading] = useState<boolean>(false);
+
+  const getCalibratedNow = useCallback(() => {
+    return new Date(Date.now() + serverTimeOffset);
+  }, [serverTimeOffset]);
+
+  const syncServerTime = useCallback(async () => {
+    try {
+      setTimeSyncLoading(true);
+      const startTime = Date.now();
+      const response = await apiRequest<{ serverTime: string; timezone: string }>("/system/time");
+      const endTime = Date.now();
+      
+      const serverTimeMs = new Date(response.data.serverTime).getTime();
+      const rtt = endTime - startTime;
+      const latency = rtt / 2;
+      
+      const offset = (serverTimeMs + latency) - endTime;
+      setServerTimeOffset(offset);
+      
+      const isDrifted = Math.abs(offset) > 5 * 60 * 1000;
+      setIsTimeDrifted(isDrifted);
+    } catch (err) {
+      console.error("[AppProvider] Failed to sync server time:", err);
+    } finally {
+      setTimeSyncLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void syncServerTime();
+    
+    const interval = setInterval(() => {
+      void syncServerTime();
+    }, 5 * 60 * 1000);
+    
+    const handleFocus = () => {
+      void syncServerTime();
+    };
+    window.addEventListener("focus", handleFocus);
+    
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener("focus", handleFocus);
+    };
+  }, [syncServerTime]);
+
   const refreshSummary = useCallback(async () => {
     if (!token) return;
 
@@ -142,8 +191,29 @@ export function AppProvider({ children, token, role }: { children: ReactNode; to
     analyticsData,
     fetchAnalyticsData,
     calendarExceptions,
-    token
-  }), [summary, notifications, announcements, loading, error, refreshSummary, markNotificationAsRead, markAllNotificationsAsRead, analyticsData, fetchAnalyticsData, calendarExceptions, token]);
+    token,
+    serverTimeOffset,
+    getCalibratedNow,
+    isTimeDrifted,
+    timeSyncLoading
+  }), [
+    summary,
+    notifications,
+    announcements,
+    loading,
+    error,
+    refreshSummary,
+    markNotificationAsRead,
+    markAllNotificationsAsRead,
+    analyticsData,
+    fetchAnalyticsData,
+    calendarExceptions,
+    token,
+    serverTimeOffset,
+    getCalibratedNow,
+    isTimeDrifted,
+    timeSyncLoading
+  ]);
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
 }

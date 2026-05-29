@@ -22,6 +22,7 @@ import systemRoutes from "./modules/system/routes.js";
 import todoRoutes from "./modules/todos/routes.js";
 import taskRoutes from "./modules/tasks/routes.js";
 import emailTemplateRoutes from "./modules/email-templates/routes.js";
+import salesRoutes from "./modules/sales/routes.js";
 
 export const app = express();
 app.set("trust proxy", 1); // Trust the first proxy (Render)
@@ -67,6 +68,7 @@ app.use("/api/system", systemRoutes);
 app.use("/api/todos", todoRoutes);
 app.use("/api/tasks", taskRoutes);
 app.use("/api/email-templates", emailTemplateRoutes);
+app.use("/api/sales", salesRoutes);
 app.use("/api", leaveRoutes);
 
 app.use(notFound);

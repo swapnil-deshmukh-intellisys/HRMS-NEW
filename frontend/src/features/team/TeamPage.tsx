@@ -1,6 +1,6 @@
 import "./TeamPage.css";
-import { useEffect, useMemo, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useEffect, useMemo, useState, useCallback } from "react";
+import { useSearchParams, useNavigate } from "react-router-dom";
 import MessageCard from "../../components/common/MessageCard";
 import Table from "../../components/common/Table";
 import { apiRequest } from "../../services/api";
@@ -18,7 +18,7 @@ type TeamPageProps = {
   currentEmployee: Employee | null;
 };
 
-type TeamTab = "PROJECTS" | "MEMBERS" | "ATTENDANCE" | "LEAVES" | "OUTLOOK";
+type TeamTab = "SALES" | "PROJECTS" | "MEMBERS" | "ATTENDANCE" | "LEAVES" | "OUTLOOK";
 type VisibleMonth = {
   month: number;
   year: number;
@@ -60,10 +60,11 @@ function getCalendarDays({ month, year }: VisibleMonth) {
 
 export default function TeamPage({ token, role, currentEmployee }: TeamPageProps) {
   const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
   const today = toLocalDateString(new Date());
 
   // Derive state from URL search params
-  const activeTab = (searchParams.get("tab") as TeamTab) || "PROJECTS";
+  const activeTab = (searchParams.get("tab") as TeamTab) || "SALES";
   const activeClientCode = (searchParams.get("client") as "TUT" | "TEC") || "TUT";
   const projectCategory = (searchParams.get("category") as "MAGAZINES" | "INDUSTRIES") || "MAGAZINES";
 
@@ -130,6 +131,84 @@ export default function TeamPage({ token, role, currentEmployee }: TeamPageProps
   const teamMemberIds = useMemo(() => new Set(teamMembers.map((member) => member.id)), [teamMembers]);
   const calendarDays = useMemo(() => getCalendarDays(visibleMonth), [visibleMonth]);
   const currentMonthLabel = formatInTimeZone(new Date(visibleMonth.year, visibleMonth.month, 1), 'Asia/Kolkata', 'MMMM yyyy');
+
+  // Sales Tracker States
+  const [sales, setSales] = useState<any[]>([]);
+  const [salesLoading, setSalesLoading] = useState(false);
+  const [salesMonth, setSalesMonth] = useState<string>(String(new Date().getMonth() + 1));
+  const [salesYear, setSalesYear] = useState<string>(String(new Date().getFullYear()));
+  const [showSalesModal, setShowSalesModal] = useState(false);
+  const [isSavingSale, setIsSavingSale] = useState(false);
+  const [salesForm, setSalesForm] = useState({
+    employeeId: "",
+    outlookEmailId: "",
+    amount: ""
+  });
+
+  const salesStats = useMemo(() => {
+    const totalAchieved = sales.reduce((acc, curr) => acc + Number(curr.amount || 0), 0);
+    const target = 50000; // Static target of $50,000
+    const percent = target > 0 ? Math.min((totalAchieved / target) * 100, 100) : 0;
+    const uniqueSellers = new Set(sales.filter(s => s.employeeId).map(s => s.employeeId)).size;
+    const avgSale = sales.length > 0 ? totalAchieved / sales.length : 0;
+    return {
+      totalAchieved,
+      target,
+      percent,
+      uniqueSellers,
+      avgSale
+    };
+  }, [sales]);
+
+  const fetchSalesRecords = useCallback(async () => {
+    if (!token || !canAccessTeam) return;
+    try {
+      setSalesLoading(true);
+      const response = await apiRequest<any[]>(`/sales?month=${salesMonth}&year=${salesYear}`, { token });
+      setSales(response.data || []);
+    } catch (err: any) {
+      console.error("Failed to load sales records:", err);
+    } finally {
+      setSalesLoading(false);
+    }
+  }, [salesMonth, salesYear, token, canAccessTeam]);
+
+  useEffect(() => {
+    if (activeTab === "SALES") {
+      void fetchSalesRecords();
+    }
+  }, [activeTab, fetchSalesRecords]);
+
+  async function handleSaveSale(e: React.FormEvent) {
+    e.preventDefault();
+    if (!salesForm.employeeId || !salesForm.outlookEmailId || !salesForm.amount) {
+      toast.error("Please fill in all required fields.");
+      return;
+    }
+
+    try {
+      setIsSavingSale(true);
+      await apiRequest("/sales", {
+        method: "POST",
+        token,
+        body: {
+          employeeId: parseInt(salesForm.employeeId, 10),
+          outlookEmailId: parseInt(salesForm.outlookEmailId, 10),
+          amount: parseFloat(salesForm.amount),
+          month: parseInt(salesMonth, 10),
+          year: parseInt(salesYear, 10),
+        },
+      });
+      toast.success("Sales record saved successfully.");
+      setShowSalesModal(false);
+      setSalesForm({ employeeId: "", outlookEmailId: "", amount: "" });
+      void fetchSalesRecords();
+    } catch (err: any) {
+      toast.error(err.message || "Failed to save sales record.");
+    } finally {
+      setIsSavingSale(false);
+    }
+  }
 
   useEffect(() => {
     if (!canAccessTeam || !token) {
@@ -299,6 +378,15 @@ export default function TeamPage({ token, role, currentEmployee }: TeamPageProps
         <button
           type="button"
           role="tab"
+          aria-selected={activeTab === "SALES"}
+          className={`team-page-primary-tab ${activeTab === "SALES" ? "team-page-primary-tab--active" : ""}`.trim()}
+          onClick={() => setActiveTab("SALES")}
+        >
+          Sales Record
+        </button>
+        <button
+          type="button"
+          role="tab"
           aria-selected={activeTab === "PROJECTS"}
           className={`team-page-primary-tab ${activeTab === "PROJECTS" ? "team-page-primary-tab--active" : ""}`.trim()}
           onClick={() => setActiveTab("PROJECTS")}
@@ -342,6 +430,211 @@ export default function TeamPage({ token, role, currentEmployee }: TeamPageProps
           Outlook Emails
         </button>
       </div>
+
+      {activeTab === "SALES" && (
+        <div className="card dense-table-card team-page-card">
+          <div className="team-page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+            <div>
+              <h3>Monthly Sales Tracker</h3>
+              <p className="muted">Track manually recorded sales per employee and assigned Outlook shared identity.</p>
+            </div>
+            
+            <div className="filter-actions" style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+              <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                <select
+                  value={salesMonth}
+                  onChange={(e) => setSalesMonth(e.target.value)}
+                  style={{ padding: '6px 12px', borderRadius: '8px', border: '1px solid var(--color-border-default)', background: 'white', color: 'var(--color-text-primary)', fontSize: '13px', fontWeight: '600' }}
+                >
+                  <option value="1">January</option>
+                  <option value="2">February</option>
+                  <option value="3">March</option>
+                  <option value="4">April</option>
+                  <option value="5">May</option>
+                  <option value="6">June</option>
+                  <option value="7">July</option>
+                  <option value="8">August</option>
+                  <option value="9">September</option>
+                  <option value="10">October</option>
+                  <option value="11">November</option>
+                  <option value="12">December</option>
+                </select>
+                <select
+                  value={salesYear}
+                  onChange={(e) => setSalesYear(e.target.value)}
+                  style={{ padding: '6px 12px', borderRadius: '8px', border: '1px solid var(--color-border-default)', background: 'white', color: 'var(--color-text-primary)', fontSize: '13px', fontWeight: '600' }}
+                >
+                  <option value="2025">2025</option>
+                  <option value="2026">2026</option>
+                </select>
+              </div>
+
+              {(role === "ADMIN" || role === "HR" || role === "MANAGER" || isTeamLead) && (
+                <button
+                  type="button"
+                  className="primary small"
+                  style={{ padding: '8px 16px', borderRadius: '8px' }}
+                  onClick={() => {
+                    setSalesForm({ employeeId: "", outlookEmailId: "", amount: "" });
+                    setShowSalesModal(true);
+                  }}
+                >
+                  Update Sale
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Visual Sales Stats Dashboard */}
+          {!salesLoading && (
+            <div className="sales-stats-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px', margin: '20px 0', padding: '0 4px' }}>
+              
+              {/* Target Progress Card */}
+              <div className="sales-stat-card" style={{ background: '#f8fafc', padding: '16px', borderRadius: '12px', border: '1px solid var(--color-border-default)', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: '12px', color: 'var(--color-text-secondary)', fontWeight: '600' }}>MONTHLY TARGET PROGRESS</span>
+                  <span style={{ fontSize: '11px', background: '#e0f2fe', color: '#0369a1', padding: '2px 8px', borderRadius: '12px', fontWeight: '700' }}>
+                    {salesStats.percent.toFixed(0)}%
+                  </span>
+                </div>
+                <div>
+                  <h4 style={{ fontSize: '20px', fontWeight: '800', color: 'var(--color-text-primary)', margin: 0 }}>
+                    ${salesStats.totalAchieved.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                  </h4>
+                  <span style={{ fontSize: '11px', color: 'var(--color-text-secondary)' }}>
+                    of ${salesStats.target.toLocaleString()} target
+                  </span>
+                </div>
+                {/* Progress Bar */}
+                <div style={{ width: '100%', height: '8px', background: '#cbd5e1', borderRadius: '4px', overflow: 'hidden', marginTop: '4px' }}>
+                  <div style={{ width: `${salesStats.percent}%`, height: '100%', background: 'linear-gradient(90deg, #3b82f6, #6366f1)', borderRadius: '4px', transition: 'width 0.5s ease-out' }} />
+                </div>
+              </div>
+
+              {/* Total Achieved Card */}
+              <div className="sales-stat-card" style={{ background: '#f8fafc', padding: '16px', borderRadius: '12px', border: '1px solid var(--color-border-default)', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                <span style={{ fontSize: '12px', color: 'var(--color-text-secondary)', fontWeight: '600' }}>TOTAL RECORDED SALES</span>
+                <div style={{ marginTop: '4px' }}>
+                  <h4 style={{ fontSize: '22px', fontWeight: '800', color: '#10b981', margin: 0 }}>
+                    ${salesStats.totalAchieved.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </h4>
+                  <span style={{ fontSize: '11px', color: 'var(--color-text-secondary)' }}>
+                    Total revenue logged this month
+                  </span>
+                </div>
+              </div>
+
+              {/* Contributing Team Members */}
+              <div className="sales-stat-card" style={{ background: '#f8fafc', padding: '16px', borderRadius: '12px', border: '1px solid var(--color-border-default)', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                <span style={{ fontSize: '12px', color: 'var(--color-text-secondary)', fontWeight: '600' }}>ACTIVE SELLERS</span>
+                <div style={{ marginTop: '4px' }}>
+                  <h4 style={{ fontSize: '22px', fontWeight: '800', color: 'var(--color-text-primary)', margin: 0 }}>
+                    {salesStats.uniqueSellers}
+                  </h4>
+                  <span style={{ fontSize: '11px', color: 'var(--color-text-secondary)' }}>
+                    Unique members with recorded sales
+                  </span>
+                </div>
+              </div>
+
+              {/* Average Deal Size */}
+              <div className="sales-stat-card" style={{ background: '#f8fafc', padding: '16px', borderRadius: '12px', border: '1px solid var(--color-border-default)', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                <span style={{ fontSize: '12px', color: 'var(--color-text-secondary)', fontWeight: '600' }}>AVERAGE CONTRIBUTION</span>
+                <div style={{ marginTop: '4px' }}>
+                  <h4 style={{ fontSize: '22px', fontWeight: '800', color: '#6366f1', margin: 0 }}>
+                    ${salesStats.avgSale.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </h4>
+                  <span style={{ fontSize: '11px', color: 'var(--color-text-secondary)' }}>
+                    Per sales transaction record
+                  </span>
+                </div>
+              </div>
+
+            </div>
+          )}
+
+          {salesLoading ? (
+            <div className="page-loading" style={{ padding: '20px' }}>
+              <span className="skeleton-line skeleton-line--title" />
+              <span className="skeleton-line skeleton-line--long" />
+            </div>
+          ) : (
+            <div className="table-wrap">
+              <table className="table table--dense">
+                <thead>
+                  <tr>
+                    <th>Employee</th>
+                    <th>Designation</th>
+                    <th>Assigned Outlook ID</th>
+                    <th>Client</th>
+                    <th>Sales Amount</th>
+                    {(role === "ADMIN" || role === "HR" || role === "MANAGER" || isTeamLead) && (
+                      <th style={{ textAlign: 'right' }}>Actions</th>
+                    )}
+                  </tr>
+                </thead>
+                <tbody>
+                  {sales.length ? (
+                    sales.map((record) => (
+                      <tr key={record.id}>
+                        <td>
+                          <span className="table-cell-primary">{`${record.employee?.firstName || ""} ${record.employee?.lastName || ""}`}</span>
+                          {record.employee?.employeeCode && <span className="table-cell-secondary" style={{ display: 'block', fontSize: '10px' }}>#{record.employee.employeeCode}</span>}
+                        </td>
+                        <td>{record.employee?.jobTitle || "-"}</td>
+                        <td>
+                          <div style={{ display: 'flex', flexDirection: 'column' }}>
+                            <span style={{ fontWeight: '600', color: 'var(--color-text-primary)' }}>{record.outlookEmail?.name || "-"}</span>
+                            <span className="muted" style={{ fontSize: '11px' }}>{record.outlookEmail?.email || ""}</span>
+                          </div>
+                        </td>
+                        <td>
+                          <span className="status-pill" style={{ background: record.outlookEmail?.client?.code === 'TEC' ? '#ecfdf5' : '#f1f5f9', color: record.outlookEmail?.client?.code === 'TEC' ? '#065f46' : '#475569', fontSize: '11px' }}>
+                            {record.outlookEmail?.client?.code || "-"}
+                          </span>
+                        </td>
+                        <td>
+                          <strong style={{ fontSize: '15px', color: 'var(--color-accent-strong)' }}>
+                            ${Number(record.amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                          </strong>
+                        </td>
+                        {(role === "ADMIN" || role === "HR" || role === "MANAGER" || isTeamLead) && (
+                          <td style={{ textAlign: 'right' }}>
+                            <button
+                              className="secondary small"
+                              onClick={() => {
+                                setSalesForm({
+                                  employeeId: String(record.employeeId),
+                                  outlookEmailId: String(record.outlookEmailId),
+                                  amount: String(record.amount)
+                                });
+                                setShowSalesModal(true);
+                              }}
+                            >
+                              Edit
+                            </button>
+                          </td>
+                        )}
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan={(role === "ADMIN" || role === "HR" || role === "MANAGER" || isTeamLead) ? 6 : 5} style={{ textAlign: 'center', padding: '3rem' }}>
+                        <div className="table-empty-state" style={{ background: 'none', border: 'none', padding: 0, boxShadow: 'none' }}>
+                          <strong style={{ display: 'block', fontSize: '15px', color: '#475569', marginBottom: '0.25rem' }}>No sales recorded</strong>
+                          <span className="table-cell-secondary" style={{ fontSize: '13px' }}>
+                            No manual sales records found for this month.
+                          </span>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
 
       {activeTab === "PROJECTS" && (
         <div className="stack">
@@ -703,7 +996,18 @@ export default function TeamPage({ token, role, currentEmployee }: TeamPageProps
                   teamMembers.map((member) => {
                     const clientEmails = member.outlookEmails?.filter((e: any) => e.client?.code === activeClientCode) ?? [];
                     return (
-                      <tr key={member.id}>
+                      <tr 
+                        key={member.id}
+                        className="table-row--clickable"
+                        onClick={() => {
+                          if (clientEmails.length > 0) {
+                            navigate(`/team/outlook-report/${member.id}/${clientEmails[0].id}`);
+                          } else {
+                            toast.error(`No ${activeClientCode} emails assigned to ${member.firstName}. Click "Manage" to assign one first.`);
+                          }
+                        }}
+                        style={{ cursor: 'pointer' }}
+                      >
                         <td>
                           <span className="table-cell-primary">{`${member.firstName} ${member.lastName}`}</span>
                         </td>
@@ -712,7 +1016,31 @@ export default function TeamPage({ token, role, currentEmployee }: TeamPageProps
                           <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
                             {clientEmails.length ? (
                               clientEmails.map((email: any) => (
-                                <span key={email.id} className="status-pill" style={{ background: activeClientCode === 'TEC' ? '#ecfdf5' : '#f1f5f9', color: activeClientCode === 'TEC' ? '#065f46' : '#475569', fontSize: '11px' }}>
+                                <span 
+                                  key={email.id} 
+                                  className="status-pill status-pill--clickable" 
+                                  style={{ 
+                                    background: activeClientCode === 'TEC' ? '#ecfdf5' : '#f1f5f9', 
+                                    color: activeClientCode === 'TEC' ? '#065f46' : '#475569', 
+                                    fontSize: '11px',
+                                    cursor: 'pointer',
+                                    border: '1px solid transparent',
+                                    transition: 'all 0.2s'
+                                  }}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    navigate(`/team/outlook-report/${member.id}/${email.id}`);
+                                  }}
+                                  title="Click to view detailed stats and logs"
+                                  onMouseEnter={(e) => {
+                                    e.currentTarget.style.borderColor = activeClientCode === 'TEC' ? '#047857' : '#94a3b8';
+                                    e.currentTarget.style.transform = 'translateY(-1px)';
+                                  }}
+                                  onMouseLeave={(e) => {
+                                    e.currentTarget.style.borderColor = 'transparent';
+                                    e.currentTarget.style.transform = 'none';
+                                  }}
+                                >
                                   {email.name}
                                 </span>
                               ))
@@ -721,7 +1049,7 @@ export default function TeamPage({ token, role, currentEmployee }: TeamPageProps
                             )}
                           </div>
                         </td>
-                        <td style={{ textAlign: 'right' }}>
+                        <td style={{ textAlign: 'right' }} onClick={(e) => e.stopPropagation()}>
                           <button 
                             className="secondary small"
                             onClick={() => {
@@ -991,6 +1319,103 @@ export default function TeamPage({ token, role, currentEmployee }: TeamPageProps
             </button>
           </div>
         </div>
+      </Modal>
+
+      <Modal
+        open={showSalesModal}
+        title={salesForm.employeeId && salesForm.outlookEmailId && sales.some(s => String(s.employeeId) === salesForm.employeeId && String(s.outlookEmailId) === salesForm.outlookEmailId) ? "Edit Sales Record" : "Add Sales Record"}
+        onClose={() => {
+          setShowSalesModal(false);
+          setSalesForm({ employeeId: "", outlookEmailId: "", amount: "" });
+        }}
+      >
+        <form onSubmit={handleSaveSale} className="stack" style={{ gap: '16px' }}>
+          <div>
+            <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', marginBottom: '6px' }}>Employee *</label>
+            <select
+              value={salesForm.employeeId}
+              onChange={(e) => {
+                setSalesForm({
+                  ...salesForm,
+                  employeeId: e.target.value,
+                  outlookEmailId: "" // Reset email when employee changes
+                });
+              }}
+              required
+              disabled={Boolean(salesForm.employeeId && salesForm.outlookEmailId && sales.some(s => String(s.employeeId) === salesForm.employeeId && String(s.outlookEmailId) === salesForm.outlookEmailId))}
+              style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--color-border-default)', background: 'white' }}
+            >
+              <option value="">Select Employee</option>
+              {teamMembers.map((member) => (
+                <option key={member.id} value={member.id}>
+                  {member.firstName} {member.lastName}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', marginBottom: '6px' }}>Assigned Outlook ID *</label>
+            <select
+              value={salesForm.outlookEmailId}
+              onChange={(e) => setSalesForm({ ...salesForm, outlookEmailId: e.target.value })}
+              required
+              disabled={!salesForm.employeeId || Boolean(salesForm.employeeId && salesForm.outlookEmailId && sales.some(s => String(s.employeeId) === salesForm.employeeId && String(s.outlookEmailId) === salesForm.outlookEmailId))}
+              style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--color-border-default)', background: 'white' }}
+            >
+              <option value="">Select Outlook ID</option>
+              {outlookEmails
+                .filter((email) => {
+                  const selectedEmpId = parseInt(salesForm.employeeId, 10);
+                  return email.employees?.some((emp: any) => emp.id === selectedEmpId);
+                })
+                .map((email) => (
+                  <option key={email.id} value={email.id}>
+                    {email.name} ({email.email}) [{email.client?.code || ""}]
+                  </option>
+                ))}
+            </select>
+            {salesForm.employeeId && outlookEmails.filter((email) => email.employees?.some((emp: any) => emp.id === parseInt(salesForm.employeeId, 10))).length === 0 && (
+              <p className="muted" style={{ fontSize: '11px', color: '#ef4444', marginTop: '6px', fontWeight: '600' }}>
+                This employee has no Outlook IDs assigned. Assign one in "Outlook Emails" first.
+              </p>
+            )}
+          </div>
+
+          <div>
+            <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', marginBottom: '6px' }}>Sales Amount ($) *</label>
+            <input
+              type="number"
+              step="any"
+              min="0"
+              placeholder="Enter sales recorded this month"
+              value={salesForm.amount}
+              onChange={(e) => setSalesForm({ ...salesForm, amount: e.target.value })}
+              required
+              style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--color-border-default)' }}
+            />
+          </div>
+
+          <div className="button-row" style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end', marginTop: '12px' }}>
+            <button
+              type="button"
+              className="secondary"
+              onClick={() => {
+                setShowSalesModal(false);
+                setSalesForm({ employeeId: "", outlookEmailId: "", amount: "" });
+              }}
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="primary"
+              disabled={isSavingSale}
+            >
+              {isSavingSale ? "Saving..." : "Save Record"}
+            </button>
+          </div>
+        </form>
       </Modal>
     </section>
   );

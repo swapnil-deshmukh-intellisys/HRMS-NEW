@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Plus, Trash2, Edit2, CheckSquare, ClipboardList, BarChart3, Search, Check, AlertCircle } from "lucide-react";
 import { apiRequest } from "../../services/api";
+import { useAuth } from "../../hooks/useAuth";
 import Modal from "../../components/common/Modal";
 import toast from "react-hot-toast";
 import "./ManageTasksPage.css";
@@ -230,6 +231,12 @@ function SearchableSelect({
 
 export default function ManageTasksPage({ token }: { token: string | null }) {
   const navigate = useNavigate();
+  const { sessionUser } = useAuth();
+  
+  const role = sessionUser?.role ?? "EMPLOYEE";
+  const isTeamLead = Boolean(sessionUser?.employee?.capabilities?.some((capability) => capability.capability === "TEAM_LEAD"));
+  const isNormalEmployee = role === "EMPLOYEE" && !isTeamLead;
+
   const [tasks, setTasks] = useState<ManagerTask[]>([]);
   const [employees, setEmployees] = useState<AssignableEmployee[]>([]);
   const [loading, setLoading] = useState(true);
@@ -268,12 +275,15 @@ export default function ManageTasksPage({ token }: { token: string | null }) {
 
   useEffect(() => {
     fetchTasks();
-    fetchEmployees();
-  }, [token]);
+    if (!isNormalEmployee) {
+      fetchEmployees();
+    }
+  }, [token, isNormalEmployee]);
 
   async function fetchTasks() {
     try {
-      const response = await apiRequest<ManagerTask[]>("/tasks/manager", { token });
+      const endpoint = isNormalEmployee ? "/tasks" : "/tasks/manager";
+      const response = await apiRequest<ManagerTask[]>(endpoint, { token });
       setTasks(response.data);
     } catch (error) {
       console.error("Failed to fetch tasks", error);
@@ -408,26 +418,34 @@ export default function ManageTasksPage({ token }: { token: string | null }) {
     }
   }
 
-  // Direct toggle completion by manager
+  // Direct toggle completion
   async function handleToggleTask(taskId: number, currentCompleted: boolean) {
-    if (!currentCompleted) {
-      const confirmToggle = window.confirm("Are you sure you want to mark this task as completed?");
-      if (!confirmToggle) return;
-      await submitToggleTask(taskId, false);
+    if (isNormalEmployee) {
+      await submitToggleTask(taskId, currentCompleted);
     } else {
-      setTaskToRevert(taskId);
-      setRevertReasonInput("");
-      setRevertPromptOpen(true);
+      if (!currentCompleted) {
+        const confirmToggle = window.confirm("Are you sure you want to mark this task as completed?");
+        if (!confirmToggle) return;
+        await submitToggleTask(taskId, false);
+      } else {
+        setTaskToRevert(taskId);
+        setRevertReasonInput("");
+        setRevertPromptOpen(true);
+      }
     }
   }
 
   async function submitToggleTask(taskId: number, currentCompleted: boolean, revertReason?: string) {
     try {
       const targetState = !currentCompleted;
-      const response = await apiRequest<ManagerTask>(`/tasks/manager/${taskId}`, {
+      const endpoint = isNormalEmployee
+        ? `/tasks/items/${taskId}`
+        : `/tasks/manager/${taskId}`;
+
+      const response = await apiRequest<ManagerTask>(endpoint, {
         method: "PUT",
         token,
-        body: { isCompleted: targetState, revertReason },
+        body: isNormalEmployee ? { isCompleted: targetState } : { isCompleted: targetState, revertReason },
       });
 
       setTasks((prev) => prev.map((t) => (t.id === taskId ? response.data : t)));
@@ -552,7 +570,7 @@ export default function ManageTasksPage({ token }: { token: string | null }) {
                     <div className="completions-list" style={{ marginTop: "6px", display: "flex", flexDirection: "column", gap: "4px", maxHeight: "100px", overflowY: "auto" }}>
                       {task.completions.map((comp: any) => (
                         <div key={comp.id} style={{ display: "flex", justifyContent: "space-between", fontSize: "11px", color: "var(--color-text-strong)" }}>
-                          <span>✔️ {comp.employee.firstName} {comp.employee.lastName} ({comp.employee.employeeCode})</span>
+                          <span>✔️ {comp.employee ? `${comp.employee.firstName} ${comp.employee.lastName}` : `Employee #${comp.employeeId}`} {comp.employee?.employeeCode ? `(${comp.employee.employeeCode})` : ""}</span>
                           <span style={{ color: "var(--color-text-secondary)", fontSize: "10px" }}>{new Date(comp.completedAt).toLocaleDateString()}</span>
                         </div>
                       ))}
@@ -577,28 +595,30 @@ export default function ManageTasksPage({ token }: { token: string | null }) {
             Created: <strong>{new Date(task.createdAt).toLocaleDateString()}</strong>
           </span>
 
-          <div className="action-icons">
-            <button
-              className="action-icon-btn edit"
-              onClick={(e) => {
-                e.stopPropagation();
-                openEditModal(task);
-              }}
-              title="Edit Task"
-            >
-              <Edit2 size={16} />
-            </button>
-            <button
-              className="action-icon-btn delete"
-              onClick={(e) => {
-                e.stopPropagation();
-                handleDeleteTask(task.id, task.title);
-              }}
-              title="Delete Task"
-            >
-              <Trash2 size={16} />
-            </button>
-          </div>
+          {!isNormalEmployee && (
+            <div className="action-icons">
+              <button
+                className="action-icon-btn edit"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  openEditModal(task);
+                }}
+                title="Edit Task"
+              >
+                <Edit2 size={16} />
+              </button>
+              <button
+                className="action-icon-btn delete"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleDeleteTask(task.id, task.title);
+                }}
+                title="Delete Task"
+              >
+                <Trash2 size={16} />
+              </button>
+            </div>
+          )}
         </div>
       </article>
     );
@@ -609,18 +629,20 @@ export default function ManageTasksPage({ token }: { token: string | null }) {
       {/* Page Header */}
       <header className="page-header-container">
         <div className="stack" style={{ gap: "4px" }}>
-          <span className="eyebrow eyebrow--purple">Manager Console</span>
-          <h2 className="page-title">Assigned Tasks & Progress</h2>
+          <span className="eyebrow eyebrow--purple">{isNormalEmployee ? "Self Console" : "Manager Console"}</span>
+          <h2 className="page-title">{isNormalEmployee ? "My Tasks & Progress" : "Assigned Tasks & Progress"}</h2>
         </div>
-        <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
-          <button className="button button--secondary" onClick={() => navigate("/tasks/employee-todos")}>
-            Employee Todos
-          </button>
-          <button className="button button--primary add-task-list-btn" onClick={openBulkCreateModal}>
-            <Plus size={18} />
-            Assign Direct Tasks
-          </button>
-        </div>
+        {!isNormalEmployee && (
+          <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+            <button className="button button--secondary" onClick={() => navigate("/tasks/employee-todos")}>
+              Employee Todos
+            </button>
+            <button className="button button--primary add-task-list-btn" onClick={openBulkCreateModal}>
+              <Plus size={18} />
+              Assign Direct Tasks
+            </button>
+          </div>
+        )}
       </header>
 
       {/* Stats Board */}
@@ -630,7 +652,7 @@ export default function ManageTasksPage({ token }: { token: string | null }) {
             <ClipboardList size={22} />
           </div>
           <div className="stat-content">
-            <span className="stat-label">Total Assigned Tasks</span>
+            <span className="stat-label">{isNormalEmployee ? "My Assigned Tasks" : "Total Assigned Tasks"}</span>
             <span className="stat-number">{totalTasks}</span>
           </div>
         </div>
@@ -699,19 +721,25 @@ export default function ManageTasksPage({ token }: { token: string | null }) {
           <div className="card manager-empty-state">
             <ClipboardList size={50} className="empty-icon" />
             <h3>No tasks found</h3>
-            <p>Assign individual tasks directly to your employees, or check back with different filters.</p>
-            <button className="button button--secondary" onClick={openBulkCreateModal}>
-              Assign First Task
-            </button>
+            <p>
+              {isNormalEmployee 
+                ? "You currently have no tasks assigned. Check back later or adjust your filters." 
+                : "Assign individual tasks directly to your employees, or check back with different filters."}
+            </p>
+            {!isNormalEmployee && (
+              <button className="button button--secondary" onClick={openBulkCreateModal}>
+                Assign First Task
+              </button>
+            )}
           </div>
         ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-8)" }}>
+          <div className={`tasks-workspace-grid ${targetFilter !== "all" ? "tasks-workspace-grid--full-width" : ""}`}>
             {/* Directly Assigned Tasks */}
             {(targetFilter === "all" || targetFilter === "direct") && (
               <div className="task-category-group">
                 <div className="category-group-header">
                   <h3 className="category-group-title">
-                    <span className="icon">👤</span> Directly Assigned Tasks
+                    <span className="icon">👤</span> {isNormalEmployee ? "My Directly Assigned Tasks" : "Directly Assigned Tasks"}
                   </h3>
                   <span className="count-badge" style={{ background: "var(--color-primary-soft)", color: "var(--color-primary-strong)" }}>
                     {directTasks.length} Tasks
@@ -721,6 +749,10 @@ export default function ManageTasksPage({ token }: { token: string | null }) {
                 {groupedEmployeeList.length === 0 ? (
                   <div style={{ padding: "var(--space-6)", textAlign: "center", background: "var(--color-surface-card)", border: "1.5px dashed var(--color-border-default)", borderRadius: "var(--radius-md)", color: "var(--color-text-secondary)", fontStyle: "italic" }}>
                     No directly assigned tasks match your filters.
+                  </div>
+                ) : isNormalEmployee ? (
+                  <div className="manager-lists-grid">
+                    {directTasks.map((task) => renderTaskCard(task))}
                   </div>
                 ) : (
                   <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-4)" }}>
@@ -1017,7 +1049,7 @@ export default function ManageTasksPage({ token }: { token: string | null }) {
                   <div className="completions-list" style={{ marginTop: "6px", display: "flex", flexDirection: "column", gap: "4px", maxHeight: "150px", overflowY: "auto" }}>
                     {detailedTask.completions.map((comp: any) => (
                       <div key={comp.id} style={{ display: "flex", justifyContent: "space-between", fontSize: "11px", color: "var(--color-text-strong)" }}>
-                        <span>✔️ {comp.employee.firstName} {comp.employee.lastName} ({comp.employee.employeeCode})</span>
+                        <span>✔️ {comp.employee ? `${comp.employee.firstName} ${comp.employee.lastName}` : `Employee #${comp.employeeId}`} {comp.employee?.employeeCode ? `(${comp.employee.employeeCode})` : ""}</span>
                         <span style={{ color: "var(--color-text-secondary)", fontSize: "10px" }}>{new Date(comp.completedAt).toLocaleDateString()}</span>
                       </div>
                     ))}

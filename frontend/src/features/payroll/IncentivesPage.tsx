@@ -498,42 +498,61 @@ function IncentivesPage({ token, role }: IncentivesPageProps) {
 
         {loading ? (
           <div className="loading">Loading incentives...</div>
-        ) : !Array.isArray(incentives) || incentives.length === 0 ? (
-          <div className="table-empty-state">
-            <strong>No incentives found</strong>
-            <span>{isEmployeeView ? "No incentives are recorded for your account yet." : "Try changing the selected filters."}</span>
-          </div>
         ) : isEmployeeView ? (
-          <div className="incentive-month-panels">
-            {groupedMonthlyIncentives.map((group) => (
-              <article key={`${group.year}-${group.month}`} className="incentive-month-panel">
-                <header className="incentive-month-panel__header">
-                  <div>
-                    <p className="eyebrow">Month</p>
-                    <h4>{payrollMonthOptions.find((m) => m.value === String(group.month))?.label} {group.year}</h4>
-                  </div>
-                  <div className="incentive-month-panel__total">
-                    <span>Total</span>
-                    <strong>Rs {group.total.toLocaleString()}</strong>
-                  </div>
-                </header>
-                <div className="incentive-month-panel__items">
-                  {group.items.map((incentive) => (
-                    <div key={incentive.id} className="incentive-month-panel__item">
-                      <div className="table-cell-stack">
-                        <span className="table-cell-primary">{incentive.typeDisplay || incentive.type}</span>
-                        <span className="table-cell-secondary">{incentive.reason}</span>
-                      </div>
-                      <div className="incentive-month-panel__meta">
-                        <strong className="amount">Rs {Number(incentive.amount).toLocaleString()}</strong>
-                        <span className={getStatusClass(incentive.status)}>{incentive.statusDisplay || incentive.status}</span>
-                      </div>
+          !Array.isArray(incentives) || incentives.length === 0 ? (
+            <div className="table-wrap incentives-table-wrap">
+              <table className="table table--dense">
+                <thead>
+                  <tr>
+                    <th>Type</th>
+                    <th>Amount</th>
+                    <th>Reason</th>
+                    <th>Month</th>
+                    <th>Status</th>
+                    <th>Created</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td colSpan={6} style={{ textAlign: 'center', padding: '2rem' }}>
+                      <p style={{ color: '#64748b', margin: 0 }}>No incentives are recorded for your account yet.</p>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <div className="incentive-month-panels">
+              {groupedMonthlyIncentives.map((group) => (
+                <article key={`${group.year}-${group.month}`} className="incentive-month-panel">
+                  <header className="incentive-month-panel__header">
+                    <div>
+                      <p className="eyebrow">Month</p>
+                      <h4>{payrollMonthOptions.find((m) => m.value === String(group.month))?.label} {group.year}</h4>
                     </div>
-                  ))}
-                </div>
-              </article>
-            ))}
-          </div>
+                    <div className="incentive-month-panel__total">
+                      <span>Total</span>
+                      <strong>Rs {group.total.toLocaleString()}</strong>
+                    </div>
+                  </header>
+                  <div className="incentive-month-panel__items">
+                    {group.items.map((incentive) => (
+                      <div key={incentive.id} className="incentive-month-panel__item">
+                        <div className="table-cell-stack">
+                          <span className="table-cell-primary">{incentive.typeDisplay || incentive.type}</span>
+                          <span className="table-cell-secondary">{incentive.reason}</span>
+                        </div>
+                        <div className="incentive-month-panel__meta">
+                          <strong className="amount">Rs {Number(incentive.amount).toLocaleString()}</strong>
+                          <span className={getStatusClass(incentive.status)}>{incentive.statusDisplay || incentive.status}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </article>
+              ))}
+            </div>
+          )
         ) : (
           <div className="table-wrap incentives-table-wrap">
             <table className="table table--dense">
@@ -550,7 +569,14 @@ function IncentivesPage({ token, role }: IncentivesPageProps) {
                 </tr>
               </thead>
               <tbody>
-                {Array.isArray(incentives) && incentives.map((incentive) => (
+                {!Array.isArray(incentives) || incentives.length === 0 ? (
+                  <tr>
+                    <td colSpan={canReviewIncentive ? 8 : 7} style={{ textAlign: 'center', padding: '2rem' }}>
+                      <p style={{ color: '#64748b', margin: 0 }}>No incentives found. Try changing the selected filters.</p>
+                    </td>
+                  </tr>
+                ) : (
+                  incentives.map((incentive) => (
                   <tr key={incentive.id}>
                     <td>
                       {incentive.employee
@@ -606,7 +632,7 @@ function IncentivesPage({ token, role }: IncentivesPageProps) {
                       </td>
                     ) : null}
                   </tr>
-                ))}
+                )))}
               </tbody>
             </table>
           </div>

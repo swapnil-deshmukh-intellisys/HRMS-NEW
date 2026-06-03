@@ -1,6 +1,8 @@
 import { useEffect, useState, useCallback, useRef } from "react";
+import { toZonedTime, fromZonedTime } from "date-fns-tz";
 import { apiRequest } from "../services/api";
 import type { SessionUser } from "../types";
+import { TIMEZONE } from "../utils/format";
 
 const TOKEN_KEY = "hrms_token";
 const SESSION_TIMEOUT_KEY = "hrms_session_timeout";
@@ -54,16 +56,24 @@ export function useAuth() {
   }, [token, updateLastActivity]);
 
   const setSessionTimeout = useCallback(() => {
-    const expiry = new Date();
-    expiry.setHours(23, 59, 59, 999);
-    
-    // 🌙 Late Night Logic: If we are within 1 hour of midnight, 
-    // set the expiry to tomorrow's midnight so the user isn't trapped in a warning loop.
-    if (expiry.getTime() - Date.now() < 60 * 60 * 1000) {
-      expiry.setDate(expiry.getDate() + 1);
+    const now = new Date();
+    const nowInIst = toZonedTime(now, TIMEZONE);
+    const targetInIst = new Date(nowInIst);
+    targetInIst.setHours(8, 0, 0, 0);
+
+    // If it is already past 8:00 AM IST today, set target to tomorrow at 8:00 AM IST
+    if (nowInIst.getTime() >= targetInIst.getTime()) {
+      targetInIst.setDate(targetInIst.getDate() + 1);
     }
-    
-    localStorage.setItem(SESSION_TIMEOUT_KEY, expiry.getTime().toString());
+
+    // Early morning buffer: if within 2 hours of 8:00 AM IST, push to tomorrow's 8:00 AM IST
+    if (targetInIst.getTime() - nowInIst.getTime() < 2 * 60 * 60 * 1000) {
+      targetInIst.setDate(targetInIst.getDate() + 1);
+    }
+
+    // Convert target back to standard UTC timestamp
+    const targetUtc = fromZonedTime(targetInIst, TIMEZONE);
+    localStorage.setItem(SESSION_TIMEOUT_KEY, targetUtc.getTime().toString());
   }, []);
 
   const logout = useCallback(async () => {
@@ -172,15 +182,12 @@ export function useAuth() {
           return;
         }
         setSessionWarning(expiryTime - now <= WARNING_THRESHOLD);
-      }
-      const nowEndOfDay = new Date();
-      nowEndOfDay.setHours(23, 59, 59, 999);
-      if (now >= nowEndOfDay.getTime()) {
-        logout();
+      } else {
+        setSessionTimeout();
       }
     }, 15000);
     return () => clearInterval(checkInterval);
-  }, [token, lastActivity, logout]);
+  }, [token, lastActivity, logout, setSessionTimeout]);
 
   useEffect(() => {
     if (token && !sessionUser && !hasFetched.current) {

@@ -1,7 +1,7 @@
 import { formatInTimeZone, toZonedTime } from 'date-fns-tz';
 export { formatInTimeZone, toZonedTime };
 
-const TIMEZONE = 'Asia/Kolkata';
+export const TIMEZONE = 'Asia/Kolkata';
 
 export function formatDate(value?: string | null) {
   return value

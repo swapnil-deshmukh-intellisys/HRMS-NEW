@@ -488,6 +488,26 @@ router.put("/manager/:id", authenticate, requireRolesOrCapability(["MANAGER", "A
       }
     });
 
+    if (isReverting && updatedTask.employeeId) {
+      const assignee = await prisma.employee.findUnique({
+        where: { id: updatedTask.employeeId },
+        select: { userId: true }
+      });
+      if (assignee) {
+        import("../notifications/service.js").then(ns => {
+          ns.createNotification({
+            userId: assignee.userId,
+            title: "Task Reopened ⚠️",
+            message: `Your task "${updatedTask.title}" has been reopened by your manager.${revertReason ? ` Reason: "${revertReason}"` : ""}`,
+            type: "TASK_ASSIGNED",
+            link: "/",
+            sendEmail: true,
+            extraData: { reopenedBy: "Your Manager" }
+          }).catch(err => console.error("Failed to send task reopening notification:", err));
+        });
+      }
+    }
+
     return sendSuccess(response, "Task updated successfully", updatedTask);
   } catch (error) {
     next(error);

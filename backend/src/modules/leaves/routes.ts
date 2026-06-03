@@ -1337,13 +1337,57 @@ async function cancelLeave(leaveId: number, actor: NonNullable<Express.Request["
     }
   });
 
-  return prisma.leaveRequest.delete({
+  const deletedLeave = await prisma.leaveRequest.delete({
     where: { id: leaveId },
     include: {
       employee: true,
       leaveType: true,
     },
   });
+
+  // Notify manager
+  if (deletedLeave.employee.managerId) {
+    const manager = await prisma.employee.findUnique({
+      where: { id: deletedLeave.employee.managerId },
+      select: { userId: true }
+    });
+    if (manager) {
+      import("./../notifications/service.js").then(ns => {
+        ns.createNotification({
+          userId: manager.userId,
+          title: "Leave Request Cancelled ❌",
+          message: `${deletedLeave.employee.firstName} has cancelled their leave request for ${formatInTimeZone(deletedLeave.startDate, TIMEZONE, 'dd MMM yyyy')}.`,
+          type: "LEAVE_REJECTED",
+          link: "/leaves",
+          sendPush: true,
+        }).catch(err => console.error("Failed to notify manager of leave cancellation:", err));
+      });
+    }
+  }
+
+  // Notify all HR users
+  try {
+    const hrUsers = await prisma.user.findMany({
+      where: { role: { name: RoleName.HR }, isActive: true },
+      select: { id: true }
+    });
+    import("./../notifications/service.js").then(ns => {
+      for (const hr of hrUsers) {
+        ns.createNotification({
+          userId: hr.id,
+          title: "Leave Request Cancelled (HR) ❌",
+          message: `${deletedLeave.employee.firstName} has cancelled their leave request for ${formatInTimeZone(deletedLeave.startDate, TIMEZONE, 'dd MMM yyyy')}.`,
+          type: "LEAVE_REJECTED",
+          link: "/leaves",
+          sendPush: true,
+        }).catch(err => console.error("Failed to notify HR user of leave cancellation:", err));
+      }
+    });
+  } catch (err) {
+    console.error("Failed to notify HR of leave cancellation:", err);
+  }
+
+  return deletedLeave;
 }
 
 async function uploadMedicalProof(
@@ -1419,7 +1463,7 @@ async function approveMedicalProof(leaveId: number, actor: NonNullable<Express.R
     throw new AppError("Medical proof is not waiting for HR review", 400);
   }
 
-  return prisma.leaveRequest.update({
+  const result = await prisma.leaveRequest.update({
     where: { id: leaveRequest.id },
     data: {
       medicalProofStatus: MEDICAL_PROOF_STATUS.APPROVED,
@@ -1435,6 +1479,20 @@ async function approveMedicalProof(leaveId: number, actor: NonNullable<Express.R
       medicalProofReviewedBy: true,
     },
   });
+
+  // Notify employee that medical proof was approved
+  import("./../notifications/service.js").then(ns => {
+    ns.createNotification({
+      userId: result.employee.userId,
+      title: "Medical Proof Approved ✅",
+      message: `HR has approved the medical proof for your Sick Leave request starting on ${formatInTimeZone(result.startDate, TIMEZONE, 'dd MMM yyyy')}.`,
+      type: "LEAVE_APPROVED",
+      link: `/leaves?id=${result.id}`,
+      sendPush: true,
+    }).catch(err => console.error("Failed to notify employee of medical proof approval:", err));
+  });
+
+  return result;
 }
 
 async function rejectMedicalProof(leaveId: number, actor: NonNullable<Express.Request["user"]>) {
@@ -1446,11 +1504,25 @@ async function rejectMedicalProof(leaveId: number, actor: NonNullable<Express.Re
     throw new AppError("Medical proof is not waiting for HR review", 400);
   }
 
-  return prisma.$transaction((transaction) =>
+  const result = await prisma.$transaction((transaction) =>
     convertLeaveToUnpaid(transaction, leaveRequest, MEDICAL_PROOF_STATUS.REJECTED, {
       reviewedById: actor.employeeId,
     }),
   );
+
+  // Notify employee that medical proof was rejected (and converted to unpaid leave)
+  import("./../notifications/service.js").then(ns => {
+    ns.createNotification({
+      userId: result.employee.userId,
+      title: "Medical Proof Rejected ❌",
+      message: `HR has rejected the medical proof for your Sick Leave request starting on ${formatInTimeZone(result.startDate, TIMEZONE, 'dd MMM yyyy')}. The leave has been converted to unpaid leave.`,
+      type: "LEAVE_REJECTED",
+      link: `/leaves?id=${result.id}`,
+      sendPush: true,
+    }).catch(err => console.error("Failed to notify employee of medical proof rejection:", err));
+  });
+
+  return result;
 }
 
 router.put("/leaves/:id/manager-approve", requireRoles("ADMIN", "MANAGER"), async (request, response, next) => {

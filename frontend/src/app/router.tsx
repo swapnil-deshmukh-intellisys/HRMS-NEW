@@ -37,6 +37,7 @@ const EmployeeProfilePage = lazyWithRetry(() => import("../features/employees/Em
 const EmployeesPage = lazyWithRetry(() => import("../features/employees/EmployeesPage"));
 const LeavesPage = lazyWithRetry(() => import("../features/leaves/LeavesPage"));
 const TeamPage = lazyWithRetry(() => import("../features/team/TeamPage"));
+const EmployeeOutlookDetailPage = lazyWithRetry(() => import("../features/team/EmployeeOutlookDetailPage"));
 const LeaderboardPage = lazyWithRetry(() => import("../features/team/LeaderboardPage"));
 const PayrollPage = lazyWithRetry(() => import("../features/payroll/PayrollPage"));
 const PayrollHistoryPage = lazyWithRetry(() => import("../features/payroll/PayrollHistoryPage"));
@@ -198,6 +199,14 @@ function AppRoutes() {
                   currentEmployeeId={sessionUser?.employee?.id ?? null}
                   currentEmployee={sessionUser?.employee ?? null}
                 />
+              </Page>
+            }
+          />
+          <Route
+            path="/team/outlook-report/:employeeId/:emailId"
+            element={
+              <Page context="Employee Outlook Report">
+                <EmployeeOutlookDetailPage token={token} />
               </Page>
             }
           />

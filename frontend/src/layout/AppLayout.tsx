@@ -8,6 +8,7 @@ import Sidebar from "./Sidebar";
 import SessionWarning from "../components/SessionWarning";
 import { useBreakReminder } from "../hooks/useBreakReminder";
 import BreakReminderModal from "../components/common/BreakReminderModal";
+import { useApp } from "../context/AppContext";
 
 type AppLayoutProps = {
   token: string | null;
@@ -24,6 +25,7 @@ export default function AppLayout({ token, sessionUser, onLogout, sessionWarning
   const [navOpen, setNavOpen] = useState(false);
   const currentPageTitle = getPageTitle(location.pathname);
   const { showModal, startBreak, snoozeBreak, dismissBreak } = useBreakReminder(token);
+  const { isTimeDrifted } = useApp();
 
   async function handleLogout() {
     await onLogout();
@@ -44,6 +46,17 @@ export default function AppLayout({ token, sessionUser, onLogout, sessionWarning
           role={sessionUser.role}
           onLogout={handleLogout}
         />
+        {isTimeDrifted && (
+          <div className="time-drift-banner" role="alert">
+            <span style={{ fontSize: "20px" }}>⏰</span>
+            <div>
+              <strong style={{ display: "block", marginBottom: "2px", fontSize: "15px" }}>System Clock Out of Sync</strong>
+              <span style={{ opacity: 0.95, fontWeight: 500 }}>
+                Your device's local clock deviates significantly from the secure server time. Please enable "Set time automatically" in your system settings to ensure attendance logging and other features work properly.
+              </span>
+            </div>
+          </div>
+        )}
         <div className="content-body">
           <Outlet />
         </div>

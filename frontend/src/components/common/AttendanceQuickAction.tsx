@@ -7,6 +7,7 @@ import { formatAttendanceTime } from "../../utils/format";
 import { FileText, ShieldCheck, Check } from "lucide-react";
 import { useAuth } from "../../hooks/useAuth";
 import Modal from "./Modal";
+import { useApp } from "../../context/AppContext";
 
 type AttendanceQuickActionProps = {
   token: string | null;
@@ -30,6 +31,7 @@ export default function AttendanceQuickAction({
   const [attendanceToday, setAttendanceToday] = useState<Attendance | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [actionError, setActionError] = useState("");
+  const { isTimeDrifted } = useApp();
   const [now, setNow] = useState(() => Date.now());
   const [showCheckoutModal, setShowCheckoutModal] = useState(false);
   const [assignedEmails, setAssignedEmails] = useState<any[]>([]);
@@ -184,7 +186,7 @@ export default function AttendanceQuickAction({
     return `${minutes}m`;
   }, [attendanceToday?.checkInTime, attendanceToday?.checkOutTime, now]);
   async function handleClick() {
-    if (!actionState.actionPath || actionState.disabled || submitting) {
+    if (!actionState.actionPath || actionState.disabled || submitting || isTimeDrifted) {
       return;
     }
 
@@ -272,7 +274,7 @@ export default function AttendanceQuickAction({
   }
 
   async function submitAction(body: Record<string, any> = {}) {
-    if (!actionState.actionPath || actionState.disabled || submitting) {
+    if (!actionState.actionPath || actionState.disabled || submitting || isTimeDrifted) {
       return;
     }
 
@@ -333,15 +335,15 @@ export default function AttendanceQuickAction({
           type="button"
           className={`attendance-quick-action attendance-quick-action--${size} ${actionState.toneClass} ${className}`.trim()}
           onClick={handleClick}
-          disabled={actionState.disabled || submitting}
-          aria-label={actionState.hint}
-          title={actionState.hint}
+          disabled={actionState.disabled || submitting || isTimeDrifted}
+          aria-label={isTimeDrifted ? "Your device clock is out of sync. Please enable automatic time synchronization to log attendance." : actionState.hint}
+          title={isTimeDrifted ? "Your device clock is out of sync. Please enable automatic time synchronization to log attendance." : actionState.hint}
         >
           {submitting ? "Updating..." : actionState.label}
         </button>
-        {actionError ? (
+        {(actionError || isTimeDrifted) ? (
           <p className="attendance-quick-action-error" role="alert">
-            {actionError}
+            {isTimeDrifted ? "Your device clock is out of sync. Please enable automatic time synchronization to log attendance." : actionError}
           </p>
         ) : null}
       </div>

@@ -37,6 +37,10 @@ export type AppContextType = {
   fetchAnalyticsData: (force?: boolean) => Promise<void>;
   calendarExceptions: CalendarException[];
   token: string | null;
+  serverTimeOffset: number;
+  getCalibratedNow: () => Date;
+  isTimeDrifted: boolean;
+  timeSyncLoading: boolean;
 };
 
 export const AppContext = createContext<AppContextType | undefined>(undefined);

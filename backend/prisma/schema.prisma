@@ -113,6 +113,7 @@ model Employee {
   pointHistory                      PointHistory[]                    @relation("EmployeePointHistory")
   givenPointHistory                 PointHistory[]                    @relation("GivenPointHistory")
   documents                         EmployeeDocument[]                @relation("EmployeeDocuments")
+  salesRecords                      SalesRecord[]                     @relation("EmployeeSalesRecords")
 
   @@index([departmentId])
   @@index([managerId])
@@ -536,6 +537,7 @@ model OutlookEmail {
   clientId  Int?
   client    Client?    @relation(fields: [clientId], references: [id])
   employees Employee[] @relation("EmployeeOutlookEmails")
+  salesRecords SalesRecord[] @relation("OutlookSalesRecords")
   createdAt DateTime   @default(now())
   updatedAt DateTime   @updatedAt
 }
@@ -615,4 +617,22 @@ model EmployeeDocument {
   employee     Employee @relation("EmployeeDocuments", fields: [employeeId], references: [id], onDelete: Cascade)
 
   @@index([employeeId])
+}
+
+model SalesRecord {
+  id             Int          @id @default(autoincrement())
+  employeeId     Int
+  outlookEmailId Int
+  amount         Float        @default(0)
+  month          Int          // 1-12
+  year           Int
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  employee     Employee     @relation("EmployeeSalesRecords", fields: [employeeId], references: [id], onDelete: Cascade)
+  outlookEmail OutlookEmail @relation("OutlookSalesRecords", fields: [outlookEmailId], references: [id], onDelete: Cascade)
+
+  @@unique([employeeId, outlookEmailId, month, year])
+  @@index([employeeId])
+  @@index([outlookEmailId])
 }

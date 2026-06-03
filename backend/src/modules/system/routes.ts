@@ -6,6 +6,13 @@ import { endOfDay, startOfDay } from "../../utils/dates.js";
 
 const router = Router();
 
+router.get("/time", (_request, response) => {
+  return sendSuccess(response, "System time fetched successfully", {
+    serverTime: new Date().toISOString(),
+    timezone: "Asia/Kolkata",
+  });
+});
+
 router.get("/bootstrap", authenticate, async (request, response, next) => {
   try {
     const userId = request.user!.id;
@@ -245,7 +252,14 @@ router.get("/outlook-emails", authenticate, async (_request, response, next) => 
   try {
     const emails = await prisma.outlookEmail.findMany({
       orderBy: { name: "asc" },
-      include: { client: true }
+      include: {
+        client: true,
+        employees: {
+          select: {
+            id: true
+          }
+        }
+      }
     });
     return sendSuccess(response, "Outlook emails fetched successfully", emails);
   } catch (error) {

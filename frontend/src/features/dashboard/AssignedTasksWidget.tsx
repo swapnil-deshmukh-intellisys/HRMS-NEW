@@ -196,7 +196,7 @@ export default function AssignedTasksWidget({ token }: { token: string | null })
                       </div>
                       
                       {task.revertReason && (
-                        <div style={{ marginTop: "6px", fontSize: "10px", color: "var(--color-warning-strong)", background: "var(--color-warning-soft)", padding: "4px 8px", borderRadius: "var(--radius-sm)", display: "inline-flex", alignItems: "center", gap: "4px", border: "1px solid var(--color-warning-border)" }}>
+                        <div style={{ marginTop: "6px", fontSize: "10px", color: "#b42318", background: "#fef3f2", padding: "4px 8px", borderRadius: "var(--radius-sm)", display: "inline-flex", alignItems: "center", gap: "4px", border: "1px solid #fecaca" }}>
                           <AlertCircle size={10} /> Reverted: {task.revertReason.length > 50 ? task.revertReason.substring(0, 50) + "..." : task.revertReason}
                         </div>
                       )}
@@ -295,7 +295,7 @@ export default function AssignedTasksWidget({ token }: { token: string | null })
               )}
 
               {!selectedTask.isCompleted && selectedTask.revertReason && (
-                <div style={{ gridColumn: "span 2", background: "var(--color-warning-soft)", padding: "8px 12px", borderRadius: "var(--radius-sm)", border: "1px solid var(--color-warning-border)", color: "var(--color-warning-strong)" }}>
+                <div style={{ gridColumn: "span 2", background: "#fef3f2", padding: "8px 12px", borderRadius: "var(--radius-sm)", border: "1px solid #fecaca", color: "#b42318" }}>
                   <div style={{ fontWeight: "bold", marginBottom: "4px", display: "flex", alignItems: "center", gap: "4px" }}>
                     <AlertCircle size={14} /> Task Reverted
                   </div>

@@ -553,13 +553,14 @@
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 8px 12px;
+  padding: 6px 12px;
   background: var(--color-surface-card);
   border: 1px solid var(--color-border-default);
   border-radius: var(--radius-xl);
   box-shadow: var(--shadow-sm);
   flex-wrap: nowrap; /* Forces horizontal alignment on desktops */
   transition: all var(--transition-normal);
+  min-height: 48px;
 }
 
 .search-box-wrapper {
@@ -569,9 +570,12 @@
   background: var(--color-surface-page);
   border: 1.5px solid var(--color-border-default);
   border-radius: var(--radius-lg);
-  padding: 6px 12px;
-  flex: 2;
-  min-width: 240px;
+  padding: 0 var(--space-3);
+  flex: 1;
+  max-width: 380px; /* Highly premium limit to prevent awkward wide-screen stretching */
+  min-width: 200px;
+  height: 34px; /* Sleek, comfortable height */
+  box-sizing: border-box;
   transition: all var(--transition-normal);
   box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.015);
 }
@@ -595,7 +599,7 @@
   font-weight: var(--fw-medium) !important;
   color: var(--color-text-strong) !important;
   padding: 0 !important;
-  height: auto !important;
+  height: 100% !important;
 }
 
 .search-box-wrapper input:focus {
@@ -612,6 +616,9 @@
 .search-icon {
   color: var(--color-text-secondary);
   transition: color var(--transition-fast);
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
 }
 
 .search-box-wrapper:focus-within .search-icon {
@@ -630,26 +637,28 @@
   appearance: none;
   -webkit-appearance: none;
   -moz-appearance: none;
-  padding: 6px 30px 6px 10px;
+  padding: 0 30px 0 12px;
   border-radius: var(--radius-lg);
   border: 1.5px solid var(--color-border-default);
-  background-color: white;
+  background-color: var(--color-surface-page); /* Matches search box inactive background */
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2364748b' stroke-width='2.5'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M19.5 8.25l-7.5 7.5-7.5-7.5'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
-  background-position: right 10px center;
-  background-size: 11px;
-  font-size: 11px;
-  font-weight: var(--fw-bold);
+  background-position: right 12px center;
+  background-size: 10px;
+  font-size: var(--text-xs); /* Matches search box input font-size */
+  font-weight: var(--fw-medium); /* Matches search box input font-weight */
   color: var(--color-text-strong);
   cursor: pointer;
   transition: all var(--transition-normal);
-  min-width: 130px;
-  box-shadow: none;
+  min-width: 140px;
+  min-height: 0 !important; /* Overrides global stylesheet min-height */
+  height: 34px !important; /* Locked to match the search box perfectly */
+  box-sizing: border-box;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.015);
 }
 
 .filters-group select:hover {
   border-color: var(--color-border-hover);
-  background-color: var(--color-surface-page);
 }
 
 .filters-group select:focus {
@@ -757,4 +766,66 @@
   padding: 2px 8px;
   border-radius: var(--radius-sm);
   border: 1px solid var(--color-border-subtle);
+}
+
+/* ==========================================================================
+   Premium Side-by-Side Tasks Workspace Grid Layout
+   ========================================================================== */
+.tasks-workspace-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr; /* Beautiful 50-50 partition split */
+  gap: var(--space-6);
+  align-items: start;
+  width: 100%;
+  transition: all var(--transition-normal) ease;
+}
+
+/* Force full width stretch when a select target filter is applied */
+.tasks-workspace-grid--full-width {
+  grid-template-columns: 1fr !important;
+}
+
+/* Visual left-border accent panels to distinguish task categories with independent scrollbars */
+.tasks-workspace-grid .task-category-group {
+  border-left: 4.5px solid transparent;
+  transition: border-color var(--transition-normal) ease;
+  max-height: calc(100vh - 280px); /* Bounded scroll height to fit viewport perfectly */
+  min-height: 460px;
+  overflow-y: auto;
+  padding-right: 12px;
+}
+
+/* Custom sleek scrolling indicators for the independent columns */
+.tasks-workspace-grid .task-category-group::-webkit-scrollbar {
+  width: 5px;
+}
+
+.tasks-workspace-grid .task-category-group::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.tasks-workspace-grid .task-category-group::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.3);
+  border-radius: 10px;
+}
+
+.tasks-workspace-grid > :first-child.task-category-group {
+  border-left-color: var(--color-accent); /* Premium Violet accent glow */
+}
+
+.tasks-workspace-grid > :last-child.task-category-group {
+  border-left-color: var(--color-success); /* Premium Emerald accent glow */
+}
+
+@media (max-width: 1024px) {
+  .tasks-workspace-grid {
+    grid-template-columns: 1fr !important; /* Stack columns vertically on smaller screens */
+    gap: var(--space-5);
+  }
+  
+  .tasks-workspace-grid .task-category-group {
+    max-height: none; /* Disable fixed height scrolling in mobile stacked views */
+    min-height: auto;
+    padding-right: 0;
+  }
 }

@@ -1,0 +1,58 @@
+version: "3.8"
+
+services:
+  postgres-db:
+    image: postgres:15-alpine
+    container_name: hrms_db
+    restart: always
+    environment:
+      POSTGRES_DB: hrms_db
+      POSTGRES_USER: hrms_user
+      # IMPORTANT: Change this password on production!
+      POSTGRES_PASSWORD: super_secure_hrms_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: hrms_backend
+    restart: always
+    expose:
+      - "4000"
+    ports:
+      - "4000:4000"
+    environment:
+      NODE_ENV: production
+      PORT: 4000
+      DATABASE_URL: postgres://hrms_user:super_secure_hrms_password@postgres-db:5432/hrms_db
+      # Populate with secret keys
+      JWT_SECRET: super_secure_jwt_secret_change_me
+      GOOGLE_CLIENT_ID: temp_client_id
+      GOOGLE_CLIENT_SECRET: temp_client_secret
+      GOOGLE_REDIRECT_URL: http://localhost:4000/api/auth/google/callback
+      VAPID_PUBLIC_KEY: temp_vapid_public_key
+      VAPID_PRIVATE_KEY: temp_vapid_private_key
+      VAPID_SUBJECT: mailto:admin@hrms.com
+    depends_on:
+      - postgres-db
+    volumes:
+      - uploads_data:/usr/src/app/uploads
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: hrms_frontend
+    restart: always
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+
+volumes:
+  pgdata:
+  uploads_data:

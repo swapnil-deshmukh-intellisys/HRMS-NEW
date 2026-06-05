@@ -25,6 +25,7 @@ frontend/.env.*
 # Runtime uploads and generated assets
 backend/uploads/
 backend/generated/
+Hostinger/
 
 # Build caches
 frontend/.vite/

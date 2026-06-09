@@ -875,13 +875,14 @@ router.get("/", requireRoles("ADMIN", "HR", "MANAGER", "EMPLOYEE"), async (reque
         throw new AppError("Employee context is required", 400);
       }
 
-      if (requestedEmployeeId && requestedEmployeeId !== request.user.employeeId) {
-        const canAccess = await canTeamLeadAccessEmployee(prisma, request.user.employeeId, requestedEmployeeId);
+      if (requestedEmployeeId) {
+        if (requestedEmployeeId !== request.user.employeeId) {
+          const canAccess = await canTeamLeadAccessEmployee(prisma, request.user.employeeId, requestedEmployeeId);
 
-        if (!canAccess) {
-          throw new AppError("You are not authorized to view this attendance", 403);
+          if (!canAccess) {
+            throw new AppError("You are not authorized to view this attendance", 403);
+          }
         }
-
         where = { employeeId: requestedEmployeeId };
       } else {
         const isTeamLead = await hasEmployeeCapability(prisma, request.user.employeeId, "TEAM_LEAD");
@@ -1092,13 +1093,14 @@ router.get("/overtime", requireRoles("ADMIN", "HR", "MANAGER", "EMPLOYEE"), asyn
         throw new AppError("Employee context is required", 400);
       }
 
-      if (requestedEmployeeId && requestedEmployeeId !== request.user.employeeId) {
-        const canAccess = await canTeamLeadAccessEmployee(prisma, request.user.employeeId, requestedEmployeeId);
+      if (requestedEmployeeId) {
+        if (requestedEmployeeId !== request.user.employeeId) {
+          const canAccess = await canTeamLeadAccessEmployee(prisma, request.user.employeeId, requestedEmployeeId);
 
-        if (!canAccess) {
-          throw new AppError("You are not authorized to view this overtime", 403);
+          if (!canAccess) {
+            throw new AppError("You are not authorized to view this overtime", 403);
+          }
         }
-
         where = { employeeId: requestedEmployeeId };
       } else {
         const isTeamLead = await hasEmployeeCapability(prisma, request.user.employeeId, "TEAM_LEAD");

@@ -636,3 +636,14 @@ model SalesRecord {
   @@index([employeeId])
   @@index([outlookEmailId])
 }
+
+model SalesTarget {
+  id        Int      @id @default(autoincrement())
+  month     Int
+  year      Int
+  target    Float    @default(50000)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([month, year])
+}

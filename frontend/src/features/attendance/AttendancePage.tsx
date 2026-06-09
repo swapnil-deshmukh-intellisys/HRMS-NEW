@@ -1,7 +1,7 @@
 import "./AttendancePage.css";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Calendar, Clock } from "lucide-react";
+import { Calendar, Clock, ChevronDown } from "lucide-react";
 import toast from "react-hot-toast";
 import Modal from "../../components/common/Modal";
 import Table from "../../components/common/Table";
@@ -675,6 +675,7 @@ export default function AttendancePage({ token, role, currentEmployeeId, current
                       onClick={() => setDatePickerOpen((current) => !current)}
                     >
                       <span>{formatDateLabel(filterDate)}</span>
+                      <ChevronDown size={16} className="attendance-date-chevron" />
                     </button>
                     {datePickerOpen ? (
                       <div className="attendance-date-popover">

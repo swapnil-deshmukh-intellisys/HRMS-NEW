@@ -12,6 +12,8 @@ import { assertPayrollEditable, buildPayrollPreview } from "./service.js";
 import { calculateTotalPayrollWithIncentives } from "./incentive-service.js";
 import { createAuditLog } from "../../services/audit.js";
 
+import * as XLSX from "xlsx";
+
 type PayrollPreviewWithIncentives = Awaited<ReturnType<typeof buildPayrollPreview>>;
 
 const router = Router();
@@ -26,6 +28,11 @@ const payrollSchema = z.object({
 
 const payrollPreviewQuerySchema = z.object({
   employeeId: z.coerce.number().int().positive(),
+  month: z.coerce.number().int().min(1).max(12),
+  year: z.coerce.number().int().min(2000),
+});
+
+const exportQuerySchema = z.object({
   month: z.coerce.number().int().min(1).max(12),
   year: z.coerce.number().int().min(2000),
 });
@@ -97,6 +104,212 @@ router.get("/", async (request, response, next) => {
     });
 
     return sendSuccess(response, "Payroll records fetched successfully", payrollRecords);
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.get("/export-report", requireRoles("ADMIN", "HR"), validate(exportQuerySchema, "query"), async (request, response, next) => {
+  try {
+    const month = Number(request.query.month);
+    const year = Number(request.query.year);
+
+    // Fetch active employees
+    const employees = await prisma.employee.findMany({
+      where: {
+        isActive: true,
+      },
+      orderBy: [
+        { firstName: "asc" },
+        { lastName: "asc" },
+      ],
+    });
+
+    const monthStart = startOfDay(new Date(year, month - 1, 1));
+    const monthEnd = endOfDay(new Date(year, month, 0));
+
+    const today = startOfDay(new Date());
+    const effectiveRangeEnd = today < startOfDay(monthEnd) ? today : startOfDay(monthEnd);
+
+    const calendarExceptions = await prisma.calendarException.findMany({
+      where: {
+        date: {
+          gte: startOfDay(monthStart),
+          lte: effectiveRangeEnd,
+        },
+      },
+    });
+
+    let totalWorkingDays = 0;
+    const workingDaysCursor = startOfDay(new Date(year, month - 1, 1));
+    while (workingDaysCursor <= monthEnd) {
+      const isWorkingDay = getCalendarDayStatus(workingDaysCursor, calendarExceptions).isWorkingDay;
+      if (isWorkingDay) {
+        totalWorkingDays += 1;
+      }
+      workingDaysCursor.setDate(workingDaysCursor.getDate() + 1);
+    }
+
+    const wsData: any[][] = [
+      [
+        "Employee Name",
+        "Total Working Days",
+        "Present Days",
+        "Absent Days",
+        "Half Days",
+        "Approved Leaves",
+        "Paid Leaves",
+        "Unpaid Leaves",
+        "Deductible Days"
+      ]
+    ];
+
+    for (const emp of employees) {
+      const [monthAttendances, approvedLeaves] = await Promise.all([
+        prisma.attendance.findMany({
+          where: {
+            employeeId: emp.id,
+            attendanceDate: {
+              gte: startOfDay(monthStart),
+              lte: effectiveRangeEnd,
+            },
+          },
+        }),
+        prisma.leaveRequest.findMany({
+          where: {
+            employeeId: emp.id,
+            status: LeaveStatus.APPROVED,
+            startDate: { lte: effectiveRangeEnd },
+            endDate: { gte: startOfDay(monthStart) },
+          },
+          select: {
+            startDate: true,
+            endDate: true,
+            isUnpaid: true,
+          },
+        }),
+      ]);
+
+      const attendanceByDate = new Map(
+        monthAttendances.map((a) => [startOfDay(a.attendanceDate).getTime(), a])
+      );
+
+      let presentDays = 0;
+      let absentDays = 0;
+      let halfDays = 0;
+      let approvedLeavesCount = 0;
+      let paidLeavesCount = 0;
+      let unpaidLeavesCount = 0;
+
+      const cursor = startOfDay(monthStart);
+      while (cursor <= monthEnd) {
+        const timestamp = cursor.getTime();
+        const isWithinTenure = cursor >= startOfDay(emp.joiningDate) && (!emp.deletedAt || cursor <= startOfDay(emp.deletedAt));
+
+        if (isWithinTenure) {
+          const isWorkingDay = getCalendarDayStatus(cursor, calendarExceptions).isWorkingDay;
+          const attendance = attendanceByDate.get(timestamp);
+          
+          // Check if there is an approved leave request on this day
+          const matchingLeave = approvedLeaves.find(l => {
+            const start = startOfDay(l.startDate);
+            const end = startOfDay(l.endDate);
+            return cursor >= start && cursor <= end;
+          });
+
+          if (matchingLeave) {
+            approvedLeavesCount += 1;
+            if (matchingLeave.isUnpaid) {
+              unpaidLeavesCount += 1;
+            } else {
+              paidLeavesCount += 1;
+            }
+          } else {
+            const isPastToday = cursor > today;
+            if (!isPastToday && isWorkingDay) {
+              if (attendance) {
+                if (attendance.status === "PRESENT") {
+                  presentDays += 1;
+                } else if (attendance.status === "HALF_DAY") {
+                  presentDays += 0.5;
+                  halfDays += 1;
+                } else if (attendance.status === "ABSENT") {
+                  absentDays += 1;
+                }
+              } else {
+                absentDays += 1;
+              }
+            }
+          }
+        }
+        cursor.setDate(cursor.getDate() + 1);
+      }
+
+      let deductibleDays = 0;
+      try {
+        const preview = await buildPayrollPreview({
+          employeeId: emp.id,
+          month,
+          year,
+          prisma,
+        });
+        deductibleDays = preview.deductibleDays;
+      } catch (err) {
+        // Resilient fallback logic when buildPayrollPreview fails (e.g. no compensation package)
+        let tenureDeduction = 0;
+        const checkCursor = startOfDay(monthStart);
+        while (checkCursor <= monthEnd) {
+          const isWithinTenure = checkCursor >= startOfDay(emp.joiningDate) && (!emp.deletedAt || checkCursor <= startOfDay(emp.deletedAt));
+          if (!isWithinTenure) {
+            tenureDeduction += 1;
+          }
+          checkCursor.setDate(checkCursor.getDate() + 1);
+        }
+        deductibleDays = absentDays + (halfDays * 0.5) + unpaidLeavesCount + tenureDeduction;
+      }
+
+      wsData.push([
+        `${emp.firstName} ${emp.lastName}`,
+        totalWorkingDays,
+        presentDays,
+        absentDays,
+        halfDays,
+        approvedLeavesCount,
+        paidLeavesCount,
+        unpaidLeavesCount,
+        deductibleDays,
+      ]);
+    }
+
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.aoa_to_sheet(wsData);
+
+    ws["!cols"] = [
+      { wch: 25 }, // Employee Name
+      { wch: 20 }, // Total Working Days
+      { wch: 12 }, // Present Days
+      { wch: 12 }, // Absent Days
+      { wch: 10 }, // Half Days
+      { wch: 15 }, // Approved Leaves
+      { wch: 12 }, // Paid Leaves
+      { wch: 12 }, // Unpaid Leaves
+      { wch: 15 }  // Deductible Days
+    ];
+
+    XLSX.utils.book_append_sheet(wb, ws, "Monthly Summary");
+
+    const buffer = XLSX.write(wb, { type: "buffer", bookType: "xlsx" });
+
+    response.setHeader(
+      "Content-Type",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    );
+    response.setHeader(
+      "Content-Disposition",
+      `attachment; filename="Employee_Monthly_Summary_Report_${month}_${year}.xlsx"`
+    );
+    
+    return response.send(buffer);
   } catch (error) {
     next(error);
   }

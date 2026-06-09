@@ -63,16 +63,16 @@
   position: relative;
   border-radius: var(--radius-2xl);
   overflow: hidden;
-  background: linear-gradient(135deg, #1e1b4b 0%, #4c1d95 40%, #7c3aed 100%);
+  background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #3b82f6 100%);
   padding: 48px var(--space-6);
   text-align: center;
-  box-shadow: 0 20px 60px rgba(124, 58, 237, 0.35);
+  box-shadow: 0 20px 60px rgba(59, 130, 246, 0.25);
 }
 
 .lb-eom-glow {
   position: absolute;
   inset: 0;
-  background: radial-gradient(ellipse at 50% 0%, rgba(167, 139, 250, 0.3) 0%, transparent 70%);
+  background: radial-gradient(ellipse at 50% 0%, rgba(96, 165, 250, 0.25) 0%, transparent 70%);
   pointer-events: none;
 }
 
@@ -236,7 +236,8 @@
   gap: var(--space-4);
   padding: var(--space-4) var(--space-6);
   border-bottom: 1px solid var(--color-border-subtle);
-  transition: background var(--transition-fast);
+  border-left: 4px solid transparent;
+  transition: all var(--transition-fast);
 }
 
 .lb-row:last-child {
@@ -595,4 +596,113 @@
 .lb-empty p {
   font-size: var(--text-sm);
   margin: 0;
+}
+
+/* ── Highlight Styles for Current Month Winners & Leaders ─────────────────── */
+.lb-row--previous-winner {
+  background: linear-gradient(90deg, rgba(245, 158, 11, 0.08) 0%, rgba(251, 191, 36, 0.02) 100%) !important;
+  border-left: 4px solid #f59e0b !important;
+  position: relative;
+}
+
+.lb-row--previous-winner:hover {
+  background: linear-gradient(90deg, rgba(245, 158, 11, 0.12) 0%, rgba(251, 191, 36, 0.04) 100%) !important;
+}
+
+.lb-row--current-leader-inprogress {
+  background: linear-gradient(90deg, rgba(99, 102, 241, 0.08) 0%, rgba(139, 92, 246, 0.02) 100%) !important;
+  border-left: 4px solid #6366f1 !important;
+  position: relative;
+}
+
+.lb-row--current-leader-inprogress:hover {
+  background: linear-gradient(90deg, rgba(99, 102, 241, 0.12) 0%, rgba(139, 92, 246, 0.04) 100%) !important;
+}
+
+.lb-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  font-weight: var(--fw-bold);
+  padding: 2px 8px;
+  border-radius: 999px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+}
+
+.lb-badge--previous-winner {
+  background: #fef3c7;
+  color: #d97706;
+  border: 1px solid #fcd34d;
+}
+
+.lb-badge--current-leader {
+  background: #e0e7ff;
+  color: #4f46e5;
+  border: 1px solid #c7d2fe;
+}
+
+/* ── Split Hero Layout for Current Month ─────────────────────────────────── */
+.lb-hero-split {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr;
+  gap: var(--space-6);
+  align-items: stretch;
+  width: 100%;
+}
+
+@media (max-width: 768px) {
+  .lb-hero-split {
+    grid-template-columns: 1fr;
+    gap: var(--space-4);
+  }
+}
+
+.lb-hero-main {
+  flex: 1.2;
+}
+
+.lb-hero-sub {
+  flex: 1;
+  background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #3b82f6 100%) !important;
+  box-shadow: 0 15px 40px rgba(59, 130, 246, 0.2) !important;
+  padding: 36px var(--space-5) !important;
+}
+
+.lb-hero-sub .lb-eom-crown {
+  font-size: 38px;
+  margin-bottom: 4px;
+}
+
+.lb-hero-sub .lb-eom-name {
+  font-size: var(--text-2xl) !important;
+}
+
+.lb-hero-sub .lb-eom-stats {
+  gap: var(--space-4);
+  padding: var(--space-2) var(--space-4);
+}
+
+.lb-hero-empty {
+  background: var(--color-surface-card) !important;
+  border: 2px dashed var(--color-border-default) !important;
+  box-shadow: none !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 48px var(--space-6) !important;
+}
+
+.lb-hero-empty .lb-eom-label {
+  color: var(--color-text-secondary) !important;
+}
+
+.lb-hero-empty .lb-eom-name {
+  color: var(--color-text-muted) !important;
+}
+
+.lb-hero-empty .lb-eom-crown {
+  opacity: 0.3;
 }

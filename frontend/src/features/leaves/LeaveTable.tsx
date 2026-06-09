@@ -448,176 +448,206 @@ export default function LeaveTable({
                         {expanded ? (
                           <tr className="expanded-row-content">
                             <td colSpan={7}>
-                              <div className="expanded-details-container">
-                                <div className="expanded-details-grid">
-                                  
-                                  <div className="detail-block" style={{ gridColumn: "span 2" }}>
-                                    <span className="table-cell-secondary">Reason</span>
-                                    <span className="table-cell-primary" style={{ whiteSpace: "pre-wrap" }}>{leave.reason || "No reason provided"}</span>
+                              <div className="ld-panel">
+                                {/* ── Header strip ── */}
+                                <div className="ld-header">
+                                  <div className="ld-header__left">
+                                    <span className="ld-header__type-badge">{leave.leaveType.code}</span>
+                                    <div className="ld-header__titles">
+                                      <span className="ld-header__type-name">{leave.leaveType.name}</span>
+                                      <span className="ld-header__requested-at">
+                                        Requested {leave.createdAt ? formatDateTime(leave.createdAt) : "N/A"}
+                                      </span>
+                                    </div>
+                                  </div>
+                                  <span className={`ld-header__status-chip ld-header__status-chip--${leave.status.toLowerCase()}`}>
+                                    {leave.status}
+                                  </span>
+                                </div>
+
+                                {/* ── Two-column body ── */}
+                                <div className="ld-body">
+                                  {/* Left column: Leave Details card */}
+                                  <div className="ld-card">
+                                    <span className="ld-card__title">Leave Details</span>
+                                    <div className="ld-card__grid">
+                                      <div className="ld-card__field">
+                                        <span className="ld-card__label">Date Range</span>
+                                        <span className="ld-card__value">{formatLeaveRange(leave)}</span>
+                                      </div>
+                                      <div className="ld-card__field">
+                                        <span className="ld-card__label">Duration</span>
+                                        <span className="ld-card__value">{getDurationLabel(leave)}</span>
+                                      </div>
+                                      <div className="ld-card__field">
+                                        <span className="ld-card__label">Total Days</span>
+                                        <span className="ld-card__value">{formatLeaveDays(leave.totalDays)}</span>
+                                      </div>
+                                      <div className="ld-card__field">
+                                        <span className="ld-card__label">Paid / Unpaid</span>
+                                        <span className="ld-card__value">
+                                          <span className="ld-paid-tag">{formatLeaveDays(leave.paidDays)} Paid</span>
+                                          {leave.unpaidDays > 0 && (
+                                            <span className="ld-unpaid-tag">{formatLeaveDays(leave.unpaidDays)} Unpaid</span>
+                                          )}
+                                        </span>
+                                      </div>
+                                    </div>
+                                    {leave.attachmentPath ? (
+                                      <div className="ld-card__field ld-card__attachment">
+                                        <span className="ld-card__label">Attachment</span>
+                                        <a
+                                          className="ld-attachment-link"
+                                          href={getFileUrl(leave.attachmentPath) ?? "#"}
+                                          target="_blank"
+                                          rel="noreferrer"
+                                        >
+                                          📎 {leave.attachmentName ?? "View attachment"}
+                                        </a>
+                                      </div>
+                                    ) : null}
                                   </div>
 
-                                  <div className="detail-block">
-                                    <span className="table-cell-secondary">Approval Progress</span>
-                                    <div className="leave-progress" style={{ marginTop: '4px' }}>
-                                      <div className={getStepClass(leave.managerApprovalStatus)}>
+                                  {/* Right column: Approval Progress card */}
+                                  <div className="ld-card">
+                                    <span className="ld-card__title">Approval Progress</span>
+                                    <div className="ld-approval-flow">
+                                      <div className={`ld-approval-step ${getStepClass(leave.managerApprovalStatus)}`}>
                                         <span className="leave-step__label">Manager</span>
                                         <span className="leave-step__value">{leave.managerApprovalStatus}</span>
                                       </div>
-                                      <div className={getStepClass(leave.hrApprovalStatus)}>
+                                      <div className="ld-approval-connector">
+                                        <span className="ld-approval-connector__line" />
+                                        <span className="ld-approval-connector__arrow">›</span>
+                                      </div>
+                                      <div className={`ld-approval-step ${getStepClass(leave.hrApprovalStatus)}`}>
                                         <span className="leave-step__label">HR</span>
                                         <span className="leave-step__value">{leave.hrApprovalStatus}</span>
                                       </div>
                                     </div>
                                   </div>
+                                </div>
 
-                                  <div className="detail-block">
-                                    <span className="table-cell-secondary">Leave specifics</span>
-                                    <span className="table-cell-primary">{leave.leaveType.name}</span>
-                                    <span className="table-cell-primary" style={{ fontSize: '13px', marginTop: '2px' }}>
-                                      {formatLeaveRange(leave)}
-                                    </span>
-                                    <span className="table-cell-secondary" style={{ fontSize: '12px' }}>
-                                      {`${formatLeaveDays(leave.paidDays)} Paid / ${formatLeaveDays(leave.unpaidDays)} Unpaid`}
-                                    </span>
-                                    <span className="table-cell-secondary" style={{ fontSize: '12px', marginTop: '4px', display: 'block' }}>
-                                      Requested: {leave.createdAt ? formatDateTime(leave.createdAt) : "N/A"}
-                                    </span>
-                                  </div>
+                                {/* ── Reason section ── */}
+                                <div className="ld-reason">
+                                  <span className="ld-card__title">Reason</span>
+                                  <p className="ld-reason__text">{leave.reason || "No reason provided"}</p>
+                                </div>
 
-                                  {leave.attachmentPath ? (
-                                    <div className="detail-block">
-                                      <span className="table-cell-secondary">Attachment</span>
-                                      <a
-                                        className="table-cell-primary leave-request-details__link"
-                                        href={getFileUrl(leave.attachmentPath) ?? "#"}
-                                        target="_blank"
-                                        rel="noreferrer"
-                                        style={{ color: "var(--color-accent)", textDecoration: "underline" }}
-                                      >
-                                        {leave.attachmentName ?? "View attachment"}
-                                      </a>
-                                    </div>
-                                  ) : null}
-
-                                  {(leave.hrApprovalStatus === "REJECTED" && leave.hrRejectionReason) || 
-                                   (leave.managerApprovalStatus === "REJECTED" && leave.managerRejectionReason) ? (
-                                    <div className="detail-block" style={{ gridColumn: "span 2" }}>
-                                      <span className="table-cell-secondary error-text">Rejection Remarks</span>
-                                      {leave.managerApprovalStatus === "REJECTED" ? (
-                                        <span className="attendance-warning-text">Manager: {leave.managerRejectionReason}</span>
-                                      ) : null}
-                                      {leave.hrApprovalStatus === "REJECTED" ? (
-                                        <span className="attendance-warning-text">HR: {leave.hrRejectionReason}</span>
-                                      ) : null}
-                                    </div>
-                                  ) : null}
-
-                                  {leave.medicalProofRequired ? (
-                                    <div className="detail-block" style={{ gridColumn: "span 3" }}>
-                                      <span className="table-cell-secondary">Medical Proof Requirement & Submission Timeline</span>
-                                      <div style={{ display: "flex", flexDirection: "column", gap: "8px", marginTop: "4px" }}>
-                                        <div style={{ display: "flex", gap: "16px", alignItems: "center" }}>
-                                          <span className="table-cell-primary" style={{ fontWeight: "600" }}>Status: {getMedicalProofStatusLabel(leave)}</span>
-                                        </div>
-                                        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "12px", background: "var(--color-surface-hover)", padding: "12px 16px", borderRadius: "var(--radius-md)", border: "1.5px solid var(--color-border-default)" }}>
-                                          <div>
-                                            <span className="table-cell-secondary" style={{ fontSize: "11px", textTransform: "uppercase", letterSpacing: "0.05em", display: "block" }}>Request Submitted At</span>
-                                            <span className="table-cell-primary" style={{ fontSize: "13px", display: "block", marginTop: "2px", fontWeight: "500" }}>
-                                              {leave.createdAt ? formatDateTime(leave.createdAt) : "N/A"}
-                                            </span>
-                                          </div>
-                                          <div>
-                                            <span className="table-cell-secondary" style={{ fontSize: "11px", textTransform: "uppercase", letterSpacing: "0.05em", display: "block" }}>Proof Document Uploaded At</span>
-                                            <span className="table-cell-primary" style={{ fontSize: "13px", display: "block", marginTop: "2px", fontWeight: "500" }}>
-                                              {leave.medicalProofSubmittedAt ? formatDateTime(leave.medicalProofSubmittedAt) : "Not uploaded yet"}
-                                            </span>
-                                          </div>
-                                          <div>
-                                            <span className="table-cell-secondary" style={{ fontSize: "11px", textTransform: "uppercase", letterSpacing: "0.05em", display: "block" }}>Proof Upload Deadline</span>
-                                            <span className="table-cell-primary" style={{ fontSize: "13px", display: "block", marginTop: "2px", fontWeight: "600", color: leave.medicalProofStatus === "EXPIRED" ? "var(--color-error)" : "inherit" }}>
-                                              {leave.medicalProofDueAt ? formatDateTime(leave.medicalProofDueAt) : "N/A"}
-                                            </span>
-                                          </div>
-                                        </div>
+                                {/* ── Rejection remarks (conditional) ── */}
+                                {(leave.hrApprovalStatus === "REJECTED" && leave.hrRejectionReason) ||
+                                 (leave.managerApprovalStatus === "REJECTED" && leave.managerRejectionReason) ? (
+                                  <div className="ld-rejection">
+                                    <span className="ld-card__title ld-rejection__title">Rejection Remarks</span>
+                                    {leave.managerApprovalStatus === "REJECTED" && leave.managerRejectionReason ? (
+                                      <div className="ld-rejection__item">
+                                        <span className="ld-rejection__role">Manager</span>
+                                        <span className="ld-rejection__text">{leave.managerRejectionReason}</span>
                                       </div>
-                                      
-                                      {leave.medicalProofRejectionReason ? (
-                                        <span className="attendance-warning-text" style={{ marginTop: "4px" }}>{leave.medicalProofRejectionReason}</span>
-                                      ) : null}
+                                    ) : null}
+                                    {leave.hrApprovalStatus === "REJECTED" && leave.hrRejectionReason ? (
+                                      <div className="ld-rejection__item">
+                                        <span className="ld-rejection__role">HR</span>
+                                        <span className="ld-rejection__text">{leave.hrRejectionReason}</span>
+                                      </div>
+                                    ) : null}
+                                  </div>
+                                ) : null}
 
-                                      {canUploadMedicalProof(leave) ? (
-                                        <div className="button-row row-actions" style={{ marginTop: "8px", alignItems: "center" }}>
-                                          <input
-                                            type="file"
-                                            accept=".pdf,application/pdf,.png,image/png,.jpg,.jpeg,image/jpeg"
-                                            style={{ maxWidth: "200px" }}
-                                            onChange={(event) => {
-                                              const file = event.target.files?.[0] ?? null;
-                                              if (file && file.size > 200 * 1024) {
-                                                toast.error("File size must be less than 200 KB");
-                                                event.target.value = ""; // clear selection
-                                                setMedicalProofFiles((current) => ({
-                                                  ...current,
-                                                  [leave.id]: null,
-                                                }));
-                                                return;
-                                              }
+                                {/* ── Medical proof section (SL only) ── */}
+                                {leave.medicalProofRequired ? (
+                                  <div className="ld-medical-proof">
+                                    <div className="ld-medical-proof__header">
+                                      <span className="ld-card__title">Medical Proof</span>
+                                      <span className={`ld-medical-proof__badge ld-medical-proof__badge--${(leave.medicalProofStatus ?? "").toLowerCase().replace(/_/g, '-')}`}>
+                                        {getMedicalProofStatusLabel(leave)}
+                                      </span>
+                                    </div>
+                                    <div className="ld-medical-proof__timeline">
+                                      <div className="ld-medical-proof__timeline-item">
+                                        <span className="ld-card__label">Request Submitted</span>
+                                        <span className="ld-card__value">{leave.createdAt ? formatDateTime(leave.createdAt) : "N/A"}</span>
+                                      </div>
+                                      <div className="ld-medical-proof__timeline-item">
+                                        <span className="ld-card__label">Proof Uploaded</span>
+                                        <span className="ld-card__value">
+                                          {leave.medicalProofSubmittedAt ? formatDateTime(leave.medicalProofSubmittedAt) : "Not uploaded yet"}
+                                        </span>
+                                      </div>
+                                      <div className="ld-medical-proof__timeline-item">
+                                        <span className="ld-card__label">Upload Deadline</span>
+                                        <span className={`ld-card__value ${leave.medicalProofStatus === "EXPIRED" ? "ld-card__value--danger" : ""}`}>
+                                          {leave.medicalProofDueAt ? formatDateTime(leave.medicalProofDueAt) : "N/A"}
+                                        </span>
+                                      </div>
+                                    </div>
+
+                                    {leave.medicalProofRejectionReason ? (
+                                      <div className="ld-medical-proof__rejection-note">
+                                        ⚠️ {leave.medicalProofRejectionReason}
+                                      </div>
+                                    ) : null}
+
+                                    {canUploadMedicalProof(leave) ? (
+                                      <div className="ld-medical-proof__upload-area">
+                                        <input
+                                          type="file"
+                                          accept=".pdf,application/pdf,.png,image/png,.jpg,.jpeg,image/jpeg"
+                                          onChange={(event) => {
+                                            const file = event.target.files?.[0] ?? null;
+                                            if (file && file.size > 200 * 1024) {
+                                              toast.error("File size must be less than 200 KB");
+                                              event.target.value = "";
                                               setMedicalProofFiles((current) => ({
                                                 ...current,
-                                                [leave.id]: file,
+                                                [leave.id]: null,
                                               }));
-                                            }}
-                                          />
-                                          <button
-                                            type="button"
-                                            className={processingIds[`upload-${leave.id}`] ? "button-loading" : ""}
-                                            disabled={!medicalProofFiles[leave.id] || processingIds[`upload-${leave.id}`]}
-                                            onClick={() => {
-                                              const file = medicalProofFiles[leave.id];
-                                              if (!file) return;
-                                              void handleUploadProof(leave.id, file);
-                                            }}
-                                          >
-                                            Upload proof
-                                          </button>
-                                          <span style={{ fontSize: "11px", color: "var(--color-text-secondary)" }}>(Max 200 KB)</span>
-                                        </div>
-                                      ) : null}
+                                              return;
+                                            }
+                                            setMedicalProofFiles((current) => ({
+                                              ...current,
+                                              [leave.id]: file,
+                                            }));
+                                          }}
+                                        />
+                                        <button
+                                          type="button"
+                                          className={processingIds[`upload-${leave.id}`] ? "button-loading" : ""}
+                                          disabled={!medicalProofFiles[leave.id] || processingIds[`upload-${leave.id}`]}
+                                          onClick={() => {
+                                            const file = medicalProofFiles[leave.id];
+                                            if (!file) return;
+                                            void handleUploadProof(leave.id, file);
+                                          }}
+                                        >
+                                          Upload proof
+                                        </button>
+                                        <span className="ld-medical-proof__upload-hint">(Max 200 KB)</span>
+                                      </div>
+                                    ) : null}
 
-                                      {canHrReviewMedicalProof(leave) ? (
-                                        <div style={{ display: "flex", gap: "12px", marginTop: "8px" }}>
-                                          <button
-                                            type="button"
-                                            className={processingIds[`review-approve-${leave.id}`] ? "button-loading" : ""}
-                                            disabled={processingIds[`review-approve-${leave.id}`] || processingIds[`review-reject-${leave.id}`]}
-                                            onClick={() => handleReviewProof(leave.id, "approve")}
-                                            style={{
-                                              background: "linear-gradient(135deg, #10b981, #059669)",
-                                              border: "none",
-                                              color: "#ffffff"
-                                            }}
-                                          >
-                                            Verify proof
-                                          </button>
-                                          <button
-                                            type="button"
-                                            className={processingIds[`review-reject-${leave.id}`] ? "button-loading" : ""}
-                                            disabled={processingIds[`review-approve-${leave.id}`] || processingIds[`review-reject-${leave.id}`]}
-                                            onClick={() => handleReviewProof(leave.id, "reject")}
-                                            style={{
-                                              background: "linear-gradient(135deg, #ef4444, #dc2626)",
-                                              border: "none",
-                                              color: "#ffffff"
-                                            }}
-                                          >
-                                            Reject proof
-                                          </button>
-                                        </div>
-                                      ) : null}
-                                    </div>
-                                  ) : null}
-
-                                </div>
+                                    {canHrReviewMedicalProof(leave) ? (
+                                      <div className="ld-medical-proof__review-actions">
+                                        <button
+                                          type="button"
+                                          className={`ld-btn--verify ${processingIds[`review-approve-${leave.id}`] ? "button-loading" : ""}`}
+                                          disabled={processingIds[`review-approve-${leave.id}`] || processingIds[`review-reject-${leave.id}`]}
+                                          onClick={() => handleReviewProof(leave.id, "approve")}
+                                        >
+                                          ✓ Verify proof
+                                        </button>
+                                        <button
+                                          type="button"
+                                          className={`ld-btn--reject-proof ${processingIds[`review-reject-${leave.id}`] ? "button-loading" : ""}`}
+                                          disabled={processingIds[`review-approve-${leave.id}`] || processingIds[`review-reject-${leave.id}`]}
+                                          onClick={() => handleReviewProof(leave.id, "reject")}
+                                        >
+                                          ✕ Reject proof
+                                        </button>
+                                      </div>
+                                    ) : null}
+                                  </div>
+                                ) : null}
                               </div>
                             </td>
                           </tr>

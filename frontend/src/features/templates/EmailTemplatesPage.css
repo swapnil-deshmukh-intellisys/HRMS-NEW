@@ -224,7 +224,7 @@
 
 .large-select {
   width: 100%;
-  padding: 12px 16px;
+  padding: 12px 42px 12px 16px;
   font-family: inherit;
   font-size: 15px;
   font-weight: 600;
@@ -528,6 +528,7 @@
 
 .select-sandbox {
   cursor: pointer;
+  padding-right: 42px;
 }
 
 .textarea-sandbox {

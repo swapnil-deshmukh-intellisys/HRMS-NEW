@@ -385,7 +385,7 @@ export default function EmployeeAttendanceTab({ attendance, exceptions, joiningD
               value={selectedMonth} 
               onChange={(e) => setSelectedMonth(Number(e.target.value))}
               className="month-selector-dropdown"
-              style={{ width: 'auto', padding: '6px 36px 6px 12px', borderRadius: '8px', border: '1px solid #e2e8f0', fontSize: '13px', fontWeight: '600', color: '#1e293b', background: '#f8fafc', cursor: 'pointer', outline: 'none' }}
+              style={{ width: 'auto', padding: '6px 36px 6px 12px', borderRadius: '8px', border: '1px solid #e2e8f0', fontSize: '13px', fontWeight: '600', color: '#1e293b', backgroundColor: '#f8fafc', cursor: 'pointer', outline: 'none' }}
             >
               {availableMonths.map((m) => (
                 <option key={m.name} value={m.value}>{m.name}</option>
@@ -395,7 +395,7 @@ export default function EmployeeAttendanceTab({ attendance, exceptions, joiningD
               value={selectedYear} 
               onChange={(e) => setSelectedYear(Number(e.target.value))}
               className="month-selector-dropdown"
-              style={{ width: 'auto', padding: '6px 36px 6px 12px', borderRadius: '8px', border: '1px solid #e2e8f0', fontSize: '13px', fontWeight: '600', color: '#1e293b', background: '#f8fafc', cursor: 'pointer', outline: 'none' }}
+              style={{ width: 'auto', padding: '6px 36px 6px 12px', borderRadius: '8px', border: '1px solid #e2e8f0', fontSize: '13px', fontWeight: '600', color: '#1e293b', backgroundColor: '#f8fafc', cursor: 'pointer', outline: 'none' }}
             >
               {years.map(year => (
                 <option key={year} value={year}>{year}</option>

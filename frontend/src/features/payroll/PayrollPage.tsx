@@ -823,7 +823,12 @@ export default function PayrollPage({ token, role }: PayrollPageProps) {
                 <span className="eyebrow">{preview.incentives.length} incentive(s)</span>
               </div>
               <div className="table-wrap">
-                <table className="table table--dense">
+                <table className="table table--dense" style={{ tableLayout: "fixed" }}>
+                  <colgroup>
+                    <col style={{ width: "45%" }} />
+                    <col style={{ width: "30%" }} />
+                    <col style={{ width: "25%" }} />
+                  </colgroup>
                   <thead>
                     <tr>
                       <th>Type</th>
@@ -909,7 +914,14 @@ export default function PayrollPage({ token, role }: PayrollPageProps) {
           </div>
         ) : (
           <div className="table-wrap">
-            <table className="table table--dense">
+            <table className="table table--dense" style={{ tableLayout: "fixed" }}>
+              <colgroup>
+                <col style={{ width: "28%" }} />
+                <col style={{ width: "20%" }} />
+                <col style={{ width: "15%" }} />
+                <col style={{ width: "15%" }} />
+                <col style={{ width: "22%" }} />
+              </colgroup>
               <thead>
                 <tr>
                   <th>Employee</th>

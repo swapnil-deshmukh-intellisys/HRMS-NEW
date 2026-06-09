@@ -199,6 +199,13 @@ export type Attendance = {
   leaveTypeName?: string | null;
   todaysUpdate?: string | null;
   employee?: Employee;
+  overtimeSession?: {
+    id: number;
+    duration: number | null;
+    status: "ACTIVE" | "COMPLETED" | "PENDING_VERIFICATION" | "VERIFIED" | "REJECTED";
+    startTime: string;
+    endTime?: string | null;
+  } | null;
 };
 
 export type AttendanceRegularizationRequest = {

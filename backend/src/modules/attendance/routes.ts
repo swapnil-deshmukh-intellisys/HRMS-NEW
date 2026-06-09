@@ -933,7 +933,36 @@ router.get("/", requireRoles("ADMIN", "HR", "MANAGER", "EMPLOYEE"), async (reque
 
     const enrichedAttendance = await enrichAttendanceWithLeaveContext(attendance);
 
-    return sendSuccess(response, "Attendance records fetched successfully", enrichedAttendance);
+    // Fetch overtime sessions matching these attendance records
+    const employeeIds = enrichedAttendance.map((a) => a.employeeId);
+    const dates = enrichedAttendance.map((a) => a.attendanceDate);
+    const overtimeSessions = await prisma.overtimeSession.findMany({
+      where: {
+        employeeId: { in: employeeIds },
+        date: { in: dates },
+      },
+    });
+
+    const attendanceWithOvertime = enrichedAttendance.map((record) => {
+      const matchingOT = overtimeSessions.find((ot) =>
+        ot.employeeId === record.employeeId &&
+        startOfDay(ot.date).getTime() === startOfDay(record.attendanceDate).getTime()
+      );
+      return {
+        ...record,
+        overtimeSession: matchingOT
+          ? {
+              id: matchingOT.id,
+              duration: matchingOT.duration,
+              status: matchingOT.status,
+              startTime: matchingOT.startTime,
+              endTime: matchingOT.endTime,
+            }
+          : null,
+      };
+    });
+
+    return sendSuccess(response, "Attendance records fetched successfully", attendanceWithOvertime);
   } catch (error) {
     next(error);
   }

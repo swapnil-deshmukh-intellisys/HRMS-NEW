@@ -280,6 +280,50 @@ export default function AttendancePage({ token, role, currentEmployeeId, current
     return label;
   }
 
+  function renderOvertime(record: AttendanceListRow) {
+    if (!record.overtimeSession) {
+      if (record.workedMinutes > 540) {
+        const otMins = record.workedMinutes - 540;
+        return (
+          <span className="status-pill status-pill--approved" style={{ fontSize: '11px', fontWeight: 'bold' }}>
+            +{formatWorkedDuration(otMins)}
+          </span>
+        );
+      }
+      return <span className="muted">—</span>;
+    }
+
+    const { duration, status } = record.overtimeSession;
+    
+    if (status === "REJECTED") {
+      return <span className="status-pill status-pill--rejected" style={{ fontSize: '11px' }}>Rejected</span>;
+    }
+
+    const durationLabel = duration ? formatWorkedDuration(duration) : "0m";
+
+    if (status === "VERIFIED") {
+      return (
+        <span className="status-pill status-pill--approved" style={{ fontSize: '11px', fontWeight: 'bold' }}>
+          +{durationLabel}
+        </span>
+      );
+    }
+
+    if (status === "ACTIVE") {
+      return (
+        <span className="status-pill status-pill--half-day" style={{ fontSize: '11px' }}>
+          Active
+        </span>
+      );
+    }
+
+    return (
+      <span className="status-pill status-pill--pending" style={{ fontSize: '11px' }} title="Pending verification">
+        {durationLabel} (Pending)
+      </span>
+    );
+  }
+
   const reloadAttendance = useCallback(async () => {
     try {
       setLoading(true);
@@ -561,6 +605,7 @@ export default function AttendancePage({ token, role, currentEmployeeId, current
     "Check in",
     "Check out",
     "Worked duration",
+    "Overtime",
     "Today's update",
     "Status",
   ];
@@ -812,6 +857,7 @@ export default function AttendancePage({ token, role, currentEmployeeId, current
                   formatAttendanceTime(record.checkInTime),
                   formatAttendanceTime(record.checkOutTime),
                   renderWorkedDuration(record),
+                  renderOvertime(record),
                   <span 
                     key={`update-${record.id}`} 
                     className="muted" 

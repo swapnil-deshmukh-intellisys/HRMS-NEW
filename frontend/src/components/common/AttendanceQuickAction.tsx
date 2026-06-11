@@ -17,10 +17,6 @@ type AttendanceQuickActionProps = {
   onStateChange?: (attendance: Attendance | null) => void;
 };
 
-type SelfDashboardData = {
-  attendanceToday?: Attendance | null;
-};
-
 export default function AttendanceQuickAction({
   token,
   currentEmployeeId,
@@ -306,7 +302,7 @@ export default function AttendanceQuickAction({
       if (data && typeof data === "object") {
         if ("attendanceDate" in data) {
           nextAttendance = data;
-          if (attendanceToday) {
+          if (nextAttendance && attendanceToday) {
             nextAttendance.overtimeSession = attendanceToday.overtimeSession;
           }
         } else if ("startTime" in data) {

@@ -4,6 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, test, vi } from "vitest";
 import AttendanceQuickAction from "./AttendanceQuickAction";
 import { dispatchAttendanceUpdated } from "./attendanceQuickActionUtils";
+import { AppProvider } from "../../context/AppProvider";
 
 function createAttendance(overrides: Partial<Attendance> = {}): Attendance {
   return {
@@ -53,7 +54,7 @@ describe("AttendanceQuickAction", () => {
           createApiResponse(
             createAttendance({
               checkOutTime: "2026-05-12T18:00:00.000Z",
-              workedMinutes: 540,
+              workedMinutes: 500,
             }),
           ),
         );
@@ -63,10 +64,23 @@ describe("AttendanceQuickAction", () => {
         return Promise.resolve(createApiResponse(createEmployee()));
       }
 
+      if (url.includes("/system/time") && method === "GET") {
+        return Promise.resolve(
+          createApiResponse({
+            serverTime: new Date().toISOString(),
+            timezone: "Asia/Kolkata",
+          }),
+        );
+      }
+
       throw new Error(`Unhandled API request: ${method} ${url}`);
     });
 
-    render(<AttendanceQuickAction token="token" currentEmployeeId={1} />);
+    render(
+      <AppProvider token="token" role="EMPLOYEE">
+        <AttendanceQuickAction token="token" currentEmployeeId={1} />
+      </AppProvider>
+    );
 
     act(() => {
       dispatchAttendanceUpdated(createAttendance());
@@ -89,7 +103,7 @@ describe("AttendanceQuickAction", () => {
         createApiResponse({
           attendanceToday: createAttendance({
             checkOutTime: "2026-05-12T18:00:00.000Z",
-            workedMinutes: 540,
+            workedMinutes: 500,
           }),
         }),
       );
@@ -121,10 +135,23 @@ describe("AttendanceQuickAction", () => {
         return Promise.resolve(createApiResponse(createEmployee()));
       }
 
+      if (url.includes("/system/time") && method === "GET") {
+        return Promise.resolve(
+          createApiResponse({
+            serverTime: new Date().toISOString(),
+            timezone: "Asia/Kolkata",
+          }),
+        );
+      }
+
       throw new Error(`Unhandled API request: ${method} ${url}`);
     });
 
-    render(<AttendanceQuickAction token="token" currentEmployeeId={1} />);
+    render(
+      <AppProvider token="token" role="EMPLOYEE">
+        <AttendanceQuickAction token="token" currentEmployeeId={1} />
+      </AppProvider>
+    );
 
     const user = userEvent.setup();
     await user.click(await screen.findByRole("button", { name: /finish today's attendance/i }));

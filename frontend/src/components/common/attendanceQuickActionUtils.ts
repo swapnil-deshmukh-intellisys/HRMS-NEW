@@ -63,14 +63,46 @@ export function getSelfAttendanceActionState(attendance: Attendance | null) {
   }
 
   if (attendance.checkOutTime) {
-    return {
-      label: "Completed",
-      actionPath: null,
-      disabled: true,
-      toneClass: "attendance-quick-action--completed",
-      hint: "Attendance completed for today",
-      requiresConfirmation: false,
-    };
+    const ot = attendance.overtimeSession;
+    if (!ot) {
+      if (attendance.workedMinutes >= 540) {
+        return {
+          label: "Overtime Check in",
+          actionPath: "/attendance/overtime/start" as const,
+          disabled: false,
+          toneClass: "attendance-quick-action--overtime-in",
+          hint: "Start overtime session",
+          requiresConfirmation: true,
+        };
+      } else {
+        return {
+          label: "Completed",
+          actionPath: null,
+          disabled: true,
+          toneClass: "attendance-quick-action--completed",
+          hint: "Attendance completed for today",
+          requiresConfirmation: false,
+        };
+      }
+    } else if (ot.status === "ACTIVE") {
+      return {
+        label: "Overtime Check out",
+        actionPath: "/attendance/overtime/end" as const,
+        disabled: false,
+        toneClass: "attendance-quick-action--overtime-out",
+        hint: "End overtime session",
+        requiresConfirmation: true,
+      };
+    } else {
+      return {
+        label: "Completed",
+        actionPath: null,
+        disabled: true,
+        toneClass: "attendance-quick-action--completed",
+        hint: "Attendance and overtime completed for today",
+        requiresConfirmation: false,
+      };
+    }
   }
 
   if (attendance.checkInTime) {

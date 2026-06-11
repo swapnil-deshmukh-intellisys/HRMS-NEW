@@ -115,7 +115,7 @@ async function enrichAttendanceWithLeaveContext(
 
 async function getAttendanceTodayForEmployee(employeeId: number) {
   const today = startOfDay(new Date());
-  const [attendanceTodayRecord, approvedLeaveToday] = await Promise.all([
+  let [attendanceTodayRecord, approvedLeaveToday] = await Promise.all([
     prisma.attendance.findFirst({
       where: {
         employeeId,
@@ -138,6 +138,23 @@ async function getAttendanceTodayForEmployee(employeeId: number) {
       },
     }),
   ]);
+
+  if (attendanceTodayRecord && attendanceTodayRecord.checkInTime && !attendanceTodayRecord.checkOutTime) {
+    const now = new Date();
+    const checkIn = new Date(attendanceTodayRecord.checkInTime);
+    if (now.getTime() - checkIn.getTime() >= 9 * 60 * 60 * 1000) {
+      const checkOutTime = new Date(checkIn.getTime() + 9 * 60 * 60 * 1000);
+      attendanceTodayRecord = await prisma.attendance.update({
+        where: { id: attendanceTodayRecord.id },
+        data: {
+          checkOutTime,
+          workedMinutes: 540,
+          todaysUpdate: attendanceTodayRecord.todaysUpdate || "[Auto Checkout - 9 Hours Shift Completed]",
+        },
+      });
+      console.log(`[Inline Auto-Checkout] Employee ${employeeId} checked out automatically.`);
+    }
+  }
 
   return (
     attendanceTodayRecord ??
@@ -182,7 +199,7 @@ router.get("/today", requireRoles("EMPLOYEE", "MANAGER", "HR", "ADMIN"), async (
       }),
     ]);
 
-    const isOvertimeEligible = attendanceToday?.checkOutTime ? true : false;
+    const isOvertimeEligible = (attendanceToday?.checkOutTime && attendanceToday.workedMinutes >= 540) ? true : false;
 
     return sendSuccess(response, "Today's attendance fetched successfully", {
       attendanceToday,

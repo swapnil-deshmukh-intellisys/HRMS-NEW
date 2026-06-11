@@ -145,9 +145,15 @@ export default function TeamPage({ token, role, currentEmployee }: TeamPageProps
     amount: ""
   });
 
+  // Sales Target States
+  const [salesTarget, setSalesTarget] = useState<number>(50000);
+  const [showTargetModal, setShowTargetModal] = useState(false);
+  const [targetFormValue, setTargetFormValue] = useState("");
+  const [isSavingTarget, setIsSavingTarget] = useState(false);
+
   const salesStats = useMemo(() => {
     const totalAchieved = sales.reduce((acc, curr) => acc + Number(curr.amount || 0), 0);
-    const target = 50000; // Static target of $50,000
+    const target = salesTarget;
     const percent = target > 0 ? Math.min((totalAchieved / target) * 100, 100) : 0;
     const uniqueSellers = new Set(sales.filter(s => s.employeeId).map(s => s.employeeId)).size;
     const avgSale = sales.length > 0 ? totalAchieved / sales.length : 0;
@@ -158,16 +164,21 @@ export default function TeamPage({ token, role, currentEmployee }: TeamPageProps
       uniqueSellers,
       avgSale
     };
-  }, [sales]);
+  }, [sales, salesTarget]);
 
   const fetchSalesRecords = useCallback(async () => {
     if (!token || !canAccessTeam) return;
     try {
       setSalesLoading(true);
-      const response = await apiRequest<any[]>(`/sales?month=${salesMonth}&year=${salesYear}`, { token });
-      setSales(response.data || []);
+      const recordsPromise = apiRequest<any[]>(`/sales?month=${salesMonth}&year=${salesYear}`, { token });
+      const targetPromise = apiRequest<{ target: number }>(`/sales/target?month=${salesMonth}&year=${salesYear}`, { token });
+
+      const [recordsResponse, targetResponse] = await Promise.all([recordsPromise, targetPromise]);
+
+      setSales(recordsResponse.data || []);
+      setSalesTarget(targetResponse.data.target);
     } catch (err: any) {
-      console.error("Failed to load sales records:", err);
+      console.error("Failed to load sales data:", err);
     } finally {
       setSalesLoading(false);
     }
@@ -207,6 +218,35 @@ export default function TeamPage({ token, role, currentEmployee }: TeamPageProps
       toast.error(err.message || "Failed to save sales record.");
     } finally {
       setIsSavingSale(false);
+    }
+  }
+
+  async function handleSaveTarget(e: React.FormEvent) {
+    e.preventDefault();
+    const targetNum = parseFloat(targetFormValue);
+    if (isNaN(targetNum) || targetNum < 0) {
+      toast.error("Please enter a valid target amount.");
+      return;
+    }
+
+    try {
+      setIsSavingTarget(true);
+      await apiRequest("/sales/target", {
+        method: "POST",
+        token,
+        body: {
+          month: parseInt(salesMonth, 10),
+          year: parseInt(salesYear, 10),
+          target: targetNum,
+        },
+      });
+      toast.success("Sales target updated successfully.");
+      setShowTargetModal(false);
+      setSalesTarget(targetNum);
+    } catch (err: any) {
+      toast.error(err.message || "Failed to update sales target.");
+    } finally {
+      setIsSavingTarget(false);
     }
   }
 
@@ -444,7 +484,7 @@ export default function TeamPage({ token, role, currentEmployee }: TeamPageProps
                 <select
                   value={salesMonth}
                   onChange={(e) => setSalesMonth(e.target.value)}
-                  style={{ padding: '6px 12px', borderRadius: '8px', border: '1px solid var(--color-border-default)', background: 'white', color: 'var(--color-text-primary)', fontSize: '13px', fontWeight: '600' }}
+                  style={{ padding: '6px 36px 6px 12px', borderRadius: '8px', border: '1px solid var(--color-border-default)', backgroundColor: 'white', color: 'var(--color-text-primary)', fontSize: '13px', fontWeight: '600' }}
                 >
                   <option value="1">January</option>
                   <option value="2">February</option>
@@ -462,7 +502,7 @@ export default function TeamPage({ token, role, currentEmployee }: TeamPageProps
                 <select
                   value={salesYear}
                   onChange={(e) => setSalesYear(e.target.value)}
-                  style={{ padding: '6px 12px', borderRadius: '8px', border: '1px solid var(--color-border-default)', background: 'white', color: 'var(--color-text-primary)', fontSize: '13px', fontWeight: '600' }}
+                  style={{ padding: '6px 36px 6px 12px', borderRadius: '8px', border: '1px solid var(--color-border-default)', backgroundColor: 'white', color: 'var(--color-text-primary)', fontSize: '13px', fontWeight: '600' }}
                 >
                   <option value="2025">2025</option>
                   <option value="2026">2026</option>
@@ -470,17 +510,30 @@ export default function TeamPage({ token, role, currentEmployee }: TeamPageProps
               </div>
 
               {(role === "ADMIN" || role === "HR" || role === "MANAGER" || isTeamLead) && (
-                <button
-                  type="button"
-                  className="primary small"
-                  style={{ padding: '8px 16px', borderRadius: '8px' }}
-                  onClick={() => {
-                    setSalesForm({ employeeId: "", outlookEmailId: "", amount: "" });
-                    setShowSalesModal(true);
-                  }}
-                >
-                  Update Sale
-                </button>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <button
+                    type="button"
+                    className="secondary small"
+                    style={{ padding: '8px 16px', borderRadius: '8px' }}
+                    onClick={() => {
+                      setTargetFormValue(String(salesTarget));
+                      setShowTargetModal(true);
+                    }}
+                  >
+                    Edit Target
+                  </button>
+                  <button
+                    type="button"
+                    className="primary small"
+                    style={{ padding: '8px 16px', borderRadius: '8px' }}
+                    onClick={() => {
+                      setSalesForm({ employeeId: "", outlookEmailId: "", amount: "" });
+                      setShowSalesModal(true);
+                    }}
+                  >
+                    Update Sale
+                  </button>
+                </div>
               )}
             </div>
           </div>
@@ -1343,7 +1396,7 @@ export default function TeamPage({ token, role, currentEmployee }: TeamPageProps
               }}
               required
               disabled={Boolean(salesForm.employeeId && salesForm.outlookEmailId && sales.some(s => String(s.employeeId) === salesForm.employeeId && String(s.outlookEmailId) === salesForm.outlookEmailId))}
-              style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--color-border-default)', background: 'white' }}
+              style={{ width: '100%', padding: '10px 36px 10px 12px', borderRadius: '8px', border: '1px solid var(--color-border-default)', backgroundColor: 'white' }}
             >
               <option value="">Select Employee</option>
               {teamMembers.map((member) => (
@@ -1361,7 +1414,7 @@ export default function TeamPage({ token, role, currentEmployee }: TeamPageProps
               onChange={(e) => setSalesForm({ ...salesForm, outlookEmailId: e.target.value })}
               required
               disabled={!salesForm.employeeId || Boolean(salesForm.employeeId && salesForm.outlookEmailId && sales.some(s => String(s.employeeId) === salesForm.employeeId && String(s.outlookEmailId) === salesForm.outlookEmailId))}
-              style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--color-border-default)', background: 'white' }}
+              style={{ width: '100%', padding: '10px 36px 10px 12px', borderRadius: '8px', border: '1px solid var(--color-border-default)', backgroundColor: 'white' }}
             >
               <option value="">Select Outlook ID</option>
               {outlookEmails
@@ -1413,6 +1466,51 @@ export default function TeamPage({ token, role, currentEmployee }: TeamPageProps
               disabled={isSavingSale}
             >
               {isSavingSale ? "Saving..." : "Save Record"}
+            </button>
+          </div>
+        </form>
+      </Modal>
+
+      <Modal
+        open={showTargetModal}
+        title="Edit Monthly Sales Target"
+        onClose={() => {
+          setShowTargetModal(false);
+          setTargetFormValue("");
+        }}
+      >
+        <form onSubmit={handleSaveTarget} className="stack" style={{ gap: '16px' }}>
+          <div>
+            <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', marginBottom: '6px' }}>Sales Target ($) *</label>
+            <input
+              type="number"
+              step="any"
+              min="0"
+              placeholder="Enter monthly sales target"
+              value={targetFormValue}
+              onChange={(e) => setTargetFormValue(e.target.value)}
+              required
+              style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--color-border-default)' }}
+            />
+          </div>
+
+          <div className="button-row" style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end', marginTop: '12px' }}>
+            <button
+              type="button"
+              className="secondary"
+              onClick={() => {
+                setShowTargetModal(false);
+                setTargetFormValue("");
+              }}
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="primary"
+              disabled={isSavingTarget}
+            >
+              {isSavingTarget ? "Saving..." : "Save Target"}
             </button>
           </div>
         </form>

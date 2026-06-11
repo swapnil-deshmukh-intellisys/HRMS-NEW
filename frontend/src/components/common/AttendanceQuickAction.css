@@ -84,8 +84,34 @@
     0 8px 16px rgba(239, 68, 68, 0.15);
 }
 
+.attendance-quick-action--overtime-in,
+.attendance-quick-action--overtime-out {
+  color: #fff;
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.1);
+}
+
+.attendance-quick-action--overtime-in {
+  background: linear-gradient(180deg, #8b5cf6, #7c3aed);
+  border-color: #6d28d9;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.3),
+    0 3px 0 #6d28d9,
+    0 8px 16px rgba(124, 58, 237, 0.15);
+}
+
+.attendance-quick-action--overtime-out {
+  background: linear-gradient(180deg, #ec4899, #db2777);
+  border-color: #be185d;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.3),
+    0 3px 0 #be185d,
+    0 8px 16px rgba(236, 72, 153, 0.15);
+}
+
 .attendance-quick-action--check-in:hover:not(:disabled),
-.attendance-quick-action--check-out:hover:not(:disabled) {
+.attendance-quick-action--check-out:hover:not(:disabled),
+.attendance-quick-action--overtime-in:hover:not(:disabled),
+.attendance-quick-action--overtime-out:hover:not(:disabled) {
   filter: brightness(1.05);
 }
 

@@ -21,6 +21,12 @@ const upsertSalesSchema = z.object({
   year: z.coerce.number().int().min(2000).max(2100),
 });
 
+const upsertTargetSchema = z.object({
+  month: z.coerce.number().int().min(1).max(12),
+  year: z.coerce.number().int().min(2000).max(2100),
+  target: z.coerce.number().nonnegative(),
+});
+
 // GET /sales?month=X&year=Y
 router.get("/", authenticate, validate(querySchema, "query"), async (request, response, next) => {
   try {
@@ -108,6 +114,62 @@ router.post("/", authenticate, requireRoles("ADMIN", "HR", "MANAGER", "TEAM_LEAD
     });
 
     return sendSuccess(response, "Sales record updated successfully", upsertedRecord);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// GET /sales/target?month=X&year=Y
+router.get("/target", authenticate, validate(querySchema, "query"), async (request, response, next) => {
+  try {
+    const month = parseInt(request.query.month as string, 10);
+    const year = parseInt(request.query.year as string, 10);
+
+    const salesTarget = await prisma.salesTarget.findUnique({
+      where: {
+        month_year: {
+          month,
+          year,
+        },
+      },
+    });
+
+    // Default to 50000 if no target is set yet
+    const targetValue = salesTarget ? salesTarget.target : 50000;
+
+    return sendSuccess(response, "Sales target fetched successfully", {
+      month,
+      year,
+      target: targetValue,
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// POST /sales/target (Upsert sales target)
+router.post("/target", authenticate, requireRoles("ADMIN", "HR", "MANAGER", "TEAM_LEAD"), validate(upsertTargetSchema), async (request, response, next) => {
+  try {
+    const { month, year, target } = request.body;
+
+    const upsertedTarget = await prisma.salesTarget.upsert({
+      where: {
+        month_year: {
+          month,
+          year,
+        },
+      },
+      update: {
+        target,
+      },
+      create: {
+        month,
+        year,
+        target,
+      },
+    });
+
+    return sendSuccess(response, "Sales target updated successfully", upsertedTarget);
   } catch (error) {
     next(error);
   }

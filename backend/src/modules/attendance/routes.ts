@@ -115,7 +115,7 @@ async function enrichAttendanceWithLeaveContext(
 
 async function getAttendanceTodayForEmployee(employeeId: number) {
   const today = startOfDay(new Date());
-  const [attendanceTodayRecord, approvedLeaveToday] = await Promise.all([
+  let [attendanceTodayRecord, approvedLeaveToday] = await Promise.all([
     prisma.attendance.findFirst({
       where: {
         employeeId,
@@ -138,6 +138,23 @@ async function getAttendanceTodayForEmployee(employeeId: number) {
       },
     }),
   ]);
+
+  if (attendanceTodayRecord && attendanceTodayRecord.checkInTime && !attendanceTodayRecord.checkOutTime) {
+    const now = new Date();
+    const checkIn = new Date(attendanceTodayRecord.checkInTime);
+    if (now.getTime() - checkIn.getTime() >= 9 * 60 * 60 * 1000) {
+      const checkOutTime = new Date(checkIn.getTime() + 9 * 60 * 60 * 1000);
+      attendanceTodayRecord = await prisma.attendance.update({
+        where: { id: attendanceTodayRecord.id },
+        data: {
+          checkOutTime,
+          workedMinutes: 540,
+          todaysUpdate: attendanceTodayRecord.todaysUpdate || "[Auto Checkout - 9 Hours Shift Completed]",
+        },
+      });
+      console.log(`[Inline Auto-Checkout] Employee ${employeeId} checked out automatically.`);
+    }
+  }
 
   return (
     attendanceTodayRecord ??
@@ -182,7 +199,7 @@ router.get("/today", requireRoles("EMPLOYEE", "MANAGER", "HR", "ADMIN"), async (
       }),
     ]);
 
-    const isOvertimeEligible = attendanceToday?.checkOutTime ? true : false;
+    const isOvertimeEligible = (attendanceToday?.checkOutTime && attendanceToday.workedMinutes >= 540) ? true : false;
 
     return sendSuccess(response, "Today's attendance fetched successfully", {
       attendanceToday,
@@ -875,13 +892,14 @@ router.get("/", requireRoles("ADMIN", "HR", "MANAGER", "EMPLOYEE"), async (reque
         throw new AppError("Employee context is required", 400);
       }
 
-      if (requestedEmployeeId && requestedEmployeeId !== request.user.employeeId) {
-        const canAccess = await canTeamLeadAccessEmployee(prisma, request.user.employeeId, requestedEmployeeId);
+      if (requestedEmployeeId) {
+        if (requestedEmployeeId !== request.user.employeeId) {
+          const canAccess = await canTeamLeadAccessEmployee(prisma, request.user.employeeId, requestedEmployeeId);
 
-        if (!canAccess) {
-          throw new AppError("You are not authorized to view this attendance", 403);
+          if (!canAccess) {
+            throw new AppError("You are not authorized to view this attendance", 403);
+          }
         }
-
         where = { employeeId: requestedEmployeeId };
       } else {
         const isTeamLead = await hasEmployeeCapability(prisma, request.user.employeeId, "TEAM_LEAD");
@@ -932,7 +950,36 @@ router.get("/", requireRoles("ADMIN", "HR", "MANAGER", "EMPLOYEE"), async (reque
 
     const enrichedAttendance = await enrichAttendanceWithLeaveContext(attendance);
 
-    return sendSuccess(response, "Attendance records fetched successfully", enrichedAttendance);
+    // Fetch overtime sessions matching these attendance records
+    const employeeIds = enrichedAttendance.map((a) => a.employeeId);
+    const dates = enrichedAttendance.map((a) => a.attendanceDate);
+    const overtimeSessions = await prisma.overtimeSession.findMany({
+      where: {
+        employeeId: { in: employeeIds },
+        date: { in: dates },
+      },
+    });
+
+    const attendanceWithOvertime = enrichedAttendance.map((record) => {
+      const matchingOT = overtimeSessions.find((ot) =>
+        ot.employeeId === record.employeeId &&
+        startOfDay(ot.date).getTime() === startOfDay(record.attendanceDate).getTime()
+      );
+      return {
+        ...record,
+        overtimeSession: matchingOT
+          ? {
+              id: matchingOT.id,
+              duration: matchingOT.duration,
+              status: matchingOT.status,
+              startTime: matchingOT.startTime,
+              endTime: matchingOT.endTime,
+            }
+          : null,
+      };
+    });
+
+    return sendSuccess(response, "Attendance records fetched successfully", attendanceWithOvertime);
   } catch (error) {
     next(error);
   }
@@ -1092,13 +1139,14 @@ router.get("/overtime", requireRoles("ADMIN", "HR", "MANAGER", "EMPLOYEE"), asyn
         throw new AppError("Employee context is required", 400);
       }
 
-      if (requestedEmployeeId && requestedEmployeeId !== request.user.employeeId) {
-        const canAccess = await canTeamLeadAccessEmployee(prisma, request.user.employeeId, requestedEmployeeId);
+      if (requestedEmployeeId) {
+        if (requestedEmployeeId !== request.user.employeeId) {
+          const canAccess = await canTeamLeadAccessEmployee(prisma, request.user.employeeId, requestedEmployeeId);
 
-        if (!canAccess) {
-          throw new AppError("You are not authorized to view this overtime", 403);
+          if (!canAccess) {
+            throw new AppError("You are not authorized to view this overtime", 403);
+          }
         }
-
         where = { employeeId: requestedEmployeeId };
       } else {
         const isTeamLead = await hasEmployeeCapability(prisma, request.user.employeeId, "TEAM_LEAD");

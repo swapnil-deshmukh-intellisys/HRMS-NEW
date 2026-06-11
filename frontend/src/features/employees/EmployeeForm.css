@@ -48,13 +48,23 @@
   color: var(--color-text-secondary);
 }
 
-.employee-form-fieldset input:not([type="checkbox"]),
-.employee-form-fieldset select {
+.employee-form-fieldset input:not([type="checkbox"]) {
   height: 42px;
   padding: 0 12px;
   border-radius: 8px;
   border: 1.5px solid var(--color-border-subtle);
   background: white;
+  font-size: 0.95rem;
+  transition: all 0.2s ease;
+  width: 100%;
+}
+
+.employee-form-fieldset select {
+  height: 42px;
+  padding: 0 36px 0 12px;
+  border-radius: 8px;
+  border: 1.5px solid var(--color-border-subtle);
+  background-color: white;
   font-size: 0.95rem;
   transition: all 0.2s ease;
   width: 100%;

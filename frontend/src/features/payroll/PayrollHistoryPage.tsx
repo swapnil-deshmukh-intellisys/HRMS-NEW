@@ -369,7 +369,14 @@ export default function PayrollHistoryPage({ token }: Omit<PayrollHistoryPagePro
           <div className="loading">Loading payroll history...</div>
         ) : (
           <div className="table-wrap">
-            <table className="table table--dense">
+            <table className="table table--dense" style={{ tableLayout: "fixed" }}>
+              <colgroup>
+                <col style={{ width: "15%" }} />
+                <col style={{ width: "15%" }} />
+                <col style={{ width: "20%" }} />
+                <col style={{ width: "20%" }} />
+                <col style={{ width: "30%" }} />
+              </colgroup>
               <thead>
                 <tr>
                   <th>Month</th>

@@ -17,10 +17,6 @@ type AttendanceQuickActionProps = {
   onStateChange?: (attendance: Attendance | null) => void;
 };
 
-type SelfDashboardData = {
-  attendanceToday?: Attendance | null;
-};
-
 export default function AttendanceQuickAction({
   token,
   currentEmployeeId,
@@ -106,7 +102,7 @@ export default function AttendanceQuickAction({
     [onStateChange],
   );
 
-  const loadAttendance = useCallback(async () => {
+  const loadAttendance = useCallback(async (shouldDispatch = false) => {
     if (!currentEmployeeId) {
       syncAttendanceState(null);
       return;
@@ -116,13 +112,19 @@ export default function AttendanceQuickAction({
     const versionAtStart = attendanceVersionRef.current;
 
     try {
-      const response = await apiRequest<SelfDashboardData>("/attendance/today", { token });
+      const response = await apiRequest<any>("/attendance/today", { token });
       if (requestId !== latestLoadRequestRef.current || versionAtStart !== attendanceVersionRef.current) {
         return;
       }
 
       const nextAttendance = response.data.attendanceToday ?? null;
+      if (nextAttendance) {
+        nextAttendance.overtimeSession = response.data.overtimeSession ?? null;
+      }
       syncAttendanceState(nextAttendance);
+      if (shouldDispatch) {
+        dispatchAttendanceUpdated(nextAttendance);
+      }
     } catch {
       if (requestId !== latestLoadRequestRef.current || versionAtStart !== attendanceVersionRef.current) {
         return;
@@ -196,7 +198,10 @@ export default function AttendanceQuickAction({
     }
 
     if (actionState.requiresConfirmation) {
-      const confirmMessage = `Are you sure you want to ${actionState.label.toLowerCase()} for today? This will start your attendance timer for the day.`;
+      let confirmMessage = `Are you sure you want to ${actionState.label.toLowerCase()}?`;
+      if (actionState.label === "Check in") {
+        confirmMessage = "Are you sure you want to check in? This will start your attendance timer for the day.";
+      }
 
       if (window.confirm(confirmMessage)) {
         await submitAction();
@@ -286,12 +291,30 @@ export default function AttendanceQuickAction({
       // Update last activity before making the request
       updateLastActivity();
       
-      const response = await apiRequest<Attendance>(actionState.actionPath, {
+      const response = await apiRequest<any>(actionState.actionPath, {
         method: "POST",
         token,
         body,
       });
-      const nextAttendance = response.data;
+      
+      const data = response.data;
+      let nextAttendance = attendanceToday;
+      if (data && typeof data === "object") {
+        if ("attendanceDate" in data) {
+          nextAttendance = data;
+          if (nextAttendance && attendanceToday) {
+            nextAttendance.overtimeSession = attendanceToday.overtimeSession;
+          }
+        } else if ("startTime" in data) {
+          if (nextAttendance) {
+            nextAttendance = {
+              ...nextAttendance,
+              overtimeSession: data,
+            };
+          }
+        }
+      }
+
       syncAttendanceState(nextAttendance);
       dispatchAttendanceUpdated(nextAttendance);
       void loadAttendance();

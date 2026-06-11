@@ -96,6 +96,11 @@ export default function LeaderboardPage({ token, role = "EMPLOYEE" }: { token: s
   const [pointsHistory, setPointsHistory] = useState<PointHistoryEntry[]>([]);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
 
+  // Previous month winners for current month highlights
+  const [prevWorkHoursWinnerId, setPrevWorkHoursWinnerId] = useState<number | null>(null);
+  const [prevOnTimeWinnerId, setPrevOnTimeWinnerId] = useState<number | null>(null);
+  const [prevWinnerEntry, setPrevWinnerEntry] = useState<WorkHoursEntry | null>(null);
+
   useEffect(() => {
     fetchLeaderboard();
   }, [month, year, token]);
@@ -103,10 +108,35 @@ export default function LeaderboardPage({ token, role = "EMPLOYEE" }: { token: s
   async function fetchLeaderboard() {
     try {
       setLoading(true);
-      const res = await apiRequest<LeaderboardData>(
+      const currentPromise = apiRequest<LeaderboardData>(
         `/attendance/leaderboard?month=${month}&year=${year}`,
         { token }
       );
+
+      let prevWorkHoursId: number | null = null;
+      let prevOnTimeId: number | null = null;
+
+      // Only fetch previous month's data if we are viewing the current month
+      const isCurrMonth = month === now.getMonth() + 1 && year === now.getFullYear();
+      let prevPromise = Promise.resolve<any>(null);
+      if (isCurrMonth) {
+        let prevM = month - 1;
+        let prevY = year;
+        if (prevM === 0) {
+          prevM = 12;
+          prevY = year - 1;
+        }
+        prevPromise = apiRequest<LeaderboardData>(
+          `/attendance/leaderboard?month=${prevM}&year=${prevY}`,
+          { token }
+        ).catch(err => {
+          console.error("Failed to load previous month leaderboard", err);
+          return null;
+        });
+      }
+
+      const [res, prevRes] = await Promise.all([currentPromise, prevPromise]);
+
       setData(res.data);
       // Seed pointsMap from fetched data
       const map: Record<number, number> = {};
@@ -114,6 +144,16 @@ export default function LeaderboardPage({ token, role = "EMPLOYEE" }: { token: s
         map[entry.employee.id] = entry.employee.points ?? 0;
       }
       setPointsMap(map);
+
+      if (prevRes && prevRes.data) {
+        prevWorkHoursId = prevRes.data.workHoursRanking[0]?.employee.id ?? null;
+        prevOnTimeId = prevRes.data.onTimeRanking[0]?.employee.id ?? null;
+        setPrevWinnerEntry(prevRes.data.employeeOfMonth ?? prevRes.data.workHoursRanking[0] ?? null);
+      } else {
+        setPrevWinnerEntry(null);
+      }
+      setPrevWorkHoursWinnerId(prevWorkHoursId);
+      setPrevOnTimeWinnerId(prevOnTimeId);
     } catch (err: any) {
       toast.error(err.message || "Failed to load leaderboard");
     } finally {
@@ -184,6 +224,8 @@ export default function LeaderboardPage({ token, role = "EMPLOYEE" }: { token: s
   }
 
   const isCurrentMonth = month === now.getMonth() + 1 && year === now.getFullYear();
+  const prevMonthIndex = month - 2 < 0 ? 11 : month - 2;
+  const prevMonthYear = month - 2 < 0 ? year - 1 : year;
   const maxHours = data?.workHoursRanking[0]?.totalHours ?? 1;
   const maxOnTime = data?.onTimeRanking[0]?.onTimeDays ?? 1;
 
@@ -236,37 +278,124 @@ export default function LeaderboardPage({ token, role = "EMPLOYEE" }: { token: s
         </div>
       ) : (
         <>
-          {/* Employee of the Month Hero */}
-          {data.employeeOfMonth && (
-            <div className="lb-eom-card">
-              <div className="lb-eom-glow" />
-              <div className="lb-eom-content">
-                <div className="lb-eom-crown">👑</div>
-                <div className="lb-eom-label">Employee of the Month</div>
-                <div className="lb-eom-name">
-                  {data.employeeOfMonth.employee.firstName} {data.employeeOfMonth.employee.lastName}
-                </div>
-                <div className="lb-eom-role">
-                  {data.employeeOfMonth.employee.jobTitle ?? "Employee"}
-                  {data.employeeOfMonth.employee.department && ` · ${data.employeeOfMonth.employee.department.name}`}
-                </div>
-                <div className="lb-eom-stats">
-                  <div className="lb-eom-stat">
-                    <Timer size={16} />
-                    <span><strong>{data.employeeOfMonth.totalHours}h</strong> worked</span>
+          {/* Employee of the Month Hero / Current Month Split Hero */}
+          {isCurrentMonth ? (
+            <div className="lb-hero-split">
+              {/* Previous Winner (Main Highlighted) */}
+              {prevWinnerEntry ? (
+                <div className="lb-eom-card lb-hero-main">
+                  <div className="lb-eom-glow" />
+                  <div className="lb-eom-content">
+                    <div className="lb-eom-crown">🏆</div>
+                    <div className="lb-eom-label">
+                      Previous Month's Winner ({MONTH_NAMES[prevMonthIndex]} {prevMonthYear})
+                    </div>
+                    <div className="lb-eom-name">
+                      {prevWinnerEntry.employee.firstName} {prevWinnerEntry.employee.lastName}
+                    </div>
+                    <div className="lb-eom-role">
+                      {prevWinnerEntry.employee.jobTitle ?? "Employee"}
+                      {prevWinnerEntry.employee.department && ` · ${prevWinnerEntry.employee.department.name}`}
+                    </div>
+                    <div className="lb-eom-stats">
+                      <div className="lb-eom-stat">
+                        <Timer size={16} />
+                        <span><strong>{prevWinnerEntry.totalHours}h</strong> worked</span>
+                      </div>
+                      <div className="lb-eom-stat">
+                        <Clock size={16} />
+                        <span><strong>{prevWinnerEntry.presentDays}</strong> days present</span>
+                      </div>
+                      <div className="lb-eom-stat">
+                        <Star size={16} />
+                        <span><strong>{prevWinnerEntry.employee.points ?? 0}</strong> pts total</span>
+                      </div>
+                    </div>
                   </div>
-                  <div className="lb-eom-stat">
-                    <Clock size={16} />
-                    <span><strong>{data.employeeOfMonth.presentDays}</strong> days present</span>
-                  </div>
-                  <div className="lb-eom-stat">
-                    <Star size={16} />
-                    <span><strong>{pointsMap[data.employeeOfMonth.employee.id] ?? 0}</strong> pts total</span>
+                </div>
+              ) : (
+                <div className="lb-eom-card lb-hero-main lb-hero-empty">
+                  <div className="lb-eom-content">
+                    <div className="lb-eom-crown">🏆</div>
+                    <div className="lb-eom-label">Previous Month's Winner</div>
+                    <div className="lb-eom-name" style={{ fontSize: "20px", opacity: 0.7 }}>No Data Available</div>
                   </div>
                 </div>
-                <div className="lb-eom-period">{MONTH_NAMES[month - 1]} {year}</div>
-              </div>
+              )}
+
+              {/* Current Winner in Progress (Sub Highlighted) */}
+              {data.employeeOfMonth ? (
+                <div className="lb-eom-card lb-hero-sub">
+                  <div className="lb-eom-glow" />
+                  <div className="lb-eom-content">
+                    <div className="lb-eom-crown" style={{ animationDelay: "0.5s" }}>⚡</div>
+                    <div className="lb-eom-label">Current Leader (In Progress)</div>
+                    <div className="lb-eom-name">
+                      {data.employeeOfMonth.employee.firstName} {data.employeeOfMonth.employee.lastName}
+                    </div>
+                    <div className="lb-eom-role">
+                      {data.employeeOfMonth.employee.jobTitle ?? "Employee"}
+                      {data.employeeOfMonth.employee.department && ` · ${data.employeeOfMonth.employee.department.name}`}
+                    </div>
+                    <div className="lb-eom-stats">
+                      <div className="lb-eom-stat">
+                        <Timer size={14} />
+                        <span><strong>{data.employeeOfMonth.totalHours}h</strong> worked</span>
+                      </div>
+                      <div className="lb-eom-stat">
+                        <Clock size={14} />
+                        <span><strong>{data.employeeOfMonth.presentDays}</strong> days present</span>
+                      </div>
+                      <div className="lb-eom-stat">
+                        <Star size={14} />
+                        <span><strong>{pointsMap[data.employeeOfMonth.employee.id] ?? 0}</strong> pts total</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="lb-eom-card lb-hero-sub lb-hero-empty">
+                  <div className="lb-eom-content">
+                    <div className="lb-eom-crown">⚡</div>
+                    <div className="lb-eom-label">Current Leader (In Progress)</div>
+                    <div className="lb-eom-name" style={{ fontSize: "20px", opacity: 0.7 }}>No Data Available</div>
+                  </div>
+                </div>
+              )}
             </div>
+          ) : (
+            /* Standard single EOM card for past months */
+            data.employeeOfMonth && (
+              <div className="lb-eom-card">
+                <div className="lb-eom-glow" />
+                <div className="lb-eom-content">
+                  <div className="lb-eom-crown">👑</div>
+                  <div className="lb-eom-label">Employee of the Month</div>
+                  <div className="lb-eom-name">
+                    {data.employeeOfMonth.employee.firstName} {data.employeeOfMonth.employee.lastName}
+                  </div>
+                  <div className="lb-eom-role">
+                    {data.employeeOfMonth.employee.jobTitle ?? "Employee"}
+                    {data.employeeOfMonth.employee.department && ` · ${data.employeeOfMonth.employee.department.name}`}
+                  </div>
+                  <div className="lb-eom-stats">
+                    <div className="lb-eom-stat">
+                      <Timer size={16} />
+                      <span><strong>{data.employeeOfMonth.totalHours}h</strong> worked</span>
+                    </div>
+                    <div className="lb-eom-stat">
+                      <Clock size={16} />
+                      <span><strong>{data.employeeOfMonth.presentDays}</strong> days present</span>
+                    </div>
+                    <div className="lb-eom-stat">
+                      <Star size={16} />
+                      <span><strong>{pointsMap[data.employeeOfMonth.employee.id] ?? 0}</strong> pts total</span>
+                    </div>
+                  </div>
+                  <div className="lb-eom-period">{MONTH_NAMES[month - 1]} {year}</div>
+                </div>
+              </div>
+            )
           )}
 
           {/* Tab switcher */}
@@ -296,72 +425,16 @@ export default function LeaderboardPage({ token, role = "EMPLOYEE" }: { token: s
                 <span className="lb-ranking-period">{MONTH_NAMES[month - 1]} {year}</span>
               </div>
               <div className="lb-ranking-list">
-                {data.workHoursRanking.map((entry) => (
-                    <div key={entry.employee.id} className={`lb-row ${entry.rank <= 3 ? "lb-row--top" : ""}`}>
-                    <div className="lb-row-rank">
-                      <RankBadge rank={entry.rank} />
-                    </div>
-                    <div className="lb-row-avatar">
-                      {entry.employee.firstName[0]}{entry.employee.lastName[0]}
-                    </div>
-                    <div className="lb-row-info">
-                      <div className="lb-row-name">
-                        {entry.employee.firstName} {entry.employee.lastName}
-                        <span className="lb-row-code">#{entry.employee.employeeCode}</span>
-                        <span className="lb-points-badge"><Star size={10} />{pointsMap[entry.employee.id] ?? 0} pts</span>
-                      </div>
-                      <div className="lb-row-meta">
-                        {entry.employee.jobTitle ?? "Employee"} · {entry.employee.department?.name ?? "—"}
-                      </div>
-                      <ProgressBar value={entry.totalHours} max={maxHours} color="linear-gradient(90deg, #7c3aed, #a78bfa)" />
-                    </div>
-                    <div className="lb-row-right">
-                      <div className="lb-row-stat">
-                        <div className="lb-row-stat-primary">{entry.totalHours}h</div>
-                        <div className="lb-row-stat-sub">{entry.presentDays} days</div>
-                      </div>
-                      {role !== "EMPLOYEE" && (
-                        <button
-                          type="button"
-                          className="lb-award-btn"
-                          onClick={() => { setPointsModal(entry.employee); setPointsMode("add"); setPointsAmount(10); setPointsReason(""); }}
-                        >
-                          <Star size={13} />
-                          Points
-                        </button>
-                      )}
-                      <button
-                        type="button"
-                        className="lb-award-btn"
-                        style={{ padding: "8px", minWidth: "auto", background: "rgba(100, 116, 139, 0.1)", color: "#64748b" }}
-                        onClick={() => handleViewHistory(entry.employee)}
-                        title="View History"
-                      >
-                        <History size={15} />
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* On-Time Check-in Ranking */}
-          {activeTab === "ON_TIME" && (
-            <div className="lb-ranking-card">
-              <div className="lb-ranking-header">
-                <Clock size={18} />
-                <h3>On-Time Check-In Ranking</h3>
-                <span className="lb-ranking-period">{MONTH_NAMES[month - 1]} {year}</span>
-              </div>
-              {data.onTimeRanking.length === 0 ? (
-                <div className="lb-empty" style={{ padding: "40px" }}>
-                  <p>No check-in data for this month.</p>
-                </div>
-              ) : (
-                <div className="lb-ranking-list">
-                  {data.onTimeRanking.map((entry) => (
-                    <div key={entry.employee.id} className={`lb-row ${entry.rank <= 3 ? "lb-row--top" : ""}`}>
+                {data.workHoursRanking.map((entry) => {
+                  const isPrevWinner = isCurrentMonth && entry.employee.id === prevWorkHoursWinnerId;
+                  const isCurrentLeader = isCurrentMonth && entry.rank === 1;
+                  return (
+                    <div
+                      key={entry.employee.id}
+                      className={`lb-row ${entry.rank <= 3 ? "lb-row--top" : ""} ${
+                        isPrevWinner ? "lb-row--previous-winner" : ""
+                      } ${isCurrentLeader ? "lb-row--current-leader-inprogress" : ""}`}
+                    >
                       <div className="lb-row-rank">
                         <RankBadge rank={entry.rank} />
                       </div>
@@ -373,16 +446,26 @@ export default function LeaderboardPage({ token, role = "EMPLOYEE" }: { token: s
                           {entry.employee.firstName} {entry.employee.lastName}
                           <span className="lb-row-code">#{entry.employee.employeeCode}</span>
                           <span className="lb-points-badge"><Star size={10} />{pointsMap[entry.employee.id] ?? 0} pts</span>
+                          {isPrevWinner && (
+                            <span className="lb-badge lb-badge--previous-winner" title="Winner of the previous month">
+                              🏆 Previous Winner
+                            </span>
+                          )}
+                          {isCurrentLeader && (
+                            <span className="lb-badge lb-badge--current-leader" title="Current Leader (In Progress)">
+                              ⚡ Leader (In Progress)
+                            </span>
+                          )}
                         </div>
                         <div className="lb-row-meta">
                           {entry.employee.jobTitle ?? "Employee"} · {entry.employee.department?.name ?? "—"}
                         </div>
-                        <ProgressBar value={entry.onTimeDays} max={maxOnTime} color="linear-gradient(90deg, #059669, #34d399)" />
+                        <ProgressBar value={entry.totalHours} max={maxHours} color="linear-gradient(90deg, #7c3aed, #a78bfa)" />
                       </div>
                       <div className="lb-row-right">
                         <div className="lb-row-stat">
-                          <div className="lb-row-stat-primary" style={{ color: "#059669" }}>{entry.onTimeRate}%</div>
-                          <div className="lb-row-stat-sub">{entry.onTimeDays}/{entry.totalDays} days</div>
+                          <div className="lb-row-stat-primary">{entry.totalHours}h</div>
+                          <div className="lb-row-stat-sub">{entry.presentDays} days</div>
                         </div>
                         {role !== "EMPLOYEE" && (
                           <button
@@ -405,7 +488,91 @@ export default function LeaderboardPage({ token, role = "EMPLOYEE" }: { token: s
                         </button>
                       </div>
                     </div>
-                  ))}
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* On-Time Check-in Ranking */}
+          {activeTab === "ON_TIME" && (
+            <div className="lb-ranking-card">
+              <div className="lb-ranking-header">
+                <Clock size={18} />
+                <h3>On-Time Check-In Ranking</h3>
+                <span className="lb-ranking-period">{MONTH_NAMES[month - 1]} {year}</span>
+              </div>
+              {data.onTimeRanking.length === 0 ? (
+                <div className="lb-empty" style={{ padding: "40px" }}>
+                  <p>No check-in data for this month.</p>
+                </div>
+              ) : (
+                <div className="lb-ranking-list">
+                  {data.onTimeRanking.map((entry) => {
+                    const isPrevWinner = isCurrentMonth && entry.employee.id === prevOnTimeWinnerId;
+                    const isCurrentLeader = isCurrentMonth && entry.rank === 1;
+                    return (
+                      <div
+                        key={entry.employee.id}
+                        className={`lb-row ${entry.rank <= 3 ? "lb-row--top" : ""} ${
+                          isPrevWinner ? "lb-row--previous-winner" : ""
+                        } ${isCurrentLeader ? "lb-row--current-leader-inprogress" : ""}`}
+                      >
+                        <div className="lb-row-rank">
+                          <RankBadge rank={entry.rank} />
+                        </div>
+                        <div className="lb-row-avatar">
+                          {entry.employee.firstName[0]}{entry.employee.lastName[0]}
+                        </div>
+                        <div className="lb-row-info">
+                          <div className="lb-row-name">
+                            {entry.employee.firstName} {entry.employee.lastName}
+                            <span className="lb-row-code">#{entry.employee.employeeCode}</span>
+                            <span className="lb-points-badge"><Star size={10} />{pointsMap[entry.employee.id] ?? 0} pts</span>
+                            {isPrevWinner && (
+                              <span className="lb-badge lb-badge--previous-winner" title="Winner of the previous month">
+                                🏆 Previous Winner
+                              </span>
+                            )}
+                            {isCurrentLeader && (
+                              <span className="lb-badge lb-badge--current-leader" title="Current Leader (In Progress)">
+                                ⚡ Leader (In Progress)
+                              </span>
+                            )}
+                          </div>
+                          <div className="lb-row-meta">
+                            {entry.employee.jobTitle ?? "Employee"} · {entry.employee.department?.name ?? "—"}
+                          </div>
+                          <ProgressBar value={entry.onTimeDays} max={maxOnTime} color="linear-gradient(90deg, #059669, #34d399)" />
+                        </div>
+                        <div className="lb-row-right">
+                          <div className="lb-row-stat">
+                            <div className="lb-row-stat-primary" style={{ color: "#059669" }}>{entry.onTimeRate}%</div>
+                            <div className="lb-row-stat-sub">{entry.onTimeDays}/{entry.totalDays} days</div>
+                          </div>
+                          {role !== "EMPLOYEE" && (
+                            <button
+                              type="button"
+                              className="lb-award-btn"
+                              onClick={() => { setPointsModal(entry.employee); setPointsMode("add"); setPointsAmount(10); setPointsReason(""); }}
+                            >
+                              <Star size={13} />
+                              Points
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            className="lb-award-btn"
+                            style={{ padding: "8px", minWidth: "auto", background: "rgba(100, 116, 139, 0.1)", color: "#64748b" }}
+                            onClick={() => handleViewHistory(entry.employee)}
+                            title="View History"
+                          >
+                            <History size={15} />
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               )}
             </div>

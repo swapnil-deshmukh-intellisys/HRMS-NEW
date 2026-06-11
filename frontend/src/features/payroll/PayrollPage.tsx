@@ -3,11 +3,11 @@ import "../../components/common/Table.css";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
-import { apiRequest } from "../../services/api";
+import { apiRequest, API_BASE_URL } from "../../services/api";
 import type { Employee, PayrollRecord, Role } from "../../types";
 import Modal from "../../components/common/Modal";
 import toast from "react-hot-toast";
-import { Download, Eye } from "lucide-react";
+import { Download, Eye, FileSpreadsheet } from "lucide-react";
 
 type PayrollPageProps = {
   token: string | null;
@@ -220,6 +220,7 @@ export default function PayrollPage({ token, role }: PayrollPageProps) {
   const [printingPayrollId, setPrintingPayrollId] = useState<number | null>(null);
   const [previewingPayrollId, setPreviewingPayrollId] = useState<number | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
+  const [exportLoading, setExportLoading] = useState(false);
   
   const [currentViewMonth, setCurrentViewMonth] = useState(String(new Date().getMonth() + 1));
   const [currentViewYear, setCurrentViewYear] = useState(String(new Date().getFullYear()));
@@ -325,6 +326,43 @@ export default function PayrollPage({ token, role }: PayrollPageProps) {
     });
     toast.success(`Payroll for ${record.employee?.firstName} finalized.`);
     await reloadData();
+  }
+
+  async function handleExportReport() {
+    setExportLoading(true);
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/payroll/export-report?month=${currentViewMonth}&year=${currentViewYear}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(`Failed to export report: ${response.statusText}`);
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.setAttribute(
+        "download",
+        `Employee_Monthly_Summary_Report_${currentViewMonth}_${currentViewYear}.xlsx`
+      );
+      document.body.appendChild(link);
+      link.click();
+      link.parentNode?.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      toast.success("Report exported successfully!");
+    } catch (error) {
+      console.error(error);
+      toast.error("Failed to export report.");
+    } finally {
+      setExportLoading(false);
+    }
   }
 
   async function handleBatchGenerate() {
@@ -785,7 +823,12 @@ export default function PayrollPage({ token, role }: PayrollPageProps) {
                 <span className="eyebrow">{preview.incentives.length} incentive(s)</span>
               </div>
               <div className="table-wrap">
-                <table className="table table--dense">
+                <table className="table table--dense" style={{ tableLayout: "fixed" }}>
+                  <colgroup>
+                    <col style={{ width: "45%" }} />
+                    <col style={{ width: "30%" }} />
+                    <col style={{ width: "25%" }} />
+                  </colgroup>
                   <thead>
                     <tr>
                       <th>Type</th>
@@ -845,9 +888,20 @@ export default function PayrollPage({ token, role }: PayrollPageProps) {
               />
             </div>
             {(role === "ADMIN" || role === "HR") ? (
-              <button type="button" className="payroll-action-button payroll-action-button--primary" onClick={() => setModalOpen(true)}>
-                Create record
-              </button>
+              <div style={{ display: 'flex', gap: '0.5rem' }}>
+                <button
+                  type="button"
+                  className="payroll-action-button secondary"
+                  onClick={handleExportReport}
+                  disabled={exportLoading}
+                >
+                  <FileSpreadsheet size={16} style={{ marginRight: '0.25rem', display: 'inline-block', verticalAlign: 'middle' }} />
+                  <span style={{ verticalAlign: 'middle' }}>{exportLoading ? "Exporting..." : "Export Report"}</span>
+                </button>
+                <button type="button" className="payroll-action-button payroll-action-button--primary" onClick={() => setModalOpen(true)}>
+                  Create record
+                </button>
+              </div>
             ) : null}
           </div>
         </div>
@@ -860,7 +914,14 @@ export default function PayrollPage({ token, role }: PayrollPageProps) {
           </div>
         ) : (
           <div className="table-wrap">
-            <table className="table table--dense">
+            <table className="table table--dense" style={{ tableLayout: "fixed" }}>
+              <colgroup>
+                <col style={{ width: "28%" }} />
+                <col style={{ width: "20%" }} />
+                <col style={{ width: "15%" }} />
+                <col style={{ width: "15%" }} />
+                <col style={{ width: "22%" }} />
+              </colgroup>
               <thead>
                 <tr>
                   <th>Employee</th>
@@ -944,7 +1005,18 @@ export default function PayrollPage({ token, role }: PayrollPageProps) {
                         <button 
                           type="button" 
                           className="link-button" 
-                          style={{ color: '#2563eb', fontWeight: '600', textDecoration: 'underline', cursor: 'pointer', background: 'none', border: 'none' }}
+                          style={{ 
+                            color: '#2563eb', 
+                            fontWeight: '600', 
+                            textDecoration: 'underline', 
+                            cursor: 'pointer', 
+                            background: 'none', 
+                            border: 'none',
+                            padding: 0,
+                            minHeight: 'unset',
+                            boxShadow: 'none',
+                            borderRadius: 0
+                          }}
                           onClick={handleBatchGenerate}
                         >
                           Generate for all employees

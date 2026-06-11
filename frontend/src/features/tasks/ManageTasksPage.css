@@ -435,13 +435,21 @@
 }
 
 .task-list-form input,
-.task-list-form textarea,
-.task-list-form select {
+.task-list-form textarea {
   padding: 10px var(--space-3);
   font-size: var(--text-sm);
   border-radius: var(--radius-md);
   border: 1.5px solid var(--color-border-default);
   background: white;
+  transition: all var(--transition-fast);
+}
+
+.task-list-form select {
+  padding: 10px var(--control-icon-space) 10px var(--space-3);
+  font-size: var(--text-sm);
+  border-radius: var(--radius-md);
+  border: 1.5px solid var(--color-border-default);
+  background-color: white;
   transition: all var(--transition-fast);
 }
 

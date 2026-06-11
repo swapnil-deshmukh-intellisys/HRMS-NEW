@@ -210,14 +210,15 @@ router.get("/leaves", async (request, response, next) => {
     let where = {};
 
     if (request.user?.role === "EMPLOYEE") {
-      if (requestedEmployeeId && requestedEmployeeId !== request.user.employeeId) {
-        const canAccess =
-          request.user.employeeId && (await canTeamLeadAccessEmployee(prisma, request.user.employeeId, requestedEmployeeId));
+      if (requestedEmployeeId) {
+        if (requestedEmployeeId !== request.user.employeeId) {
+          const canAccess =
+            request.user.employeeId && (await canTeamLeadAccessEmployee(prisma, request.user.employeeId, requestedEmployeeId));
 
-        if (!canAccess) {
-          throw new AppError("You are not authorized to view this employee leave requests", 403);
+          if (!canAccess) {
+            throw new AppError("You are not authorized to view this employee leave requests", 403);
+          }
         }
-
         where = { employeeId: requestedEmployeeId };
       } else if (request.user.employeeId) {
         const isTeamLead = await hasEmployeeCapability(prisma, request.user.employeeId, "TEAM_LEAD");

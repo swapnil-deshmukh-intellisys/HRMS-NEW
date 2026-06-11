@@ -142,10 +142,20 @@
 }
 
 .attendance-date-trigger {
+  position: relative;
   width: 100%;
   justify-content: flex-start;
   color: var(--color-text-strong);
   text-align: left;
+}
+
+.attendance-date-chevron {
+  position: absolute;
+  right: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--color-text-secondary);
+  pointer-events: none;
 }
 
 .attendance-date-popover {

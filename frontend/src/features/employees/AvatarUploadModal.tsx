@@ -169,6 +169,30 @@ export default function AvatarUploadModal({ open, onClose, onSave, uploading }: 
     stopCamera();
   }
 
+  // Clamp helper to restrict pan offset from exposing empty background areas
+  function clampPanOffset(x: number, y: number, currentZoom: number) {
+    const imgWidth = aspectRatio > 1 ? 250 * aspectRatio : 250;
+    const imgHeight = aspectRatio < 1 ? 250 / aspectRatio : 250;
+
+    const maxPanX = (imgWidth * currentZoom) / 2 - 125;
+    const maxPanY = (imgHeight * currentZoom) / 2 - 125;
+
+    // Handle edge case where boundary calculates negative max range
+    const boundX = Math.max(0, maxPanX);
+    const boundY = Math.max(0, maxPanY);
+
+    return {
+      x: Math.max(-boundX, Math.min(boundX, x)),
+      y: Math.max(-boundY, Math.min(boundY, y)),
+    };
+  }
+
+  // Handle zoom slider adjustments with boundary checks
+  function handleZoomChange(newZoom: number) {
+    setZoom(newZoom);
+    setPanOffset((prev) => clampPanOffset(prev.x, prev.y, newZoom));
+  }
+
   // Drag-to-pan handlers
   function handleMouseDown(e: React.MouseEvent<HTMLDivElement>) {
     if (!imageSrc) return;
@@ -179,10 +203,9 @@ export default function AvatarUploadModal({ open, onClose, onSave, uploading }: 
 
   function handleMouseMove(e: React.MouseEvent<HTMLDivElement>) {
     if (!isDragging) return;
-    setPanOffset({
-      x: e.clientX - dragStart.x,
-      y: e.clientY - dragStart.y,
-    });
+    const newX = e.clientX - dragStart.x;
+    const newY = e.clientY - dragStart.y;
+    setPanOffset(clampPanOffset(newX, newY, zoom));
   }
 
   function handleMouseUpOrLeave() {
@@ -200,10 +223,9 @@ export default function AvatarUploadModal({ open, onClose, onSave, uploading }: 
   function handleTouchMove(e: React.TouchEvent<HTMLDivElement>) {
     if (!isDragging || e.touches.length !== 1) return;
     const touch = e.touches[0];
-    setPanOffset({
-      x: touch.clientX - dragStart.x,
-      y: touch.clientY - dragStart.y,
-    });
+    const newX = touch.clientX - dragStart.x;
+    const newY = touch.clientY - dragStart.y;
+    setPanOffset(clampPanOffset(newX, newY, zoom));
   }
 
   // Perform Crop & Upload
@@ -365,8 +387,13 @@ export default function AvatarUploadModal({ open, onClose, onSave, uploading }: 
                 max="3"
                 step="0.05"
                 value={zoom}
-                onChange={(e) => setZoom(parseFloat(e.target.value))}
+                onChange={(e) => handleZoomChange(parseFloat(e.target.value))}
                 className="avatar-upload-modal__zoom-slider"
+                style={{
+                  background: `linear-gradient(to right, var(--color-accent) 0%, var(--color-accent) ${
+                    ((zoom - 1) / 2) * 100
+                  }%, var(--color-border-default) ${((zoom - 1) / 2) * 100}%, var(--color-border-default) 100%)`,
+                }}
               />
               <span className="avatar-upload-modal__zoom-label">{Math.round(zoom * 100)}%</span>
             </div>

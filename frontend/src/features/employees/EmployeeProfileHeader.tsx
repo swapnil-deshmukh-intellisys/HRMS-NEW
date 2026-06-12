@@ -1,14 +1,19 @@
-
 import "./EmployeeProfileHeader.css";
-import { Pencil, Power, Mail, Phone, CalendarDays, UserCheck, Star } from "lucide-react";
+import { useState } from "react";
+import toast from "react-hot-toast";
+import { apiRequest, getFileUrl } from "../../services/api";
+import { Pencil, Power, Mail, Phone, CalendarDays, UserCheck, Star, Trash2, Upload } from "lucide-react";
 import type { Employee, Role } from "../../types";
 import { formatDateLabel } from "../../utils/format";
 
 type EmployeeProfileHeaderProps = {
   employee: Employee;
   role: Role;
+  currentEmployeeId: number | null;
+  token: string | null;
   onEdit: () => void;
   onToggleStatus: () => void | Promise<void>;
+  onAvatarChange: () => void;
 };
 
 function getStatusLabel(employee: Employee) {
@@ -19,9 +24,73 @@ function getStatusClass(status: string) {
   return `status-pill status-pill--${status.toLowerCase().replace(/_/g, "-")}`;
 }
 
-export default function EmployeeProfileHeader({ employee, role, onEdit, onToggleStatus }: EmployeeProfileHeaderProps) {
+export default function EmployeeProfileHeader({
+  employee,
+  role,
+  currentEmployeeId,
+  token,
+  onEdit,
+  onToggleStatus,
+  onAvatarChange,
+}: EmployeeProfileHeaderProps) {
+  const [uploading, setUploading] = useState(false);
   const initials = `${employee.firstName.charAt(0)}${employee.lastName.charAt(0)}`.toUpperCase();
   const canManageEmployee = role === "ADMIN" || role === "HR";
+  const canEditAvatar = role === "ADMIN" || role === "HR" || currentEmployeeId === employee.id;
+
+  async function handleAvatarUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      toast.error("Please select an image file.");
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("Image size must be less than 5MB.");
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append("avatar", file);
+
+    setUploading(true);
+    try {
+      await apiRequest(`/employees/${employee.id}/avatar`, {
+        method: "POST",
+        token,
+        body: formData,
+      });
+      toast.success("Profile picture updated successfully!");
+      onAvatarChange();
+    } catch (err: any) {
+      toast.error(err.message || "Failed to upload profile picture.");
+    } finally {
+      setUploading(false);
+      e.target.value = "";
+    }
+  }
+
+  async function handleAvatarDelete() {
+    if (!window.confirm("Are you sure you want to remove your profile picture?")) {
+      return;
+    }
+
+    setUploading(true);
+    try {
+      await apiRequest(`/employees/${employee.id}/avatar`, {
+        method: "DELETE",
+        token,
+      });
+      toast.success("Profile picture removed successfully.");
+      onAvatarChange();
+    } catch (err: any) {
+      toast.error(err.message || "Failed to remove profile picture.");
+    } finally {
+      setUploading(false);
+    }
+  }
 
   const contactItems = [
     { icon: <Mail size={14} />, label: "Email", value: employee.user?.email ?? "-" },
@@ -36,8 +105,48 @@ export default function EmployeeProfileHeader({ employee, role, onEdit, onToggle
       <div className="profile-header__top">
         <div className="profile-header__avatar-wrap">
           <div className="profile-header__avatar" aria-hidden="true">
-            {initials}
+            {employee.profilePictureUrl ? (
+              <img
+                src={getFileUrl(employee.profilePictureUrl) || ""}
+                alt={`${employee.firstName} ${employee.lastName}`}
+                className="profile-header__avatar-image"
+              />
+            ) : (
+              initials
+            )}
           </div>
+          {canEditAvatar && (
+            <>
+              <input
+                type="file"
+                id="avatar-upload-input"
+                accept="image/*"
+                onChange={handleAvatarUpload}
+                style={{ display: "none" }}
+                disabled={uploading}
+              />
+              {employee.profilePictureUrl ? (
+                <div className="profile-header__avatar-btn-row">
+                  <label htmlFor="avatar-upload-input" className="profile-header__avatar-btn profile-header__avatar-btn--edit" title="Update photo">
+                    {uploading ? "..." : <Pencil size={14} />}
+                  </label>
+                  <button
+                    type="button"
+                    className="profile-header__avatar-btn profile-header__avatar-btn--delete"
+                    onClick={handleAvatarDelete}
+                    title="Remove photo"
+                    disabled={uploading}
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                </div>
+              ) : (
+                <label htmlFor="avatar-upload-input" className="profile-header__avatar-btn profile-header__avatar-btn--upload" title="Upload photo">
+                  {uploading ? "..." : <Upload size={14} />}
+                </label>
+              )}
+            </>
+          )}
         </div>
 
         <div className="profile-header__identity">

@@ -83,6 +83,7 @@ model Employee {
   employmentType                    String?                           @default("FULL_TIME")
   internshipType                    String?
   stipend                           Float?
+  profilePictureUrl                 String?
   announcements                     Announcement[]                    @relation("AnnouncementCreator")
   attendances                       Attendance[]
   attendanceRegularizationRequests  AttendanceRegularizationRequest[] @relation("AttendanceRegularizationRequester")

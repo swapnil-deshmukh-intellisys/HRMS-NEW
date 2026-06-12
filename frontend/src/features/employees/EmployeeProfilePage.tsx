@@ -308,6 +308,8 @@ export default function EmployeeProfilePage({ token, role, currentEmployeeId }: 
       <EmployeeProfileHeader
         employee={employee}
         role={role}
+        currentEmployeeId={currentEmployeeId}
+        token={token}
         onEdit={() => {
           void openEmployeeModal();
         }}
@@ -321,6 +323,7 @@ export default function EmployeeProfilePage({ token, role, currentEmployeeId }: 
             void toggleStatus();
           }
         }}
+        onAvatarChange={reloadProfile}
       />
       <EmployeeProfileTabs activeTab={activeTab} tabs={visibleTabs} onChange={setActiveTab} />
       {activeTab === "overview" ? <EmployeeOverviewTab employee={employee} token={token} /> : null}

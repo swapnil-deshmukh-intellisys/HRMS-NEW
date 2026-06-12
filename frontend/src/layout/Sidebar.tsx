@@ -1,3 +1,4 @@
+import { getFileUrl } from "../services/api";
 import "./Sidebar.css";
 import { Building2, Calendar, CalendarDays, Clock3, Gift, Home, Users, Wallet, UserRound, ClipboardList, Mail, SendHorizontal, Trophy, type LucideIcon } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
@@ -71,7 +72,15 @@ export default function Sidebar({ sessionUser, navOpen, onNavigate }: SidebarPro
             </div>
             <div className="sidebar-user-box">
               <div className="sidebar-user-avatar">
-                <UserRound size={20} strokeWidth={2.5} />
+                {sessionUser.employee?.profilePictureUrl ? (
+                  <img
+                    src={getFileUrl(sessionUser.employee.profilePictureUrl) || ""}
+                    alt={`${sessionUser.employee.firstName} ${sessionUser.employee.lastName}`}
+                    className="sidebar-user-avatar-image"
+                  />
+                ) : (
+                  <UserRound size={20} strokeWidth={2.5} />
+                )}
               </div>
               <div className="sidebar-user-info">
                 {sessionUser.employee?.employeeCode && (

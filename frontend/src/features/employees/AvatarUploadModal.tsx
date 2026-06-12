@@ -19,6 +19,7 @@ export default function AvatarUploadModal({ open, onClose, onSave, uploading }: 
   const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+  const [aspectRatio, setAspectRatio] = useState(1);
   
   // Camera State
   const [cameraError, setCameraError] = useState<string | null>(null);
@@ -51,6 +52,7 @@ export default function AvatarUploadModal({ open, onClose, onSave, uploading }: 
       setZoom(1);
       setPanOffset({ x: 0, y: 0 });
       setCameraError(null);
+      setAspectRatio(1);
     } else {
       stopCamera();
     }
@@ -132,6 +134,14 @@ export default function AvatarUploadModal({ open, onClose, onSave, uploading }: 
       setImageSrc(reader.result as string);
     };
     reader.readAsDataURL(file);
+  }
+
+  // Handle image element loading to retrieve natural aspect ratio
+  function handleImageLoad(e: React.SyntheticEvent<HTMLImageElement>) {
+    const img = e.currentTarget;
+    if (img.naturalWidth && img.naturalHeight) {
+      setAspectRatio(img.naturalWidth / img.naturalHeight);
+    }
   }
 
   // Capture image frame from live video
@@ -332,7 +342,12 @@ export default function AvatarUploadModal({ open, onClose, onSave, uploading }: 
                 src={imageSrc}
                 alt="Source preview"
                 className="avatar-upload-modal__crop-image"
+                onLoad={handleImageLoad}
                 style={{
+                  width: `${aspectRatio > 1 ? 250 * aspectRatio : 250}px`,
+                  height: `${aspectRatio < 1 ? 250 / aspectRatio : 250}px`,
+                  left: `${aspectRatio > 1 ? (250 - 250 * aspectRatio) / 2 : 0}px`,
+                  top: `${aspectRatio < 1 ? (250 - 250 / aspectRatio) / 2 : 0}px`,
                   transform: `translate(${panOffset.x}px, ${panOffset.y}px) scale(${zoom})`,
                   cursor: isDragging ? "grabbing" : "grab",
                 }}

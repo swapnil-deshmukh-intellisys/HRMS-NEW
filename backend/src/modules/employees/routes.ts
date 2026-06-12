@@ -3,6 +3,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import multer, { type FileFilterCallback, type StorageEngine } from "multer";
+import sharp from "sharp";
 import { EmployeeCapabilityType, EmploymentStatus, RoleName } from "@prisma/client";
 import { Router } from "express";
 import { z } from "zod";
@@ -970,6 +971,116 @@ router.get("/:id/documents/:documentId/download", requireRoles("ADMIN", "HR", "M
 
     const fullPath = path.resolve(__dirname, "../../..", document.filePath.replace(/^\//, ""));
     response.download(fullPath, document.originalName);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// ── Employee Avatar (Profile Picture) Upload/Delete ──────────────────────────
+const avatarsUploadsDir = path.resolve(__dirname, "../../../uploads/avatars");
+
+const avatarUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 5 * 1024 * 1024, // 5MB
+  },
+  fileFilter: (_request: Express.Request, file: Express.Multer.File, callback: FileFilterCallback) => {
+    if (file.mimetype.startsWith("image/")) {
+      callback(null, true);
+    } else {
+      callback(new Error("Only image files are allowed!"));
+    }
+  },
+});
+
+router.post("/:id/avatar", requireRoles("ADMIN", "HR", "EMPLOYEE"), avatarUpload.single("avatar"), async (request, response, next) => {
+  try {
+    const employeeId = Number(request.params.id);
+
+    // Access control: Employee can only upload their own avatar, Admin/HR can upload for anyone
+    if (request.user?.role === "EMPLOYEE" && request.user.employeeId !== employeeId) {
+       throw new AppError("You can only upload a profile picture to your own profile", 403);
+    }
+
+    if (!request.file) {
+      throw new AppError("No image file provided", 400);
+    }
+
+    const employee = await prisma.employee.findUnique({
+      where: { id: employeeId },
+      select: { id: true, profilePictureUrl: true }
+    });
+
+    if (!employee) {
+      throw new AppError("Employee not found", 404);
+    }
+
+    // If employee already had an avatar, let's delete the old file from disk
+    if (employee.profilePictureUrl) {
+      try {
+        const oldFullPath = path.resolve(__dirname, "../../..", employee.profilePictureUrl.replace(/^\//, ""));
+        await fs.unlink(oldFullPath);
+      } catch (err) {
+        console.error("Failed to delete old avatar file from disk:", err);
+      }
+    }
+
+    // Create optimized file name and paths
+    const filename = `avatar-${crypto.randomUUID()}.webp`;
+    const outputFilePath = path.join(avatarsUploadsDir, filename);
+
+    // Process image: resize to 256x256 and convert to webp at 80% quality
+    await sharp(request.file.buffer)
+      .resize(256, 256, { fit: "cover" })
+      .webp({ quality: 80 })
+      .toFile(outputFilePath);
+
+    const profilePictureUrl = `/uploads/avatars/${filename}`;
+
+    const updated = await prisma.employee.update({
+      where: { id: employeeId },
+      data: { profilePictureUrl },
+    });
+
+    return sendSuccess(response, "Profile picture uploaded and optimized successfully", { profilePictureUrl: updated.profilePictureUrl });
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.delete("/:id/avatar", requireRoles("ADMIN", "HR", "EMPLOYEE"), async (request, response, next) => {
+  try {
+    const employeeId = Number(request.params.id);
+
+    // Access control
+    if (request.user?.role === "EMPLOYEE" && request.user.employeeId !== employeeId) {
+       throw new AppError("You can only delete your own profile picture", 403);
+    }
+
+    const employee = await prisma.employee.findUnique({
+      where: { id: employeeId },
+      select: { id: true, profilePictureUrl: true }
+    });
+
+    if (!employee) {
+      throw new AppError("Employee not found", 404);
+    }
+
+    if (employee.profilePictureUrl) {
+      try {
+        const fullPath = path.resolve(__dirname, "../../..", employee.profilePictureUrl.replace(/^\//, ""));
+        await fs.unlink(fullPath);
+      } catch (err) {
+        console.error("Failed to delete avatar file from disk:", err);
+      }
+    }
+
+    await prisma.employee.update({
+      where: { id: employeeId },
+      data: { profilePictureUrl: null },
+    });
+
+    return sendSuccess(response, "Profile picture deleted successfully", null);
   } catch (error) {
     next(error);
   }

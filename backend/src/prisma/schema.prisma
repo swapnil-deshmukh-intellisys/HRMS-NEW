@@ -126,6 +126,7 @@ model Employee {
   isActive         Boolean          @default(true)
   deletedAt        DateTime?
   maritalStatus    String?
+  profilePictureUrl String?
   createdAt        DateTime         @default(now())
   updatedAt        DateTime         @updatedAt
 

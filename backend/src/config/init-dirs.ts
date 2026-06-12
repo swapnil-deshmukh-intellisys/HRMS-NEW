@@ -9,6 +9,7 @@ const DIRS = [
   path.resolve(__dirname, "../../uploads"),
   path.resolve(__dirname, "../../uploads/leaves"),
   path.resolve(__dirname, "../../uploads/documents"),
+  path.resolve(__dirname, "../../uploads/avatars"),
 ];
 
 export function initDirectories() {

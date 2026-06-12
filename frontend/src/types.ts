@@ -82,6 +82,7 @@ export type Employee = {
   panCardNumber?: string | null;
   dateOfBirth?: string | null;
   maritalStatus?: string | null;
+  profilePictureUrl?: string | null;
   departmentId: number;
   managerId?: number | null;
   joiningDate: string;

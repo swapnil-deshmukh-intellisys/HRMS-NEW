@@ -183,7 +183,6 @@ export default function AssignedTasksWidget({ token }: { token: string | null })
                     </button>
                     <div className="item-details">
                       <span className="item-title">{task.title}</span>
-                      {task.description && <span className="item-desc">{task.description}</span>}
                       
                       <div className="task-item-meta" style={{ marginTop: "4px", display: "flex", gap: "6px", flexWrap: "wrap", alignItems: "center" }}>
                         <span className={`task-badge ${task.employeeId === null ? "badge-general" : "badge-assigned"}`} style={{ fontSize: "9px", padding: "1px 6px" }}>
@@ -194,12 +193,6 @@ export default function AssignedTasksWidget({ token }: { token: string | null })
                           By: {task.creator?.firstName || "Manager"} {task.creator?.lastName || ""}
                         </span>
                       </div>
-                      
-                      {task.revertReason && (
-                        <div style={{ marginTop: "6px", fontSize: "10px", color: "#b42318", background: "#fef3f2", padding: "4px 8px", borderRadius: "var(--radius-sm)", display: "inline-flex", alignItems: "center", gap: "4px", border: "1px solid #fecaca" }}>
-                          <AlertCircle size={10} /> Reverted: {task.revertReason.length > 50 ? task.revertReason.substring(0, 50) + "..." : task.revertReason}
-                        </div>
-                      )}
                     </div>
                   </div>
                 ))

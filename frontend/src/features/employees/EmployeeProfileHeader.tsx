@@ -5,6 +5,7 @@ import { apiRequest, getFileUrl } from "../../services/api";
 import { Pencil, Power, Mail, Phone, CalendarDays, UserCheck, Star, Trash2, Upload } from "lucide-react";
 import type { Employee, Role } from "../../types";
 import { formatDateLabel } from "../../utils/format";
+import AvatarUploadModal from "./AvatarUploadModal";
 
 type EmployeeProfileHeaderProps = {
   employee: Employee;
@@ -34,24 +35,12 @@ export default function EmployeeProfileHeader({
   onAvatarChange,
 }: EmployeeProfileHeaderProps) {
   const [uploading, setUploading] = useState(false);
+  const [avatarModalOpen, setAvatarModalOpen] = useState(false);
   const initials = `${employee.firstName.charAt(0)}${employee.lastName.charAt(0)}`.toUpperCase();
   const canManageEmployee = role === "ADMIN" || role === "HR";
   const canEditAvatar = role === "ADMIN" || role === "HR" || currentEmployeeId === employee.id;
 
-  async function handleAvatarUpload(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    if (!file.type.startsWith("image/")) {
-      toast.error("Please select an image file.");
-      return;
-    }
-
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error("Image size must be less than 5MB.");
-      return;
-    }
-
+  async function handleAvatarSave(file: File) {
     const formData = new FormData();
     formData.append("avatar", file);
 
@@ -63,12 +52,12 @@ export default function EmployeeProfileHeader({
         body: formData,
       });
       toast.success("Profile picture updated successfully!");
+      setAvatarModalOpen(false);
       onAvatarChange();
     } catch (err: any) {
       toast.error(err.message || "Failed to upload profile picture.");
     } finally {
       setUploading(false);
-      e.target.value = "";
     }
   }
 
@@ -116,36 +105,28 @@ export default function EmployeeProfileHeader({
             )}
           </div>
           {canEditAvatar && (
-            <>
-              <input
-                type="file"
-                id="avatar-upload-input"
-                accept="image/*"
-                onChange={handleAvatarUpload}
-                style={{ display: "none" }}
+            <div className="profile-header__avatar-btn-row">
+              <button
+                type="button"
+                className={`profile-header__avatar-btn ${employee.profilePictureUrl ? 'profile-header__avatar-btn--edit' : 'profile-header__avatar-btn--upload'}`}
+                onClick={() => setAvatarModalOpen(true)}
+                title={employee.profilePictureUrl ? "Update photo" : "Upload photo"}
                 disabled={uploading}
-              />
-              {employee.profilePictureUrl ? (
-                <div className="profile-header__avatar-btn-row">
-                  <label htmlFor="avatar-upload-input" className="profile-header__avatar-btn profile-header__avatar-btn--edit" title="Update photo">
-                    {uploading ? "..." : <Pencil size={14} />}
-                  </label>
-                  <button
-                    type="button"
-                    className="profile-header__avatar-btn profile-header__avatar-btn--delete"
-                    onClick={handleAvatarDelete}
-                    title="Remove photo"
-                    disabled={uploading}
-                  >
-                    <Trash2 size={14} />
-                  </button>
-                </div>
-              ) : (
-                <label htmlFor="avatar-upload-input" className="profile-header__avatar-btn profile-header__avatar-btn--upload" title="Upload photo">
-                  {uploading ? "..." : <Upload size={14} />}
-                </label>
+              >
+                {employee.profilePictureUrl ? <Pencil size={14} /> : <Upload size={14} />}
+              </button>
+              {employee.profilePictureUrl && (
+                <button
+                  type="button"
+                  className="profile-header__avatar-btn profile-header__avatar-btn--delete"
+                  onClick={handleAvatarDelete}
+                  title="Remove photo"
+                  disabled={uploading}
+                >
+                  <Trash2 size={14} />
+                </button>
               )}
-            </>
+            </div>
           )}
         </div>
 
@@ -221,6 +202,12 @@ export default function EmployeeProfileHeader({
           </div>
         ))}
       </div>
+      <AvatarUploadModal
+        open={avatarModalOpen}
+        onClose={() => setAvatarModalOpen(false)}
+        onSave={handleAvatarSave}
+        uploading={uploading}
+      />
     </article>
   );
 }

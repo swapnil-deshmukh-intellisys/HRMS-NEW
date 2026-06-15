@@ -1,5 +1,5 @@
 import "./EmployeeProfileHeader.css";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import toast from "react-hot-toast";
 import { apiRequest, getFileUrl } from "../../services/api";
 import { Pencil, Power, Mail, Phone, CalendarDays, UserCheck, Star, Trash2, Upload } from "lucide-react";
@@ -36,6 +36,12 @@ export default function EmployeeProfileHeader({
 }: EmployeeProfileHeaderProps) {
   const [uploading, setUploading] = useState(false);
   const [avatarModalOpen, setAvatarModalOpen] = useState(false);
+  const [avatarError, setAvatarError] = useState(false);
+
+  useEffect(() => {
+    setAvatarError(false);
+  }, [employee.profilePictureUrl, employee.id]);
+
   const initials = `${employee.firstName.charAt(0)}${employee.lastName.charAt(0)}`.toUpperCase();
   const canManageEmployee = role === "ADMIN" || role === "HR";
   const canEditAvatar = role === "ADMIN" || role === "HR" || currentEmployeeId === employee.id;
@@ -94,11 +100,12 @@ export default function EmployeeProfileHeader({
       <div className="profile-header__top">
         <div className="profile-header__avatar-wrap">
           <div className="profile-header__avatar" aria-hidden="true">
-            {employee.profilePictureUrl ? (
+            {employee.profilePictureUrl && !avatarError ? (
               <img
                 src={getFileUrl(employee.profilePictureUrl) || ""}
                 alt={`${employee.firstName} ${employee.lastName}`}
                 className="profile-header__avatar-image"
+                onError={() => setAvatarError(true)}
               />
             ) : (
               initials

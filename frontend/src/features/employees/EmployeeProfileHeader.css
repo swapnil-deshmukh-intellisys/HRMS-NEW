@@ -131,6 +131,8 @@
   font-size: 2.4rem;
   font-weight: var(--fw-bold);
   letter-spacing: 0.03em;
+  line-height: 1;
+  overflow: hidden;
   box-shadow:
     0 4px 16px var(--color-accent-glow),
     inset 0 1px 0 rgba(255, 255, 255, 0.15);

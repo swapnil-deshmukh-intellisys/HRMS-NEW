@@ -118,7 +118,7 @@ label {
   line-height: 1.35;
 }
 
-input:not([type="checkbox"]):not([type="radio"]),
+input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
 select,
 textarea {
   width: 100%;
@@ -174,7 +174,7 @@ input[type="time"]::-webkit-calendar-picker-indicator {
   cursor: pointer;
 }
 
-input:not([type="checkbox"]):not([type="radio"]):focus,
+input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):focus,
 select:focus,
 textarea:focus {
   border-color: var(--color-accent);

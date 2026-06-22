@@ -19,6 +19,7 @@ backend/.env.*
 frontend/.env
 frontend/.env.*
 !.env.example
+!.env.production.template
 !backend/.env.example
 !frontend/.env.example
 

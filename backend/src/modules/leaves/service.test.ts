@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { AttendanceStatus } from "@prisma/client";
+import { toZonedTime } from "date-fns-tz";
 import { AppError } from "../../utils/api.js";
 import {
   buildApprovedLeaveAttendanceEntries,
@@ -224,7 +225,7 @@ test("createLeaveRequestForEmployee excludes non-working days when calendar-awar
       reason: "Trip",
     },
     createLeaveDeps({
-      isWorkingDay: async (date) => ![0, 6].includes(date.getDay()),
+      isWorkingDay: async (date) => ![0, 6].includes(toZonedTime(date, "Asia/Kolkata").getDay()),
     }),
   );
 
@@ -263,7 +264,7 @@ test("buildApprovedLeaveAttendanceEntries skips non-working dates when provided"
     endDate: new Date("2026-03-22"),
     startDayDuration: "FULL_DAY",
     endDayDuration: "FULL_DAY",
-    isWorkingDay: (date) => ![0, 6].includes(date.getDay()),
+    isWorkingDay: (date) => ![0, 6].includes(toZonedTime(date, "Asia/Kolkata").getDay()),
   });
 
   assert.equal(entries.length, 1);

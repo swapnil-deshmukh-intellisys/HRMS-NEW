@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { AttendanceStatus } from "@prisma/client";
+import { toZonedTime, fromZonedTime } from "date-fns-tz";
 import {
   buildApprovedLeaveWhereForAttendanceDate,
   buildAttendanceWhereForDate,
@@ -13,45 +14,48 @@ import {
 
 test("parseAttendanceDateInput parses yyyy-mm-dd safely", () => {
   const parsed = parseAttendanceDateInput("2026-03-25");
+  const zoned = toZonedTime(parsed, "Asia/Kolkata");
 
-  assert.equal(parsed.getFullYear(), 2026);
-  assert.equal(parsed.getMonth(), 2);
-  assert.equal(parsed.getDate(), 25);
-  assert.equal(parsed.getHours(), 0);
+  assert.equal(zoned.getFullYear(), 2026);
+  assert.equal(zoned.getMonth(), 2);
+  assert.equal(zoned.getDate(), 25);
+  assert.equal(zoned.getHours(), 0);
 });
 
 test("buildApprovedLeaveWhereForAttendanceDate uses approved leave overlap", () => {
-  const attendanceDate = new Date(2026, 2, 25);
+  const attendanceDate = fromZonedTime("2026-03-25 12:00:00", "Asia/Kolkata");
   const where = buildApprovedLeaveWhereForAttendanceDate(attendanceDate);
 
   assert.equal(where.status, "APPROVED");
-  assert.deepEqual(where.startDate, { lte: new Date(2026, 2, 25, 23, 59, 59, 999) });
-  assert.deepEqual(where.endDate, { gte: new Date(2026, 2, 25, 0, 0, 0, 0) });
+  assert.deepEqual(where.startDate, { lte: fromZonedTime("2026-03-25 23:59:59.999", "Asia/Kolkata") });
+  assert.deepEqual(where.endDate, { gte: fromZonedTime("2026-03-25 00:00:00.000", "Asia/Kolkata") });
 });
 
 test("buildAttendanceWhereForDate covers the full local day", () => {
-  const attendanceDate = new Date(2026, 2, 25, 14, 45);
+  const attendanceDate = fromZonedTime("2026-03-25 14:45:00", "Asia/Kolkata");
   const where = buildAttendanceWhereForDate(attendanceDate);
 
   assert.deepEqual(where, {
-    gte: new Date(2026, 2, 25, 0, 0, 0, 0),
-    lte: new Date(2026, 2, 25, 23, 59, 59, 999),
+    gte: fromZonedTime("2026-03-25 00:00:00.000", "Asia/Kolkata"),
+    lte: fromZonedTime("2026-03-25 23:59:59.999", "Asia/Kolkata"),
   });
 });
 
 test("combineAttendanceDateAndTime merges date and time", () => {
-  const combined = combineAttendanceDateAndTime(new Date(2026, 2, 25), "09:30");
+  const baseDate = fromZonedTime("2026-03-25 00:00:00", "Asia/Kolkata");
+  const combined = combineAttendanceDateAndTime(baseDate, "09:30");
+  const zoned = toZonedTime(combined!, "Asia/Kolkata");
 
-  assert.equal(combined?.getFullYear(), 2026);
-  assert.equal(combined?.getMonth(), 2);
-  assert.equal(combined?.getDate(), 25);
-  assert.equal(combined?.getHours(), 9);
-  assert.equal(combined?.getMinutes(), 30);
+  assert.equal(zoned.getFullYear(), 2026);
+  assert.equal(zoned.getMonth(), 2);
+  assert.equal(zoned.getDate(), 25);
+  assert.equal(zoned.getHours(), 9);
+  assert.equal(zoned.getMinutes(), 30);
 });
 
 test("attendance regularization helpers compute status and worked minutes", () => {
-  const checkInTime = new Date(2026, 2, 25, 9, 0);
-  const checkOutTime = new Date(2026, 2, 25, 17, 30);
+  const checkInTime = fromZonedTime("2026-03-25 09:00:00", "Asia/Kolkata");
+  const checkOutTime = fromZonedTime("2026-03-25 17:30:00", "Asia/Kolkata");
 
   assert.equal(calculateWorkedMinutes(checkInTime, checkOutTime), 510);
   assert.equal(getRegularizedAttendanceStatus(checkInTime, checkOutTime), AttendanceStatus.PRESENT);
@@ -65,10 +69,10 @@ test("finalizeAttendanceForDate creates absent records only for eligible employe
     { date: "2026-03-25" },
     {
       findActiveEmployees: async () => [
-        { id: 1, joiningDate: new Date(2026, 2, 20) },
-        { id: 2, joiningDate: new Date(2026, 2, 20) },
-        { id: 3, joiningDate: new Date(2026, 2, 26) },
-        { id: 4, joiningDate: new Date(2026, 2, 20) },
+        { id: 1, joiningDate: fromZonedTime("2026-03-20 00:00:00", "Asia/Kolkata") },
+        { id: 2, joiningDate: fromZonedTime("2026-03-20 00:00:00", "Asia/Kolkata") },
+        { id: 3, joiningDate: fromZonedTime("2026-03-26 00:00:00", "Asia/Kolkata") },
+        { id: 4, joiningDate: fromZonedTime("2026-03-20 00:00:00", "Asia/Kolkata") },
       ],
       findEmployeeIdsWithAttendance: async () => [2],
       findEmployeeIdsWithApprovedLeave: async () => [4],
@@ -92,7 +96,7 @@ test("finalizeAttendanceForDate skips non-working days", async () => {
   const result = await finalizeAttendanceForDate(
     { date: "2026-03-29" },
     {
-      findActiveEmployees: async () => [{ id: 1, joiningDate: new Date(2026, 2, 20) }],
+      findActiveEmployees: async () => [{ id: 1, joiningDate: fromZonedTime("2026-03-20 00:00:00", "Asia/Kolkata") }],
       findEmployeeIdsWithAttendance: async () => [],
       findEmployeeIdsWithApprovedLeave: async () => [],
       createAbsentAttendances: async (entries) => {

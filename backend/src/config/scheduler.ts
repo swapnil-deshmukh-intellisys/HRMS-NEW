@@ -174,12 +174,23 @@ async function processMedicalProof1HourWarnings() {
 export function initScheduler() {
 
 
-  // 🍱 Scheduled Lunch Break: 1:30 PM IST (Mon-Fri)
-  cron.schedule("30 13 * * 1-5", async () => {
-    console.log("[Scheduler] Triggering 1:30 PM Lunch Break Reminder...");
+  // 🍱 Scheduled Lunch Break: 1:00 PM IST (Mon-Fri)
+  cron.schedule("0 13 * * 1-5", async () => {
+    console.log("[Scheduler] Triggering 1:00 PM Lunch Break Reminder...");
     await broadcastBreakReminder(
       "🍱 Lunch Time!",
-      "It's 1:30 PM. Time to grab some lunch and take a well-deserved break."
+      "It's 1:00 PM. Time to grab some lunch and take a well-deserved break."
+    );
+  }, {
+    timezone: "Asia/Kolkata"
+  });
+
+  // ☕ Scheduled Tea Break: 4:15 PM IST (Mon-Fri)
+  cron.schedule("15 16 * * 1-5", async () => {
+    console.log("[Scheduler] Triggering 4:15 PM Tea Break Reminder...");
+    await broadcastBreakReminder(
+      "☕ Tea Break!",
+      "It's 4:15 PM. Time for a quick tea break to recharge."
     );
   }, {
     timezone: "Asia/Kolkata"

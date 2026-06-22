@@ -157,6 +157,7 @@ model Attendance {
   updatedAt      DateTime         @updatedAt
   isLate         Boolean          @default(false)
   lateByMinutes  Int              @default(0)
+  penaltyMinutes Int              @default(0)
   employee       Employee         @relation(fields: [employeeId], references: [id])
   breakSessions  BreakSession[]
 

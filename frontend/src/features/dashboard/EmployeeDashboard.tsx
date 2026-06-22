@@ -40,6 +40,7 @@ export default function EmployeeDashboard({ token }: { token: string | null }) {
         checkInTime={attendanceToday?.checkInTime ?? null} 
         checkOutTime={attendanceToday?.checkOutTime ?? null}
         workedMinutes={attendanceToday?.workedMinutes ?? null}
+        penaltyMinutes={attendanceToday?.penaltyMinutes ?? null}
         token={token} 
       />
 

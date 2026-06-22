@@ -184,7 +184,8 @@ router.get("/today", requireRoles("EMPLOYEE", "MANAGER", "HR", "ADMIN"), async (
       }),
     ]);
 
-    const isOvertimeEligible = (attendanceToday?.checkOutTime && attendanceToday.workedMinutes >= 540) ? true : false;
+    const requiredMinutes = 540 + (attendanceToday?.penaltyMinutes || 0);
+    const isOvertimeEligible = (attendanceToday?.checkOutTime && attendanceToday.workedMinutes >= requiredMinutes) ? true : false;
 
     return sendSuccess(response, "Today's attendance fetched successfully", {
       attendanceToday,
@@ -255,20 +256,45 @@ router.post("/check-in", validate(attendanceSchema), async (request, response, n
 
     const checkInTime = new Date();
 
-    // --- Late Mark Logic ---
-    // Grace period ends at 10:10 AM IST. Any check-in after this is marked late.
+    // --- Late Penalty Logic ---
+    // Shift starts at 09:00 AM IST. Penalties start at 5 minutes late.
     const TIMEZONE = 'Asia/Kolkata';
-    const LATE_THRESHOLD_HOUR = 10;
-    const LATE_THRESHOLD_MINUTE = 10;
+    const SHIFT_START_HOUR = 9;
+    const SHIFT_START_MINUTE = 0;
     
-    const thresholdTime = toZonedTime(checkInTime, TIMEZONE);
-    thresholdTime.setHours(LATE_THRESHOLD_HOUR, LATE_THRESHOLD_MINUTE, 0, 0);
-    const thresholdInUTC = fromZonedTime(thresholdTime, TIMEZONE);
+    const shiftStartTime = toZonedTime(checkInTime, TIMEZONE);
+    shiftStartTime.setHours(SHIFT_START_HOUR, SHIFT_START_MINUTE, 0, 0);
+    const shiftStartInUTC = fromZonedTime(shiftStartTime, TIMEZONE);
 
-    const isLate = checkInTime > thresholdInUTC;
-    const lateByMinutes = isLate
-      ? Math.floor((checkInTime.getTime() - thresholdInUTC.getTime()) / 60000)
+    const lateByMinutes = checkInTime > shiftStartInUTC
+      ? Math.floor((checkInTime.getTime() - shiftStartInUTC.getTime()) / 60000)
       : 0;
+
+    let penaltyPoints = 0;
+    let penaltyMinutes = 0;
+    let isHalfDayPenalty = false;
+
+    if (lateByMinutes >= 60) {
+      isHalfDayPenalty = true;
+      const additionalHours = Math.floor((lateByMinutes - 60) / 60);
+      penaltyPoints = 10 + (additionalHours * 10);
+      penaltyPoints = Math.min(penaltyPoints, 40); // Cap at 40 points max
+      penaltyMinutes = 0; 
+    } else if (lateByMinutes >= 30) {
+      penaltyPoints = 10;
+      penaltyMinutes = 60;
+    } else if (lateByMinutes >= 15) {
+      penaltyPoints = 5;
+      penaltyMinutes = 45;
+    } else if (lateByMinutes >= 10) {
+      penaltyPoints = 2;
+      penaltyMinutes = 30;
+    } else if (lateByMinutes >= 5) {
+      penaltyPoints = 1;
+      penaltyMinutes = 20;
+    }
+
+    const isLate = lateByMinutes >= 5;
     // -------------------------
 
     const attendance = existing
@@ -276,9 +302,10 @@ router.post("/check-in", validate(attendanceSchema), async (request, response, n
         where: { id: existing.id },
         data: {
           checkInTime,
-          status: AttendanceStatus.PRESENT,
+          status: isHalfDayPenalty ? AttendanceStatus.HALF_DAY : AttendanceStatus.PRESENT,
           isLate,
           lateByMinutes,
+          penaltyMinutes,
         },
       })
       : await prisma.attendance.create({
@@ -286,11 +313,47 @@ router.post("/check-in", validate(attendanceSchema), async (request, response, n
           employeeId,
           attendanceDate: today,
           checkInTime,
-          status: AttendanceStatus.PRESENT,
+          status: isHalfDayPenalty ? AttendanceStatus.HALF_DAY : AttendanceStatus.PRESENT,
           isLate,
           lateByMinutes,
+          penaltyMinutes,
         },
       });
+
+    // --- Apply Point Deduction ---
+    if (penaltyPoints > 0) {
+      const currentEmployee = await prisma.employee.findUnique({
+        where: { id: employeeId },
+        select: { points: true, userId: true }
+      });
+      
+      if (currentEmployee) {
+        const newPoints = Math.max(0, currentEmployee.points - penaltyPoints);
+        await prisma.employee.update({
+          where: { id: employeeId },
+          data: { points: newPoints }
+        });
+        
+        await prisma.pointHistory.create({
+          data: {
+            employeeId,
+            amount: penaltyPoints,
+            reason: `Late check-in by ${lateByMinutes} minutes`,
+            mode: "subtract",
+          }
+        });
+        
+        const { createNotification } = await import("../notifications/service.js");
+        await createNotification({
+          userId: currentEmployee.userId,
+          title: "Late Check-in Penalty",
+          message: `${penaltyPoints} points deducted and ${penaltyMinutes ? penaltyMinutes + 'm extra shift time added' : 'half-day applied'} for late check-in.`,
+          type: "POINTS_UPDATE",
+          link: "/team/leaderboard",
+          sendPush: true,
+        });
+      }
+    }
 
     return sendSuccess(response, "Attendance checked in successfully", attendance, 201);
 
@@ -1028,8 +1091,9 @@ router.post("/overtime/start", validate(attendanceSchema), async (request, respo
       throw new AppError("Regular attendance checkout is required before starting overtime");
     }
 
-    if (attendance.workedMinutes < 540) {
-      throw new AppError("You must complete at least 9 hours of standard work today to be eligible for overtime", 400);
+    const requiredMinutes = 540 + (attendance.penaltyMinutes || 0);
+    if (attendance.workedMinutes < requiredMinutes) {
+      throw new AppError(`You must complete at least ${(requiredMinutes / 60).toFixed(1)} hours of standard work today to be eligible for overtime`, 400);
     }
 
     // Check if overtime session already exists

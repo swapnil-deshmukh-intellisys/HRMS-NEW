@@ -10,6 +10,7 @@ interface WorkdayTimelineProps {
   checkInTime?: string | Date | null;
   checkOutTime?: string | Date | null;
   workedMinutes?: number | null;
+  penaltyMinutes?: number | null;
   token?: string | null;
 }
 
@@ -21,8 +22,8 @@ type BreakSession = {
 };
 
 const BREAK_SCHEDULE_DATA = [
-  { label: 'Lunch', start: '13:30', end: '14:30', display: '1:30 PM – 2:30 PM' },
-  { label: 'Tea Break', start: '17:00', end: '17:30', display: '5:00 PM – 5:30 PM' },
+  { label: 'Lunch', start: '13:00', end: '13:45', display: '1:00 PM – 1:45 PM' },
+  { label: 'Tea Break', start: '16:15', end: '16:30', display: '4:15 PM – 4:30 PM' },
 ];
 
 function format12h(timeStr: string): string {
@@ -36,10 +37,11 @@ function format12h(timeStr: string): string {
 const WorkdayTimeline: React.FC<WorkdayTimelineProps> = ({
   startTime = "09:00",
   endTime = "18:00",
-  lateThreshold = "09:10",
+  lateThreshold = "09:00",
   checkInTime = null,
   checkOutTime = null,
   workedMinutes = null,
+  penaltyMinutes = null,
   token = null,
 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
@@ -207,7 +209,8 @@ const WorkdayTimeline: React.FC<WorkdayTimelineProps> = ({
   };
 
   const formatDuration = (h: number, m: number) => h > 0 ? `${h}h ${m}m` : `${m}m`;
-  const isOvertime = workedTime ? (workedTime.hours * 60 + workedTime.minutes) > 540 : false;
+  const requiredMins = 540 + (penaltyMinutes || 0);
+  const isOvertime = workedTime ? (workedTime.hours * 60 + workedTime.minutes) > requiredMins : false;
 
   const statusLabel = checkOutTime ? 'Completed' : isShiftOver ? 'Shift Ended' : isShiftPending ? 'Pending' : checkInIsLate ? 'Late' : checkInPct !== null ? 'Present' : 'Active';
   const statusClass = checkOutTime ? 'over' : isShiftOver ? 'over' : isShiftPending ? 'pending' : checkInIsLate ? 'late' : 'active';
@@ -229,11 +232,12 @@ const WorkdayTimeline: React.FC<WorkdayTimelineProps> = ({
             {workedTime && (
               <span className="wdt-time-compact">
                 {formatDuration(workedTime.hours, workedTime.minutes)} worked
+                {penaltyMinutes ? ` (includes ${penaltyMinutes}m penalty)` : ''}
                 {isOvertime && (
                   <span className="wdt-overtime-badge">
                     +{formatDuration(
-                      Math.floor((workedTime.hours * 60 + workedTime.minutes - 540) / 60),
-                      (workedTime.hours * 60 + workedTime.minutes - 540) % 60
+                      Math.floor((workedTime.hours * 60 + workedTime.minutes - requiredMins) / 60),
+                      (workedTime.hours * 60 + workedTime.minutes - requiredMins) % 60
                     )} OT
                   </span>
                 )}

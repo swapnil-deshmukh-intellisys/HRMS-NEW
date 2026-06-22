@@ -1,29 +1,6 @@
 version: "3.8"
 
 services:
-  traefik:
-    image: traefik:v3.0
-    restart: always
-    command:
-      - "--providers.docker=true"
-      - "--providers.docker.exposedbydefault=false"
-      - "--entrypoints.web.address=:80"
-      - "--entrypoints.websecure.address=:443"
-      # Global HTTP -> HTTPS redirection
-      - "--entrypoints.web.http.redirections.entrypoint.to=websecure"
-      - "--entrypoints.web.http.redirections.entrypoint.scheme=https"
-      # SSL Cert Resolver
-      - "--certificatesresolvers.myresolver.acme.httpchallenge=true"
-      - "--certificatesresolvers.myresolver.acme.httpchallenge.entrypoint=web"
-      - "--certificatesresolvers.myresolver.acme.email=${ACME_EMAIL}"
-      - "--certificatesresolvers.myresolver.acme.storage=/letsencrypt/acme.json"
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-      - letsencrypt:/letsencrypt
-
   postgres-db:
     image: postgres:15-alpine
     restart: always
@@ -70,20 +47,22 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
     restart: always
+    ports:
+      # Map the custom frontend port (8080 matches your old project port) on the host to port 80 inside the container
+      - "${FRONTEND_PORT:-8080}:80"
     depends_on:
       - backend
     labels:
       - "traefik.enable=true"
-      # Routes both the root domain and the www subdomain
-      - "traefik.http.routers.frontend.rule=Host(`${DOMAIN_NAME}`) || Host(`www.${DOMAIN_NAME}`)"
-      - "traefik.http.routers.frontend.entrypoints=websecure"
-      - "traefik.http.routers.frontend.tls=true"
-      - "traefik.http.routers.frontend.tls.certresolver=myresolver"
-      - "traefik.http.services.frontend.loadbalancer.server.port=80"
+      # Routes both the domain and www subdomain to this container
+      - "traefik.http.routers.intellihrhub.rule=Host(`${DOMAIN_NAME}`) || Host(`www.${DOMAIN_NAME}`)"
+      - "traefik.http.routers.intellihrhub.entrypoints=websecure"
+      - "traefik.http.routers.intellihrhub.tls=true"
+      # Uses the existing "letsencrypt" certificate resolver configured on your VPS Traefik
+      - "traefik.http.routers.intellihrhub.tls.certresolver=letsencrypt"
+      - "traefik.http.services.intellihrhub.loadbalancer.server.port=80"
 
 volumes:
-  letsencrypt:
-    name: intellihrhub_acme
   pgdata:
     name: intellihrhub_pgdata
   uploads_data:

@@ -221,6 +221,7 @@ export default function PayrollPage({ token, role }: PayrollPageProps) {
   const [previewingPayrollId, setPreviewingPayrollId] = useState<number | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [exportLoading, setExportLoading] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   
   const [currentViewMonth, setCurrentViewMonth] = useState(String(new Date().getMonth() + 1));
   const [currentViewYear, setCurrentViewYear] = useState(String(new Date().getFullYear()));
@@ -284,7 +285,7 @@ export default function PayrollPage({ token, role }: PayrollPageProps) {
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    if (!form.employeeId || !form.month) {
+    if (!form.employeeId || !form.month || submitting) {
       return;
     }
 
@@ -294,26 +295,31 @@ export default function PayrollPage({ token, role }: PayrollPageProps) {
       return;
     }
 
-    const endpoint = editingPayrollId ? `/payroll/${editingPayrollId}` : "/payroll";
+    try {
+      setSubmitting(true);
+      const endpoint = editingPayrollId ? `/payroll/${editingPayrollId}` : "/payroll";
 
-    await apiRequest<PayrollRecord>(endpoint, {
-      method: editingPayrollId ? "PUT" : "POST",
-      token,
-      body: {
-        employeeId: Number(form.employeeId),
-        month: Number(form.month),
-        year: effectiveYear,
-        salary: effectiveSalary,
-        status: form.status,
-      },
-    });
+      await apiRequest<PayrollRecord>(endpoint, {
+        method: editingPayrollId ? "PUT" : "POST",
+        token,
+        body: {
+          employeeId: Number(form.employeeId),
+          month: Number(form.month),
+          year: effectiveYear,
+          salary: effectiveSalary,
+          status: form.status,
+        },
+      });
 
-    toast.success(editingPayrollId ? "Payroll updated." : "Payroll created.");
-    setEditingPayrollId(null);
-    setForm(initialPayrollForm());
-    setPreview(null);
-    setModalOpen(false);
-    await reloadData();
+      toast.success(editingPayrollId ? "Payroll updated." : "Payroll created.");
+      setEditingPayrollId(null);
+      setForm(initialPayrollForm());
+      setPreview(null);
+      setModalOpen(false);
+      await reloadData();
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   async function handleQuickFinalize(record: PayrollRecord) {
@@ -855,10 +861,10 @@ export default function PayrollPage({ token, role }: PayrollPageProps) {
           ) : null}
           
           <div className="button-row payroll-form-actions">
-            <button type="submit" className="payroll-action-button payroll-action-button--primary" disabled={!isPayrollFormValid}>
-              {editingPayrollId ? "Update payroll" : "Create payroll"}
+            <button type="submit" className="payroll-action-button payroll-action-button--primary" disabled={!isPayrollFormValid || submitting}>
+              {submitting ? "Submitting..." : (editingPayrollId ? "Update payroll" : "Create payroll")}
             </button>
-            <button type="button" className="secondary payroll-action-button" onClick={cancelEdit}>
+            <button type="button" className="secondary payroll-action-button" onClick={cancelEdit} disabled={submitting}>
               Cancel
             </button>
           </div>

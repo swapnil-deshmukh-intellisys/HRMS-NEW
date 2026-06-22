@@ -191,6 +191,7 @@ export default function AttendancePage({ token, role, currentEmployeeId, current
   const [showCheckOutDropdown, setShowCheckOutDropdown] = useState(false);
   const [selectedUpdate, setSelectedUpdate] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [submittingRegularization, setSubmittingRegularization] = useState(false);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -434,10 +435,12 @@ export default function AttendancePage({ token, role, currentEmployeeId, current
   }
 
   async function handleRegularizationSubmit() {
+    if (submittingRegularization) return;
     const checkIn24 = convertTo24Hour(checkInTime, checkInAmPm);
     const checkOut24 = convertTo24Hour(checkOutTime, checkOutAmPm);
 
     try {
+      setSubmittingRegularization(true);
       const response = await apiRequest<AttendanceRegularizationRequest>("/attendance/regularizations", {
         method: "POST",
         token,
@@ -463,6 +466,8 @@ export default function AttendancePage({ token, role, currentEmployeeId, current
       await reloadRegularizations();
     } catch (requestError) {
       toast.error(requestError instanceof Error ? requestError.message : "Failed to submit attendance correction request.");
+    } finally {
+      setSubmittingRegularization(false);
     }
   }
 
@@ -1250,7 +1255,9 @@ export default function AttendancePage({ token, role, currentEmployeeId, current
             />
           </label>
           <div className="button-row">
-            <button onClick={handleRegularizationSubmit}>Submit request</button>
+            <button onClick={handleRegularizationSubmit} disabled={submittingRegularization}>
+              {submittingRegularization ? "Submitting..." : "Submit request"}
+            </button>
             <button className="secondary" onClick={() => setRegularizationOpen(false)}>
               Close
             </button>

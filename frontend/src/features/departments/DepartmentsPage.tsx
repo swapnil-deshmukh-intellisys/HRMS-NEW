@@ -19,6 +19,7 @@ export default function DepartmentsPage({ token, role }: DepartmentsPageProps) {
   const [form, setForm] = useState<DepartmentFormValues>({ name: "", code: "" });
   const [loading, setLoading] = useState(role !== "EMPLOYEE");
   const [departmentFormOpen, setDepartmentFormOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     if (role === "EMPLOYEE") return;
@@ -30,11 +31,19 @@ export default function DepartmentsPage({ token, role }: DepartmentsPageProps) {
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const response = await apiRequest<Department>("/departments", { method: "POST", token, body: form });
-    setDepartments((current) => [response.data, ...current]);
-    setForm({ name: "", code: "" });
-    toast.success("Department created.");
-    setDepartmentFormOpen(false);
+    if (isSubmitting) return;
+    try {
+      setIsSubmitting(true);
+      const response = await apiRequest<Department>("/departments", { method: "POST", token, body: form });
+      setDepartments((current) => [response.data, ...current]);
+      setForm({ name: "", code: "" });
+      toast.success("Department created.");
+      setDepartmentFormOpen(false);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to create department.");
+    } finally {
+      setIsSubmitting(false);
+    }
   }
 
   if (role === "EMPLOYEE") {
@@ -54,7 +63,7 @@ export default function DepartmentsPage({ token, role }: DepartmentsPageProps) {
         <DepartmentTable departments={departments} onAddDepartment={() => setDepartmentFormOpen(true)} />
       )}
       <Modal open={departmentFormOpen} title="Add department" onClose={() => setDepartmentFormOpen(false)}>
-        <DepartmentForm form={form} onChange={setForm} onSubmit={handleSubmit} />
+        <DepartmentForm form={form} isSubmitting={isSubmitting} onChange={setForm} onSubmit={handleSubmit} />
       </Modal>
     </section>
   );

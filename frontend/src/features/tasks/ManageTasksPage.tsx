@@ -436,7 +436,9 @@ export default function ManageTasksPage({ token }: { token: string | null }) {
   }
 
   async function submitToggleTask(taskId: number, currentCompleted: boolean, revertReason?: string) {
+    if (submitting) return;
     try {
+      setSubmitting(true);
       const targetState = !currentCompleted;
       const endpoint = isNormalEmployee
         ? `/tasks/items/${taskId}`
@@ -452,6 +454,8 @@ export default function ManageTasksPage({ token }: { token: string | null }) {
       toast.success(targetState ? "Task completed" : "Task marked as pending");
     } catch (error: any) {
       toast.error(error.message || "Failed to update task status");
+    } finally {
+      setSubmitting(false);
     }
   }
 
@@ -936,10 +940,10 @@ export default function ManageTasksPage({ token }: { token: string | null }) {
 
       {/* Modal - Revert Task Reason */}
       <Modal open={revertPromptOpen} onClose={() => setRevertPromptOpen(false)} title="Revert Task to Pending">
-        <form className="task-list-form" onSubmit={(e) => {
+        <form className="task-list-form" onSubmit={async (e) => {
           e.preventDefault();
           if (taskToRevert) {
-            submitToggleTask(taskToRevert, true, revertReasonInput);
+            await submitToggleTask(taskToRevert, true, revertReasonInput);
             setRevertPromptOpen(false);
           }
         }}>
@@ -956,8 +960,8 @@ export default function ManageTasksPage({ token }: { token: string | null }) {
             <button type="button" className="secondary" onClick={() => setRevertPromptOpen(false)}>
               Cancel
             </button>
-            <button type="submit">
-              Submit & Revert
+            <button type="submit" disabled={submitting}>
+              {submitting ? "Reverting..." : "Submit & Revert"}
             </button>
           </div>
         </form>

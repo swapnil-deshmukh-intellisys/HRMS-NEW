@@ -40,7 +40,7 @@ function getMinSelectableDate() {
   const currentHour = now.getHours();
   const currentMinute = now.getMinutes();
   
-  if (currentHour > 13 || (currentHour === 13 && currentMinute >= 30)) {
+  if (currentHour >= 13) {
     const tomorrow = new Date(now);
     tomorrow.setDate(now.getDate() + 1);
     return formatLocalIsoDate(tomorrow);

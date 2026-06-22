@@ -78,9 +78,10 @@ export default function ManagementDashboard({ token, role }: { token: string | n
       </article>
 
       <WorkdayTimeline 
-        checkInTime={summary?.attendanceToday?.checkInTime ?? null} 
-        checkOutTime={summary?.attendanceToday?.checkOutTime ?? null}
-        workedMinutes={summary?.attendanceToday?.workedMinutes ?? null}
+        checkInTime={data.attendanceToday?.checkInTime ?? null} 
+        checkOutTime={data.attendanceToday?.checkOutTime ?? null}
+        workedMinutes={data.attendanceToday?.workedMinutes ?? null}
+        penaltyMinutes={data.attendanceToday?.penaltyMinutes ?? null}
         token={token} 
       />
 

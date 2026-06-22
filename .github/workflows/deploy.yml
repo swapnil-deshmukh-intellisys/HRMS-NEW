@@ -1,0 +1,32 @@
+name: Continuous Deployment
+
+on:
+  push:
+    branches:
+      - main # Triggers deployment when you push to the main branch
+
+jobs:
+  deploy:
+    name: Deploy to Hostinger VPS
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Execute Remote SSH Commands to Deploy
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USERNAME }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: ${{ secrets.VPS_PORT || 22 }}
+          script: |
+            if [ -d "/var/www/intellihrhub" ]; then
+              cd /var/www/intellihrhub
+              chmod +x deploy.sh
+              ./deploy.sh
+            else
+              echo "Project directory /var/www/intellihrhub does not exist! Please set it up manually first."
+              exit 1
+            fi

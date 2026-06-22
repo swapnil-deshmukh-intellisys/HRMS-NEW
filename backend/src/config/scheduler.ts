@@ -166,56 +166,13 @@ async function processMedicalProof1HourWarnings() {
   }
 }
 
-/**
- * Automatically checks out employees whose shift has completed (>= 9 hours)
- */
-async function autoCheckoutActiveShifts() {
-  try {
-    const now = new Date();
-    const nineHoursAgo = new Date(now.getTime() - 9 * 60 * 60 * 1000);
 
-    const activeAttendances = await prisma.attendance.findMany({
-      where: {
-        checkInTime: {
-          lte: nineHoursAgo,
-          not: null,
-        },
-        checkOutTime: null,
-        status: AttendanceStatus.PRESENT,
-      },
-    });
-
-    if (activeAttendances.length === 0) return;
-
-    console.log(`[Scheduler] Found ${activeAttendances.length} active shifts to auto-checkout...`);
-
-    for (const record of activeAttendances) {
-      if (!record.checkInTime) continue;
-      const checkOutTime = new Date(record.checkInTime.getTime() + 9 * 60 * 60 * 1000);
-      
-      await prisma.attendance.update({
-        where: { id: record.id },
-        data: {
-          checkOutTime,
-          workedMinutes: 540,
-          todaysUpdate: record.todaysUpdate || "[Auto Checkout - 9 Hours Shift Completed]",
-        },
-      });
-      console.log(`[Scheduler] Auto-checked out employee ${record.employeeId} (attendance ID: ${record.id})`);
-    }
-  } catch (error) {
-    console.error("[Scheduler] Auto checkout active shifts job failed:", error);
-  }
-}
 
 /**
  * Initializes all automated background tasks (Cron Jobs)
  */
 export function initScheduler() {
-  // 🕒 Auto-Checkout Active Shifts: Run every minute
-  cron.schedule("* * * * *", async () => {
-    await autoCheckoutActiveShifts();
-  });
+
 
   // 🍱 Scheduled Lunch Break: 1:30 PM IST (Mon-Fri)
   cron.schedule("30 13 * * 1-5", async () => {
@@ -230,9 +187,9 @@ export function initScheduler() {
 
 
 
-  // 🕒 Automated Attendance Finalization: 12:00 AM IST daily
-  // Runs at midnight to finalize the PREVIOUS day's records.
-  cron.schedule("0 0 * * *", async () => {
+  // 🕒 Automated Attendance Finalization: 6:00 AM IST daily
+  // Runs at 6:00 AM to finalize the PREVIOUS day's records.
+  cron.schedule("0 6 * * *", async () => {
     // Correctly get yesterday's date in IST regardless of server environment
     const nowInIst = getCurrentTimeInIST();
     const yesterday = new Date(nowInIst);
@@ -243,7 +200,7 @@ export function initScheduler() {
     const day = String(yesterday.getDate()).padStart(2, "0");
     const dateStr = `${year}-${month}-${day}`;
     
-    console.log(`[Scheduler] Running midnight finalization for ${dateStr}...`);
+    console.log(`[Scheduler] Running 6:00 AM finalization for ${dateStr}...`);
     
     try {
       const result = await finalizeAttendanceForDate(

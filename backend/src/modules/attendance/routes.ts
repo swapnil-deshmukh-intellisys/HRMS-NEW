@@ -139,22 +139,7 @@ async function getAttendanceTodayForEmployee(employeeId: number) {
     }),
   ]);
 
-  if (attendanceTodayRecord && attendanceTodayRecord.checkInTime && !attendanceTodayRecord.checkOutTime) {
-    const now = new Date();
-    const checkIn = new Date(attendanceTodayRecord.checkInTime);
-    if (now.getTime() - checkIn.getTime() >= 9 * 60 * 60 * 1000) {
-      const checkOutTime = new Date(checkIn.getTime() + 9 * 60 * 60 * 1000);
-      attendanceTodayRecord = await prisma.attendance.update({
-        where: { id: attendanceTodayRecord.id },
-        data: {
-          checkOutTime,
-          workedMinutes: 540,
-          todaysUpdate: attendanceTodayRecord.todaysUpdate || "[Auto Checkout - 9 Hours Shift Completed]",
-        },
-      });
-      console.log(`[Inline Auto-Checkout] Employee ${employeeId} checked out automatically.`);
-    }
-  }
+
 
   return (
     attendanceTodayRecord ??
@@ -354,6 +339,7 @@ router.post("/check-out", validate(attendanceSchema), async (request, response, 
         checkOutTime,
         workedMinutes,
         todaysUpdate: request.body.todaysUpdate,
+        status: finalizeAttendanceStatus(attendance.checkInTime, checkOutTime),
       },
     });
 
@@ -754,13 +740,16 @@ router.post(
           throw new AppError("Attendance correction cannot overwrite leave attendance");
         }
 
+        const checkInTime = regularizationRequest.proposedCheckInTime ?? existingAttendance?.checkInTime;
+        const checkOutTime = regularizationRequest.proposedCheckOutTime ?? existingAttendance?.checkOutTime;
+
         const status = getRegularizedAttendanceStatus(
-          regularizationRequest.proposedCheckInTime,
-          regularizationRequest.proposedCheckOutTime,
+          checkInTime,
+          checkOutTime,
         );
         const workedMinutes = calculateWorkedMinutes(
-          regularizationRequest.proposedCheckInTime,
-          regularizationRequest.proposedCheckOutTime,
+          checkInTime,
+          checkOutTime,
         );
 
         await prisma.$transaction([
@@ -768,8 +757,8 @@ router.post(
             ? prisma.attendance.update({
               where: { id: existingAttendance.id },
               data: {
-                checkInTime: regularizationRequest.proposedCheckInTime,
-                checkOutTime: regularizationRequest.proposedCheckOutTime,
+                checkInTime,
+                checkOutTime,
                 workedMinutes,
                 status,
               },
@@ -778,8 +767,8 @@ router.post(
               data: {
                 employeeId: regularizationRequest.employeeId,
                 attendanceDate: regularizationRequest.attendanceDate,
-                checkInTime: regularizationRequest.proposedCheckInTime,
-                checkOutTime: regularizationRequest.proposedCheckOutTime,
+                checkInTime,
+                checkOutTime,
                 workedMinutes,
                 status,
               },

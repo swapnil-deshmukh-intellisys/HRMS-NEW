@@ -5,6 +5,9 @@ on:
     - cron: '0 22 * * *' # 10:00 PM IST (4:30 PM UTC)
   workflow_dispatch: # Allow manual trigger
 
+env:
+  TZ: "Asia/Kolkata"
+
 jobs:
   full-e2e:
     name: Full E2E & API Regression

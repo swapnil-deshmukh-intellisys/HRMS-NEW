@@ -1,6 +1,7 @@
 import { PrismaClient } from "@prisma/client";
 import { getGoogleClients, initializeMonthlySheets, MONTH_NAMES } from "./googleSheets.service.js";
 import { formatInTimeZone, toZonedTime } from "date-fns-tz";
+import { sendEmail } from "./mailer.js";
 
 const prisma = new PrismaClient();
 let isRunning = false;
@@ -79,14 +80,37 @@ export async function processGoogleSheetSyncQueue() {
       } catch (err: any) {
         console.error(`[GoogleSheetsWorker] Task ${task.id} failed:`, err.message);
         const retryCount = task.retryCount + 1;
+        const isFinalFailure = retryCount >= 3;
+        
         await prisma.googleSheetSyncQueue.update({
           where: { id: task.id },
           data: { 
-            status: retryCount >= 3 ? "FAILED" : "PENDING",
+            status: isFinalFailure ? "FAILED" : "PENDING",
             retryCount,
             lastError: err.message
           }
         });
+
+        if (isFinalFailure && process.env.HR_ADMIN_EMAIL) {
+          try {
+            await sendEmail(
+              process.env.HR_ADMIN_EMAIL,
+              "🚨 HRMS Alert: Google Sheets Sync Failed",
+              `<h3>Google Sheets Sync Failure Alert</h3>
+               <p>A Google Sheets synchronization task has failed after 3 attempts.</p>
+               <ul>
+                 <li><strong>Task ID:</strong> ${task.id}</li>
+                 <li><strong>Entity Type:</strong> ${task.entityType}</li>
+                 <li><strong>Entity ID:</strong> ${task.entityId}</li>
+                 <li><strong>Error:</strong> ${err.message}</li>
+               </ul>
+               <p>Please check the background service logs or verify that the Google Spreadsheet has been correctly shared with the service account email.</p>`
+            );
+            console.log(`[GoogleSheetsWorker] Sent sync failure email to ${process.env.HR_ADMIN_EMAIL}`);
+          } catch (mailErr: any) {
+            console.error("[GoogleSheetsWorker] Failed to send alert email:", mailErr.message);
+          }
+        }
       }
     }
   } catch (err) {

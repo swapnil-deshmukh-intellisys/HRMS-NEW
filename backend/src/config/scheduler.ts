@@ -415,5 +415,24 @@ export function initScheduler() {
     }
   });
 
-  console.log("[Scheduler] Background tasks initialized (Attendance, Payroll, Break Reminders, Outbox, Birthdays & Medical Proof Approaching Warnings active).");
+  // 🧹 Google Sheets Sync Queue Cleanup: Daily at 3:00 AM IST
+  cron.schedule("0 3 * * *", async () => {
+    console.log("[Scheduler] Running daily cleanup for completed Google Sheets sync tasks...");
+    try {
+      const cutoff = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000); // 30 days ago
+      const deleted = await prisma.googleSheetSyncQueue.deleteMany({
+        where: {
+          status: "COMPLETED",
+          updatedAt: { lt: cutoff }
+        }
+      });
+      console.log(`[Scheduler] Deleted ${deleted.count} completed sync queue tasks older than 30 days.`);
+    } catch (err) {
+      console.error("[Scheduler] Daily sync queue cleanup failed:", err);
+    }
+  }, {
+    timezone: "Asia/Kolkata"
+  });
+
+  console.log("[Scheduler] Background tasks initialized (Attendance, Payroll, Break Reminders, Outbox, Birthdays, Medical Proof Warnings & Sheets Queue Cleanup active).");
 }

@@ -780,9 +780,18 @@ export default function LeaderboardPage({ token, role = "EMPLOYEE" }: { token: s
           {isLoadingHistory ? (
             <div style={{ padding: "40px", textAlign: "center", color: "#64748b" }}>Loading history...</div>
           ) : pointsHistory.length === 0 ? (
-            <div style={{ padding: "40px", textAlign: "center", color: "#64748b" }}>
-              <Trophy size={32} style={{ margin: "0 auto 12px", opacity: 0.5 }} />
-              No points history found.
+            <div style={{ 
+              padding: "40px 20px", 
+              textAlign: "center", 
+              color: "#64748b",
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: "8px"
+            }}>
+              <Trophy size={40} style={{ opacity: 0.35 }} />
+              <span style={{ fontSize: "14px", fontWeight: "500" }}>No points history found.</span>
             </div>
           ) : (
             <div className="lb-history-list" style={{ maxHeight: "400px", overflowY: "auto", display: "flex", flexDirection: "column", gap: "12px" }}>

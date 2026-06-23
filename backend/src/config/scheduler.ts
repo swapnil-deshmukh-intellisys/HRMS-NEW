@@ -12,6 +12,7 @@ import { getCalendarDayStatus } from "../modules/calendar/service.js";
 import { AttendanceStatus } from "@prisma/client";
 import { sendPushNotification } from "../modules/notifications/service.js";
 import { processOutbox } from "../services/outbox.js";
+import { processGoogleSheetSyncQueue } from "../services/googleSheetsWorker.js";
 
 /**
  * Initializes all automated background tasks (Cron Jobs)
@@ -173,7 +174,12 @@ async function processMedicalProof1HourWarnings() {
  */
 export function initScheduler() {
 
-
+  // 📊 Google Sheets Sync: Every 5 minutes
+  cron.schedule("*/5 * * * *", () => {
+    processGoogleSheetSyncQueue().catch(err => {
+      console.error("[Scheduler] Google Sheets sync failed:", err);
+    });
+  });
   // 🍱 Scheduled Lunch Break: 1:00 PM IST (Mon-Fri)
   cron.schedule("0 13 * * 1-5", async () => {
     console.log("[Scheduler] Triggering 1:00 PM Lunch Break Reminder...");

@@ -52,3 +52,12 @@ lerna-debug.log*
 *.njsproj
 *.sln
 *.sw?
+
+# Google Cloud Service Account Credentials
+*credentials.json
+
+# Database backups and temporary scratch files
+backend/db_backup.json
+backend/db_backup.sql
+backend/scratch/
+backend/scripts/get_pr_checks_status.js

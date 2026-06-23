@@ -42,12 +42,19 @@ type OnTimeEntry = {
   onTimeRate: number;
 };
 
+type PointsEntry = {
+  rank: number;
+  employee: LeaderboardEmployee;
+  points: number;
+};
+
 type LeaderboardData = {
   month: number;
   year: number;
   employeeOfMonth: WorkHoursEntry | null;
   workHoursRanking: WorkHoursEntry[];
   onTimeRanking: OnTimeEntry[];
+  pointsRanking: PointsEntry[];
 };
 
 const MONTH_NAMES = [
@@ -80,7 +87,7 @@ export default function LeaderboardPage({ token, role = "EMPLOYEE" }: { token: s
   const [year, setYear] = useState(now.getFullYear());
   const [data, setData] = useState<LeaderboardData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<"WORK_HOURS" | "ON_TIME">("WORK_HOURS");
+  const [activeTab, setActiveTab] = useState<"WORK_HOURS" | "ON_TIME" | "POINTS">("WORK_HOURS");
 
   // Points state
   const [pointsModal, setPointsModal] = useState<LeaderboardEmployee | null>(null);
@@ -412,7 +419,14 @@ export default function LeaderboardPage({ token, role = "EMPLOYEE" }: { token: s
               onClick={() => setActiveTab("ON_TIME")}
             >
               <Clock size={16} />
-              On-Time Check-In Ranking
+              On-Time Ranking
+            </button>
+            <button
+              className={`lb-tab ${activeTab === "POINTS" ? "lb-tab--active" : ""}`}
+              onClick={() => setActiveTab("POINTS")}
+            >
+              <Star size={16} />
+              Points Ranking
             </button>
           </div>
 
@@ -549,6 +563,84 @@ export default function LeaderboardPage({ token, role = "EMPLOYEE" }: { token: s
                           <div className="lb-row-stat">
                             <div className="lb-row-stat-primary" style={{ color: "#059669" }}>{entry.onTimeRate}%</div>
                             <div className="lb-row-stat-sub">{entry.onTimeDays}/{entry.totalDays} days</div>
+                          </div>
+                          {role !== "EMPLOYEE" && (
+                            <button
+                              type="button"
+                              className="lb-award-btn"
+                              onClick={() => { setPointsModal(entry.employee); setPointsMode("add"); setPointsAmount(10); setPointsReason(""); }}
+                            >
+                              <Star size={13} />
+                              Points
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            className="lb-award-btn"
+                            style={{ padding: "8px", minWidth: "auto", background: "rgba(100, 116, 139, 0.1)", color: "#64748b" }}
+                            onClick={() => handleViewHistory(entry.employee)}
+                            title="View History"
+                          >
+                            <History size={15} />
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Points Ranking */}
+          {activeTab === "POINTS" && (
+            <div className="lb-ranking-card">
+              <div className="lb-ranking-header">
+                <Star size={18} />
+                <h3>Points Ranking</h3>
+                <span className="lb-ranking-period">All Time</span>
+              </div>
+              {data.pointsRanking.length === 0 ? (
+                <div className="lb-empty" style={{ padding: "40px" }}>
+                  <p>No points data available.</p>
+                </div>
+              ) : (
+                <div className="lb-ranking-list">
+                  {data.pointsRanking.map((entry) => {
+                    const isCurrentLeader = entry.rank === 1;
+                    const maxPoints = data.pointsRanking[0]?.points ?? 1;
+                    return (
+                      <div
+                        key={entry.employee.id}
+                        className={`lb-row ${entry.rank <= 3 ? "lb-row--top" : ""} ${
+                          isCurrentLeader ? "lb-row--current-leader-inprogress" : ""
+                        }`}
+                      >
+                        <div className="lb-row-rank">
+                          <RankBadge rank={entry.rank} />
+                        </div>
+                        <div className="lb-row-avatar">
+                          {entry.employee.firstName[0]}{entry.employee.lastName[0]}
+                        </div>
+                        <div className="lb-row-info">
+                          <div className="lb-row-name">
+                            {entry.employee.firstName} {entry.employee.lastName}
+                            <span className="lb-row-code">#{entry.employee.employeeCode}</span>
+                            <span className="lb-points-badge"><Star size={10} />{pointsMap[entry.employee.id] ?? entry.points} pts</span>
+                            {isCurrentLeader && (
+                              <span className="lb-badge lb-badge--current-leader" title="Current Points Leader">
+                                👑 All-Time Leader
+                              </span>
+                            )}
+                          </div>
+                          <div className="lb-row-meta">
+                            {entry.employee.jobTitle ?? "Employee"} · {entry.employee.department?.name ?? "—"}
+                          </div>
+                          <ProgressBar value={pointsMap[entry.employee.id] ?? entry.points} max={maxPoints} color="linear-gradient(90deg, #eab308, #fef08a)" />
+                        </div>
+                        <div className="lb-row-right">
+                          <div className="lb-row-stat">
+                            <div className="lb-row-stat-primary" style={{ color: "#ca8a04" }}>{pointsMap[entry.employee.id] ?? entry.points} pts</div>
                           </div>
                           {role !== "EMPLOYEE" && (
                             <button

@@ -26,6 +26,7 @@ import {
   isOvertimeEligible,
   getMonthlyOvertimeHours,
 } from "./overtime-service.js";
+import { queueAttendanceSync } from "../../services/googleSheets.service.js";
 
 const router = Router();
 
@@ -157,6 +158,7 @@ async function getAttendanceTodayForEmployee(employeeId: number) {
             : AttendanceStatus.LEAVE,
         leaveTypeCode: approvedLeaveToday.leaveType.code,
         leaveTypeName: approvedLeaveToday.leaveType.name,
+        penaltyMinutes: 0,
       }
       : null)
   );
@@ -354,6 +356,9 @@ router.post("/check-in", validate(attendanceSchema), async (request, response, n
         });
       }
     }
+    // -------------------------
+
+    await queueAttendanceSync(attendance.id);
 
     return sendSuccess(response, "Attendance checked in successfully", attendance, 201);
 
@@ -405,6 +410,8 @@ router.post("/check-out", validate(attendanceSchema), async (request, response, 
         status: finalizeAttendanceStatus(attendance.checkInTime, checkOutTime),
       },
     });
+
+    await queueAttendanceSync(updatedAttendance.id);
 
     return sendSuccess(response, "Attendance checked out successfully", updatedAttendance);
   } catch (error) {
@@ -815,7 +822,7 @@ router.post(
           checkOutTime,
         );
 
-        await prisma.$transaction([
+        const [updatedAttendance] = await prisma.$transaction([
           existingAttendance
             ? prisma.attendance.update({
               where: { id: existingAttendance.id },
@@ -846,6 +853,8 @@ router.post(
             },
           }),
         ]);
+        
+        await queueAttendanceSync(updatedAttendance.id);
       } else {
         await prisma.attendanceRegularizationRequest.update({
           where: { id: regularizationRequest.id },
@@ -1404,12 +1413,34 @@ router.get(
 
       const employeeOfMonth = workHoursRanking[0] ?? null;
 
+      // --- Points ranking ---
+      const activeEmployees = await prisma.employee.findMany({
+        where: { isActive: true },
+        select: {
+          id: true,
+          firstName: true,
+          lastName: true,
+          employeeCode: true,
+          jobTitle: true,
+          points: true,
+          department: { select: { name: true } },
+        },
+        orderBy: { points: 'desc' }
+      });
+
+      const pointsRanking = activeEmployees.map((emp, index) => ({
+        rank: index + 1,
+        employee: emp,
+        points: emp.points,
+      }));
+
       return sendSuccess(response, "Leaderboard fetched successfully", {
         month,
         year,
         employeeOfMonth,
         workHoursRanking,
         onTimeRanking,
+        pointsRanking,
       });
     } catch (error) {
       next(error);

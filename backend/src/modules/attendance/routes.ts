@@ -501,10 +501,122 @@ router.post("/break/end", async (request, response, next) => {
     const endTime = new Date();
     const durationMinutes = Math.floor((endTime.getTime() - openBreak.startTime.getTime()) / 60000);
 
-    const updated = await prisma.breakSession.update({
-      where: { id: openBreak.id },
-      data: { endTime, durationMinutes },
+    // Classify break based on start time
+    const bStart = new Date(openBreak.startTime);
+    const startHour = bStart.getHours();
+    const startMin = bStart.getMinutes();
+    const totalStartMins = startHour * 60 + startMin;
+
+    let breakLabel = "Break";
+    let allowedDuration = 0;
+
+    // Lunch window: 12:00 (720 min) – 14:30 (870 min)
+    if (totalStartMins >= 720 && totalStartMins <= 870) {
+      breakLabel = "Lunch";
+      allowedDuration = 45;
+    }
+    // Tea Break window: 15:30 (930 min) – 17:00 (1020 min)
+    else if (totalStartMins >= 930 && totalStartMins <= 1020) {
+      breakLabel = "Tea Break";
+      allowedDuration = 15;
+    }
+
+    let penaltyPoints = 0;
+    let penaltyMinutes = 0;
+    let isHalfDayPenalty = false;
+    let lateByMinutes = 0;
+
+    if (allowedDuration > 0 && durationMinutes > allowedDuration) {
+      lateByMinutes = durationMinutes - allowedDuration;
+
+      if (lateByMinutes >= 60) {
+        isHalfDayPenalty = true;
+        const additionalHours = Math.floor((lateByMinutes - 60) / 60);
+        penaltyPoints = 10 + (additionalHours * 10);
+        penaltyPoints = Math.min(penaltyPoints, 40); // Cap at 40 points max
+        penaltyMinutes = 0;
+      } else if (lateByMinutes >= 30) {
+        penaltyPoints = 10;
+        penaltyMinutes = 60;
+      } else if (lateByMinutes >= 15) {
+        penaltyPoints = 5;
+        penaltyMinutes = 45;
+      } else if (lateByMinutes >= 10) {
+        penaltyPoints = 2;
+        penaltyMinutes = 30;
+      } else if (lateByMinutes > 0) {
+        // No grace period for breaks: any lateness from 1 to 9 minutes triggers the first tier
+        penaltyPoints = 1;
+        penaltyMinutes = 20;
+      }
+    }
+
+    const updated = await prisma.$transaction(async (tx) => {
+      // 1. Update breakSession
+      const bs = await tx.breakSession.update({
+        where: { id: openBreak.id },
+        data: { endTime, durationMinutes },
+      });
+
+      // 2. If there's a penalty, apply it
+      if (penaltyPoints > 0) {
+        const emp = await tx.employee.findUnique({
+          where: { id: employeeId },
+          select: { points: true }
+        });
+        if (emp) {
+          await tx.employee.update({
+            where: { id: employeeId },
+            data: { points: emp.points - penaltyPoints },
+          });
+        }
+
+        // Log history
+        await tx.pointHistory.create({
+          data: {
+            employeeId,
+            amount: penaltyPoints,
+            reason: `Late return from ${breakLabel} by ${lateByMinutes} minutes`,
+            mode: "subtract",
+          },
+        });
+      }
+
+      // 3. Accumulate penaltyMinutes and check HALF_DAY status
+      if (penaltyMinutes > 0 || isHalfDayPenalty) {
+        await tx.attendance.update({
+          where: { id: attendance.id },
+          data: {
+            penaltyMinutes: (attendance.penaltyMinutes ?? 0) + penaltyMinutes,
+            ...(isHalfDayPenalty ? { status: AttendanceStatus.HALF_DAY } : {}),
+          },
+        });
+      }
+
+      return bs;
     });
+
+    // 4. Send notification if points were deducted (outside transaction to avoid blocking)
+    if (penaltyPoints > 0) {
+      try {
+        const currentEmployee = await prisma.employee.findUnique({
+          where: { id: employeeId },
+          select: { userId: true },
+        });
+        if (currentEmployee) {
+          const { createNotification } = await import("../notifications/service.js");
+          await createNotification({
+            userId: currentEmployee.userId,
+            title: "Points Deducted",
+            message: `${penaltyPoints} points were deducted. Reason: Late return from ${breakLabel} by ${lateByMinutes} minutes`,
+            type: "POINTS_UPDATE",
+            link: "/team/leaderboard",
+          });
+        }
+      } catch (err) {
+        console.error("Failed to send break penalty notification:", err);
+      }
+    }
 
     return sendSuccess(response, "Break ended", updated);
   } catch (error) {

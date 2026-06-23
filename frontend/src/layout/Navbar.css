@@ -632,3 +632,28 @@
     display: none;
   }
 }
+
+.topbar-shift-timer {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 6px 12px;
+  background: linear-gradient(180deg, #f8fafc, #f1f5f9);
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 12px;
+  font-size: var(--text-sm);
+  font-weight: var(--fw-medium);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05);
+  white-space: nowrap;
+}
+
+.topbar-shift-timer__label {
+  color: var(--color-text-secondary);
+  font-weight: var(--fw-regular);
+}
+
+.topbar-shift-timer__value {
+  color: var(--color-text-strong);
+  font-weight: var(--fw-bold);
+  font-family: monospace;
+}

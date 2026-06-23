@@ -58,11 +58,46 @@ type NavbarProps = {
 
 export default function Navbar({ title, navOpen, onToggleNav, token, currentEmployeeId, role, onLogout }: NavbarProps) {
   const navigate = useNavigate();
-  const { summary, notifications, loading: notificationsLoading, error: notificationsError, refreshSummary, markNotificationAsRead, markAllNotificationsAsRead } = useApp();
+  const { summary, notifications, loading: notificationsLoading, error: notificationsError, refreshSummary, markNotificationAsRead, markAllNotificationsAsRead, getCalibratedNow } = useApp();
   const { subscribeUser, isSubscribing } = usePushNotifications(token);
   const [searchTerm, setSearchTerm] = useState("");
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [isVisible, setIsVisible] = useState(true);
+
+  const [currentTime, setCurrentTime] = useState(() => getCalibratedNow ? getCalibratedNow() : new Date());
+
+  useEffect(() => {
+    if (!getCalibratedNow) return;
+    const timer = setInterval(() => {
+      setCurrentTime(getCalibratedNow());
+    }, 30000); // Update every 30 seconds
+
+    return () => clearInterval(timer);
+  }, [getCalibratedNow]);
+
+  const shiftTimeText = useMemo(() => {
+    const attendance = summary?.attendanceToday;
+    if (!attendance?.checkInTime) return null;
+
+    const checkIn = new Date(attendance.checkInTime);
+    const checkOut = attendance.checkOutTime ? new Date(attendance.checkOutTime) : null;
+    
+    // Calculate elapsed time in minutes
+    const end = checkOut || currentTime;
+    const elapsedMs = end.getTime() - checkIn.getTime();
+    const elapsedMins = Math.max(0, Math.floor(elapsedMs / 60000));
+
+    // Calculate required time in minutes (default 9 hours = 540 minutes, plus penalties)
+    const requiredMins = 540 + (attendance.penaltyMinutes || 0);
+
+    const formatTime = (totalMins: number) => {
+      const h = Math.floor(totalMins / 60);
+      const m = totalMins % 60;
+      return `${h}h ${m}m`;
+    };
+
+    return `${formatTime(elapsedMins)} / ${formatTime(requiredMins)}`;
+  }, [summary?.attendanceToday, currentTime]);
   const lastScrollY = useRef(0);
   const notificationsRef = useRef<HTMLDivElement | null>(null);
   const canSearchEmployees = role !== "EMPLOYEE";
@@ -129,6 +164,12 @@ export default function Navbar({ title, navOpen, onToggleNav, token, currentEmpl
       </div>
       <div className="topbar-actions">
         <div className="topbar-attendance-action">
+          {shiftTimeText ? (
+            <div className="topbar-shift-timer" title="Shift time elapsed / Required shift time today">
+              <span className="topbar-shift-timer__label">Shift:</span>
+              <span className="topbar-shift-timer__value">{shiftTimeText}</span>
+            </div>
+          ) : null}
           <AttendanceQuickAction token={token} currentEmployeeId={currentEmployeeId} size="compact" />
           <BreakQuickAction
             token={token}

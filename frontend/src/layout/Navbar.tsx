@@ -70,7 +70,7 @@ export default function Navbar({ title, navOpen, onToggleNav, token, currentEmpl
   useEffect(() => {
     const timer = setInterval(() => {
       setNow(Date.now());
-    }, 15000); // Update every 15 seconds
+    }, 10000); // Update every 10 seconds
 
     return () => clearInterval(timer);
   }, []);
@@ -89,8 +89,9 @@ export default function Navbar({ title, navOpen, onToggleNav, token, currentEmpl
     const elapsedMs = end.getTime() - checkIn.getTime();
     const elapsedMins = Math.max(0, Math.floor(elapsedMs / 60000));
 
-    // Calculate required time in minutes (default 9 hours = 540 minutes, plus penalties minus late check-in minutes)
-    const requiredMins = 540 - (attendance.lateByMinutes || 0) + (attendance.penaltyMinutes || 0);
+    // Required shift time = 540 minutes (9h) + penalty minutes added for late check-in
+    // Note: lateByMinutes is informational only; penaltyMinutes captures the actual time penalty
+    const requiredMins = 540 + (attendance.penaltyMinutes || 0);
 
     const formatTime = (totalMins: number) => {
       const h = Math.floor(totalMins / 60);
@@ -174,12 +175,13 @@ export default function Navbar({ title, navOpen, onToggleNav, token, currentEmpl
           {shiftTime ? (
             <div className="topbar-shift-timer" title="Shift time elapsed / Required shift time today">
               <Clock size={15} className="topbar-shift-timer__icon" />
-              <span className="topbar-shift-timer__checkin">In {formatAttendanceTime(shiftTime.checkInTime)}</span>
+              <span className="topbar-shift-timer__label">In</span>
+              <span className="topbar-shift-timer__checkin">{formatAttendanceTime(shiftTime.checkInTime)}</span>
               <span className="topbar-shift-timer__bullet">•</span>
               <span className="topbar-shift-timer__label">Shift:</span>
-              <span className="topbar-shift-timer__value">{shiftTime.elapsed}</span>
+              <span className="topbar-shift-timer__value topbar-shift-timer__value--elapsed">{shiftTime.elapsed}</span>
               <span className="topbar-shift-timer__divider">/</span>
-              <span className="topbar-shift-timer__value">{shiftTime.required}</span>
+              <span className="topbar-shift-timer__value topbar-shift-timer__value--required">{shiftTime.required}</span>
             </div>
           ) : null}
           <AttendanceQuickAction token={token} currentEmployeeId={currentEmployeeId} size="compact" showMeta={false} />

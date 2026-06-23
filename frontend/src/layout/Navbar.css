@@ -636,15 +636,16 @@
 .topbar-shift-timer {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: 5px;
   height: 42px;
-  padding: 0 16px;
+  padding: 0 14px;
   background: linear-gradient(180deg, #ffffff, #f8fafc);
   border: 1px solid rgba(148, 163, 184, 0.15);
   border-radius: 16px;
   font-family: var(--font-primary);
   font-size: var(--text-sm);
   font-weight: var(--fw-medium);
+  color: var(--color-text-primary);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 1),
     0 3px 0 rgba(15, 23, 42, 0.05),
@@ -661,38 +662,62 @@
     0 12px 20px rgba(15, 23, 42, 0.05);
 }
 
+/* Clock icon — success green: confirms employee is actively checked in */
 .topbar-shift-timer__icon {
-  color: var(--color-accent);
-  opacity: 0.85;
+  color: #059669;
+  opacity: 0.9;
   flex-shrink: 0;
 }
 
+/* "In 9:10 AM" — success green: positive confirmation of check-in time */
 .topbar-shift-timer__checkin {
-  color: var(--color-text-primary);
+  font-family: var(--font-primary);
+  font-size: var(--text-sm);
+  color: #059669;
   font-weight: var(--fw-semibold);
 }
 
+/* Separator dot */
 .topbar-shift-timer__bullet {
-  color: var(--color-text-secondary);
-  opacity: 0.4;
-  margin: 0 2px;
-}
-
-.topbar-shift-timer__label {
-  color: var(--color-text-secondary);
-  font-weight: var(--fw-regular);
-  margin-right: 2px;
-}
-
-.topbar-shift-timer__value {
-  color: var(--color-text-strong);
-  font-weight: var(--fw-bold);
-  letter-spacing: -0.02em;
-}
-
-.topbar-shift-timer__divider {
-  color: var(--color-text-secondary);
+  font-family: var(--font-primary);
+  color: #94a3b8;
   opacity: 0.5;
+  margin: 0 3px;
+}
+
+/* "In" / "Shift:" labels — neutral muted, structural labels */
+.topbar-shift-timer__label {
+  font-family: var(--font-primary);
+  font-size: var(--text-sm);
+  color: #94a3b8;
+  font-weight: var(--fw-normal);
+}
+
+/* Shared base for both values */
+.topbar-shift-timer__value {
+  font-family: var(--font-primary);
+  font-size: var(--text-sm);
+  font-weight: var(--fw-semibold);
+  letter-spacing: -0.01em;
+}
+
+/* "7h 51m" — brand accent navy: active, in-progress work time */
+.topbar-shift-timer__value--elapsed {
+  color: var(--color-accent);
+}
+
+/* "9h 20m" — warm slate: the target/quota, passive reference */
+.topbar-shift-timer__value--required {
+  color: #64748b;
+  font-weight: var(--fw-normal);
+  opacity: 0.75;
+}
+
+/* "/" divider */
+.topbar-shift-timer__divider {
+  font-family: var(--font-primary);
+  color: #94a3b8;
+  opacity: 0.45;
   font-weight: var(--fw-normal);
   margin: 0 2px;
 }

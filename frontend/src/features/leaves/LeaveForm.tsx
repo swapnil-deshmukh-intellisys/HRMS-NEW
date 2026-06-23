@@ -38,7 +38,6 @@ function formatLocalIsoDate(date: Date) {
 function getMinSelectableDate() {
   const now = new Date();
   const currentHour = now.getHours();
-  const currentMinute = now.getMinutes();
   
   if (currentHour >= 13) {
     const tomorrow = new Date(now);

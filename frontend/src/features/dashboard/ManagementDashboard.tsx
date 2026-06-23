@@ -8,7 +8,7 @@ import AnnouncementForm from "./AnnouncementForm";
 import AnnouncementList from "./AnnouncementList";
 import WorkdayTimeline from "./WorkdayTimeline";
 import Modal from "../../components/common/Modal";
-import { useApp } from "../../context/AppContext";
+import { useApp, type DashboardSummary } from "../../context/AppContext";
 import TodoWidget from "./TodoWidget";
 import BirthdayCelebrations from "./BirthdayCelebrations";
 import TeamOnLeaveWidget from "./TeamOnLeaveWidget";
@@ -47,7 +47,7 @@ export default function ManagementDashboard({ token, role }: { token: string | n
   const [isAnnouncementModalOpen, setAnnouncementModalOpen] = useState(false);
   const bannerContent = getDashboardContent(role);
 
-  const data = summary || {};
+  const data = summary || ({} as DashboardSummary);
 
   if (loading) {
     return (

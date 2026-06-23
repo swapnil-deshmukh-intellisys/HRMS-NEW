@@ -199,6 +199,7 @@ export type Attendance = {
   leaveTypeCode?: string | null;
   leaveTypeName?: string | null;
   todaysUpdate?: string | null;
+  penaltyMinutes?: number;
   employee?: Employee;
   overtimeSession?: {
     id: number;

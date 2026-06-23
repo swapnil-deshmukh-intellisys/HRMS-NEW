@@ -609,6 +609,7 @@ export default function AttendancePage({ token, role, currentEmployeeId, current
     "Date",
     "Check in",
     "Check out",
+    "Late time",
     "Worked duration",
     "Overtime",
     "Today's update",
@@ -861,6 +862,23 @@ export default function AttendancePage({ token, role, currentEmployeeId, current
                   </div>,
                   formatAttendanceTime(record.checkInTime),
                   formatAttendanceTime(record.checkOutTime),
+                  record.lateByMinutes && record.lateByMinutes >= 5 ? (
+                    <span key={`late-${record.id}`} style={{
+                      fontWeight: '600',
+                      color: '#b45309',
+                      background: 'rgba(245, 158, 11, 0.1)',
+                      border: '1px solid rgba(245, 158, 11, 0.2)',
+                      borderRadius: '6px',
+                      padding: '2px 8px',
+                      fontSize: '12px',
+                      display: 'inline-block',
+                      whiteSpace: 'nowrap'
+                    }}>
+                      {record.lateByMinutes} min late
+                    </span>
+                  ) : (
+                    <span key={`late-${record.id}`} className="muted">—</span>
+                  ),
                   renderWorkedDuration(record),
                   renderOvertime(record),
                   <span 

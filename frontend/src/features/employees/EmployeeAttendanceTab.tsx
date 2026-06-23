@@ -429,7 +429,7 @@ export default function EmployeeAttendanceTab({ attendance, exceptions, joiningD
 
         <Table
           compact
-          columns={["Date", "Check in", "Check out", "Worked duration", "Today's update", "Status"]}
+          columns={["Date", "Check in", "Check out", "Late time", "Worked duration", "Today's update", "Status"]}
           getRowClassName={(index) => {
             const item = unifiedHistory[index];
             if (item.isJoiningDay) return "attendance-row--joining-day";
@@ -465,6 +465,7 @@ export default function EmployeeAttendanceTab({ attendance, exceptions, joiningD
                   </div>
                   <span className="table-cell-secondary">{formatWeekday(date)}</span>
                 </div>,
+                "-",
                 "-",
                 "-",
                 "-",
@@ -511,6 +512,23 @@ export default function EmployeeAttendanceTab({ attendance, exceptions, joiningD
               </div>,
               displayRecord.status === "LEAVE" ? "-" : formatAttendanceTime(displayRecord.checkInTime),
               displayRecord.status === "LEAVE" ? "-" : formatAttendanceTime(displayRecord.checkOutTime),
+              displayRecord.lateByMinutes && displayRecord.lateByMinutes >= 5 ? (
+                <span key={`late-${date}`} style={{
+                  fontWeight: '600',
+                  color: '#b45309',
+                  background: 'rgba(245, 158, 11, 0.1)',
+                  border: '1px solid rgba(245, 158, 11, 0.2)',
+                  borderRadius: '6px',
+                  padding: '2px 8px',
+                  fontSize: '12px',
+                  display: 'inline-block',
+                  whiteSpace: 'nowrap'
+                }}>
+                  {displayRecord.lateByMinutes} min late
+                </span>
+              ) : (
+                <span key={`late-${date}`} className="muted">—</span>
+              ),
               renderWorkedDuration(displayRecord),
               <span 
                 key={`update-${date}`} 

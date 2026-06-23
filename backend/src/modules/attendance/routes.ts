@@ -159,6 +159,8 @@ async function getAttendanceTodayForEmployee(employeeId: number) {
         leaveTypeCode: approvedLeaveToday.leaveType.code,
         leaveTypeName: approvedLeaveToday.leaveType.name,
         penaltyMinutes: 0,
+        lateByMinutes: 0,
+        isLate: false,
       }
       : null)
   );

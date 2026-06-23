@@ -82,15 +82,14 @@ export default function Navbar({ title, navOpen, onToggleNav, token, currentEmpl
 
     const checkIn = new Date(attendance.checkInTime);
     const checkOut = attendance.checkOutTime ? new Date(attendance.checkOutTime) : null;
-    
+
     // Calculate elapsed time in minutes using server-calibrated current time
     const currentCalibratedTime = new Date(now + serverTimeOffset);
     const end = checkOut || currentCalibratedTime;
     const elapsedMs = end.getTime() - checkIn.getTime();
     const elapsedMins = Math.max(0, Math.floor(elapsedMs / 60000));
 
-    // Required shift time = 540 minutes (9h) + penalty minutes added for late check-in
-    // Note: lateByMinutes is informational only; penaltyMinutes captures the actual time penalty
+    // Required shift time = 540 minutes (9h) + penalty minutes for late check-in
     const requiredMins = 540 + (attendance.penaltyMinutes || 0);
 
     const formatTime = (totalMins: number) => {
@@ -99,10 +98,28 @@ export default function Navbar({ title, navOpen, onToggleNav, token, currentEmpl
       return `${h}h ${m}m`;
     };
 
+    // Mirror backend penalty points tier logic
+    const lateBy = attendance.lateByMinutes || 0;
+    let penaltyPoints = 0;
+    if (lateBy >= 60) {
+      const additionalHours = Math.floor((lateBy - 60) / 60);
+      penaltyPoints = Math.min(10 + additionalHours * 10, 40);
+    } else if (lateBy >= 30) {
+      penaltyPoints = 10;
+    } else if (lateBy >= 15) {
+      penaltyPoints = 5;
+    } else if (lateBy >= 10) {
+      penaltyPoints = 2;
+    } else if (lateBy >= 5) {
+      penaltyPoints = 1;
+    }
+
     return {
       checkInTime: attendance.checkInTime,
       elapsed: formatTime(elapsedMins),
       required: formatTime(requiredMins),
+      lateByMinutes: lateBy,
+      penaltyPoints,
     };
   }, [summary?.attendanceToday, now, serverTimeOffset]);
 
@@ -174,6 +191,12 @@ export default function Navbar({ title, navOpen, onToggleNav, token, currentEmpl
         <div className="topbar-attendance-action">
           {shiftTime ? (
             <div className="topbar-shift-timer" title="Shift time elapsed / Required shift time today">
+              {shiftTime.lateByMinutes >= 5 ? (
+                <span className="topbar-shift-timer__late">{shiftTime.lateByMinutes} min late</span>
+              ) : null}
+              {shiftTime.lateByMinutes >= 5 ? (
+                <span className="topbar-shift-timer__sep" />
+              ) : null}
               <Clock size={15} className="topbar-shift-timer__icon" />
               <span className="topbar-shift-timer__label">In</span>
               <span className="topbar-shift-timer__checkin">{formatAttendanceTime(shiftTime.checkInTime)}</span>
@@ -182,6 +205,12 @@ export default function Navbar({ title, navOpen, onToggleNav, token, currentEmpl
               <span className="topbar-shift-timer__value topbar-shift-timer__value--elapsed">{shiftTime.elapsed}</span>
               <span className="topbar-shift-timer__divider">/</span>
               <span className="topbar-shift-timer__value topbar-shift-timer__value--required">{shiftTime.required}</span>
+              {shiftTime.penaltyPoints > 0 ? (
+                <span className="topbar-shift-timer__sep" />
+              ) : null}
+              {shiftTime.penaltyPoints > 0 ? (
+                <span className="topbar-shift-timer__penalty">-{shiftTime.penaltyPoints} pts</span>
+              ) : null}
             </div>
           ) : null}
           <AttendanceQuickAction token={token} currentEmployeeId={currentEmployeeId} size="compact" showMeta={false} />

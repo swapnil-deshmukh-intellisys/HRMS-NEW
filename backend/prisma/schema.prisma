@@ -649,3 +649,26 @@ model SalesTarget {
 
   @@unique([month, year])
 }
+
+model GoogleSheetConfig {
+  id           Int      @id @default(autoincrement())
+  year         Int      @unique
+  attendanceId String?  
+  updatesId    String?  
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model GoogleSheetSyncQueue {
+  id          Int      @id @default(autoincrement())
+  entityType  String   // "ATTENDANCE"
+  entityId    Int
+  action      String   // "UPSERT"
+  status      String   @default("PENDING") // "PENDING", "COMPLETED", "FAILED"
+  retryCount  Int      @default(0)
+  lastError   String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@index([status])
+}

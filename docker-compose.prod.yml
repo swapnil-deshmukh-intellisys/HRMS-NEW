@@ -25,6 +25,8 @@ services:
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
       GOOGLE_REDIRECT_URL: ${GOOGLE_REDIRECT_URL}
       GOOGLE_CHAT_WEBHOOK_URL: ${GOOGLE_CHAT_WEBHOOK_URL}
+      GOOGLE_APPLICATION_CREDENTIALS: /usr/src/app/credentials/google-credentials.json
+      HR_ADMIN_EMAIL: ${HR_ADMIN_EMAIL}
       VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY}
       VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY}
       VAPID_SUBJECT: ${VAPID_SUBJECT}
@@ -41,6 +43,7 @@ services:
       - postgres-db
     volumes:
       - uploads_data:/usr/src/app/uploads
+      - ./backend/credentials:/usr/src/app/credentials:ro
 
   frontend:
     build:

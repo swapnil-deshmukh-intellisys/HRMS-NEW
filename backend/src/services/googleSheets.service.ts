@@ -1,5 +1,6 @@
 import { google } from "googleapis";
 import { PrismaClient } from "@prisma/client";
+import fs from "fs";
 
 const prisma = new PrismaClient();
 
@@ -31,73 +32,173 @@ export async function getGoogleClients() {
   return { sheetsClient, driveClient };
 }
 
+export const MONTH_NAMES = [
+  "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December"
+];
+
 /**
- * Checks if the Google Workbooks exist for the given year.
+ * Helper to search Google Drive for a spreadsheet by name
+ */
+export async function findSpreadsheetByName(title: string): Promise<string | null> {
+  const { driveClient } = await getGoogleClients();
+  try {
+    const res = await driveClient.files.list({
+      q: `name = '${title.replace(/'/g, "\\'")}' and mimeType = 'application/vnd.google-apps.spreadsheet' and trashed = false`,
+      spaces: 'drive',
+      fields: 'files(id, name)',
+      pageSize: 1
+    });
+    const files = res.data.files || [];
+    if (files.length > 0) {
+      return files[0].id || null;
+    }
+  } catch (err: any) {
+    console.error(`[GoogleSheets] Failed to search for spreadsheet '${title}':`, err.message);
+  }
+  return null;
+}
+
+/**
+ * Helper to dynamically extract the service account email
+ */
+function getServiceAccountEmail(): string {
+  try {
+    const credPath = process.env.GOOGLE_APPLICATION_CREDENTIALS;
+    if (credPath) {
+      const creds = JSON.parse(fs.readFileSync(credPath, "utf8"));
+      return creds.client_email || "your service account email";
+    }
+  } catch (err) {}
+  return "your service account email";
+}
+
+/**
+ * Checks if the Google Workbooks exist for the given year and month.
  * If not, it creates them via the Google Drive API and saves the IDs to the database.
  */
-export async function initializeYearlySheets(year: number) {
+export async function initializeMonthlySheets(year: number, month: number) {
   const { sheetsClient, driveClient } = await getGoogleClients();
   
-  let config = await prisma.googleSheetConfig.findUnique({ where: { year } });
+  const configKey = year * 100 + month; // E.g. 202606
+  
+  let config = await prisma.googleSheetConfig.findUnique({ where: { year: configKey } });
   
   if (!config) {
     config = await prisma.googleSheetConfig.create({
-      data: { year }
+      data: { year: configKey }
     });
   }
 
-  // 1. Initialize Employee Attendance Sheet
+  const monthName = MONTH_NAMES[month - 1];
+
+  // 1. Initialize Individual Monthly Attendance Sheet (e.g. "HRMS-June 2026")
   if (!config.attendanceId) {
-    console.log(`[GoogleSheets] Creating Employee_Attendance_${year} spreadsheet...`);
-    const attendanceRes = await sheetsClient.spreadsheets.create({
-      requestBody: {
-        properties: { title: `Employee_Attendance_${year}` },
-        sheets: [
-          {
-            properties: { title: "Index" }
-          }
-        ]
-      }
-    });
-
-    const attendanceId = attendanceRes.data.spreadsheetId;
-
-    // Automatically share it with the HR admin so they can view it
-    if (process.env.HR_ADMIN_EMAIL) {
-      await driveClient.permissions.create({
-        fileId: attendanceId,
-        requestBody: { type: "user", role: "writer", emailAddress: process.env.HR_ADMIN_EMAIL }
+    const title = `HRMS-${monthName} ${year}`;
+    // First, try to find it in shared drive files
+    const existingId = await findSpreadsheetByName(title);
+    if (existingId) {
+      console.log(`[GoogleSheets] Found existing spreadsheet '${title}' with ID: ${existingId}`);
+      config = await prisma.googleSheetConfig.update({
+        where: { id: config.id },
+        data: { attendanceId: existingId }
       });
-    }
+    } else {
+      console.log(`[GoogleSheets] Creating '${title}' spreadsheet...`);
+      try {
+        const attendanceRes = await sheetsClient.spreadsheets.create({
+          requestBody: {
+            properties: { title },
+            sheets: [
+              {
+                properties: { title: "Index" }
+              }
+            ]
+          }
+        });
 
-    config = await prisma.googleSheetConfig.update({
-      where: { id: config.id },
-      data: { attendanceId }
-    });
+        const attendanceId = attendanceRes.data.spreadsheetId;
+
+        if (process.env.HR_ADMIN_EMAIL) {
+          try {
+            await driveClient.permissions.create({
+              fileId: attendanceId,
+              requestBody: { type: "user", role: "writer", emailAddress: process.env.HR_ADMIN_EMAIL }
+            });
+            console.log(`[GoogleSheets] Shared attendance sheet with ${process.env.HR_ADMIN_EMAIL}`);
+          } catch (err: any) {
+            console.error(`[GoogleSheets] Failed to share attendance sheet:`, err.message);
+          }
+        }
+
+        config = await prisma.googleSheetConfig.update({
+          where: { id: config.id },
+          data: { attendanceId }
+        });
+      } catch (err: any) {
+        const saEmail = getServiceAccountEmail();
+        console.error(`[GoogleSheets] Failed to create spreadsheet '${title}':`, err.message);
+        throw new Error(
+          `Could not create spreadsheet '${title}'. Reason: ${err.message}. ` +
+          `If you are using a free Gmail account, please create a spreadsheet named '${title}' in your Google Drive ` +
+          `and share it with '${saEmail}' as an Editor.`
+        );
+      }
+    }
   }
 
-  // 2. Initialize Daily Work Updates Sheet
+  // 2. Daily Attendance Sheet (e.g. "HRMS-Daily Attendance June 2026")
   if (!config.updatesId) {
-    console.log(`[GoogleSheets] Creating Daily_Work_Updates_${year} spreadsheet...`);
-    const updatesRes = await sheetsClient.spreadsheets.create({
-      requestBody: {
-        properties: { title: `Daily_Work_Updates_${year}` }
-      }
-    });
-
-    const updatesId = updatesRes.data.spreadsheetId;
-
-    if (process.env.HR_ADMIN_EMAIL) {
-      await driveClient.permissions.create({
-        fileId: updatesId,
-        requestBody: { type: "user", role: "writer", emailAddress: process.env.HR_ADMIN_EMAIL }
+    const title = `HRMS-Daily Attendance ${monthName} ${year}`;
+    const existingId = await findSpreadsheetByName(title);
+    if (existingId) {
+      console.log(`[GoogleSheets] Found existing spreadsheet '${title}' with ID: ${existingId}`);
+      config = await prisma.googleSheetConfig.update({
+        where: { id: config.id },
+        data: { updatesId: existingId }
       });
-    }
+    } else {
+      console.log(`[GoogleSheets] Creating '${title}' spreadsheet...`);
+      try {
+        const updatesRes = await sheetsClient.spreadsheets.create({
+          requestBody: {
+            properties: { title },
+            sheets: [
+              {
+                properties: { title: "Index" }
+              }
+            ]
+          }
+        });
 
-    config = await prisma.googleSheetConfig.update({
-      where: { id: config.id },
-      data: { updatesId }
-    });
+        const updatesId = updatesRes.data.spreadsheetId;
+
+        if (process.env.HR_ADMIN_EMAIL) {
+          try {
+            await driveClient.permissions.create({
+              fileId: updatesId,
+              requestBody: { type: "user", role: "writer", emailAddress: process.env.HR_ADMIN_EMAIL }
+            });
+            console.log(`[GoogleSheets] Shared daily attendance sheet with ${process.env.HR_ADMIN_EMAIL}`);
+          } catch (err: any) {
+            console.error(`[GoogleSheets] Failed to share daily attendance sheet:`, err.message);
+          }
+        }
+
+        config = await prisma.googleSheetConfig.update({
+          where: { id: config.id },
+          data: { updatesId }
+        });
+      } catch (err: any) {
+        const saEmail = getServiceAccountEmail();
+        console.error(`[GoogleSheets] Failed to create spreadsheet '${title}':`, err.message);
+        throw new Error(
+          `Could not create spreadsheet '${title}'. Reason: ${err.message}. ` +
+          `If you are using a free Gmail account, please create a spreadsheet named '${title}' in your Google Drive ` +
+          `and share it with '${saEmail}' as an Editor.`
+        );
+      }
+    }
   }
 
   return config;

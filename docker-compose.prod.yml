@@ -19,7 +19,7 @@ services:
     environment:
       NODE_ENV: production
       PORT: 4000
-      DATABASE_URL: postgres://${DB_USER:-intellihrhub_user}:${DB_PASSWORD}@postgres-db:5432/${DB_NAME:-intellihrhub_db}
+      DATABASE_URL: postgres://${DB_USER:-intellihrhub_user}:${DB_PASSWORD}@postgres-db:5432/${DB_NAME:-intellihrhub_db}?connection_limit=10&pool_timeout=20
       JWT_SECRET: ${JWT_SECRET}
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}

@@ -200,6 +200,8 @@ export type Attendance = {
   leaveTypeName?: string | null;
   todaysUpdate?: string | null;
   penaltyMinutes?: number;
+  lateByMinutes?: number;
+  isLate?: boolean;
   employee?: Employee;
   overtimeSession?: {
     id: number;

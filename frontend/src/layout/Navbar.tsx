@@ -1,5 +1,5 @@
 import "./Navbar.css";
-import { Bell, LogOut, Search, UserRound } from "lucide-react";
+import { Bell, LogOut, Search, UserRound, Clock } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
@@ -9,6 +9,7 @@ import Button from "../components/common/Button";
 import type { Role } from "../types";
 import { useApp } from "../context/AppContext";
 import { usePushNotifications } from "../hooks/usePushNotifications";
+import { formatAttendanceTime } from "../utils/format";
 
 function getNotificationIcon(type: string): { emoji: string; className: string } {
   switch (type) {
@@ -58,37 +59,38 @@ type NavbarProps = {
 
 export default function Navbar({ title, navOpen, onToggleNav, token, currentEmployeeId, role, onLogout }: NavbarProps) {
   const navigate = useNavigate();
-  const { summary, notifications, loading: notificationsLoading, error: notificationsError, refreshSummary, markNotificationAsRead, markAllNotificationsAsRead, getCalibratedNow } = useApp();
+  const { summary, notifications, loading: notificationsLoading, error: notificationsError, refreshSummary, markNotificationAsRead, markAllNotificationsAsRead, serverTimeOffset } = useApp();
   const { subscribeUser, isSubscribing } = usePushNotifications(token);
   const [searchTerm, setSearchTerm] = useState("");
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [isVisible, setIsVisible] = useState(true);
 
-  const [currentTime, setCurrentTime] = useState(() => getCalibratedNow ? getCalibratedNow() : new Date());
+  const [now, setNow] = useState(() => Date.now());
 
   useEffect(() => {
-    if (!getCalibratedNow) return;
     const timer = setInterval(() => {
-      setCurrentTime(getCalibratedNow());
-    }, 30000); // Update every 30 seconds
+      setNow(Date.now());
+    }, 15000); // Update every 15 seconds
 
     return () => clearInterval(timer);
-  }, [getCalibratedNow]);
+  }, []);
 
-  const shiftTimeText = useMemo(() => {
+
+  const shiftTime = useMemo(() => {
     const attendance = summary?.attendanceToday;
     if (!attendance?.checkInTime) return null;
 
     const checkIn = new Date(attendance.checkInTime);
     const checkOut = attendance.checkOutTime ? new Date(attendance.checkOutTime) : null;
     
-    // Calculate elapsed time in minutes
-    const end = checkOut || currentTime;
+    // Calculate elapsed time in minutes using server-calibrated current time
+    const currentCalibratedTime = new Date(now + serverTimeOffset);
+    const end = checkOut || currentCalibratedTime;
     const elapsedMs = end.getTime() - checkIn.getTime();
     const elapsedMins = Math.max(0, Math.floor(elapsedMs / 60000));
 
-    // Calculate required time in minutes (default 9 hours = 540 minutes, plus penalties)
-    const requiredMins = 540 + (attendance.penaltyMinutes || 0);
+    // Calculate required time in minutes (default 9 hours = 540 minutes, plus penalties minus late check-in minutes)
+    const requiredMins = 540 - (attendance.lateByMinutes || 0) + (attendance.penaltyMinutes || 0);
 
     const formatTime = (totalMins: number) => {
       const h = Math.floor(totalMins / 60);
@@ -96,8 +98,13 @@ export default function Navbar({ title, navOpen, onToggleNav, token, currentEmpl
       return `${h}h ${m}m`;
     };
 
-    return `${formatTime(elapsedMins)} / ${formatTime(requiredMins)}`;
-  }, [summary?.attendanceToday, currentTime]);
+    return {
+      checkInTime: attendance.checkInTime,
+      elapsed: formatTime(elapsedMins),
+      required: formatTime(requiredMins),
+    };
+  }, [summary?.attendanceToday, now, serverTimeOffset]);
+
   const lastScrollY = useRef(0);
   const notificationsRef = useRef<HTMLDivElement | null>(null);
   const canSearchEmployees = role !== "EMPLOYEE";
@@ -164,13 +171,18 @@ export default function Navbar({ title, navOpen, onToggleNav, token, currentEmpl
       </div>
       <div className="topbar-actions">
         <div className="topbar-attendance-action">
-          {shiftTimeText ? (
+          {shiftTime ? (
             <div className="topbar-shift-timer" title="Shift time elapsed / Required shift time today">
+              <Clock size={15} className="topbar-shift-timer__icon" />
+              <span className="topbar-shift-timer__checkin">In {formatAttendanceTime(shiftTime.checkInTime)}</span>
+              <span className="topbar-shift-timer__bullet">•</span>
               <span className="topbar-shift-timer__label">Shift:</span>
-              <span className="topbar-shift-timer__value">{shiftTimeText}</span>
+              <span className="topbar-shift-timer__value">{shiftTime.elapsed}</span>
+              <span className="topbar-shift-timer__divider">/</span>
+              <span className="topbar-shift-timer__value">{shiftTime.required}</span>
             </div>
           ) : null}
-          <AttendanceQuickAction token={token} currentEmployeeId={currentEmployeeId} size="compact" />
+          <AttendanceQuickAction token={token} currentEmployeeId={currentEmployeeId} size="compact" showMeta={false} />
           <BreakQuickAction
             token={token}
             isCheckedIn={Boolean(summary?.attendanceToday?.checkInTime)}

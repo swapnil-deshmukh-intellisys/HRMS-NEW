@@ -186,7 +186,7 @@ router.get("/today", requireRoles("EMPLOYEE", "MANAGER", "HR", "ADMIN"), async (
       }),
     ]);
 
-    const requiredMinutes = 540 + (attendanceToday?.penaltyMinutes || 0);
+    const requiredMinutes = 540 - (attendanceToday?.lateByMinutes || 0) + (attendanceToday?.penaltyMinutes || 0);
     const isOvertimeEligible = (attendanceToday?.checkOutTime && attendanceToday.workedMinutes >= requiredMinutes) ? true : false;
 
     return sendSuccess(response, "Today's attendance fetched successfully", {
@@ -1100,7 +1100,7 @@ router.post("/overtime/start", validate(attendanceSchema), async (request, respo
       throw new AppError("Regular attendance checkout is required before starting overtime");
     }
 
-    const requiredMinutes = 540 + (attendance.penaltyMinutes || 0);
+    const requiredMinutes = 540 - (attendance.lateByMinutes || 0) + (attendance.penaltyMinutes || 0);
     if (attendance.workedMinutes < requiredMinutes) {
       throw new AppError(`You must complete at least ${(requiredMinutes / 60).toFixed(1)} hours of standard work today to be eligible for overtime`, 400);
     }

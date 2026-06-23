@@ -332,7 +332,7 @@ router.post("/check-in", validate(attendanceSchema), async (request, response, n
       });
       
       if (currentEmployee) {
-        const newPoints = Math.max(0, currentEmployee.points - penaltyPoints);
+        const newPoints = currentEmployee.points - penaltyPoints;
         await prisma.employee.update({
           where: { id: employeeId },
           data: { points: newPoints }

@@ -719,7 +719,7 @@ router.patch(
       if (mode === "set") {
         newPoints = points;
       } else if (mode === "subtract") {
-        newPoints = Math.max(0, (employee.points ?? 0) - points);
+        newPoints = (employee.points ?? 0) - points;
       } else {
         newPoints = (employee.points ?? 0) + points;
       }

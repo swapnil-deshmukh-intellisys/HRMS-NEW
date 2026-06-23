@@ -746,7 +746,7 @@ export default function LeaderboardPage({ token, role = "EMPLOYEE" }: { token: s
             <strong>
               {pointsMode === "add"
                 ? (pointsMap[pointsModal?.id ?? -1] ?? 0) + pointsAmount
-                : Math.max(0, (pointsMap[pointsModal?.id ?? -1] ?? 0) - pointsAmount)
+                : (pointsMap[pointsModal?.id ?? -1] ?? 0) - pointsAmount
               } pts
             </strong> total
           </div>

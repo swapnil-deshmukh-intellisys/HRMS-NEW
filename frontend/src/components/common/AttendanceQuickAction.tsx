@@ -14,6 +14,7 @@ type AttendanceQuickActionProps = {
   currentEmployeeId: number | null;
   className?: string;
   size?: "compact" | "default";
+  showMeta?: boolean;
   onStateChange?: (attendance: Attendance | null) => void;
 };
 
@@ -22,6 +23,7 @@ export default function AttendanceQuickAction({
   currentEmployeeId,
   className = "",
   size = "default",
+  showMeta = true,
   onStateChange,
 }: AttendanceQuickActionProps) {
   const [attendanceToday, setAttendanceToday] = useState<Attendance | null>(null);
@@ -348,7 +350,7 @@ export default function AttendanceQuickAction({
   return (
     <>
       <div className={`attendance-quick-action-wrap attendance-quick-action-wrap--${size}`.trim()}>
-        {attendanceToday?.checkInTime && !attendanceToday.checkOutTime ? (
+        {showMeta && attendanceToday?.checkInTime && !attendanceToday.checkOutTime ? (
           <div className="attendance-quick-action-meta" aria-live="polite">
             <span className="attendance-quick-action-meta__time">In {formatAttendanceTime(attendanceToday.checkInTime)}</span>
             <strong className="attendance-quick-action-meta__worked">{liveWorkedDuration}</strong>

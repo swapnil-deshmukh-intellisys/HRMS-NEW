@@ -1,3 +1,6 @@
+import { initGlobalLogger } from "./config/logger.js";
+initGlobalLogger();
+
 import { env } from "./config/env.js";
 import { app } from "./app.js";
 import { initScheduler } from "./config/scheduler.js";

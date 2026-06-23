@@ -5,6 +5,7 @@ import { formatInTimeZone, toZonedTime } from "date-fns-tz";
 const prisma = new PrismaClient();
 let isRunning = false;
 const TIMEZONE = "Asia/Kolkata";
+const dailySheetCodesCache: Record<string, string[]> = {};
 
 const existingTabsCache: Record<string, Set<string>> = {};
 
@@ -165,13 +166,18 @@ async function syncDailyAttendanceTab(attendance: any, overtimeSession: any, emp
   // Ensure sheet tab exists with all active employees pre-populated
   await ensureDailySheetExists(spreadsheetId, sheetsClient, sheetName);
 
-  // Find the employee row index by matching employeeCode in Column A
-  const colARes = await sheetsClient.spreadsheets.values.get({
-    spreadsheetId,
-    range: `${sheetName}!A:A`
-  });
-  const codes = colARes.data.values || [];
-  let rowIndex = codes.findIndex((row: any) => row[0] === emp.employeeCode) + 1;
+  // Find the employee row index using cached column A values
+  const cacheKey = `${spreadsheetId}:${sheetName}`;
+  if (!dailySheetCodesCache[cacheKey]) {
+    const colARes = await sheetsClient.spreadsheets.values.get({
+      spreadsheetId,
+      range: `${sheetName}!A:A`
+    });
+    const codes = colARes.data.values || [];
+    dailySheetCodesCache[cacheKey] = codes.map((row: any) => row[0] || "");
+  }
+
+  let rowIndex = dailySheetCodesCache[cacheKey].indexOf(emp.employeeCode) + 1;
 
   if (rowIndex === 0) {
     // Employee not found (newly added). Append employee to daily sheet
@@ -194,12 +200,14 @@ async function syncDailyAttendanceTab(attendance: any, overtimeSession: any, emp
       requestBody: { values: [newRow] }
     });
 
+    // Refresh the cache
     const colAResRetry = await sheetsClient.spreadsheets.values.get({
       spreadsheetId,
       range: `${sheetName}!A:A`
     });
     const codesRetry = colAResRetry.data.values || [];
-    rowIndex = codesRetry.findIndex((row: any) => row[0] === emp.employeeCode) + 1;
+    dailySheetCodesCache[cacheKey] = codesRetry.map((row: any) => row[0] || "");
+    rowIndex = dailySheetCodesCache[cacheKey].indexOf(emp.employeeCode) + 1;
   }
 
   // Update check-in, check-out, duration, overtime, update, and status (Columns C to H)
@@ -274,22 +282,91 @@ async function ensureEmployeeSheetExists(spreadsheetId: string, sheetsClient: an
     requestBody: { values: initialRows }
   });
 
-  // Bold header row
+  // Format and style the sheet
   if (newSheetId !== undefined) {
+    const colWidths = [100, 100, 100, 130, 130, 350, 120];
+    const requests: any[] = [];
+    
+    // Column Widths
+    colWidths.forEach((width, idx) => {
+      requests.push({
+        updateDimensionProperties: {
+          range: { sheetId: newSheetId, dimension: "COLUMNS", startIndex: idx, endIndex: idx + 1 },
+          properties: { pixelSize: width },
+          fields: "pixelSize"
+        }
+      });
+    });
+
+    // Header Row Height
+    requests.push({
+      updateDimensionProperties: {
+        range: { sheetId: newSheetId, dimension: "ROWS", startIndex: 0, endIndex: 1 },
+        properties: { pixelSize: 35 },
+        fields: "pixelSize"
+      }
+    });
+
+    // Body Row Height
+    requests.push({
+      updateDimensionProperties: {
+        range: { sheetId: newSheetId, dimension: "ROWS", startIndex: 1, endIndex: numDays + 1 },
+        properties: { pixelSize: 26 },
+        fields: "pixelSize"
+      }
+    });
+
+    // Header Format
+    requests.push({
+      repeatCell: {
+        range: { sheetId: newSheetId, startRowIndex: 0, endRowIndex: 1, startColumnIndex: 0, endColumnIndex: 7 },
+        cell: {
+          userEnteredFormat: {
+            backgroundColor: { red: 0.17, green: 0.24, blue: 0.31 },
+            textFormat: { bold: true, foregroundColor: { red: 1.0, green: 1.0, blue: 1.0 }, fontSize: 10, fontFamily: "Arial" },
+            horizontalAlignment: "CENTER",
+            verticalAlignment: "MIDDLE"
+          }
+        },
+        fields: "userEnteredFormat.backgroundColor,userEnteredFormat.textFormat,userEnteredFormat.horizontalAlignment,userEnteredFormat.verticalAlignment"
+      }
+    });
+
+    // Body Format (vertical align middle, clip wrap strategy)
+    requests.push({
+      repeatCell: {
+        range: { sheetId: newSheetId, startRowIndex: 1, endRowIndex: numDays + 1, startColumnIndex: 0, endColumnIndex: 7 },
+        cell: {
+          userEnteredFormat: {
+            textFormat: { fontSize: 10, fontFamily: "Arial" },
+            verticalAlignment: "MIDDLE",
+            wrapStrategy: "CLIP"
+          }
+        },
+        fields: "userEnteredFormat.textFormat.fontSize,userEnteredFormat.textFormat.fontFamily,userEnteredFormat.verticalAlignment,userEnteredFormat.wrapStrategy"
+      }
+    });
+
+    // Center columns A-E and G
+    requests.push({
+      repeatCell: {
+        range: { sheetId: newSheetId, startRowIndex: 1, endRowIndex: numDays + 1, startColumnIndex: 0, endColumnIndex: 5 },
+        cell: { userEnteredFormat: { horizontalAlignment: "CENTER" } },
+        fields: "userEnteredFormat.horizontalAlignment"
+      }
+    });
+    requests.push({
+      repeatCell: {
+        range: { sheetId: newSheetId, startRowIndex: 1, endRowIndex: numDays + 1, startColumnIndex: 6, endColumnIndex: 7 },
+        cell: { userEnteredFormat: { horizontalAlignment: "CENTER" } },
+        fields: "userEnteredFormat.horizontalAlignment"
+      }
+    });
+
     await sheetsClient.spreadsheets.batchUpdate({
       spreadsheetId,
-      requestBody: {
-        requests: [
-          {
-            repeatCell: {
-              range: { sheetId: newSheetId, startRowIndex: 0, endRowIndex: 1 },
-              cell: { userEnteredFormat: { textFormat: { bold: true } } },
-              fields: "userEnteredFormat.textFormat.bold"
-            }
-          }
-        ]
-      }
-    }).catch(() => console.log("Failed to format headers"));
+      requestBody: { requests }
+    }).catch((err: any) => console.error("Failed to style employee sheet:", err.message));
   }
 }
 
@@ -350,22 +427,98 @@ async function ensureDailySheetExists(spreadsheetId: string, sheetsClient: any, 
     });
   }
 
-  // Bold header row
+  // Format and style the sheet
   if (newSheetId !== undefined) {
+    const colWidths = [110, 160, 100, 100, 130, 130, 350, 120];
+    const requests: any[] = [];
+    
+    // Column Widths
+    colWidths.forEach((width, idx) => {
+      requests.push({
+        updateDimensionProperties: {
+          range: { sheetId: newSheetId, dimension: "COLUMNS", startIndex: idx, endIndex: idx + 1 },
+          properties: { pixelSize: width },
+          fields: "pixelSize"
+        }
+      });
+    });
+
+    // Header Row Height
+    requests.push({
+      updateDimensionProperties: {
+        range: { sheetId: newSheetId, dimension: "ROWS", startIndex: 0, endIndex: 1 },
+        properties: { pixelSize: 35 },
+        fields: "pixelSize"
+      }
+    });
+
+    // Body Row Height
+    requests.push({
+      updateDimensionProperties: {
+        range: { sheetId: newSheetId, dimension: "ROWS", startIndex: 1, endIndex: activeEmployees.length + 1 },
+        properties: { pixelSize: 26 },
+        fields: "pixelSize"
+      }
+    });
+
+    // Header Format
+    requests.push({
+      repeatCell: {
+        range: { sheetId: newSheetId, startRowIndex: 0, endRowIndex: 1, startColumnIndex: 0, endColumnIndex: 8 },
+        cell: {
+          userEnteredFormat: {
+            backgroundColor: { red: 0.17, green: 0.24, blue: 0.31 },
+            textFormat: { bold: true, foregroundColor: { red: 1.0, green: 1.0, blue: 1.0 }, fontSize: 10, fontFamily: "Arial" },
+            horizontalAlignment: "CENTER",
+            verticalAlignment: "MIDDLE"
+          }
+        },
+        fields: "userEnteredFormat.backgroundColor,userEnteredFormat.textFormat,userEnteredFormat.horizontalAlignment,userEnteredFormat.verticalAlignment"
+      }
+    });
+
+    // Body Format (vertical align middle, clip wrap strategy)
+    requests.push({
+      repeatCell: {
+        range: { sheetId: newSheetId, startRowIndex: 1, endRowIndex: activeEmployees.length + 1, startColumnIndex: 0, endColumnIndex: 8 },
+        cell: {
+          userEnteredFormat: {
+            textFormat: { fontSize: 10, fontFamily: "Arial" },
+            verticalAlignment: "MIDDLE",
+            wrapStrategy: "CLIP"
+          }
+        },
+        fields: "userEnteredFormat.textFormat.fontSize,userEnteredFormat.textFormat.fontFamily,userEnteredFormat.verticalAlignment,userEnteredFormat.wrapStrategy"
+      }
+    });
+
+    // Center columns A, C-F, H
+    requests.push({
+      repeatCell: {
+        range: { sheetId: newSheetId, startRowIndex: 1, endRowIndex: activeEmployees.length + 1, startColumnIndex: 0, endColumnIndex: 1 },
+        cell: { userEnteredFormat: { horizontalAlignment: "CENTER" } },
+        fields: "userEnteredFormat.horizontalAlignment"
+      }
+    });
+    requests.push({
+      repeatCell: {
+        range: { sheetId: newSheetId, startRowIndex: 1, endRowIndex: activeEmployees.length + 1, startColumnIndex: 2, endColumnIndex: 6 },
+        cell: { userEnteredFormat: { horizontalAlignment: "CENTER" } },
+        fields: "userEnteredFormat.horizontalAlignment"
+      }
+    });
+    requests.push({
+      repeatCell: {
+        range: { sheetId: newSheetId, startRowIndex: 1, endRowIndex: activeEmployees.length + 1, startColumnIndex: 7, endColumnIndex: 8 },
+        cell: { userEnteredFormat: { horizontalAlignment: "CENTER" } },
+        fields: "userEnteredFormat.horizontalAlignment"
+      }
+    });
+
     await sheetsClient.spreadsheets.batchUpdate({
       spreadsheetId,
-      requestBody: {
-        requests: [
-          {
-            repeatCell: {
-              range: { sheetId: newSheetId, startRowIndex: 0, endRowIndex: 1 },
-              cell: { userEnteredFormat: { textFormat: { bold: true } } },
-              fields: "userEnteredFormat.textFormat.bold"
-            }
-          }
-        ]
-      }
-    }).catch(() => console.log("Failed to format headers"));
+      requestBody: { requests }
+    }).catch((err: any) => console.error("Failed to style daily sheet:", err.message));
   }
 }
 
@@ -400,7 +553,7 @@ function getOvertimeLabel(attendance: any, overtimeSession: any): string {
   if (!overtimeSession) {
     if (attendance.workedMinutes > 540) {
       const otMins = attendance.workedMinutes - 540;
-      return `+${formatWorkedDuration(otMins)}`;
+      return `'+${formatWorkedDuration(otMins)}`;
     }
     return "-";
   }
@@ -414,7 +567,7 @@ function getOvertimeLabel(attendance: any, overtimeSession: any): string {
   const durationLabel = duration ? formatWorkedDuration(duration) : "0m";
 
   if (status === "VERIFIED") {
-    return `+${durationLabel}`;
+    return `'+${durationLabel}`;
   }
 
   if (status === "ACTIVE") {

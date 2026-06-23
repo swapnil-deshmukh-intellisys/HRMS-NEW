@@ -400,18 +400,28 @@ const WorkdayTimeline: React.FC<WorkdayTimelineProps> = ({
                     <span className="val" style={{ opacity: 0.45 }}>—</span>
                   </div>
                 ) : (
-                  breakSessions.map((s, i) => (
-                    <div key={s.id} className="wdt-stat-item">
-                      <span className="label">{getBreakLabel(s.startTime, i)}</span>
-                      <span className="val">
-                        {s.endTime
-                          ? s.durationMinutes >= 60
-                            ? `${Math.floor(s.durationMinutes / 60)}h ${s.durationMinutes % 60}m`
-                            : `${s.durationMinutes}m`
-                          : 'Ongoing'}
-                      </span>
-                    </div>
-                  ))
+                  breakSessions.map((s, i) => {
+                    const bStart = new Date(s.startTime);
+                    const startTimeLabel = bStart.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', hour12: true });
+                    const endTimeLabel = s.endTime
+                      ? new Date(s.endTime).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', hour12: true })
+                      : 'Ongoing';
+                    const durationLabel = s.endTime
+                      ? s.durationMinutes >= 60
+                        ? `${Math.floor(s.durationMinutes / 60)}h ${s.durationMinutes % 60}m`
+                        : `${s.durationMinutes}m`
+                      : '';
+                    const displayVal = durationLabel 
+                      ? `${startTimeLabel} – ${endTimeLabel} (${durationLabel})`
+                      : `${startTimeLabel} – Ongoing`;
+
+                    return (
+                      <div key={s.id} className="wdt-stat-item">
+                        <span className="label">{getBreakLabel(s.startTime, i)}</span>
+                        <span className="val">{displayVal}</span>
+                      </div>
+                    );
+                  })
                 )}
               </div>
             </div>

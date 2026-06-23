@@ -389,8 +389,8 @@ export function initScheduler() {
     timezone: "Asia/Kolkata"
   });
 
-  // 📮 Notification Outbox Processor: Every 30 seconds
-  cron.schedule("*/30 * * * * *", async () => {
+  // 📮 Notification Outbox Processor: Every 30 minutes (fallback safety net for failed retries)
+  cron.schedule("*/30 * * * *", async () => {
     try {
       await processOutbox();
     } catch (err) {
@@ -406,12 +406,18 @@ export function initScheduler() {
     timezone: "Asia/Kolkata"
   });
 
-  // 🕒 Medical Proof 1-Hour Warning Check: Run every minute
+  let isMedicalProofRunning = false;
+
+  // 🕒 Medical Proof 1-Hour Warning Check: Run every minute (with concurrency lock)
   cron.schedule("* * * * *", async () => {
+    if (isMedicalProofRunning) return;
+    isMedicalProofRunning = true;
     try {
       await processMedicalProof1HourWarnings();
     } catch (err) {
       console.error("[Scheduler] Medical proof warning check failed:", err);
+    } finally {
+      isMedicalProofRunning = false;
     }
   });
 

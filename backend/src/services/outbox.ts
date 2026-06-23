@@ -10,16 +10,23 @@ import {
 } from "../utils/emailTemplates.js";
 
 
+let isOutboxRunning = false;
+
 export async function addToOutbox(params: {
   type: string;
   payload: any;
 }) {
-  return prisma.notificationOutbox.create({
+  const item = await prisma.notificationOutbox.create({
     data: {
       type: params.type,
       payload: params.payload,
     },
   });
+
+  // Trigger processing immediately in the background
+  void processOutbox();
+
+  return item;
 }
 
 /**
@@ -27,11 +34,15 @@ export async function addToOutbox(params: {
  * For this project, we can call it via a scheduler or a simple interval.
  */
 export async function processOutbox() {
-  const pending = await prisma.notificationOutbox.findMany({
-    where: { status: "PENDING" },
-    take: 10,
-    orderBy: { createdAt: "asc" },
-  });
+  if (isOutboxRunning) return;
+  isOutboxRunning = true;
+
+  try {
+    const pending = await prisma.notificationOutbox.findMany({
+      where: { status: "PENDING" },
+      take: 10,
+      orderBy: { createdAt: "asc" },
+    });
 
   for (const item of pending) {
     try {
@@ -123,4 +134,7 @@ export async function processOutbox() {
       });
     }
   }
+} finally {
+  isOutboxRunning = false;
+}
 }

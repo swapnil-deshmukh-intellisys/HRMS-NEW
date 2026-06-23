@@ -6,6 +6,20 @@ const prisma = new PrismaClient();
 let isRunning = false;
 const TIMEZONE = "Asia/Kolkata";
 
+const existingTabsCache: Record<string, Set<string>> = {};
+
+/**
+ * Fetch and cache the list of tab titles for a spreadsheet if not already cached
+ */
+async function getCachedTabs(spreadsheetId: string, sheetsClient: any): Promise<Set<string>> {
+  if (!existingTabsCache[spreadsheetId]) {
+    const meta = await sheetsClient.spreadsheets.get({ spreadsheetId });
+    const titles = (meta.data.sheets || []).map((s: any) => s.properties?.title).filter(Boolean);
+    existingTabsCache[spreadsheetId] = new Set(titles);
+  }
+  return existingTabsCache[spreadsheetId];
+}
+
 /**
  * Main worker loop invoked by the Scheduler
  */
@@ -213,10 +227,8 @@ async function syncDailyAttendanceTab(attendance: any, overtimeSession: any, emp
  * Helper to dynamically create an employee sheet tab if it doesn't exist
  */
 async function ensureEmployeeSheetExists(spreadsheetId: string, sheetsClient: any, sheetName: string, dateObj: Date) {
-  const meta = await sheetsClient.spreadsheets.get({ spreadsheetId });
-  const exists = meta.data.sheets.some((s: any) => s.properties.title === sheetName);
-
-  if (exists) return;
+  const cached = await getCachedTabs(spreadsheetId, sheetsClient);
+  if (cached.has(sheetName)) return;
 
   console.log(`[GoogleSheetsWorker] Creating missing employee tab '${sheetName}'...`);
   const addRes = await sheetsClient.spreadsheets.batchUpdate({
@@ -231,6 +243,7 @@ async function ensureEmployeeSheetExists(spreadsheetId: string, sheetsClient: an
   });
 
   const newSheetId = addRes.data?.replies?.[0]?.addSheet?.properties?.sheetId;
+  cached.add(sheetName);
   const headers = ["Date", "Check In", "Check Out", "Worked Duration", "Overtime", "Today's Update", "Status"];
 
   // Write headers to Row 1
@@ -284,10 +297,8 @@ async function ensureEmployeeSheetExists(spreadsheetId: string, sheetsClient: an
  * Helper to dynamically create a daily sheet tab if it doesn't exist
  */
 async function ensureDailySheetExists(spreadsheetId: string, sheetsClient: any, sheetName: string) {
-  const meta = await sheetsClient.spreadsheets.get({ spreadsheetId });
-  const exists = meta.data.sheets.some((s: any) => s.properties.title === sheetName);
-
-  if (exists) return;
+  const cached = await getCachedTabs(spreadsheetId, sheetsClient);
+  if (cached.has(sheetName)) return;
 
   console.log(`[GoogleSheetsWorker] Creating missing daily tab '${sheetName}'...`);
   const addRes = await sheetsClient.spreadsheets.batchUpdate({
@@ -302,6 +313,7 @@ async function ensureDailySheetExists(spreadsheetId: string, sheetsClient: any, 
   });
 
   const newSheetId = addRes.data?.replies?.[0]?.addSheet?.properties?.sheetId;
+  cached.add(sheetName);
   const headers = ["Employee Code", "Employee Name", "Check In", "Check Out", "Worked Duration", "Overtime", "Today's Update", "Status"];
 
   // Write headers to Row 1

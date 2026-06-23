@@ -4,8 +4,10 @@ dotenv.config();
 import { PrismaClient } from "@prisma/client";
 import { getGoogleClients, initializeMonthlySheets } from "../src/services/googleSheets.service.js";
 import { syncAttendanceToSheets } from "../src/services/googleSheetsWorker.js";
+import { toZonedTime } from "date-fns-tz";
 
 const prisma = new PrismaClient();
+const TIMEZONE = "Asia/Kolkata";
 
 async function runBackfill() {
   console.log("Starting Google Sheets backfill for May and June 2026...");
@@ -44,7 +46,7 @@ async function runBackfill() {
 
   for (let i = 0; i < records.length; i++) {
     const record = records[i];
-    const dateObj = new Date(record.attendanceDate);
+    const dateObj = toZonedTime(new Date(record.attendanceDate), TIMEZONE);
     const year = dateObj.getFullYear();
     const month = dateObj.getMonth() + 1;
     const dateStr = dateObj.toISOString().split("T")[0];
@@ -60,8 +62,8 @@ async function runBackfill() {
     }
     
     // Add small delay to prevent rapid Google Sheets API rate limit issues (60 requests/minute per user)
-    // Wait for 1 second between records
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    // Wait for 2.5 seconds between records
+    await new Promise(resolve => setTimeout(resolve, 2500));
   }
 
   console.log("Backfill completed!");

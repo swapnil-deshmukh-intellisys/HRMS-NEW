@@ -34,6 +34,16 @@ function format12h(timeStr: string): string {
   return `${displayH}:${m.toString().padStart(2, '0')} ${period}`;
 }
 
+function getBreakLabel(startTimeStr: string, index: number): string {
+  const d = new Date(startTimeStr);
+  const totalMins = d.getHours() * 60 + d.getMinutes();
+  // Lunch window: 12:00 – 14:30
+  if (totalMins >= 720 && totalMins <= 870) return 'Lunch';
+  // Tea Break window: 15:30 – 17:00
+  if (totalMins >= 930 && totalMins <= 1020) return 'Tea Break';
+  return `Break ${index + 1}`;
+}
+
 const WorkdayTimeline: React.FC<WorkdayTimelineProps> = ({
   startTime = "09:00",
   endTime = "18:00",
@@ -384,10 +394,25 @@ const WorkdayTimeline: React.FC<WorkdayTimelineProps> = ({
                   <span className="label">Check In</span>
                   <span className="val">{checkInLabel || '--:--'}</span>
                 </div>
-                <div className="wdt-stat-item">
-                  <span className="label">Breaks Took</span>
-                  <span className="val badge">{breakSessions.length}</span>
-                </div>
+                {breakSessions.length === 0 ? (
+                  <div className="wdt-stat-item">
+                    <span className="label">Breaks</span>
+                    <span className="val" style={{ opacity: 0.45 }}>—</span>
+                  </div>
+                ) : (
+                  breakSessions.map((s, i) => (
+                    <div key={s.id} className="wdt-stat-item">
+                      <span className="label">{getBreakLabel(s.startTime, i)}</span>
+                      <span className="val">
+                        {s.endTime
+                          ? s.durationMinutes >= 60
+                            ? `${Math.floor(s.durationMinutes / 60)}h ${s.durationMinutes % 60}m`
+                            : `${s.durationMinutes}m`
+                          : 'Ongoing'}
+                      </span>
+                    </div>
+                  ))
+                )}
               </div>
             </div>
           </div>

@@ -993,12 +993,12 @@ const avatarUpload = multer({
   },
 });
 
-router.post("/:id/avatar", requireRoles("ADMIN", "HR", "EMPLOYEE"), avatarUpload.single("avatar"), async (request, response, next) => {
+router.post("/:id/avatar", requireRoles("ADMIN", "HR", "MANAGER", "EMPLOYEE"), avatarUpload.single("avatar"), async (request, response, next) => {
   try {
     const employeeId = Number(request.params.id);
 
-    // Access control: Employee can only upload their own avatar, Admin/HR can upload for anyone
-    if (request.user?.role === "EMPLOYEE" && request.user.employeeId !== employeeId) {
+    // Access control: Employee/Manager can only upload their own avatar, Admin/HR can upload for anyone
+    if ((request.user?.role === "EMPLOYEE" || request.user?.role === "MANAGER") && request.user.employeeId !== employeeId) {
        throw new AppError("You can only upload a profile picture to your own profile", 403);
     }
 
@@ -1048,12 +1048,12 @@ router.post("/:id/avatar", requireRoles("ADMIN", "HR", "EMPLOYEE"), avatarUpload
   }
 });
 
-router.delete("/:id/avatar", requireRoles("ADMIN", "HR", "EMPLOYEE"), async (request, response, next) => {
+router.delete("/:id/avatar", requireRoles("ADMIN", "HR", "MANAGER", "EMPLOYEE"), async (request, response, next) => {
   try {
     const employeeId = Number(request.params.id);
 
-    // Access control
-    if (request.user?.role === "EMPLOYEE" && request.user.employeeId !== employeeId) {
+    // Access control: Employee/Manager can only delete their own profile picture
+    if ((request.user?.role === "EMPLOYEE" || request.user?.role === "MANAGER") && request.user.employeeId !== employeeId) {
        throw new AppError("You can only delete your own profile picture", 403);
     }
 

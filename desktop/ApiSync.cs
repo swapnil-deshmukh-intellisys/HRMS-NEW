@@ -17,7 +17,7 @@ namespace HRMS_Agent
 
     public class ApiConfig
     {
-        public string ApiUrl { get; set; } = "http://localhost:4000";
+        public string ApiUrl { get; set; } = "https://www.intellihrhub.com";
         public string Token { get; set; } = string.Empty;
         public string UserEmail { get; set; } = string.Empty;
     }

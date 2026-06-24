@@ -84,6 +84,36 @@
   object-fit: cover;
 }
 
+.sidebar-user-avatar-wrapper {
+  position: relative;
+  display: inline-block;
+  flex-shrink: 0;
+}
+
+.sidebar-status-dot {
+  position: absolute;
+  bottom: -2px;
+  right: -2px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 2px solid var(--color-surface-page, #f8f9fa);
+  z-index: 5;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+}
+
+.sidebar-status-dot--active {
+  background-color: #2ed573;
+}
+
+.sidebar-status-dot--away {
+  background-color: #ffa502;
+}
+
+.sidebar-status-dot--offline {
+  background-color: #a4b0be;
+}
+
 .sidebar-user-info {
   display: flex;
   flex-direction: column;

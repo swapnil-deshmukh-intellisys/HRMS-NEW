@@ -1110,6 +1110,7 @@ router.get("/", requireRoles("ADMIN", "HR", "MANAGER", "EMPLOYEE"), async (reque
     const attendance = await prisma.attendance.findMany({
       where,
       include: {
+        breakSessions: true,
         employee: {
           include: {
             outlookEmails: {
@@ -1556,6 +1557,244 @@ router.get(
         onTimeRanking,
         pointsRanking,
       });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+router.get("/live-status", requireRoles("ADMIN", "HR", "MANAGER", "EMPLOYEE"), async (request, response, next) => {
+  try {
+    const today = startOfDay(new Date());
+
+    const employees = await prisma.employee.findMany({
+      where: { isActive: true },
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        employeeCode: true,
+        user: {
+          select: {
+            email: true,
+          },
+        },
+        attendances: {
+          where: {
+            attendanceDate: buildAttendanceWhereForDate(today),
+          },
+          select: {
+            checkInTime: true,
+            checkOutTime: true,
+          },
+        },
+        desktopActivityLogs: {
+          orderBy: { timestamp: "desc" },
+          take: 1,
+        },
+      },
+    });
+
+    const liveStatuses = employees.map((emp) => {
+      const todayAttendance = emp.attendances[0] ?? null;
+      const lastLog = emp.desktopActivityLogs[0] ?? null;
+
+      let status: "ACTIVE" | "AWAY" | "OFFLINE" = "OFFLINE";
+      let lastEvent: string | null = null;
+      let lastEventTime: Date | null = null;
+
+      if (lastLog) {
+        lastEvent = lastLog.eventType;
+        lastEventTime = lastLog.timestamp;
+      }
+
+      if (todayAttendance) {
+        if (todayAttendance.checkOutTime) {
+          status = "OFFLINE";
+        } else if (todayAttendance.checkInTime) {
+          if (lastLog && ["LOCK", "SLEEP", "IDLE_START"].includes(lastLog.eventType)) {
+            status = "AWAY";
+          } else {
+            status = "ACTIVE";
+          }
+        }
+      }
+
+      return {
+        employeeId: emp.id,
+        firstName: emp.firstName,
+        lastName: emp.lastName,
+        employeeCode: emp.employeeCode,
+        email: emp.user.email,
+        status,
+        lastEvent,
+        lastEventTime,
+        checkInTime: todayAttendance?.checkInTime ?? null,
+        checkOutTime: todayAttendance?.checkOutTime ?? null,
+      };
+    });
+
+    return sendSuccess(response, "Live statuses fetched successfully", liveStatuses);
+  } catch (error) {
+    next(error);
+  }
+});
+
+const desktopEventSchema = z.object({
+  eventType: z.enum(["LOCK", "UNLOCK", "SLEEP", "WAKE", "SHUTDOWN", "IDLE_START", "IDLE_END"]),
+  timestamp: z.string(),
+});
+
+router.post(
+  "/desktop-event",
+  validate(desktopEventSchema),
+  async (request, response, next) => {
+    try {
+      const employeeId = request.user?.employeeId;
+
+      if (!employeeId) {
+        throw new AppError("Employee profile not found for this user context", 404);
+      }
+
+      const { eventType, timestamp } = request.body;
+      const parsedTime = new Date(timestamp);
+
+      // 1. Log the desktop event
+      await prisma.desktopActivityLog.create({
+        data: {
+          employeeId,
+          eventType,
+          timestamp: parsedTime,
+          ipAddress: request.ip || null,
+        },
+      });
+
+      // Find today's attendance record (IST date)
+      const istDate = parseAttendanceDateInput();
+      const attendance = await prisma.attendance.findUnique({
+        where: {
+          employeeId_attendanceDate: {
+            employeeId,
+            attendanceDate: istDate,
+          },
+        },
+      });
+
+      if (!attendance) {
+        return sendSuccess(response, "Desktop event logged, but no active attendance session found for today.", {
+          logged: true,
+          attendanceActive: false,
+        });
+      }
+
+      let breakUpdated = false;
+      let checkOutUpdated = false;
+
+      // 2. Automate workflows based on event
+      if (eventType === "LOCK" || eventType === "SLEEP" || eventType === "IDLE_START") {
+        // Automatically START Break Session
+        const activeBreak = await prisma.breakSession.findFirst({
+          where: {
+            attendanceId: attendance.id,
+            endTime: null,
+          },
+        });
+
+        if (!activeBreak) {
+          await prisma.breakSession.create({
+            data: {
+              attendanceId: attendance.id,
+              employeeId,
+              startTime: parsedTime,
+            },
+          });
+          breakUpdated = true;
+        }
+      } else if (eventType === "UNLOCK" || eventType === "WAKE" || eventType === "IDLE_END") {
+        // Automatically END Break Session
+        const activeBreak = await prisma.breakSession.findFirst({
+          where: {
+            attendanceId: attendance.id,
+            endTime: null,
+          },
+          orderBy: { startTime: "desc" },
+        });
+
+        if (activeBreak) {
+          const durationMin = Math.max(0, Math.floor((parsedTime.getTime() - activeBreak.startTime.getTime()) / (1000 * 60)));
+          await prisma.breakSession.update({
+            where: { id: activeBreak.id },
+            data: {
+              endTime: parsedTime,
+              durationMinutes: durationMin,
+            },
+          });
+          breakUpdated = true;
+        }
+      } else if (eventType === "SHUTDOWN") {
+        // Automatically check out the employee for the day if checked in but checkout is null
+        if (attendance.checkInTime && !attendance.checkOutTime) {
+          const workedMin = calculateWorkedMinutes(attendance.checkInTime, parsedTime);
+          const status = finalizeAttendanceStatus(attendance.checkInTime, parsedTime);
+
+          await prisma.attendance.update({
+            where: { id: attendance.id },
+            data: {
+              checkOutTime: parsedTime,
+              workedMinutes: workedMin,
+              status,
+            },
+          });
+          checkOutUpdated = true;
+        }
+      }
+
+      return sendSuccess(response, "Desktop event logged and workflow processed successfully", {
+        logged: true,
+        attendanceActive: true,
+        breakUpdated,
+        checkOutUpdated,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+router.get(
+  "/desktop-activity-log",
+  async (request, response, next) => {
+    try {
+      const employeeId = request.query.employeeId ? Number(request.query.employeeId) : request.user?.employeeId;
+      const dateString = request.query.date as string | undefined;
+
+      if (!employeeId) {
+        throw new AppError("Employee ID is required", 400);
+      }
+
+      // Basic auth check
+      const isSelf = request.user?.employeeId === employeeId;
+      const canManageOthers = request.user?.role === "HR" || request.user?.role === "ADMIN" || request.user?.role === "MANAGER" || request.user?.role === "TEAM_LEAD";
+      if (!isSelf && !canManageOthers) {
+        throw new AppError("Not authorized to view this data", 403);
+      }
+
+      const parsedDate = parseAttendanceDateInput(dateString);
+      const nextDay = new Date(parsedDate);
+      nextDay.setDate(nextDay.getDate() + 1);
+
+      const events = await prisma.desktopActivityLog.findMany({
+        where: {
+          employeeId,
+          timestamp: {
+            gte: parsedDate,
+            lt: nextDay,
+          },
+        },
+        orderBy: { timestamp: "asc" },
+      });
+
+      return sendSuccess(response, "Desktop activity logs fetched successfully", { events });
     } catch (error) {
       next(error);
     }

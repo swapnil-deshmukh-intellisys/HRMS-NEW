@@ -17,7 +17,8 @@
     "test:frontend": "npm --workspace frontend run test",
     "test:e2e": "npm --workspace e2e run test",
     "test:e2e:smoke": "npm --workspace e2e run test:smoke",
-    "test:e2e:api": "npm --workspace e2e run test:api"
+    "test:e2e:api": "npm --workspace e2e run test:api",
+    "sync-excel": "npm --workspace backend run sync-excel"
   },
   "devDependencies": {
     "@vitest/coverage-v8": "^1.6.1",

@@ -1,0 +1,23 @@
+[
+  {
+    "date": "2026-06-24",
+    "taskId": "TSK-DESK-001",
+    "title": "Build IntelliHrHub Desktop Agent",
+    "status": "COMPLETED",
+    "narrative": "Developed native Windows C# desktop tray application to track locks, wakes, sleep, and user idleness, forwarding events to POST /api/attendance/desktop-event to automate break sessions and checkouts. Tested and verified locally with active Express dev server and remote Hostinger DB."
+  },
+  {
+    "date": "2026-06-24",
+    "taskId": "TSK-ATT-003",
+    "title": "Implement Live Status Badges & Workday Timeline",
+    "status": "COMPLETED",
+    "narrative": "Implemented live status telemetry indicators (Active, Away, Offline) on Navbar, Sidebar, and Employee Table. Created Live Status Tracker panel in AttendancePage and integrated visual workday timelines, enabling users and HR to click on past dates in history to view worked/break block intervals."
+  },
+  {
+    "date": "2026-06-24",
+    "taskId": "TSK-ATT-004",
+    "title": "Redesign Workday Timeline with Desktop Telemetry Logs",
+    "status": "COMPLETED",
+    "narrative": "Overhauled the Workday Timeline to show rich activity segments (Active, Idle, Locked), a sleek collapsed state, and a split expanded view with chronological Event Log and Day Summary. Polished card margins and padding, aligned title and panel typography to match cards design system, centered Event Log timeline vertical line, corrected undefined CSS variables, completely removed the block containers around Day Summary items for a cleaner, boundaryless list look, and added a direct 'Download Agent' link at the bottom of the sidebar."
+  }
+]

@@ -210,6 +210,40 @@ export type Attendance = {
     startTime: string;
     endTime?: string | null;
   } | null;
+  breakSessions?: BreakSession[];
+};
+
+export type BreakSession = {
+  id: number;
+  attendanceId: number;
+  employeeId: number;
+  startTime: string;
+  endTime?: string | null;
+  durationMinutes: number;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type DesktopActivityLog = {
+  id: number;
+  employeeId: number;
+  eventType: "LOCK" | "UNLOCK" | "SLEEP" | "WAKE" | "SHUTDOWN" | "IDLE_START" | "IDLE_END";
+  timestamp: string;
+  ipAddress?: string | null;
+  createdAt: string;
+};
+
+export type LiveStatus = {
+  employeeId: number;
+  firstName: string;
+  lastName: string;
+  employeeCode: string;
+  email: string;
+  status: "ACTIVE" | "AWAY" | "OFFLINE";
+  lastEvent: string | null;
+  lastEventTime: string | null;
+  checkInTime: string | null;
+  checkOutTime: string | null;
 };
 
 export type AttendanceRegularizationRequest = {

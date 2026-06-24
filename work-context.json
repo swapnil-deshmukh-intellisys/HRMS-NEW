@@ -1,0 +1,31 @@
+{
+  "currentFocusModules": [
+    "MOD-GOOGLE",
+    "MOD-PAYROLL",
+    "MOD-DASHBOARD"
+  ],
+  "recentlyModifiedModules": [
+    "MOD-GOOGLE",
+    "MOD-PAYROLL",
+    "MOD-EMPLOYEE",
+    "MOD-ATTENDANCE"
+  ],
+  "pausedModules": [],
+  "activeBugs": [],
+  "currentSprintGoals": [
+    "Complete Google Workspace integration (Calendar OOO, Quick Meet) & Microsoft Teams Webhooks",
+    "Implement Monthly Payroll locking and publishing workflow",
+    "Consolidate dashboard summary APIs to reduce network and database overhead"
+  ],
+  "today'sTasks": [
+    "TSK-TEAMS-001",
+    "TSK-PERF-001",
+    "TSK-DESK-001"
+  ],
+  "tomorrowTasks": [
+    "TSK-PAY-004"
+  ],
+  "nextWeekTasks": [
+    "TSK-PERF-002"
+  ]
+}

@@ -59,13 +59,15 @@ type NavbarProps = {
 
 export default function Navbar({ title, navOpen, onToggleNav, token, currentEmployeeId, role, onLogout }: NavbarProps) {
   const navigate = useNavigate();
-  const { summary, notifications, loading: notificationsLoading, error: notificationsError, refreshSummary, markNotificationAsRead, markAllNotificationsAsRead, serverTimeOffset } = useApp();
+  const { summary, notifications, loading: notificationsLoading, error: notificationsError, refreshSummary, markNotificationAsRead, markAllNotificationsAsRead, serverTimeOffset, liveStatuses } = useApp();
   const { subscribeUser, isSubscribing } = usePushNotifications(token);
   const [searchTerm, setSearchTerm] = useState("");
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [isVisible, setIsVisible] = useState(true);
 
   const [now, setNow] = useState(() => Date.now());
+
+  const myStatus = currentEmployeeId && liveStatuses ? liveStatuses[currentEmployeeId]?.status : "OFFLINE";
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -354,20 +356,28 @@ export default function Navbar({ title, navOpen, onToggleNav, token, currentEmpl
             </div>
           ) : null}
         </div>
-        <Button
-          type="button"
-          className="topbar-icon-button"
-          variant="secondary"
-          aria-label="Open profile"
-          onClick={() => {
-            if (currentEmployeeId) {
-              navigate(`/employees/${currentEmployeeId}`);
-            }
-          }}
-          disabled={!currentEmployeeId}
-        >
-          <UserRound size={18} strokeWidth={2} />
-        </Button>
+        <div className="topbar-profile-wrapper">
+          <Button
+            type="button"
+            className="topbar-icon-button"
+            variant="secondary"
+            aria-label="Open profile"
+            onClick={() => {
+              if (currentEmployeeId) {
+                navigate(`/employees/${currentEmployeeId}`);
+              }
+            }}
+            disabled={!currentEmployeeId}
+          >
+            <UserRound size={18} strokeWidth={2} />
+          </Button>
+          {currentEmployeeId && (
+            <span 
+              className={`topbar-status-dot topbar-status-dot--${myStatus?.toLowerCase()}`} 
+              title={`Status: ${myStatus}`} 
+            />
+          )}
+        </div>
         <Button
           type="button"
           className="topbar-icon-button topbar-logout-button"

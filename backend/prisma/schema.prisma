@@ -115,6 +115,7 @@ model Employee {
   givenPointHistory                 PointHistory[]                    @relation("GivenPointHistory")
   documents                         EmployeeDocument[]                @relation("EmployeeDocuments")
   salesRecords                      SalesRecord[]                     @relation("EmployeeSalesRecords")
+  desktopActivityLogs               DesktopActivityLog[]
 
   @@index([departmentId])
   @@index([managerId])
@@ -671,4 +672,18 @@ model GoogleSheetSyncQueue {
   updatedAt   DateTime @updatedAt
   
   @@index([status])
+}
+
+model DesktopActivityLog {
+  id           Int      @id @default(autoincrement())
+  employeeId   Int
+  eventType    String   // "LOCK", "UNLOCK", "SLEEP", "WAKE", "SHUTDOWN", "IDLE_START", "IDLE_END"
+  timestamp    DateTime
+  ipAddress    String?
+  createdAt    DateTime @default(now())
+  employee     Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@index([employeeId])
+  @@index([eventType])
+  @@index([timestamp])
 }

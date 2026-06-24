@@ -1,0 +1,418 @@
+[
+  {
+    "moduleId": "MOD-AUTH",
+    "moduleName": "Authentication & Session",
+    "description": "JWT-based authentication, token rotation, and role-based session management.",
+    "parentModule": null,
+    "status": "COMPLETED",
+    "completionPercentage": 100,
+    "owner": "Backend Team",
+    "dependencies": [],
+    "relatedTasks": ["TSK-AUTH-001", "TSK-AUTH-002", "TSK-AUTH-003"],
+    "relatedAPIs": [
+      "POST /api/auth/login",
+      "POST /api/auth/logout",
+      "POST /api/auth/refresh",
+      "GET /api/auth/me"
+    ],
+    "relatedDatabaseTables": ["User", "Role", "RefreshTokens"],
+    "knownIssues": [],
+    "decisions": [
+      "Short-lived JWT access tokens (15m) combined with database-backed refresh tokens in HTTP-only cookies for maximum security."
+    ],
+    "lastModified": "2026-06-20T18:00:00Z",
+    "history": [
+      {
+        "date": "2026-06-15",
+        "action": "Initialized Auth module with basic JWT.",
+        "author": "Backend Team"
+      },
+      {
+        "date": "2026-06-20",
+        "action": "Added refresh token rotation and token revocation on logout.",
+        "author": "Backend Team"
+      }
+    ]
+  },
+  {
+    "moduleId": "MOD-EMPLOYEE",
+    "moduleName": "Employee Management",
+    "description": "Employee CRUD, profile management, capability mapping, document uploads, and soft deletion.",
+    "parentModule": null,
+    "status": "COMPLETED",
+    "completionPercentage": 98,
+    "owner": "Frontend & Backend Teams",
+    "dependencies": ["MOD-AUTH"],
+    "relatedTasks": ["TSK-EMP-001", "TSK-EMP-002", "TSK-EMP-003", "TSK-EMP-004"],
+    "relatedAPIs": [
+      "GET /api/employees",
+      "GET /api/employees/:id",
+      "POST /api/employees",
+      "PUT /api/employees/:id",
+      "PATCH /api/employees/:id/status",
+      "POST /api/employees/:id/documents"
+    ],
+    "relatedDatabaseTables": ["Employee", "EmployeeCapability", "EmployeeTeamLeadScope", "EmployeeDocument"],
+    "knownIssues": [
+      "Large payloads when fetching employee profiles with manager details - optimization required to select fields."
+    ],
+    "decisions": [
+      "Enforce soft-delete using deletedAt and isActive rather than physical database record deletion to maintain historical relations."
+    ],
+    "lastModified": "2026-06-22T14:30:00Z",
+    "history": [
+      {
+        "date": "2026-06-16",
+        "action": "Created core Employee tables and endpoints.",
+        "author": "Backend Team"
+      },
+      {
+        "date": "2026-06-22",
+        "action": "Added profile picture uploading and file attachment management.",
+        "author": "Fullstack Team"
+      }
+    ]
+  },
+  {
+    "moduleId": "MOD-DEPARTMENT",
+    "moduleName": "Department Structure",
+    "description": "Organizational department definition, code allocation, and department head mapping.",
+    "parentModule": null,
+    "status": "COMPLETED",
+    "completionPercentage": 100,
+    "owner": "Backend Team",
+    "dependencies": [],
+    "relatedTasks": ["TSK-DEP-001"],
+    "relatedAPIs": [
+      "GET /api/departments",
+      "POST /api/departments",
+      "PUT /api/departments/:id"
+    ],
+    "relatedDatabaseTables": ["Department"],
+    "knownIssues": [],
+    "decisions": [
+      "Each department must have a unique alphanumeric code for reporting purposes."
+    ],
+    "lastModified": "2026-06-16T11:00:00Z",
+    "history": [
+      {
+        "date": "2026-06-16",
+        "action": "Scaffolded department CRUD endpoints and UI tables.",
+        "author": "Fullstack Team"
+      }
+    ]
+  },
+  {
+    "moduleId": "MOD-ATTENDANCE",
+    "moduleName": "Attendance & Time Tracking",
+    "description": "Check-in, check-out, break sessions, work hours computation, late tracking, and regularization.",
+    "parentModule": null,
+    "status": "COMPLETED",
+    "completionPercentage": 96,
+    "owner": "Fullstack Team",
+    "dependencies": ["MOD-EMPLOYEE"],
+    "relatedTasks": ["TSK-ATT-001", "TSK-ATT-002", "TSK-ATT-003"],
+    "relatedAPIs": [
+      "POST /api/attendance/check-in",
+      "POST /api/attendance/check-out",
+      "GET /api/attendance",
+      "POST /api/attendance/regularization",
+      "PUT /api/attendance/regularization/:id"
+    ],
+    "relatedDatabaseTables": ["Attendance", "BreakSession", "AttendanceRegularizationRequest"],
+    "knownIssues": [],
+    "decisions": [
+      "Limit daily attendance records to exactly one per employee. Compute work and break duration server-side to prevent tampering."
+    ],
+    "lastModified": "2026-06-23T09:00:00Z",
+    "history": [
+      {
+        "date": "2026-06-17",
+        "action": "Implemented check-in/check-out endpoints and backend validations.",
+        "author": "Backend Team"
+      },
+      {
+        "date": "2026-06-21",
+        "action": "Added break tracking and manager regularization flow.",
+        "author": "Fullstack Team"
+      }
+    ]
+  },
+  {
+    "moduleId": "MOD-LEAVE",
+    "moduleName": "Leave & Balance Management",
+    "description": "Leave policy enforcement, carry forwards, balance queries, manager/HR workflows, and medical proofs.",
+    "parentModule": null,
+    "status": "COMPLETED",
+    "completionPercentage": 98,
+    "owner": "Fullstack Team",
+    "dependencies": ["MOD-EMPLOYEE"],
+    "relatedTasks": ["TSK-LV-001", "TSK-LV-002", "TSK-LV-003", "TSK-LV-004"],
+    "relatedAPIs": [
+      "GET /api/leave-types",
+      "GET /api/leave-balances/me",
+      "GET /api/leaves",
+      "POST /api/leaves",
+      "PUT /api/leaves/:id/approve",
+      "PUT /api/leaves/:id/reject"
+    ],
+    "relatedDatabaseTables": ["LeaveType", "LeaveBalance", "LeaveRequest"],
+    "knownIssues": [],
+    "decisions": [
+      "Deduct balances only upon final approval. Restrict employees from approving their own leaves, even if they are managers."
+    ],
+    "lastModified": "2026-06-22T17:45:00Z",
+    "history": [
+      {
+        "date": "2026-06-18",
+        "action": "Implemented leave request creation and balance check logic.",
+        "author": "Backend Team"
+      },
+      {
+        "date": "2026-06-22",
+        "action": "Built two-tier approval workflow (Manager -> HR) and balance debiting.",
+        "author": "Fullstack Team"
+      }
+    ]
+  },
+  {
+    "moduleId": "MOD-PAYROLL",
+    "moduleName": "Payroll & Benefits",
+    "description": "Salary generation, payslips, overtime sessions, incentives, and publishing workflows.",
+    "parentModule": null,
+    "status": "IN_PROGRESS",
+    "completionPercentage": 85,
+    "owner": "Finance Tech Team",
+    "dependencies": ["MOD-EMPLOYEE", "MOD-ATTENDANCE"],
+    "relatedTasks": ["TSK-PAY-001", "TSK-PAY-002", "TSK-PAY-003", "TSK-PAY-004"],
+    "relatedAPIs": [
+      "GET /api/payroll",
+      "POST /api/payroll/generate",
+      "PUT /api/payroll/:id/publish",
+      "GET /api/payroll/employee/:employeeId",
+      "GET /api/payslips/:payrollRecordId",
+      "GET /api/sales"
+    ],
+    "relatedDatabaseTables": ["PayrollRecord", "OvertimeSession", "Incentive", "SalesRecord"],
+    "knownIssues": [
+      "Monthly payroll generation lock mechanism is in draft phase. Currently generated on-demand."
+    ],
+    "decisions": [
+      "Salary templates are kept simple in V1. Payroll record is immutable once published to employees."
+    ],
+    "lastModified": "2026-06-24T10:00:00Z",
+    "history": [
+      {
+        "date": "2026-06-19",
+        "action": "Scaffolded payroll records and draft generation.",
+        "author": "Finance Team"
+      },
+      {
+        "date": "2026-06-24",
+        "action": "Implemented incentives and overtime verification endpoints.",
+        "author": "Finance Team"
+      }
+    ]
+  },
+  {
+    "moduleId": "MOD-DASHBOARD",
+    "moduleName": "Role Dashboards & Analytics",
+    "description": "Role-specific summaries, widgets, analytics charts, and active updates.",
+    "parentModule": null,
+    "status": "IN_PROGRESS",
+    "completionPercentage": 90,
+    "owner": "Frontend Team",
+    "dependencies": ["MOD-EMPLOYEE", "MOD-ATTENDANCE", "MOD-LEAVE"],
+    "relatedTasks": ["TSK-DSH-001", "TSK-DSH-002", "TSK-PERF-001"],
+    "relatedAPIs": [
+      "GET /api/dashboard/employee",
+      "GET /api/dashboard/manager",
+      "GET /api/dashboard/hr",
+      "GET /api/dashboard/admin"
+    ],
+    "relatedDatabaseTables": [],
+    "knownIssues": [
+      "Redundant global summaries hit on page load by Navbar and Dashboard, causing double-fetching."
+    ],
+    "decisions": [
+      "Keep dashboard queries synchronous and live-query based initially; implement client caching or context lifting for shared metrics."
+    ],
+    "lastModified": "2026-06-24T09:30:00Z",
+    "history": [
+      {
+        "date": "2026-06-20",
+        "action": "Built employee and manager dashboards with interactive widgets.",
+        "author": "Frontend Team"
+      }
+    ]
+  },
+  {
+    "moduleId": "MOD-GOOGLE",
+    "moduleName": "Collaboration Integrations",
+    "description": "Google OAuth syncing, automated Out of Office calendar blocks, Quick Meet links, and Microsoft Teams chat notifications.",
+    "parentModule": null,
+    "status": "IN_PROGRESS",
+    "completionPercentage": 82,
+    "owner": "Integrations Team",
+    "dependencies": ["MOD-AUTH", "MOD-LEAVE"],
+    "relatedTasks": ["TSK-GOOG-001", "TSK-GOOG-002", "TSK-TEAMS-001", "TSK-GOOG-004"],
+    "relatedAPIs": [
+      "GET /api/google/auth-url",
+      "GET /api/google/callback",
+      "POST /api/google/connect",
+      "POST /api/google/quick-meet"
+    ],
+    "relatedDatabaseTables": ["GoogleSheetConfig", "GoogleSheetSyncQueue"],
+    "knownIssues": [
+      "Need to store Refresh Tokens in the database to sync events on behalf of the user when they are offline."
+    ],
+    "decisions": [
+      "Link user profiles to corporate Google accounts. Trigger automatic calendar creation on final LeaveRequest approval. Send direct notifications via Microsoft Teams webhooks."
+    ],
+    "lastModified": "2026-06-24T10:45:00Z",
+    "history": [
+      {
+        "date": "2026-06-23",
+        "action": "Completed Google OAuth callback and link database schema.",
+        "author": "Integrations Team"
+      },
+      {
+        "date": "2026-06-24",
+        "action": "Implemented Google Calendar Out-Of-Office automatic block.",
+        "author": "Integrations Team"
+      },
+      {
+        "date": "2026-06-24",
+        "action": "Pivoted chat notifications from Google Chat to Microsoft Teams.",
+        "author": "Integrations Team"
+      }
+    ]
+  },
+  {
+    "moduleId": "MOD-TASKS",
+    "moduleName": "Manager Tasks & Checklists",
+    "description": "Personal todos, checklists, manager-assigned tasks, completion tracking, and history logs.",
+    "parentModule": null,
+    "status": "COMPLETED",
+    "completionPercentage": 98,
+    "owner": "Fullstack Team",
+    "dependencies": ["MOD-EMPLOYEE"],
+    "relatedTasks": ["TSK-TSK-001", "TSK-TSK-002"],
+    "relatedAPIs": [
+      "GET /api/todos",
+      "POST /api/todos",
+      "GET /api/tasks",
+      "POST /api/tasks",
+      "POST /api/tasks/:id/complete"
+    ],
+    "relatedDatabaseTables": ["Todo", "ManagerTask", "GeneralTaskCompletion"],
+    "knownIssues": [],
+    "decisions": [
+      "Allow managers to assign tasks directly to individuals or assign general team tasks where multiple members can log completion."
+    ],
+    "lastModified": "2026-06-22T10:00:00Z",
+    "history": [
+      {
+        "date": "2026-06-20",
+        "action": "Created personal checklist (Todo) endpoints.",
+        "author": "Backend Team"
+      },
+      {
+        "date": "2026-06-22",
+        "action": "Added Manager Task allocation and general checklist completion logic.",
+        "author": "Fullstack Team"
+      }
+    ]
+  },
+  {
+    "moduleId": "MOD-NOTIFICATIONS",
+    "moduleName": "System Notifications",
+    "description": "In-app notifications, web push subscriptions (PushSubscription), and background outbox dispatch.",
+    "parentModule": null,
+    "status": "COMPLETED",
+    "completionPercentage": 100,
+    "owner": "Backend Team",
+    "dependencies": ["MOD-AUTH"],
+    "relatedTasks": ["TSK-NTF-001", "TSK-NTF-002"],
+    "relatedAPIs": [
+      "GET /api/notifications",
+      "POST /api/notifications/read",
+      "POST /api/notifications/subscribe"
+    ],
+    "relatedDatabaseTables": ["Notification", "PushSubscription", "NotificationOutbox"],
+    "knownIssues": [],
+    "decisions": [
+      "Implement an outbox pattern for notification reliability, ensuring retries are handled for push service errors."
+    ],
+    "lastModified": "2026-06-21T16:00:00Z",
+    "history": [
+      {
+        "date": "2026-06-19",
+        "action": "Implemented in-app notifications system.",
+        "author": "Backend Team"
+      },
+      {
+        "date": "2026-06-21",
+        "action": "Integrated VAPID keys and web push subscriptions.",
+        "author": "Backend Team"
+      }
+    ]
+  },
+  {
+    "moduleId": "MOD-EMAIL-TEMPLATES",
+    "moduleName": "Email Templates & Broadcaster",
+    "description": "Interactive HTML templates and multi-recipient email broadcaster.",
+    "parentModule": null,
+    "status": "COMPLETED",
+    "completionPercentage": 100,
+    "owner": "Fullstack Team",
+    "dependencies": ["MOD-EMPLOYEE"],
+    "relatedTasks": ["TSK-EML-001", "TSK-EML-002"],
+    "relatedAPIs": [
+      "GET /api/email-templates",
+      "POST /api/email-templates/broadcast"
+    ],
+    "relatedDatabaseTables": ["OutlookEmail", "Client"],
+    "knownIssues": [],
+    "decisions": [
+      "Provide pre-scaffolded templates for Leave Approvals, Salary slips, and System Announcements with variable injection."
+    ],
+    "lastModified": "2026-06-23T15:00:00Z",
+    "history": [
+      {
+        "date": "2026-06-23",
+        "action": "Completed Email template editing UI and backend nodemailer broadcaster integration.",
+        "author": "Fullstack Team"
+      }
+    ]
+  },
+  {
+    "moduleId": "MOD-SALES",
+    "moduleName": "Sales & Targets",
+    "description": "Tracking sales records per employee, linking outlook email sales data, and manager target configuration.",
+    "parentModule": null,
+    "status": "COMPLETED",
+    "completionPercentage": 100,
+    "owner": "Finance Team",
+    "dependencies": ["MOD-EMPLOYEE"],
+    "relatedTasks": ["TSK-SLS-001"],
+    "relatedAPIs": [
+      "GET /api/sales/records",
+      "POST /api/sales/records",
+      "PUT /api/sales/targets"
+    ],
+    "relatedDatabaseTables": ["SalesRecord", "SalesTarget", "OutlookEmail"],
+    "knownIssues": [],
+    "decisions": [
+      "Store monthly sales numbers and calculate incentives based on dynamic performance achievements."
+    ],
+    "lastModified": "2026-06-22T12:00:00Z",
+    "history": [
+      {
+        "date": "2026-06-22",
+        "action": "Added SalesRecord tracking and linking targets.",
+        "author": "Finance Team"
+      }
+    ]
+  }
+]

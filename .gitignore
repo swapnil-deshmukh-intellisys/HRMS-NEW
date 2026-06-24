@@ -60,4 +60,5 @@ lerna-debug.log*
 backend/db_backup.json
 backend/db_backup.sql
 backend/scratch/
+backend/src/scratch/
 backend/scripts/get_pr_checks_status.js

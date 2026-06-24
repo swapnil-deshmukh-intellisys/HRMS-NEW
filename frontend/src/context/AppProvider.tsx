@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback, useMemo } from "react";
 import type { ReactNode } from "react";
 import { apiRequest } from "../services/api";
-import type { Role, Notification, CalendarException } from "../types";
+import type { Role, Notification, CalendarException, LiveStatus } from "../types";
 import { ATTENDANCE_EVENT, getAttendanceUpdatedDetail } from "../components/common/attendanceQuickActionUtils";
 import { AppContext, type DashboardSummary, type AnalyticsData } from "./useApp";
 
@@ -9,6 +9,7 @@ export function AppProvider({ children, token, role }: { children: ReactNode; to
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [announcements, setAnnouncements] = useState<any[]>([]);
+  const [liveStatuses, setLiveStatuses] = useState<Record<number, LiveStatus>>({});
   const [calendarExceptions, setCalendarExceptions] = useState<CalendarException[]>([]);
   const [analyticsData, setAnalyticsData] = useState<AnalyticsData | null>(null);
   const analyticsLastFetched = React.useRef<number>(0);
@@ -121,6 +122,20 @@ export function AppProvider({ children, token, role }: { children: ReactNode; to
     }
   }, [token]);
 
+  const refreshLiveStatuses = useCallback(async () => {
+    if (!token) return;
+    try {
+      const response = await apiRequest<LiveStatus[]>("/attendance/live-status", { token });
+      const mapping: Record<number, LiveStatus> = {};
+      response.data.forEach((status) => {
+        mapping[status.employeeId] = status;
+      });
+      setLiveStatuses(mapping);
+    } catch (err) {
+      console.error("[AppProvider] Failed to fetch live statuses:", err);
+    }
+  }, [token]);
+
   const fetchAnalyticsData = useCallback(async (force = false) => {
     if (!token) return;
 
@@ -156,6 +171,16 @@ export function AppProvider({ children, token, role }: { children: ReactNode; to
   }, [token, refreshSummary]);
 
   useEffect(() => {
+    if (token) {
+      void refreshLiveStatuses();
+      const interval = setInterval(refreshLiveStatuses, 30000);
+      return () => clearInterval(interval);
+    } else {
+      setLiveStatuses({});
+    }
+  }, [token, refreshLiveStatuses]);
+
+  useEffect(() => {
     const handleAttendanceUpdated = (event: Event) => {
       const detail = getAttendanceUpdatedDetail(event);
       if (detail?.attendanceToday) {
@@ -183,9 +208,11 @@ export function AppProvider({ children, token, role }: { children: ReactNode; to
     summary,
     notifications,
     announcements,
+    liveStatuses,
     loading,
     error,
     refreshSummary,
+    refreshLiveStatuses,
     markNotificationAsRead,
     markAllNotificationsAsRead,
     analyticsData,
@@ -200,9 +227,11 @@ export function AppProvider({ children, token, role }: { children: ReactNode; to
     summary,
     notifications,
     announcements,
+    liveStatuses,
     loading,
     error,
     refreshSummary,
+    refreshLiveStatuses,
     markNotificationAsRead,
     markAllNotificationsAsRead,
     analyticsData,

@@ -6,6 +6,7 @@ import EmployeeAttendanceBreakdownChart from "./charts/EmployeeAttendanceBreakdo
 import EmployeeWorkedHoursChart from "./charts/EmployeeWorkedHoursChart";
 import { useApp } from "../../context/useApp";
 import { useEffect, useMemo, useState } from "react";
+import WorkdayTimeline from "../dashboard/WorkdayTimeline";
 
 type EmployeeAttendanceTabProps = {
   attendance: Attendance[];
@@ -104,6 +105,10 @@ export default function EmployeeAttendanceTab({ attendance, exceptions, joiningD
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [selectedUpdate, setSelectedUpdate] = useState<string | null>(null);
+  const [selectedTimelineItem, setSelectedTimelineItem] = useState<{
+    date: string;
+    record: Attendance;
+  } | null>(null);
 
   const allMonths = useMemo(() => [
     { value: 0, name: "January" },
@@ -430,6 +435,15 @@ export default function EmployeeAttendanceTab({ attendance, exceptions, joiningD
         <Table
           compact
           columns={["Date", "Check in", "Check out", "Late time", "Worked duration", "Today's update", "Status"]}
+          onRowClick={(index) => {
+            const item = unifiedHistory[index];
+            if (item.record && item.record.checkInTime) {
+              setSelectedTimelineItem({
+                date: item.date.split("T")[0],
+                record: item.record,
+              });
+            }
+          }}
           getRowClassName={(index) => {
             const item = unifiedHistory[index];
             if (item.isJoiningDay) return "attendance-row--joining-day";
@@ -580,6 +594,30 @@ export default function EmployeeAttendanceTab({ attendance, exceptions, joiningD
             </button>
           </div>
         </div>
+      </Modal>
+
+      <Modal 
+        open={!!selectedTimelineItem} 
+        title={`Workday Timeline - ${selectedTimelineItem ? formatDateLabel(selectedTimelineItem.date) : ""}`} 
+        onClose={() => setSelectedTimelineItem(null)}
+      >
+        {selectedTimelineItem && (
+          <div className="stack" style={{ padding: '8px 0', gap: '16px' }}>
+            <WorkdayTimeline
+              checkInTime={selectedTimelineItem.record.checkInTime}
+              checkOutTime={selectedTimelineItem.record.checkOutTime}
+              workedMinutes={selectedTimelineItem.record.workedMinutes}
+              penaltyMinutes={selectedTimelineItem.record.penaltyMinutes}
+              customBreakSessions={selectedTimelineItem.record.breakSessions || []}
+              dateContext={selectedTimelineItem.date}
+            />
+            <div className="button-row" style={{ marginTop: '12px', justifyContent: 'flex-end' }}>
+              <button className="secondary" onClick={() => setSelectedTimelineItem(null)}>
+                Close
+              </button>
+            </div>
+          </div>
+        )}
       </Modal>
     </div>
   );

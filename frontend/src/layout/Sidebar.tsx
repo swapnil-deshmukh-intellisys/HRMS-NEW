@@ -1,8 +1,9 @@
 import { getFileUrl } from "../services/api";
 import "./Sidebar.css";
-import { Building2, Calendar, CalendarDays, Clock3, Gift, Home, Users, Wallet, UserRound, ClipboardList, Mail, SendHorizontal, Trophy, type LucideIcon } from "lucide-react";
+import { Building2, Calendar, CalendarDays, Clock3, Gift, Home, Users, Wallet, UserRound, ClipboardList, Mail, SendHorizontal, Trophy, Download, type LucideIcon } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import type { SessionUser } from "../types";
+import { useApp } from "../context/useApp";
 
 type SidebarProps = {
   sessionUser: SessionUser;
@@ -50,6 +51,9 @@ function getNavItems(sessionUser: SessionUser): NavItem[] {
 export default function Sidebar({ sessionUser, navOpen, onNavigate }: SidebarProps) {
   const location = useLocation();
   const navItems = getNavItems(sessionUser);
+  const { liveStatuses } = useApp();
+
+  const myStatus = sessionUser.employee?.id ? liveStatuses[sessionUser.employee.id]?.status : "OFFLINE";
 
   function isActivePath(item: NavItem) {
     if (item.to === "/" || item.exact) {
@@ -71,16 +75,22 @@ export default function Sidebar({ sessionUser, navOpen, onNavigate }: SidebarPro
               {sessionUser.employee ? `${sessionUser.employee.firstName} ${sessionUser.employee.lastName}` : "Workspace access"}
             </div>
             <div className="sidebar-user-box">
-              <div className="sidebar-user-avatar">
-                {sessionUser.employee?.profilePictureUrl ? (
-                  <img
-                    src={getFileUrl(sessionUser.employee.profilePictureUrl) || ""}
-                    alt={`${sessionUser.employee.firstName} ${sessionUser.employee.lastName}`}
-                    className="sidebar-user-avatar-image"
-                  />
-                ) : (
-                  <UserRound size={20} strokeWidth={2.5} />
-                )}
+              <div className="sidebar-user-avatar-wrapper">
+                <div className="sidebar-user-avatar">
+                  {sessionUser.employee?.profilePictureUrl ? (
+                    <img
+                      src={getFileUrl(sessionUser.employee.profilePictureUrl) || ""}
+                      alt={`${sessionUser.employee.firstName} ${sessionUser.employee.lastName}`}
+                      className="sidebar-user-avatar-image"
+                    />
+                  ) : (
+                    <UserRound size={20} strokeWidth={2.5} />
+                  )}
+                </div>
+                <span 
+                  className={`sidebar-status-dot sidebar-status-dot--${myStatus?.toLowerCase()}`} 
+                  title={`Status: ${myStatus}`} 
+                />
               </div>
               <div className="sidebar-user-info">
                 {sessionUser.employee?.employeeCode && (
@@ -103,6 +113,15 @@ export default function Sidebar({ sessionUser, navOpen, onNavigate }: SidebarPro
               <span className="nav-link-label">{item.label}</span>
             </Link>
           ))}
+          <a
+            className="nav-link"
+            href="/downloads/HRMS_Agent.zip"
+            download="HRMS_Agent.zip"
+            style={{ marginTop: 'auto', borderTop: '1px solid var(--color-border-subtle)', paddingTop: '12px', borderRadius: '0' }}
+          >
+            <Download size={16} strokeWidth={2} />
+            <span className="nav-link-label">Download Agent</span>
+          </a>
         </nav>
       </div>
     </aside>

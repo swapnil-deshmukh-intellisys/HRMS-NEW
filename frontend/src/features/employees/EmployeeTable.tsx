@@ -2,6 +2,7 @@ import "./EmployeeTable.css";
 import "../../components/common/Table.css";
 import { useEffect, useMemo, useState } from "react";
 import type { Employee } from "../../types";
+import { useApp } from "../../context/useApp";
 
 type EmployeeTableProps = {
   employees: Employee[];
@@ -12,6 +13,7 @@ type EmployeeTableProps = {
 
 export default function EmployeeTable({ employees, onAdd, onSelect, initialSearchTerm = "" }: EmployeeTableProps) {
   const [searchTerm, setSearchTerm] = useState(initialSearchTerm);
+  const { liveStatuses } = useApp();
 
   useEffect(() => {
     setSearchTerm(initialSearchTerm);
@@ -161,7 +163,15 @@ export default function EmployeeTable({ employees, onAdd, onSelect, initialSearc
                   </td>
                   <td>
                     <div className="table-cell-stack">
-                      <span className="table-cell-primary">{`${employee.firstName} ${employee.lastName}`}</span>
+                      <div className="employee-name-with-badge">
+                        <span className="table-cell-primary">{`${employee.firstName} ${employee.lastName}`}</span>
+                        {employee.isActive && liveStatuses[employee.id] && (
+                          <span 
+                            className={`employee-status-badge employee-status-badge--${liveStatuses[employee.id].status.toLowerCase()}`}
+                            title={`Activity Status: ${liveStatuses[employee.id].status}`}
+                          />
+                        )}
+                      </div>
                       <span className="table-cell-secondary">{renderJobTitle(employee)}</span>
                     </div>
                   </td>
@@ -194,7 +204,15 @@ export default function EmployeeTable({ employees, onAdd, onSelect, initialSearc
           <article key={employee.id} className="employee-mobile-card" onClick={() => onSelect(employee)}>
             <div className="employee-mobile-card__header">
               <div className="table-cell-stack">
-                <span className="table-cell-primary">{`${employee.firstName} ${employee.lastName}`}</span>
+                <div className="employee-name-with-badge">
+                  <span className="table-cell-primary">{`${employee.firstName} ${employee.lastName}`}</span>
+                  {employee.isActive && liveStatuses[employee.id] && (
+                    <span 
+                      className={`employee-status-badge employee-status-badge--${liveStatuses[employee.id].status.toLowerCase()}`}
+                      title={`Activity Status: ${liveStatuses[employee.id].status}`}
+                    />
+                  )}
+                </div>
                 <span className="table-cell-secondary">{renderJobTitle(employee)}</span>
               </div>
               <span className={getStatusClass(getStatusLabel(employee))}>{getStatusLabel(employee)}</span>

@@ -1,0 +1,52 @@
+{
+  "projectName": "HRMS Lean V1/V2 Collaboration Hub",
+  "description": "Lean, production-ready HRMS MVP built with React, Express, Prisma, and PostgreSQL, featuring JWT authentication with refresh tokens, role-based dashboards, Google Workspace integration (Calendar, Meet), and Microsoft Teams chat notifications.",
+  "owner": "Swapnil Deshmukh",
+  "techStack": [
+    "React",
+    "Express",
+    "Prisma",
+    "PostgreSQL",
+    "TypeScript",
+    "JWT",
+    "Google Workspace APIs",
+    "Microsoft Teams Webhooks"
+  ],
+  "startDate": "2026-05-01",
+  "targetDate": "2026-07-31",
+  "currentSprint": "Sprint 4",
+  "overallProgress": 97,
+  "frontendProgress": 97,
+  "backendProgress": 98,
+  "databaseProgress": 100,
+  "testingProgress": 95,
+  "deploymentProgress": 90,
+  "releaseReadiness": 90,
+  "healthStatus": "HEALTHY",
+  "currentVersion": "2.0.0-rc1",
+  "knownRisks": [
+    {
+      "type": "Third-Party OAuth",
+      "description": "Requires corporate Google Cloud Project with OAuth consent verification for all employees.",
+      "severity": "MEDIUM",
+      "owner": "Lead Architect",
+      "mitigationPlan": "Provide structured instructions for client credential creation and allow staging environment testing."
+    },
+    {
+      "type": "Teams Webhook Delivery",
+      "description": "Microsoft Teams incoming webhook configuration requires organizational admin privilege.",
+      "severity": "MEDIUM",
+      "owner": "DevOps",
+      "mitigationPlan": "Provide clear documentation for managers to generate incoming webhook URLs for their channels."
+    }
+  ],
+  "knownBlockers": [],
+  "upcomingMilestones": [
+    {
+      "name": "Production Deploy",
+      "date": "2026-07-15",
+      "status": "PENDING"
+    }
+  ],
+  "lastUpdated": "2026-06-24T18:03:00+05:30"
+}

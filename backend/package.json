@@ -14,7 +14,8 @@
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:seed": "tsx prisma/seed.ts",
-    "leave:rebuild-balances": "tsx scripts/rebuild-leave-balances.ts"
+    "leave:rebuild-balances": "tsx scripts/rebuild-leave-balances.ts",
+    "sync-excel": "tsx scripts/sync-excel.ts"
   },
   "dependencies": {
     "@prisma/client": "^6.5.0",
@@ -37,6 +38,7 @@
     "sharp": "^0.35.1",
     "web-push": "^3.6.7",
     "xlsx": "^0.18.5",
+    "xlsx-js-style": "^1.2.0",
     "zod": "^3.24.2"
   },
   "devDependencies": {

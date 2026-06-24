@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { ChevronDown, ChevronUp, Timer, Coffee, Info } from 'lucide-react';
+import { ChevronDown, ChevronUp, CheckCircle, Lock, Unlock, Moon, Sun, Power, LogOut } from 'lucide-react';
 import { apiRequest } from '../../services/api';
 import './WorkdayTimeline.css';
+import type { BreakSession, DesktopActivityLog } from '../../types';
 
 interface WorkdayTimelineProps {
+  employeeId?: number;
   startTime?: string;
   endTime?: string;
   lateThreshold?: string;
@@ -12,14 +14,9 @@ interface WorkdayTimelineProps {
   workedMinutes?: number | null;
   penaltyMinutes?: number | null;
   token?: string | null;
+  customBreakSessions?: BreakSession[];
+  dateContext?: string;
 }
-
-type BreakSession = {
-  id: number;
-  startTime: string;
-  endTime: string | null;
-  durationMinutes: number;
-};
 
 const BREAK_SCHEDULE_DATA = [
   { label: 'Lunch', start: '13:00', end: '13:45', display: '1:00 PM – 1:45 PM' },
@@ -34,17 +31,9 @@ function format12h(timeStr: string): string {
   return `${displayH}:${m.toString().padStart(2, '0')} ${period}`;
 }
 
-function getBreakLabel(startTimeStr: string, index: number): string {
-  const d = new Date(startTimeStr);
-  const totalMins = d.getHours() * 60 + d.getMinutes();
-  // Lunch window: 12:00 – 14:30
-  if (totalMins >= 720 && totalMins <= 870) return 'Lunch';
-  // Tea Break window: 15:30 – 17:00
-  if (totalMins >= 930 && totalMins <= 1020) return 'Tea Break';
-  return `Break ${index + 1}`;
-}
 
 const WorkdayTimeline: React.FC<WorkdayTimelineProps> = ({
+  employeeId,
   startTime = "09:00",
   endTime = "18:00",
   lateThreshold = "09:00",
@@ -53,16 +42,22 @@ const WorkdayTimeline: React.FC<WorkdayTimelineProps> = ({
   workedMinutes = null,
   penaltyMinutes = null,
   token = null,
+  customBreakSessions,
+  dateContext,
 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const [progress, setProgress] = useState(0);
   const [checkInPct, setCheckInPct] = useState<number | null>(null);
   const [checkInLabel, setCheckInLabel] = useState<string>('');
+  const [checkOutPct, setCheckOutPct] = useState<number | null>(null);
+  const [checkOutLabel, setCheckOutLabel] = useState<string>('');
   const [workedTime, setWorkedTime] = useState<{ hours: number; minutes: number } | null>(null);
   const [isShiftOver, setIsShiftOver] = useState(false);
   const [isShiftPending, setIsShiftPending] = useState(false);
   const [checkInIsLate, setCheckInIsLate] = useState(false);
   const [breakSessions, setBreakSessions] = useState<BreakSession[]>([]);
+
+  const [desktopLogs, setDesktopLogs] = useState<DesktopActivityLog[]>([]);
 
   // Hover Tooltip State
   const [hoverText, setHoverText] = useState<string | null>(null);
@@ -76,30 +71,51 @@ const WorkdayTimeline: React.FC<WorkdayTimelineProps> = ({
     } catch { /* ignore */ }
   }, [token]);
 
+  const loadDesktopLogs = useCallback(async () => {
+    try {
+      const qs = new URLSearchParams();
+      if (employeeId) qs.append('employeeId', employeeId.toString());
+      if (dateContext) qs.append('date', dateContext);
+      
+      const endpoint = `/attendance/desktop-activity-log?${qs.toString()}`;
+      const res = await apiRequest<{ events: DesktopActivityLog[] }>(endpoint, { token: token || undefined });
+      setDesktopLogs(res.data?.events ?? []);
+    } catch { /* ignore */ }
+  }, [employeeId, dateContext, token]);
+
   useEffect(() => {
+    loadDesktopLogs();
+  }, [loadDesktopLogs]);
+
+  useEffect(() => {
+    if (customBreakSessions) {
+      setBreakSessions(customBreakSessions);
+      return;
+    }
     loadBreaks();
     const handler = () => loadBreaks();
     window.addEventListener('break-updated', handler);
     return () => window.removeEventListener('break-updated', handler);
-  }, [loadBreaks]);
+  }, [customBreakSessions, loadBreaks]);
 
   useEffect(() => {
     const calculate = () => {
-      const now = new Date();
+      const baseDate = dateContext ? new Date(dateContext + 'T00:00:00') : new Date();
+      const now = dateContext ? new Date(dateContext + 'T23:59:59') : new Date();
       const [startH, startM] = startTime.split(':').map(Number);
       const [endH, endM] = endTime.split(':').map(Number);
       const [lateH, lateM] = lateThreshold.split(':').map(Number);
 
-      const start = new Date(now); start.setHours(startH, startM, 0, 0);
-      const end = new Date(now); end.setHours(endH, endM, 0, 0);
-      const late = new Date(now); late.setHours(lateH, lateM, 0, 0);
+      const start = new Date(baseDate); start.setHours(startH, startM, 0, 0);
+      const end = new Date(baseDate); end.setHours(endH, endM, 0, 0);
+      const late = new Date(baseDate); late.setHours(lateH, lateM, 0, 0);
 
       const totalMs = end.getTime() - start.getTime();
       
       let elapsedMs = now.getTime() - start.getTime();
       if (checkOutTime) {
         const co = new Date(checkOutTime);
-        const coToday = new Date(now);
+        const coToday = new Date(baseDate);
         coToday.setHours(co.getHours(), co.getMinutes(), co.getSeconds(), 0);
         elapsedMs = coToday.getTime() - start.getTime();
       }
@@ -111,7 +127,7 @@ const WorkdayTimeline: React.FC<WorkdayTimelineProps> = ({
 
       if (checkInTime) {
         const ci = new Date(checkInTime);
-        const ciToday = new Date(now);
+        const ciToday = new Date(baseDate);
         ciToday.setHours(ci.getHours(), ci.getMinutes(), ci.getSeconds(), 0);
         
         let workedMins = Math.max(0, Math.floor((now.getTime() - ciToday.getTime()) / 60000));
@@ -119,7 +135,7 @@ const WorkdayTimeline: React.FC<WorkdayTimelineProps> = ({
           workedMins = workedMinutes;
         } else if (checkOutTime) {
           const co = new Date(checkOutTime);
-          const coToday = new Date(now);
+          const coToday = new Date(baseDate);
           coToday.setHours(co.getHours(), co.getMinutes(), co.getSeconds(), 0);
           workedMins = Math.max(0, Math.floor((coToday.getTime() - ciToday.getTime()) / 60000));
         }
@@ -132,24 +148,36 @@ const WorkdayTimeline: React.FC<WorkdayTimelineProps> = ({
       } else {
         setWorkedTime(null); setCheckInPct(null); setCheckInLabel(''); setCheckInIsLate(false);
       }
+
+      if (checkOutTime) {
+        const co = new Date(checkOutTime);
+        const coToday = new Date(baseDate);
+        coToday.setHours(co.getHours(), co.getMinutes(), co.getSeconds(), 0);
+        const coPct = Math.max(0, Math.min(100, ((coToday.getTime() - start.getTime()) / totalMs) * 100));
+        setCheckOutPct(coPct);
+        setCheckOutLabel(co.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', hour12: true }));
+      } else {
+        setCheckOutPct(null); setCheckOutLabel('');
+      }
     };
 
     calculate();
 
-    if (checkOutTime) {
+    if (checkOutTime || dateContext) {
       return;
     }
 
     const iv = setInterval(calculate, 30000);
     return () => clearInterval(iv);
-  }, [startTime, endTime, lateThreshold, checkInTime, checkOutTime, workedMinutes]);
+  }, [startTime, endTime, lateThreshold, checkInTime, checkOutTime, workedMinutes, dateContext]);
 
   const breakSessionsMapped = breakSessions.map(s => {
-    const now = new Date();
+    const baseDate = dateContext ? new Date(dateContext + 'T00:00:00') : new Date();
+    const now = dateContext ? new Date(dateContext + 'T23:59:59') : new Date();
     const [startH, startM] = startTime.split(':').map(Number);
     const [endH, endM] = endTime.split(':').map(Number);
-    const shiftStart = new Date(now); shiftStart.setHours(startH, startM, 0, 0);
-    const shiftEnd = new Date(now); shiftEnd.setHours(endH, endM, 0, 0);
+    const shiftStart = new Date(baseDate); shiftStart.setHours(startH, startM, 0, 0);
+    const shiftEnd = new Date(baseDate); shiftEnd.setHours(endH, endM, 0, 0);
     const totalMs = shiftEnd.getTime() - shiftStart.getTime();
 
     const bStart = new Date(s.startTime);
@@ -181,6 +209,64 @@ const WorkdayTimeline: React.FC<WorkdayTimelineProps> = ({
       return { ...b, startPct, endPct };
     });
   }, [startTime, endTime]);
+
+  const desktopSegments = useMemo(() => {
+    if (!desktopLogs.length) return [];
+    
+    const [startH, startM] = startTime.split(':').map(Number);
+    const [endH, endM] = endTime.split(':').map(Number);
+    const baseDate = dateContext ? new Date(dateContext + 'T00:00:00') : new Date();
+    const shiftStart = new Date(baseDate); shiftStart.setHours(startH, startM, 0, 0);
+    const shiftEnd = new Date(baseDate); shiftEnd.setHours(endH, endM, 0, 0);
+    const totalMs = shiftEnd.getTime() - shiftStart.getTime();
+
+    const segments: Array<{ type: 'active' | 'idle' | 'locked', startPct: number, endPct: number, durationMs: number }> = [];
+
+    // Base start point is check-in or first log
+    let lastTime = checkInTime ? new Date(checkInTime) : new Date(desktopLogs[0].timestamp);
+    // Ensure lastTime has the correct dateContext
+    lastTime.setFullYear(baseDate.getFullYear(), baseDate.getMonth(), baseDate.getDate());
+
+    let currentState: 'active' | 'idle' | 'locked' = 'active';
+
+    for (const log of desktopLogs) {
+      const logTime = new Date(log.timestamp);
+      logTime.setFullYear(baseDate.getFullYear(), baseDate.getMonth(), baseDate.getDate());
+
+      if (logTime < lastTime) continue;
+
+      if (logTime.getTime() > lastTime.getTime()) {
+        const startPct = Math.max(0, Math.min(100, ((lastTime.getTime() - shiftStart.getTime()) / totalMs) * 100));
+        const endPct = Math.max(0, Math.min(100, ((logTime.getTime() - shiftStart.getTime()) / totalMs) * 100));
+        if (endPct > startPct) {
+          segments.push({ type: currentState, startPct, endPct, durationMs: logTime.getTime() - lastTime.getTime() });
+        }
+      }
+
+      if (log.eventType === 'LOCK' || log.eventType === 'SLEEP') currentState = 'locked';
+      else if (log.eventType === 'UNLOCK' || log.eventType === 'WAKE') currentState = 'active';
+      else if (log.eventType === 'IDLE_START') currentState = 'idle';
+      else if (log.eventType === 'IDLE_END') currentState = 'active';
+      else if (log.eventType === 'SHUTDOWN') currentState = 'locked';
+
+      lastTime = logTime;
+    }
+
+    const finalEnd = checkOutTime ? new Date(checkOutTime) : new Date();
+    finalEnd.setFullYear(baseDate.getFullYear(), baseDate.getMonth(), baseDate.getDate());
+    
+    // Only add final segment if we haven't checked out and the shift isn't completely over
+    // or if we have a checkout time to bound it
+    if (finalEnd.getTime() > lastTime.getTime()) {
+        const startPct = Math.max(0, Math.min(100, ((lastTime.getTime() - shiftStart.getTime()) / totalMs) * 100));
+        const endPct = Math.max(0, Math.min(100, ((finalEnd.getTime() - shiftStart.getTime()) / totalMs) * 100));
+        if (endPct > startPct) {
+          segments.push({ type: currentState, startPct, endPct, durationMs: finalEnd.getTime() - lastTime.getTime() });
+        }
+    }
+
+    return segments;
+  }, [desktopLogs, startTime, endTime, dateContext, checkInTime, checkOutTime]);
 
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
     if (isExpanded) return;
@@ -231,11 +317,10 @@ const WorkdayTimeline: React.FC<WorkdayTimelineProps> = ({
         <div className="wdt-glass-shine" />
       </div>
 
-      {isExpanded && (
-        <div className="wdt-header-minimal">
+      <div className={`wdt-header-minimal ${!isExpanded ? 'wdt-header-collapsed' : ''}`}>
           <div className="wdt-minimal-title">
             <span className={`wdt-pulse-dot ${statusClass}`} />
-            <h2 className="wdt-title-sleek">Workday Progress</h2>
+            <h3 className="wdt-title-sleek">Workday Progress</h3>
             <span className="wdt-status-text">{statusLabel}</span>
           </div>
           <div className="wdt-minimal-meta">
@@ -255,8 +340,6 @@ const WorkdayTimeline: React.FC<WorkdayTimelineProps> = ({
             )}
           </div>
         </div>
-      )}
-
       <div className="wdt-bar-interface-row">
         <div className="wdt-gauge-area">
           <div className="wdt-gauge-container">
@@ -287,15 +370,27 @@ const WorkdayTimeline: React.FC<WorkdayTimelineProps> = ({
                   </div>
                 ))}
 
-                <div
-                  className={`wdt-fill-worked ${checkInPct !== null && checkInIsLate ? 'is-segmented' : ''}`}
-                  style={{
-                    left: `${checkInPct || 0}%`,
-                    width: `${Math.max(0, Math.min(100 - (checkInPct || 0), progress - (checkInPct || 0)))}%`
-                  }}
-                >
-                  <div className="wdt-fill-glow" />
-                </div>
+                {desktopSegments.length > 0 ? (
+                  desktopSegments.map((seg, i) => (
+                    <div
+                      key={i}
+                      className={`wdt-fill-segment wdt-fill-segment--${seg.type}`}
+                      style={{ left: `${seg.startPct}%`, width: `${seg.endPct - seg.startPct}%` }}
+                    >
+                      <div className="wdt-fill-glow" />
+                    </div>
+                  ))
+                ) : (
+                  <div
+                    className={`wdt-fill-worked ${checkInPct !== null && checkInIsLate ? 'is-segmented' : ''}`}
+                    style={{
+                      left: `${checkInPct || 0}%`,
+                      width: `${Math.max(0, Math.min(100 - (checkInPct || 0), progress - (checkInPct || 0)))}%`
+                    }}
+                  >
+                    <div className="wdt-fill-glow" />
+                  </div>
+                )}
 
                 {checkOutTime && progress < 100 && (
                   <div
@@ -336,6 +431,21 @@ const WorkdayTimeline: React.FC<WorkdayTimelineProps> = ({
                 </div>
               )}
 
+              {isExpanded && checkOutPct !== null && (
+                <div className="wdt-marker-checkout" style={{ left: `${checkOutPct}%` }}>
+                  <div 
+                    className="wdt-checkout-tag"
+                    style={{
+                      left: checkOutPct < 10 ? '0' : checkOutPct > 90 ? 'auto' : '50%',
+                      right: checkOutPct > 90 ? '0' : 'auto',
+                      transform: checkOutPct < 10 ? 'translateX(0)' : checkOutPct > 90 ? 'translateX(0)' : 'translateX(-50%)'
+                    }}
+                  >
+                    Checked Out: {checkOutLabel}
+                  </div>
+                </div>
+              )}
+
               {!isExpanded && hoverText && (
                 <div className="wdt-hover-bubble" style={{ left: `${hoverPos}%` }}>
                   {hoverText}
@@ -361,69 +471,74 @@ const WorkdayTimeline: React.FC<WorkdayTimelineProps> = ({
       </div>
 
       {isExpanded && (
-        <div className="wdt-hud-grid">
-          <div className="wdt-hud-tile">
-            <div className="wdt-tile-icon"><Timer size={18} /></div>
-            <div className="wdt-tile-content">
-              <span className="wdt-tile-title">Shift Window</span>
-              <div className="wdt-tile-val">{format12h(startTime)} – {format12h(endTime)}</div>
-            </div>
-          </div>
-
-          <div className="wdt-hud-tile">
-            <div className="wdt-tile-icon"><Coffee size={18} /></div>
-            <div className="wdt-tile-content">
-              <span className="wdt-tile-title">Break Schedule</span>
-              <div className="wdt-schedule-mini">
-                {BREAK_SCHEDULE_DATA.map(b => (
-                  <div key={b.label} className="wdt-mini-row">
-                    <span>{b.label}</span>
-                    <span className="bold">{b.display}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          <div className="wdt-hud-tile">
-            <div className="wdt-tile-icon"><Info size={18} /></div>
-            <div className="wdt-tile-content">
-              <span className="wdt-tile-title">Stats Today</span>
-              <div className="wdt-stats-mini">
-                <div className="wdt-stat-item">
-                  <span className="label">Check In</span>
-                  <span className="val">{checkInLabel || '--:--'}</span>
+        <div className="wdt-expanded-layout">
+          <div className="wdt-event-log-panel">
+            <h3 className="wdt-panel-title">Event Log</h3>
+            <div className="wdt-log-list">
+              {checkInTime && (
+                <div className="wdt-log-item">
+                  <span className="wdt-log-time">{new Date(checkInTime).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', hour12: true })}</span>
+                  <span className="wdt-log-icon"><CheckCircle size={14} color="var(--wdt-accent-emerald)" strokeWidth={2.5} /></span>
+                  <span className="wdt-log-desc">Checked In</span>
                 </div>
-                {breakSessions.length === 0 ? (
-                  <div className="wdt-stat-item">
-                    <span className="label">Breaks</span>
-                    <span className="val" style={{ opacity: 0.45 }}>—</span>
-                  </div>
-                ) : (
-                  breakSessions.map((s, i) => {
-                    const bStart = new Date(s.startTime);
-                    const startTimeLabel = bStart.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', hour12: true });
-                    const endTimeLabel = s.endTime
-                      ? new Date(s.endTime).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', hour12: true })
-                      : 'Ongoing';
-                    const durationLabel = s.endTime
-                      ? s.durationMinutes >= 60
-                        ? `${Math.floor(s.durationMinutes / 60)}h ${s.durationMinutes % 60}m`
-                        : `${s.durationMinutes}m`
-                      : '';
-                    const displayVal = durationLabel 
-                      ? `${startTimeLabel} – ${endTimeLabel} (${durationLabel})`
-                      : `${startTimeLabel} – Ongoing`;
+              )}
+              {desktopLogs.map((log) => (
+                <div key={log.id} className="wdt-log-item">
+                  <span className="wdt-log-time">{new Date(log.timestamp).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', hour12: true })}</span>
+                  <span className="wdt-log-icon">
+                    {log.eventType === 'LOCK' || log.eventType === 'SLEEP' ? <Lock size={14} color="#8b5cf6" /> : 
+                     log.eventType === 'UNLOCK' || log.eventType === 'WAKE' ? <Unlock size={14} color="var(--wdt-accent-emerald)" /> : 
+                     log.eventType === 'IDLE_START' ? <Moon size={14} color="#64748b" /> : 
+                     log.eventType === 'IDLE_END' ? <Sun size={14} color="#f59e0b" /> : <Power size={14} color="var(--wdt-accent-rose)" />}
+                  </span>
+                  <span className="wdt-log-desc">
+                    {log.eventType === 'LOCK' ? 'Screen Locked' : 
+                     log.eventType === 'UNLOCK' ? 'Screen Unlocked' : 
+                     log.eventType === 'IDLE_START' ? 'Went Idle' : 
+                     log.eventType === 'IDLE_END' ? 'Returned from Idle' : 
+                     log.eventType === 'SLEEP' ? 'System Sleep' : 
+                     log.eventType === 'WAKE' ? 'System Wake' : 'Shutdown'}
+                  </span>
+                </div>
+              ))}
+              {checkOutTime && (
+                <div className="wdt-log-item">
+                  <span className="wdt-log-time">{new Date(checkOutTime).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', hour12: true })}</span>
+                  <span className="wdt-log-icon"><LogOut size={14} color="var(--wdt-accent-rose)" /></span>
+                  <span className="wdt-log-desc">Checked Out</span>
+                </div>
+              )}
+            </div>
+          </div>
 
-                    return (
-                      <div key={s.id} className="wdt-stat-item">
-                        <span className="label">{getBreakLabel(s.startTime, i)}</span>
-                        <span className="val">{displayVal}</span>
-                      </div>
-                    );
-                  })
-                )}
+          <div className="wdt-summary-panel">
+            <h3 className="wdt-panel-title">Day Summary</h3>
+            <div className="wdt-summary-cards">
+              <div className="wdt-summary-card">
+                <span className="wdt-sc-label">Productive Time</span>
+                <span className="wdt-sc-value">{workedTime ? formatDuration(workedTime.hours, workedTime.minutes) : '--'}</span>
               </div>
+              <div className="wdt-summary-card">
+                <span className="wdt-sc-label">Break Time</span>
+                <span className="wdt-sc-value">
+                  {breakSessions.length > 0 ? `${breakSessions.reduce((acc, s) => acc + s.durationMinutes, 0)}m` : '--'}
+                </span>
+              </div>
+              <div className="wdt-summary-card">
+                <span className="wdt-sc-label">Events Logged</span>
+                <span className="wdt-sc-value">{desktopLogs.length}</span>
+              </div>
+            </div>
+            
+            {/* Break Schedule mapping just to keep the old info available */}
+            <div className="wdt-summary-schedule">
+              <span className="wdt-sc-label">Break Schedule</span>
+              {BREAK_SCHEDULE_DATA.map(b => (
+                <div key={b.label} className="wdt-mini-row">
+                  <span>{b.label}</span>
+                  <span className="bold">{b.display}</span>
+                </div>
+              ))}
             </div>
           </div>
         </div>

@@ -9,6 +9,8 @@ import { ATTENDANCE_EVENT } from "../../components/common/attendanceQuickActionU
 import { apiRequest } from "../../services/api";
 import type { Attendance, AttendanceRegularizationRequest, Employee, Role } from "../../types";
 import { formatAttendanceTime, formatDateLabel, formatInTimeZone, formatWeekday, isToday } from "../../utils/format";
+import { useApp } from "../../context/useApp";
+import WorkdayTimeline from "../dashboard/WorkdayTimeline";
 
 type AttendancePageProps = {
   token: string | null;
@@ -161,7 +163,28 @@ function getCalendarDays({ month, year }: VisibleMonth) {
 }
 
 export default function AttendancePage({ token, role, currentEmployeeId, currentEmployee }: AttendancePageProps) {
+  const { liveStatuses } = useApp();
   const today = toLocalDateString(new Date());
+  const [selectedTimelineItem, setSelectedTimelineItem] = useState<{
+    date: string;
+    record: Attendance;
+  } | null>(null);
+
+  const liveStatusArray = useMemo(() => {
+    return Object.values(liveStatuses || {});
+  }, [liveStatuses]);
+
+  const handleViewTimeline = (empId: number) => {
+    const record = attendance.find(a => a.employeeId === empId);
+    if (record) {
+      setSelectedTimelineItem({
+        date: today,
+        record: record
+      });
+    } else {
+      toast.error("No active attendance record found for this employee today.");
+    }
+  };
   const joiningDateFormatted = currentEmployee?.joiningDate 
     ? toLocalDateString(new Date(currentEmployee.joiningDate)) 
     : undefined;
@@ -171,6 +194,8 @@ export default function AttendancePage({ token, role, currentEmployeeId, current
   const [employeesTotal, setEmployeesTotal] = useState(0);
   const [filterStatus, setFilterStatus] = useState("");
   const [teamLeadMainTab, setTeamLeadMainTab] = useState<TeamLeadMainTab>("DAY");
+  const [dailyViewTab, setDailyViewTab] = useState<"LIVE" | "HISTORY">("HISTORY");
+  const [liveStatusFilter, setLiveStatusFilter] = useState<"ALL" | "ACTIVE" | "AWAY" | "OFFLINE">("ALL");
   const [filterDate, setFilterDate] = useState(today);
   const [datePickerOpen, setDatePickerOpen] = useState(false);
   const [visibleMonth, setVisibleMonth] = useState<VisibleMonth>(() => getVisibleMonthFromDate(today));
@@ -651,30 +676,191 @@ export default function AttendancePage({ token, role, currentEmployeeId, current
 
   return (
     <section className="stack">
-      {showTeamWorkspace ? (
-        <div className="attendance-team-main-tabs" role="tablist" aria-label="Attendance workspace">
-          <button
-            type="button"
-            role="tab"
-            aria-selected={teamLeadMainTab === "DAY"}
-            className={`attendance-team-main-tab ${teamLeadMainTab === "DAY" ? "attendance-team-main-tab--active" : ""}`.trim()}
-            onClick={() => setTeamLeadMainTab("DAY")}
-          >
-            Daily View
-          </button>
-          <button
-            type="button"
-            role="tab"
-            aria-selected={teamLeadMainTab === "MONTH"}
-            className={`attendance-team-main-tab ${teamLeadMainTab === "MONTH" ? "attendance-team-main-tab--active" : ""}`.trim()}
-            onClick={() => setTeamLeadMainTab("MONTH")}
-          >
-            Monthly Summary
-          </button>
+      {(showTeamWorkspace || (canManageOthers && teamLeadMainTab === "DAY")) ? (
+        <div className="attendance-workspace-nav-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', gap: '16px', flexWrap: 'wrap', width: '100%' }}>
+          {/* Left side: daily sub-tabs */}
+          {canManageOthers && (!showTeamWorkspace || teamLeadMainTab === "DAY") ? (
+            <div className="attendance-team-main-tabs daily-sub-tabs" role="tablist" aria-label="Daily workspace sections" style={{ marginBottom: 0 }}>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={dailyViewTab === "HISTORY"}
+                className={`attendance-team-main-tab ${dailyViewTab === "HISTORY" ? "attendance-team-main-tab--active" : ""}`.trim()}
+                onClick={() => setDailyViewTab("HISTORY")}
+              >
+                Daily Attendance Logs
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={dailyViewTab === "LIVE"}
+                className={`attendance-team-main-tab ${dailyViewTab === "LIVE" ? "attendance-team-main-tab--active" : ""}`.trim()}
+                onClick={() => setDailyViewTab("LIVE")}
+              >
+                Live Telemetry Tracker
+              </button>
+            </div>
+          ) : null}
+
+          {/* Right side: main workspace tabs */}
+          {showTeamWorkspace ? (
+            <div className="attendance-team-main-tabs" role="tablist" aria-label="Attendance workspace" style={{ marginLeft: 'auto' }}>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={teamLeadMainTab === "DAY"}
+                className={`attendance-team-main-tab ${teamLeadMainTab === "DAY" ? "attendance-team-main-tab--active" : ""}`.trim()}
+                onClick={() => setTeamLeadMainTab("DAY")}
+              >
+                Daily View
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={teamLeadMainTab === "MONTH"}
+                className={`attendance-team-main-tab ${teamLeadMainTab === "MONTH" ? "attendance-team-main-tab--active" : ""}`.trim()}
+                onClick={() => setTeamLeadMainTab("MONTH")}
+              >
+                Monthly Summary
+              </button>
+            </div>
+          ) : null}
         </div>
       ) : null}
 
-      {(!showTeamWorkspace || teamLeadMainTab === "DAY") ? (
+      {canManageOthers && (!showTeamWorkspace || teamLeadMainTab === "DAY") && dailyViewTab === "LIVE" && (() => {
+        const activeCount = liveStatusArray.filter(e => e.status === "ACTIVE").length;
+        const awayCount = liveStatusArray.filter(e => e.status === "AWAY").length;
+        const offlineCount = liveStatusArray.filter(e => e.status === "OFFLINE").length;
+
+        const filteredEmployees = liveStatusFilter === "ALL"
+          ? liveStatusArray
+          : liveStatusArray.filter(e => e.status === liveStatusFilter);
+
+        // Sort: Active first, then Away, then Offline
+        const sortedEmployees = [...filteredEmployees].sort((a, b) => {
+          const order = { ACTIVE: 0, AWAY: 1, OFFLINE: 2 };
+          return (order[a.status] ?? 3) - (order[b.status] ?? 3);
+        });
+
+        return (
+        <div className="card live-status-card">
+          <div className="live-status-header">
+            <div className="live-status-title-stack">
+              <div className="live-status-indicator-glow" />
+              <h3 style={{ margin: 0 }}>Workforce Live Status</h3>
+            </div>
+            <span className="live-status-time">Real-time telemetry</span>
+          </div>
+
+          {/* Summary counters */}
+          <div className="live-summary-row">
+            <div className="live-summary-pill live-summary-pill--active">
+              <span className="live-summary-dot live-summary-dot--active" />
+              <span className="live-summary-count">{activeCount}</span>
+              <span className="live-summary-label">Active</span>
+            </div>
+            <div className="live-summary-pill live-summary-pill--away">
+              <span className="live-summary-dot live-summary-dot--away" />
+              <span className="live-summary-count">{awayCount}</span>
+              <span className="live-summary-label">Away</span>
+            </div>
+            <div className="live-summary-pill live-summary-pill--offline">
+              <span className="live-summary-dot live-summary-dot--offline" />
+              <span className="live-summary-count">{offlineCount}</span>
+              <span className="live-summary-label">Offline</span>
+            </div>
+          </div>
+
+          {/* Filter tabs */}
+          <div className="live-filter-tabs">
+            {(["ALL", "ACTIVE", "AWAY", "OFFLINE"] as const).map((filter) => {
+              const count = filter === "ALL" ? liveStatusArray.length
+                : filter === "ACTIVE" ? activeCount
+                : filter === "AWAY" ? awayCount : offlineCount;
+              return (
+                <button
+                  key={filter}
+                  type="button"
+                  className={`live-filter-tab ${liveStatusFilter === filter ? `live-filter-tab--active live-filter-tab--${filter.toLowerCase()}` : ""}`.trim()}
+                  onClick={() => setLiveStatusFilter(filter)}
+                >
+                  {filter === "ALL" ? "All" : filter.charAt(0) + filter.slice(1).toLowerCase()}
+                  <span className="live-filter-tab__count">{count}</span>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Compact employee list */}
+          <div className="live-compact-list">
+            {sortedEmployees.length === 0 ? (
+              <div className="live-status-empty">
+                <span className="muted">No employees in this category</span>
+              </div>
+            ) : (
+              sortedEmployees.map((emp) => {
+                const isActive = emp.status === "ACTIVE";
+                const isAway = emp.status === "AWAY";
+                const statusClass = isActive ? "active" : isAway ? "away" : "offline";
+                const statusLabel = isActive ? "Active" : isAway ? "Away" : "Offline";
+                const todayRecord = attendance.find(a => a.employeeId === emp.employeeId);
+                const hasCheckIn = !!emp.checkInTime;
+
+                return (
+                  <div key={emp.employeeId} className={`live-row live-row--${statusClass}`}>
+                    <div className="live-row__left">
+                      <div className="live-avatar-wrapper">
+                        <div className="live-avatar-initials">
+                          {emp.firstName.charAt(0)}{emp.lastName.charAt(0)}
+                        </div>
+                        <span className={`live-badge live-badge--${statusClass}`} />
+                      </div>
+                      <div className="live-row__identity">
+                        <span className="live-name">{emp.firstName} {emp.lastName}</span>
+                        <span className="live-code">#{emp.employeeCode}</span>
+                      </div>
+                    </div>
+                    <div className="live-row__center">
+                      <span className={`live-status-chip live-status-chip--${statusClass}`}>
+                        <span className={`live-status-chip__dot live-status-chip__dot--${statusClass}`} />
+                        {statusLabel}
+                      </span>
+                    </div>
+                    <div className="live-row__meta">
+                      <div className="live-row__meta-item">
+                        <span className="label">Check-in</span>
+                        <span className="value">{emp.checkInTime ? formatAttendanceTime(emp.checkInTime) : "—"}</span>
+                      </div>
+                      {(isAway || !isActive) && emp.lastEventTime && (
+                        <div className="live-row__meta-item">
+                          <span className="label">Last Event</span>
+                          <span className="value font-mono">
+                            {emp.lastEvent?.replace("_", " ") || "—"} · {new Date(emp.lastEventTime).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', hour12: true })}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                    <div className="live-row__action">
+                      <button
+                        type="button"
+                        className="live-timeline-btn"
+                        disabled={!hasCheckIn || !todayRecord}
+                        onClick={() => handleViewTimeline(emp.employeeId)}
+                      >
+                        Timeline
+                      </button>
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+        </div>
+        );
+      })()}
+
+      {(!showTeamWorkspace || teamLeadMainTab === "DAY") && (!canManageOthers || dailyViewTab === "HISTORY") ? (
         <div className="card dense-table-card attendance-table-card">
           <div className="stack">
             <div className="attendance-history-header">
@@ -1326,6 +1512,30 @@ export default function AttendancePage({ token, role, currentEmployeeId, current
             </button>
           </div>
         </div>
+      </Modal>
+
+      <Modal 
+        open={!!selectedTimelineItem} 
+        title={`Workday Timeline - ${selectedTimelineItem ? formatDateLabel(selectedTimelineItem.date) : ""}`} 
+        onClose={() => setSelectedTimelineItem(null)}
+      >
+        {selectedTimelineItem && (
+          <div className="stack" style={{ padding: '8px 0', gap: '16px' }}>
+            <WorkdayTimeline
+              checkInTime={selectedTimelineItem.record.checkInTime}
+              checkOutTime={selectedTimelineItem.record.checkOutTime}
+              workedMinutes={selectedTimelineItem.record.workedMinutes}
+              penaltyMinutes={selectedTimelineItem.record.penaltyMinutes}
+              customBreakSessions={selectedTimelineItem.record.breakSessions || []}
+              dateContext={selectedTimelineItem.date}
+            />
+            <div className="button-row" style={{ marginTop: '12px', justifyContent: 'flex-end' }}>
+              <button className="secondary" onClick={() => setSelectedTimelineItem(null)}>
+                Close
+              </button>
+            </div>
+          </div>
+        )}
       </Modal>
 
     </section>

@@ -127,7 +127,7 @@ export default function Navbar({ title, navOpen, onToggleNav, token, currentEmpl
 
   const lastScrollY = useRef(0);
   const notificationsRef = useRef<HTMLDivElement | null>(null);
-  const canSearchEmployees = role !== "EMPLOYEE";
+  const canSearchEmployees = false;
 
   const totalUnreadCount = useMemo(() => {
     return notifications.filter(n => !n.isRead).length;

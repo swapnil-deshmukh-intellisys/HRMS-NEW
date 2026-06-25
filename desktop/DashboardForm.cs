@@ -549,9 +549,10 @@ namespace HRMS_Agent
             {
                 _lblTimerTitle.Text = "ACTIVE BREAK DURATION";
                 var activeBreak = _currentBreaks.Find(b => b.EndTime == null);
-                if (activeBreak != null && DateTime.TryParse(activeBreak.StartTime, out var start))
+                if (activeBreak != null && DateTimeOffset.TryParse(activeBreak.StartTime, out var startOffset))
                 {
-                    var elapsed = DateTime.UtcNow - start;
+                    var elapsed = DateTimeOffset.UtcNow - startOffset;
+                    if (elapsed < TimeSpan.Zero) elapsed = TimeSpan.Zero;
                     _lblTimerText.Text = string.Format("{0:00}h {1:00}m {2:00}s", elapsed.Hours, elapsed.Minutes, elapsed.Seconds);
                     _lblTimerText.ForeColor = Color.FromArgb(230, 126, 34); // Orange
                 }
@@ -559,9 +560,10 @@ namespace HRMS_Agent
             else if (!hasCheckedOut)
             {
                 _lblTimerTitle.Text = "ACTIVE SHIFT ELAPSED TIME";
-                if (DateTime.TryParse(_currentAttendance.CheckInTime, out var checkIn))
+                if (DateTimeOffset.TryParse(_currentAttendance.CheckInTime, out var checkInOffset))
                 {
-                    var elapsed = DateTime.UtcNow - checkIn;
+                    var elapsed = DateTimeOffset.UtcNow - checkInOffset;
+                    if (elapsed < TimeSpan.Zero) elapsed = TimeSpan.Zero;
                     _lblTimerText.Text = string.Format("{0:00}h {1:00}m {2:00}s", elapsed.Hours, elapsed.Minutes, elapsed.Seconds);
                     _lblTimerText.ForeColor = Color.FromArgb(46, 204, 113); // Green
                 }
@@ -569,9 +571,10 @@ namespace HRMS_Agent
             else
             {
                 _lblTimerTitle.Text = "SHIFT TOTAL WORKED TIME";
-                if (DateTime.TryParse(_currentAttendance.CheckInTime, out var checkIn) && DateTime.TryParse(_currentAttendance.CheckOutTime, out var checkOut))
+                if (DateTimeOffset.TryParse(_currentAttendance.CheckInTime, out var checkInOffset) && DateTimeOffset.TryParse(_currentAttendance.CheckOutTime, out var checkOutOffset))
                 {
-                    var elapsed = checkOut - checkIn;
+                    var elapsed = checkOutOffset - checkInOffset;
+                    if (elapsed < TimeSpan.Zero) elapsed = TimeSpan.Zero;
                     _lblTimerText.Text = string.Format("{0:00}h {1:00}m {2:00}s (Done)", elapsed.Hours, elapsed.Minutes, elapsed.Seconds);
                     _lblTimerText.ForeColor = Color.FromArgb(127, 140, 141); // Gray
                 }

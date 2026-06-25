@@ -40,5 +40,12 @@
     "title": "Implement Points Dispute Tickets workflow",
     "status": "COMPLETED",
     "narrative": "Added PointsDisputeTicket database model and status enum to the Prisma schema, and pushed it to remote database. Created the Express API endpoints (post dispute, fetch, resolve dispute with transaction-safe points reversal and compensating history entries in DB). Overhauled the Leaderboard Page frontend, adding an inline dispute raising form to the Points History Modal, showing status badges, and building a dedicated HR Disputes Queue tab to review, approve, and reject tickets."
+  },
+  {
+    "date": "2026-06-25",
+    "taskId": "TSK-ATT-005",
+    "title": "Fix Workday Timeline Calculations & Overhaul UI Popup",
+    "status": "COMPLETED",
+    "narrative": "Corrected Workday Timeline calculations to prevent calculating worked duration up to 23:59:59 PM for past dates with missing checkouts, aligning it with database workedMinutes. Used zoned time parsing for check-in/out and break times to eliminate UTC-to-local timezone conversion offsets. Overhauled modal UI, increasing width to 760px, resolving overlaps, and stripping double card styles when displayed inside popups."
   }
 ]

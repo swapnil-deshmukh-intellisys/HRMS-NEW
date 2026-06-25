@@ -57,7 +57,7 @@ type NavbarProps = {
   onLogout: () => void | Promise<void>;
 };
 
-export default function Navbar({ title, navOpen, onToggleNav, token, currentEmployeeId, role, onLogout }: NavbarProps) {
+export default function Navbar({ title, navOpen, onToggleNav, token, currentEmployeeId, onLogout }: NavbarProps) {
   const navigate = useNavigate();
   const { summary, notifications, loading: notificationsLoading, error: notificationsError, refreshSummary, markNotificationAsRead, markAllNotificationsAsRead, serverTimeOffset, liveStatuses } = useApp();
   const { subscribeUser, isSubscribing } = usePushNotifications(token);

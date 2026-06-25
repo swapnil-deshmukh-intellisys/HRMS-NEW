@@ -635,7 +635,7 @@
     "owner": "Fullstack Team",
     "expectedOutput": "Desktop Agent displays native reminders, custom popups, and state-aware context menus for check-in/out and breaks.",
     "createdAt": "2026-06-25T09:00:00Z",
-    "updatedAt": "2026-06-25T04:48:10.370Z"
+    "updatedAt": "2026-06-25T07:25:30.634Z"
   },
   {
     "taskId": "TSK-DESK-003",
@@ -664,6 +664,6 @@
     "owner": "Fullstack Team",
     "expectedOutput": "Desktop Agent features a fully functional visible dashboard window with telemetry event logging and state-aware marking controls.",
     "createdAt": "2026-06-25T10:00:00Z",
-    "updatedAt": "2026-06-25T05:08:02.256Z"
+    "updatedAt": "2026-06-25T07:25:30.650Z"
   }
 ]

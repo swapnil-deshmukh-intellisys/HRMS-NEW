@@ -341,6 +341,21 @@ namespace HRMS_Agent
             }
         }
 
+        private void SetButtonState(Button btn, bool enabled, Color activeBackColor)
+        {
+            btn.Enabled = enabled;
+            if (enabled)
+            {
+                btn.BackColor = activeBackColor;
+                btn.ForeColor = Color.White;
+            }
+            else
+            {
+                btn.BackColor = Color.FromArgb(45, 45, 60); // Dark muted slate
+                btn.ForeColor = Color.FromArgb(100, 100, 120); // Muted low-contrast gray
+            }
+        }
+
         public void UpdateState(AttendanceRecord? attendance, List<BreakSessionRecord> breaks)
         {
             _currentAttendance = attendance;
@@ -360,21 +375,17 @@ namespace HRMS_Agent
             bool hasCheckedOut = attendance?.CheckOutTime != null;
             bool isOnBreak = breaks.Exists(b => b.EndTime == null);
 
-            // Clear styling and set defaults
-            _btnCheckIn.Text = "🌅 Check In";
-            _btnLunch.Text = "🍱 Lunch";
-            _btnTea.Text = "☕ Tea Break";
-            _btnCheckOut.Text = "🚪 Check Out";
+            // Set default disabled states
+            SetButtonState(_btnCheckIn, false, Color.FromArgb(46, 204, 113));
+            SetButtonState(_btnLunch, false, Color.FromArgb(9, 132, 227));
+            SetButtonState(_btnTea, false, Color.FromArgb(9, 132, 227));
+            SetButtonState(_btnCheckOut, false, Color.FromArgb(231, 76, 60));
 
-            _btnCheckIn.BackColor = Color.FromArgb(46, 204, 113); // Green
-            _btnLunch.BackColor = Color.FromArgb(9, 132, 227); // Blue
-            _btnTea.BackColor = Color.FromArgb(9, 132, 227); // Blue
-            _btnCheckOut.BackColor = Color.FromArgb(231, 76, 60); // Red
-
-            _btnCheckIn.Enabled = false;
-            _btnLunch.Enabled = false;
-            _btnTea.Enabled = false;
-            _btnCheckOut.Enabled = false;
+            // Clear dynamic text overrides
+            _btnCheckIn.Text = "Check In";
+            _btnLunch.Text = "Lunch";
+            _btnTea.Text = "Tea Break";
+            _btnCheckOut.Text = "Check Out";
 
             if (!ApiSync.IsLoggedIn)
             {
@@ -387,35 +398,32 @@ namespace HRMS_Agent
             {
                 _lblStatusText.Text = "Ready to Check-In";
                 _lblStatusText.ForeColor = Color.FromArgb(46, 204, 113);
-                _btnCheckIn.Enabled = true;
+                SetButtonState(_btnCheckIn, true, Color.FromArgb(46, 204, 113));
             }
             else if (isOnBreak)
             {
                 var activeBreak = breaks.Find(b => b.EndTime == null);
                 string breakName = "Break";
-                if (activeBreak != null && DateTime.TryParse(activeBreak.StartTime, out var start))
+                if (activeBreak != null && DateTimeOffset.TryParse(activeBreak.StartTime, out var startOffset))
                 {
-                    var localStart = start.ToLocalTime();
+                    var localStart = startOffset.LocalDateTime;
                     if (localStart.Hour == 10 || (localStart.Hour == 11 && localStart.Minute <= 15))
                     {
                         breakName = "Morning Tea";
-                        _btnTea.Text = "🛑 End Tea";
-                        _btnTea.BackColor = Color.FromArgb(231, 76, 60);
-                        _btnTea.Enabled = true;
+                        _btnTea.Text = "End Tea";
+                        SetButtonState(_btnTea, true, Color.FromArgb(231, 76, 60)); // Red for active break end
                     }
                     else if (localStart.Hour == 12 || localStart.Hour == 13 || localStart.Hour == 14)
                     {
                         breakName = "Lunch";
-                        _btnLunch.Text = "🛑 End Lunch";
-                        _btnLunch.BackColor = Color.FromArgb(231, 76, 60);
-                        _btnLunch.Enabled = true;
+                        _btnLunch.Text = "End Lunch";
+                        SetButtonState(_btnLunch, true, Color.FromArgb(231, 76, 60)); // Red for active break end
                     }
                     else
                     {
                         breakName = "Evening Tea";
-                        _btnTea.Text = "🛑 End Tea";
-                        _btnTea.BackColor = Color.FromArgb(231, 76, 60);
-                        _btnTea.Enabled = true;
+                        _btnTea.Text = "End Tea";
+                        SetButtonState(_btnTea, true, Color.FromArgb(231, 76, 60)); // Red for active break end
                     }
                 }
                 _lblStatusText.Text = $"On {breakName}";
@@ -428,53 +436,53 @@ namespace HRMS_Agent
 
                 // Check which breaks were already taken today to hide/disable them
                 bool tookMorningTea = breaks.Exists(b => {
-                    if (DateTime.TryParse(b.StartTime, out var start))
+                    if (DateTimeOffset.TryParse(b.StartTime, out var startOffset))
                     {
-                        var localStart = start.ToLocalTime();
+                        var localStart = startOffset.LocalDateTime;
                         return localStart.Hour == 10 || (localStart.Hour == 11 && localStart.Minute <= 15);
                     }
                     return false;
                 });
 
                 bool tookLunch = breaks.Exists(b => {
-                    if (DateTime.TryParse(b.StartTime, out var start))
+                    if (DateTimeOffset.TryParse(b.StartTime, out var startOffset))
                     {
-                        var localStart = start.ToLocalTime();
+                        var localStart = startOffset.LocalDateTime;
                         return localStart.Hour == 12 || localStart.Hour == 13 || localStart.Hour == 14;
                     }
                     return false;
                 });
 
                 bool tookEveningTea = breaks.Exists(b => {
-                    if (DateTime.TryParse(b.StartTime, out var start))
+                    if (DateTimeOffset.TryParse(b.StartTime, out var startOffset))
                     {
-                        var localStart = start.ToLocalTime();
+                        var localStart = startOffset.LocalDateTime;
                         return localStart.Hour == 15 || localStart.Hour == 16 || localStart.Hour == 17;
                     }
                     return false;
                 });
 
                 // Enable buttons if they haven't taken the break yet
-                _btnLunch.Enabled = !tookLunch;
-                _btnTea.Enabled = !tookMorningTea || !tookEveningTea;
+                SetButtonState(_btnLunch, !tookLunch, Color.FromArgb(9, 132, 227));
+                SetButtonState(_btnTea, !tookMorningTea || !tookEveningTea, Color.FromArgb(9, 132, 227));
                 
                 // Set button labels dynamically
                 if (tookMorningTea && !tookEveningTea)
                 {
-                    _btnTea.Text = "☕ Evening Tea";
+                    _btnTea.Text = "Evening Tea";
                 }
                 else if (tookMorningTea && tookEveningTea)
                 {
-                    _btnTea.Text = "☕ Tea Done";
-                    _btnTea.Enabled = false;
+                    _btnTea.Text = "Tea Done";
+                    SetButtonState(_btnTea, false, Color.FromArgb(9, 132, 227));
                 }
 
                 if (tookLunch)
                 {
-                    _btnLunch.Text = "🍱 Lunch Done";
+                    _btnLunch.Text = "Lunch Done";
                 }
 
-                _btnCheckOut.Enabled = true;
+                SetButtonState(_btnCheckOut, true, Color.FromArgb(231, 76, 60));
             }
             else
             {
@@ -485,10 +493,10 @@ namespace HRMS_Agent
 
         private async Task TriggerAction(Func<Task<bool>> apiCall, string successMsg)
         {
-            _btnCheckIn.Enabled = false;
-            _btnLunch.Enabled = false;
-            _btnTea.Enabled = false;
-            _btnCheckOut.Enabled = false;
+            SetButtonState(_btnCheckIn, false, Color.FromArgb(46, 204, 113));
+            SetButtonState(_btnLunch, false, Color.FromArgb(9, 132, 227));
+            SetButtonState(_btnTea, false, Color.FromArgb(9, 132, 227));
+            SetButtonState(_btnCheckOut, false, Color.FromArgb(231, 76, 60));
 
             _lblStatusText.Text = "Syncing...";
 

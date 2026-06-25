@@ -479,8 +479,8 @@ namespace HRMS_Agent
                 }
             }
 
-            // 3. Lunch Break Reminder (Triggered between 1:05 PM and 1:30 PM)
-            if (now.Hour == 13 && now.Minute >= 5 && now.Minute <= 30)
+            // 3. Lunch Break Reminder (Triggered between 1:00 PM and 1:40 PM)
+            if (now.Hour == 13 && now.Minute >= 0 && now.Minute <= 40)
             {
                 if (hasCheckedIn && !hasCheckedOut && !isOnBreak && _lastLunchReminderDate != today)
                 {

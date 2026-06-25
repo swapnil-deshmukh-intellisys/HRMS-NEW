@@ -144,7 +144,7 @@ namespace HRMS_Agent
                 Font = new Font("Segoe UI", 8, FontStyle.Bold),
                 ForeColor = Color.FromArgb(9, 132, 227), // Accent Blue
                 Location = new Point(15, 15),
-                Size = new Size(220, 15)
+                Size = new Size(220, 18)
             };
 
             _lblStatusText = new Label
@@ -152,8 +152,8 @@ namespace HRMS_Agent
                 Text = "Not Connected",
                 Font = new Font("Segoe UI", 12, FontStyle.Bold),
                 ForeColor = Color.White,
-                Location = new Point(15, 32),
-                Size = new Size(220, 25),
+                Location = new Point(15, 33),
+                Size = new Size(220, 30),
                 TextAlign = ContentAlignment.MiddleLeft
             };
 
@@ -162,8 +162,8 @@ namespace HRMS_Agent
                 Text = "TIME TRACKING",
                 Font = new Font("Segoe UI", 8, FontStyle.Bold),
                 ForeColor = Color.FromArgb(127, 140, 141),
-                Location = new Point(15, 65),
-                Size = new Size(220, 15)
+                Location = new Point(15, 75),
+                Size = new Size(220, 18)
             };
 
             _lblTimerText = new Label
@@ -171,17 +171,17 @@ namespace HRMS_Agent
                 Text = "--h --m --s",
                 Font = new Font("Consolas", 12, FontStyle.Bold),
                 ForeColor = Color.FromArgb(220, 221, 230),
-                Location = new Point(15, 82),
-                Size = new Size(220, 25),
+                Location = new Point(15, 93),
+                Size = new Size(220, 30),
                 TextAlign = ContentAlignment.MiddleLeft
             };
 
-            // Grid of Buttons
+            // Grid of Buttons (Optimized width/height and removed space-heavy emojis)
             _btnCheckIn = new Button
             {
-                Text = "🌅 Check In",
-                Location = new Point(15, 125),
-                Size = new Size(105, 40),
+                Text = "Check In",
+                Location = new Point(15, 140),
+                Size = new Size(105, 42),
                 BackColor = Color.FromArgb(46, 204, 113), // Solid Green
                 ForeColor = Color.White,
                 FlatStyle = FlatStyle.Flat,
@@ -193,9 +193,9 @@ namespace HRMS_Agent
 
             _btnLunch = new Button
             {
-                Text = "🍱 Lunch",
-                Location = new Point(130, 125),
-                Size = new Size(105, 40),
+                Text = "Lunch",
+                Location = new Point(130, 140),
+                Size = new Size(105, 42),
                 BackColor = Color.FromArgb(9, 132, 227),
                 ForeColor = Color.White,
                 FlatStyle = FlatStyle.Flat,
@@ -207,9 +207,9 @@ namespace HRMS_Agent
 
             _btnTea = new Button
             {
-                Text = "☕ Tea Break",
-                Location = new Point(15, 180),
-                Size = new Size(105, 40),
+                Text = "Tea Break",
+                Location = new Point(15, 195),
+                Size = new Size(105, 42),
                 BackColor = Color.FromArgb(9, 132, 227),
                 ForeColor = Color.White,
                 FlatStyle = FlatStyle.Flat,
@@ -221,9 +221,9 @@ namespace HRMS_Agent
 
             _btnCheckOut = new Button
             {
-                Text = "🚪 Check Out",
-                Location = new Point(130, 180),
-                Size = new Size(105, 40),
+                Text = "Check Out",
+                Location = new Point(130, 195),
+                Size = new Size(105, 42),
                 BackColor = Color.FromArgb(231, 76, 60), // Red
                 ForeColor = Color.White,
                 FlatStyle = FlatStyle.Flat,
@@ -263,13 +263,13 @@ namespace HRMS_Agent
                 Font = new Font("Segoe UI", 8, FontStyle.Bold),
                 ForeColor = Color.FromArgb(127, 140, 141),
                 Location = new Point(15, 15),
-                Size = new Size(240, 15)
+                Size = new Size(240, 20)
             };
 
             _lstEvents = new ListBox
             {
-                Location = new Point(15, 35),
-                Size = new Size(245, 240),
+                Location = new Point(15, 40),
+                Size = new Size(245, 235),
                 BackColor = Color.FromArgb(20, 20, 26),
                 ForeColor = Color.FromArgb(220, 221, 230),
                 Font = new Font("Consolas", 8.5f),
@@ -279,22 +279,22 @@ namespace HRMS_Agent
 
             _pnlLog.Controls.AddRange(new Control[] { _lblLogTitle, _lstEvents });
 
-            // 4. Footer Panel
+            // 4. Footer Panel (Optimized widths and alignments for sync and disconnect buttons)
             _lblAccount = new Label
             {
                 Text = "Account: Disconnected",
                 Font = new Font("Segoe UI", 8.5f),
                 ForeColor = Color.FromArgb(127, 140, 141),
                 Location = new Point(15, 355),
-                Size = new Size(250, 30),
+                Size = new Size(220, 30),
                 TextAlign = ContentAlignment.MiddleLeft
             };
 
             _btnSync = new Button
             {
                 Text = "Sync Now",
-                Location = new Point(365, 353),
-                Size = new Size(90, 28),
+                Location = new Point(335, 353),
+                Size = new Size(105, 30),
                 BackColor = Color.FromArgb(47, 54, 64),
                 ForeColor = Color.White,
                 FlatStyle = FlatStyle.Flat,
@@ -307,8 +307,8 @@ namespace HRMS_Agent
             _btnDisconnect = new Button
             {
                 Text = "Disconnect",
-                Location = new Point(465, 353),
-                Size = new Size(90, 28),
+                Location = new Point(450, 353),
+                Size = new Size(105, 30),
                 BackColor = Color.FromArgb(192, 57, 43), // Muted red
                 ForeColor = Color.White,
                 FlatStyle = FlatStyle.Flat,

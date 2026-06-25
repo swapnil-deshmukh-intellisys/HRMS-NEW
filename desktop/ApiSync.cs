@@ -82,6 +82,7 @@ namespace HRMS_Agent
         private static bool _isProcessingQueue = false;
 
         public static event Action<string>? OnStatusChanged;
+        public static event Action<string, DateTime>? OnEventLogged;
 
         static ApiSync()
         {
@@ -232,6 +233,8 @@ namespace HRMS_Agent
 
         public static async Task LogEventAsync(string eventType)
         {
+            OnEventLogged?.Invoke(eventType, DateTime.Now);
+
             var newEvent = new DesktopEvent
             {
                 EventType = eventType,

@@ -51,6 +51,9 @@ namespace HRMS_Agent
         private ReminderType? _snoozedReminderType;
         private ReminderForm? _activeReminderForm;
 
+        // Dashboard Form instance
+        private DashboardForm? _dashboardForm;
+
         public HRMSApplicationContext()
         {
             // Initialize event monitors
@@ -69,7 +72,7 @@ namespace HRMS_Agent
                 new ToolStripSeparator(),
                 _connectMenuItem,
                 new ToolStripSeparator(),
-                new ToolStripMenuItem("Exit", null, OnExitClick) // Placeholder until dynamic menu loads
+                new ToolStripMenuItem("Exit", null, OnExitClick) // Placeholder
             });
 
             // Set up System Tray Icon
@@ -81,7 +84,8 @@ namespace HRMS_Agent
                 Text = "IntelliHrHub Desktop Agent"
             };
 
-            _trayIcon.DoubleClick += (s, e) => ShowLoginForm();
+            // Double-click tray icon opens the interactive dashboard
+            _trayIcon.DoubleClick += (s, e) => ShowDashboardForm();
 
             // Register event handler for API status updates
             ApiSync.OnStatusChanged += UpdateStatusText;
@@ -115,6 +119,18 @@ namespace HRMS_Agent
                 };
                 startupTimer.Start();
             }
+            else
+            {
+                // Show dashboard automatically if already logged in
+                System.Windows.Forms.Timer startupTimer = new System.Windows.Forms.Timer { Interval = 200 };
+                startupTimer.Tick += (s, e) =>
+                {
+                    startupTimer.Stop();
+                    startupTimer.Dispose();
+                    ShowDashboardForm();
+                };
+                startupTimer.Start();
+            }
         }
 
         private void UpdateStatusText(string status)
@@ -139,12 +155,51 @@ namespace HRMS_Agent
             }
         }
 
+        private void ShowDashboardForm()
+        {
+            if (!ApiSync.IsLoggedIn)
+            {
+                ShowLoginForm();
+                return;
+            }
+
+            if (_dashboardForm == null || _dashboardForm.IsDisposed)
+            {
+                _dashboardForm = new DashboardForm(
+                    async () => {
+                        // On manual sync requested from Dashboard
+                        UpdateStatusText("Syncing...");
+                        await ApiSync.ProcessOfflineQueueAsync();
+                        await RefreshStatusAndMenuAsync();
+                    },
+                    () => {
+                        // On logout requested from Dashboard
+                        ApiSync.Logout();
+                        _dashboardForm?.Hide(); // Close/Hide dashboard window
+                        _ = RefreshStatusAndMenuAsync();
+                        ShowLoginForm();
+                    }
+                );
+            }
+
+            // Sync the state immediately on show
+            _ = RefreshStatusAndMenuAsync();
+
+            _dashboardForm.Show();
+            _dashboardForm.Activate();
+            if (_dashboardForm.WindowState == FormWindowState.Minimized)
+            {
+                _dashboardForm.WindowState = FormWindowState.Normal;
+            }
+        }
+
         private async Task RefreshStatusAndMenuAsync()
         {
             if (!ApiSync.IsLoggedIn)
             {
                 UpdateTrayContextMenu(null, new List<BreakSessionRecord>());
                 UpdateStatusText("Not connected");
+                _dashboardForm?.UpdateState(null, new List<BreakSessionRecord>());
                 return;
             }
 
@@ -152,6 +207,12 @@ namespace HRMS_Agent
             var breaks = await ApiSync.GetBreaksTodayAsync();
 
             UpdateTrayContextMenu(attendance, breaks);
+
+            // Forward state to the Dashboard mini-app window
+            if (_dashboardForm != null && !_dashboardForm.IsDisposed)
+            {
+                _dashboardForm.UpdateState(attendance, breaks);
+            }
 
             string statusText = $"Connected as {ApiSync.CurrentEmail}";
             if (attendance != null)
@@ -188,7 +249,18 @@ namespace HRMS_Agent
             contextMenu.Items.Add(_statusMenuItem);
             contextMenu.Items.Add(new ToolStripSeparator());
 
-            // 2. Add Dynamic Actions based on current status
+            // 2. Add Open Dashboard Option (At the very top of actions)
+            if (ApiSync.IsLoggedIn)
+            {
+                var openDashItem = new ToolStripMenuItem("🖥️ Open Dashboard", null, (s, e) => ShowDashboardForm())
+                {
+                    Font = new Font(contextMenu.Font ?? SystemFonts.DefaultFont, FontStyle.Bold)
+                };
+                contextMenu.Items.Add(openDashItem);
+                contextMenu.Items.Add(new ToolStripSeparator());
+            }
+
+            // 3. Add Dynamic Actions based on current status
             if (ApiSync.IsLoggedIn)
             {
                 bool hasCheckedIn = attendance?.CheckInTime != null;
@@ -323,7 +395,7 @@ namespace HRMS_Agent
                 contextMenu.Items.Add(new ToolStripSeparator());
             }
 
-            // 3. Add Static Items
+            // 4. Add Static Items
             contextMenu.Items.Add(_connectMenuItem);
             
             var syncMenuItem = new ToolStripMenuItem("Sync Now", null, OnSyncClick);
@@ -591,6 +663,7 @@ namespace HRMS_Agent
                 if (result == DialogResult.Yes)
                 {
                     ApiSync.Logout();
+                    _dashboardForm?.Hide();
                     _ = RefreshStatusAndMenuAsync();
                 }
                 else
@@ -604,6 +677,7 @@ namespace HRMS_Agent
             {
                 _trayIcon.ShowBalloonTip(3000, "Agent Connected", $"Successfully linked to {ApiSync.CurrentEmail}", ToolTipIcon.Info);
                 _ = RefreshStatusAndMenuAsync();
+                ShowDashboardForm(); // Automatically open dashboard upon login
             }
         }
 
@@ -644,6 +718,7 @@ namespace HRMS_Agent
         {
             _sessionMonitor.Stop();
             _idleTracker.Stop();
+            _dashboardForm?.Dispose(); // Disposes dashboard window on exit
             _trayIcon.Visible = false;
             _trayIcon.Dispose();
             Application.Exit();
@@ -656,6 +731,7 @@ namespace HRMS_Agent
                 _pollTimer?.Dispose();
                 _reminderTimer?.Dispose();
                 _activeReminderForm?.Dispose();
+                _dashboardForm?.Dispose();
                 _trayIcon?.Dispose();
             }
             base.Dispose(disposing);

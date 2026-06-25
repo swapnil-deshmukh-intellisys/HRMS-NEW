@@ -32,6 +32,6 @@
     "taskId": "TSK-DESK-003",
     "title": "Implement Visible Desktop Dashboard Mini-App Window",
     "status": "COMPLETED",
-    "narrative": "Developed an interactive, visible C# Windows Forms Dashboard window in the Desktop Agent, accessible via tray double-click or context menu. The dashboard features a state-aware quick action grid with real-time shift/break timers and a live activity logger that subscribes to background session and idle events, providing employees with complete transparency."
+    "narrative": "Developed an interactive, visible C# Windows Forms Dashboard window in the Desktop Agent, accessible via tray double-click or context menu. The dashboard features a state-aware quick action grid with real-time shift/break timers and a live activity logger that subscribes to background session and idle events, providing employees with complete transparency. Also resolved a timezone mismatch bug where the active shift and break timers showed incorrect negative durations on the C# desktop agent relative to the web app."
   }
 ]

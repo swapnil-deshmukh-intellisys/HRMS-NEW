@@ -515,5 +515,49 @@ namespace HRMS_Agent
                 return false;
             }
         }
+
+        public static async Task<List<DesktopEventRecord>?> GetDesktopActivityLogsTodayAsync()
+        {
+            if (!IsLoggedIn) return null;
+            try
+            {
+                using var request = new HttpRequestMessage(HttpMethod.Get, $"{_config.ApiUrl}/api/attendance/desktop-activity-log");
+                request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _config.Token);
+
+                var response = await _httpClient.SendAsync(request);
+                if (!response.IsSuccessStatusCode) return null;
+
+                var json = await response.Content.ReadAsStringAsync();
+                var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+                var resObj = JsonSerializer.Deserialize<DesktopActivityLogResponse>(json, options);
+                return resObj?.Data?.Events;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error fetching desktop activity logs: {ex.Message}");
+                return null;
+            }
+        }
+    }
+
+    public class DesktopEventRecord
+    {
+        public int Id { get; set; }
+        public int EmployeeId { get; set; }
+        public string EventType { get; set; } = string.Empty;
+        public string Timestamp { get; set; } = string.Empty;
+        public string? IpAddress { get; set; }
+    }
+
+    public class DesktopActivityLogData
+    {
+        public List<DesktopEventRecord>? Events { get; set; }
+    }
+
+    public class DesktopActivityLogResponse
+    {
+        public bool Success { get; set; }
+        public string Message { get; set; } = string.Empty;
+        public DesktopActivityLogData? Data { get; set; }
     }
 }

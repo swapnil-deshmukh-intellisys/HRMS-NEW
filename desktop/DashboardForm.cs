@@ -71,6 +71,13 @@ namespace HRMS_Agent
             public override string ToString() => Message;
         }
 
+        private class DisplayEventItem
+        {
+            public DateTime Timestamp { get; set; }
+            public string Description { get; set; } = "";
+            public Color Color { get; set; } = Color.White;
+        }
+
         public DashboardForm(Action onSyncRequested, Action onLogoutRequested)
         {
             _onSyncRequested = onSyncRequested;
@@ -638,14 +645,14 @@ namespace HRMS_Agent
             }
         }
 
-        public void UpdateState(AttendanceRecord? attendance, List<BreakSessionRecord> breaks)
+        public void UpdateState(AttendanceRecord? attendance, List<BreakSessionRecord> breaks, List<DesktopEventRecord>? logs)
         {
             _currentAttendance = attendance;
             _currentBreaks = breaks;
 
             if (InvokeRequired)
             {
-                Invoke(new Action(() => UpdateState(attendance, breaks)));
+                Invoke(new Action(() => UpdateState(attendance, breaks, logs)));
                 return;
             }
 
@@ -678,7 +685,111 @@ namespace HRMS_Agent
             {
                 _lblStatusText.Text = "Disconnected";
                 _lblStatusText.ForeColor = Color.FromArgb(231, 76, 60);
+                _lstEvents.Items.Clear();
                 return;
+            }
+
+            if (hasCheckedIn)
+            {
+                // Re-populate and sort activity logs if we received an update
+                if (logs != null)
+                {
+                    var displayItems = new List<DisplayEventItem>();
+
+                    // 1. Add Check-In event
+                    if (DateTimeOffset.TryParse(attendance?.CheckInTime, out var checkInOffset))
+                    {
+                        displayItems.Add(new DisplayEventItem
+                        {
+                            Timestamp = checkInOffset.LocalDateTime,
+                            Description = "Checked In",
+                            Color = Color.FromArgb(46, 204, 113) // Green
+                        });
+                    }
+
+                    // 2. Add Check-Out event
+                    if (DateTimeOffset.TryParse(attendance?.CheckOutTime, out var checkOutOffset))
+                    {
+                        displayItems.Add(new DisplayEventItem
+                        {
+                            Timestamp = checkOutOffset.LocalDateTime,
+                            Description = "Checked Out",
+                            Color = Color.FromArgb(231, 76, 60) // Red
+                        });
+                    }
+
+                    // 3. Add Desktop telemetry events
+                    foreach (var log in logs)
+                    {
+                        if (DateTimeOffset.TryParse(log.Timestamp, out var logOffset))
+                        {
+                            var timestamp = logOffset.LocalDateTime;
+                            string desc = log.EventType;
+                            Color col = Color.FromArgb(220, 221, 230); // Default silver/white
+
+                            switch (log.EventType)
+                            {
+                                case "LOCK":
+                                    desc = "Screen Locked";
+                                    col = Color.FromArgb(231, 76, 60); // Red
+                                    break;
+                                case "UNLOCK":
+                                    desc = "Screen Unlocked";
+                                    col = Color.FromArgb(46, 204, 113); // Green
+                                    break;
+                                case "IDLE_START":
+                                    desc = "Went Idle";
+                                    col = Color.FromArgb(230, 126, 34); // Orange
+                                    break;
+                                case "IDLE_END":
+                                    desc = "Returned from Idle";
+                                    col = Color.FromArgb(46, 204, 113); // Green
+                                    break;
+                                case "WAKE":
+                                    desc = "System Wake";
+                                    col = Color.FromArgb(52, 152, 219); // Blue
+                                    break;
+                                case "SLEEP":
+                                case "SUSPEND":
+                                    desc = "System Sleep";
+                                    col = Color.FromArgb(155, 89, 182); // Purple
+                                    break;
+                                case "SHUTDOWN":
+                                    desc = "Shutdown";
+                                    col = Color.FromArgb(231, 76, 60); // Red
+                                    break;
+                            }
+
+                            displayItems.Add(new DisplayEventItem
+                            {
+                                Timestamp = timestamp,
+                                Description = desc,
+                                Color = col
+                            });
+                        }
+                    }
+
+                    // Sort display items chronologically
+                    displayItems.Sort((a, b) => a.Timestamp.CompareTo(b.Timestamp));
+
+                    // Re-populate ListBox
+                    _lstEvents.Items.Clear();
+                    foreach (var item in displayItems)
+                    {
+                        string timeStr = item.Timestamp.ToString("hh:mm:ss tt");
+                        _lstEvents.Items.Add(new LogEntry
+                        {
+                            Message = $"[{timeStr}] {item.Description}",
+                            Color = item.Color
+                        });
+                    }
+
+                    // Auto-scroll to the bottom of the ListBox
+                    if (_lstEvents.Items.Count > 0)
+                    {
+                        _lstEvents.TopIndex = _lstEvents.Items.Count - 1;
+                    }
+                }
             }
 
             if (!hasCheckedIn)
@@ -686,6 +797,7 @@ namespace HRMS_Agent
                 _lblStatusText.Text = "Ready to Check-In";
                 _lblStatusText.ForeColor = Color.FromArgb(46, 204, 113);
                 SetButtonState(_btnCheckIn, true, Color.FromArgb(46, 204, 113));
+                _lstEvents.Items.Clear();
             }
             else if (isOnBreak)
             {
@@ -939,28 +1051,33 @@ namespace HRMS_Agent
             switch (eventType)
             {
                 case "IDLE_START":
-                    eventDesc = "Idle State (User away from desk)";
+                    eventDesc = "Went Idle";
                     eventColor = Color.FromArgb(230, 126, 34); // Orange
                     break;
                 case "IDLE_END":
-                    eventDesc = "Active State (User returned to desk)";
+                    eventDesc = "Returned from Idle";
                     eventColor = Color.FromArgb(46, 204, 113); // Green
                     break;
                 case "LOCK":
-                    eventDesc = "Workstation Locked";
+                    eventDesc = "Screen Locked";
                     eventColor = Color.FromArgb(231, 76, 60); // Red
                     break;
                 case "UNLOCK":
-                    eventDesc = "Workstation Unlocked";
+                    eventDesc = "Screen Unlocked";
                     eventColor = Color.FromArgb(46, 204, 113); // Green
                     break;
                 case "WAKE":
-                    eventDesc = "System Awake from sleep";
+                    eventDesc = "System Wake";
                     eventColor = Color.FromArgb(52, 152, 219); // Blue
                     break;
+                case "SLEEP":
                 case "SUSPEND":
-                    eventDesc = "System Suspend / Sleep Mode";
+                    eventDesc = "System Sleep";
                     eventColor = Color.FromArgb(155, 89, 182); // Purple
+                    break;
+                case "SHUTDOWN":
+                    eventDesc = "Shutdown";
+                    eventColor = Color.FromArgb(231, 76, 60); // Red
                     break;
             }
 

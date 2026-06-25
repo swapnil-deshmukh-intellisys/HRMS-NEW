@@ -90,6 +90,12 @@ namespace HRMS_Agent
             // Register event handler for API status updates
             ApiSync.OnStatusChanged += UpdateStatusText;
 
+            // Trigger a refresh whenever a telemetry event is logged
+            ApiSync.OnEventLogged += async (evt, ts) =>
+            {
+                await RefreshStatusAndMenuAsync();
+            };
+
             // Start monitors
             _sessionMonitor.Start();
             _idleTracker.Start();
@@ -208,7 +214,7 @@ namespace HRMS_Agent
             {
                 UpdateTrayContextMenu(null, new List<BreakSessionRecord>());
                 UpdateStatusText("Not connected");
-                _dashboardForm?.UpdateState(null, new List<BreakSessionRecord>());
+                _dashboardForm?.UpdateState(null, new List<BreakSessionRecord>(), null);
                 return;
             }
 
@@ -219,13 +225,14 @@ namespace HRMS_Agent
 
             var attendance = await ApiSync.GetAttendanceTodayAsync();
             var breaks = await ApiSync.GetBreaksTodayAsync();
+            var logs = await ApiSync.GetDesktopActivityLogsTodayAsync();
 
             UpdateTrayContextMenu(attendance, breaks);
 
             // Forward state to the Dashboard mini-app window
             if (_dashboardForm != null && !_dashboardForm.IsDisposed)
             {
-                _dashboardForm.UpdateState(attendance, breaks);
+                _dashboardForm.UpdateState(attendance, breaks, logs);
             }
 
             string statusText = $"Connected as {ApiSync.CurrentEmail}";

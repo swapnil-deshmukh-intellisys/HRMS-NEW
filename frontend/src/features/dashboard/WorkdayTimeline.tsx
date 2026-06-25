@@ -291,6 +291,17 @@ const WorkdayTimeline: React.FC<WorkdayTimelineProps> = ({
       return;
     }
 
+    // 2.5. Check if hovering over a desktop activity segment
+    const seg = desktopSegments.find(s => clampedPct >= s.startPct && clampedPct <= s.endPct);
+    if (seg) {
+      const desc = seg.type === 'locked' ? 'Screen Locked' :
+                   seg.type === 'idle' ? 'Went Idle' : 'Active / Working';
+      const durMin = Math.round(seg.durationMs / 60000);
+      const durStr = durMin > 0 ? ` (${durMin}m)` : '';
+      setHoverText(`${desc}${durStr}`);
+      return;
+    }
+
     // 3. Fallback to specific time
     const [startH, startM] = startTime.split(':').map(Number);
     const [endH, endM] = endTime.split(':').map(Number);

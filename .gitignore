@@ -62,3 +62,8 @@ backend/db_backup.sql
 backend/scratch/
 backend/src/scratch/
 backend/scripts/get_pr_checks_status.js
+
+# Portable .NET SDK
+dotnet-sdk/
+dotnet-install.ps1
+

@@ -26,5 +26,12 @@
     "title": "Integrate Attendance Reminders & Logging in Desktop Agent",
     "status": "COMPLETED",
     "narrative": "Successfully integrated check-in/out and break reminders, dynamic state-aware context menus, and custom slide-up notification alert cards in the native Windows C# Desktop Agent. Pushed all changes to origin ritesh branch."
+  },
+  {
+    "date": "2026-06-25",
+    "taskId": "TSK-DESK-003",
+    "title": "Implement Visible Desktop Dashboard Mini-App Window",
+    "status": "COMPLETED",
+    "narrative": "Developed an interactive, visible C# Windows Forms Dashboard window in the Desktop Agent, accessible via tray double-click or context menu. The dashboard features a state-aware quick action grid with real-time shift/break timers and a live activity logger that subscribes to background session and idle events, providing employees with complete transparency."
   }
 ]

@@ -636,5 +636,34 @@
     "expectedOutput": "Desktop Agent displays native reminders, custom popups, and state-aware context menus for check-in/out and breaks.",
     "createdAt": "2026-06-25T09:00:00Z",
     "updatedAt": "2026-06-25T04:48:10.370Z"
+  },
+  {
+    "taskId": "TSK-DESK-003",
+    "moduleId": "MOD-ATTENDANCE",
+    "sprint": "Sprint 4",
+    "project": "HRMS",
+    "page": "N/A",
+    "module": "Attendance",
+    "submodule": "Desktop Agent Dashboard",
+    "title": "Implement visible desktop dashboard mini-app with telemetry logs and clocking controls",
+    "description": "Develop a visible Windows Forms Dashboard window in the C# Desktop Agent. Features include a state-aware quick action grid (Check-In, Lunch, Tea, Check-Out) with active workday/break timers, and a live activity logger subscribing to background telemetry events.",
+    "frontendWork": "None",
+    "backendWork": "None",
+    "databaseWork": "None",
+    "apiWork": "Integrate C# client with existing attendance/break APIs.",
+    "testingWork": "Verify dashboard opens on tray double-click, buttons enable/disable dynamically, timers tick accurately, and events log in real-time.",
+    "priority": "HIGH",
+    "estimatedHours": 12,
+    "actualHours": 12,
+    "dependencies": [
+      "TSK-DESK-002"
+    ],
+    "riskLevel": "LOW",
+    "status": "COMPLETED",
+    "completionPercentage": 100,
+    "owner": "Fullstack Team",
+    "expectedOutput": "Desktop Agent features a fully functional visible dashboard window with telemetry event logging and state-aware marking controls.",
+    "createdAt": "2026-06-25T10:00:00Z",
+    "updatedAt": "2026-06-25T05:08:02.256Z"
   }
 ]

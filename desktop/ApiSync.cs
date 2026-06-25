@@ -22,6 +22,51 @@ namespace HRMS_Agent
         public string UserEmail { get; set; } = string.Empty;
     }
 
+    public class AttendanceRecord
+    {
+        public int Id { get; set; }
+        public int EmployeeId { get; set; }
+        public string? CheckInTime { get; set; }
+        public string? CheckOutTime { get; set; }
+        public string Status { get; set; } = string.Empty;
+        public int WorkedMinutes { get; set; }
+        public int PenaltyMinutes { get; set; }
+        public int LateByMinutes { get; set; }
+    }
+
+    public class BreakSessionRecord
+    {
+        public int Id { get; set; }
+        public int AttendanceId { get; set; }
+        public string StartTime { get; set; } = string.Empty;
+        public string? EndTime { get; set; }
+        public int? DurationMinutes { get; set; }
+    }
+
+    public class AttendanceTodayData
+    {
+        public AttendanceRecord? AttendanceToday { get; set; }
+    }
+
+    public class AttendanceTodayResponse
+    {
+        public bool Success { get; set; }
+        public string Message { get; set; } = string.Empty;
+        public AttendanceTodayData? Data { get; set; }
+    }
+
+    public class BreakTodayData
+    {
+        public List<BreakSessionRecord>? BreakSessions { get; set; }
+    }
+
+    public class BreakTodayResponse
+    {
+        public bool Success { get; set; }
+        public string Message { get; set; } = string.Empty;
+        public BreakTodayData? Data { get; set; }
+    }
+
     public static class ApiSync
     {
         private static readonly HttpClient _httpClient = new HttpClient();
@@ -281,6 +326,128 @@ namespace HRMS_Agent
             finally
             {
                 _isProcessingQueue = false;
+            }
+        }
+
+        public static async Task<AttendanceRecord?> GetAttendanceTodayAsync()
+        {
+            if (!IsLoggedIn) return null;
+            try
+            {
+                using var request = new HttpRequestMessage(HttpMethod.Get, $"{_config.ApiUrl}/api/attendance/today");
+                request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _config.Token);
+                
+                var response = await _httpClient.SendAsync(request);
+                if (!response.IsSuccessStatusCode) return null;
+
+                var json = await response.Content.ReadAsStringAsync();
+                var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+                var resObj = JsonSerializer.Deserialize<AttendanceTodayResponse>(json, options);
+                return resObj?.Data?.AttendanceToday;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error fetching today's attendance: {ex.Message}");
+                return null;
+            }
+        }
+
+        public static async Task<List<BreakSessionRecord>> GetBreaksTodayAsync()
+        {
+            if (!IsLoggedIn) return new List<BreakSessionRecord>();
+            try
+            {
+                using var request = new HttpRequestMessage(HttpMethod.Get, $"{_config.ApiUrl}/api/attendance/break/today");
+                request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _config.Token);
+                
+                var response = await _httpClient.SendAsync(request);
+                if (!response.IsSuccessStatusCode) return new List<BreakSessionRecord>();
+
+                var json = await response.Content.ReadAsStringAsync();
+                var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+                var resObj = JsonSerializer.Deserialize<BreakTodayResponse>(json, options);
+                return resObj?.Data?.BreakSessions ?? new List<BreakSessionRecord>();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error fetching today's breaks: {ex.Message}");
+                return new List<BreakSessionRecord>();
+            }
+        }
+
+        public static async Task<bool> CheckInAsync()
+        {
+            if (!IsLoggedIn) return false;
+            try
+            {
+                using var request = new HttpRequestMessage(HttpMethod.Post, $"{_config.ApiUrl}/api/attendance/check-in");
+                request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _config.Token);
+                request.Content = new StringContent("{}", Encoding.UTF8, "application/json");
+
+                var response = await _httpClient.SendAsync(request);
+                return response.IsSuccessStatusCode;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error during check-in: {ex.Message}");
+                return false;
+            }
+        }
+
+        public static async Task<bool> CheckOutAsync()
+        {
+            if (!IsLoggedIn) return false;
+            try
+            {
+                using var request = new HttpRequestMessage(HttpMethod.Post, $"{_config.ApiUrl}/api/attendance/check-out");
+                request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _config.Token);
+                request.Content = new StringContent("{}", Encoding.UTF8, "application/json");
+
+                var response = await _httpClient.SendAsync(request);
+                return response.IsSuccessStatusCode;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error during check-out: {ex.Message}");
+                return false;
+            }
+        }
+
+        public static async Task<bool> StartBreakAsync()
+        {
+            if (!IsLoggedIn) return false;
+            try
+            {
+                using var request = new HttpRequestMessage(HttpMethod.Post, $"{_config.ApiUrl}/api/attendance/break/start");
+                request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _config.Token);
+                request.Content = new StringContent("{}", Encoding.UTF8, "application/json");
+
+                var response = await _httpClient.SendAsync(request);
+                return response.IsSuccessStatusCode;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error starting break: {ex.Message}");
+                return false;
+            }
+        }
+
+        public static async Task<bool> EndBreakAsync()
+        {
+            if (!IsLoggedIn) return false;
+            try
+            {
+                using var request = new HttpRequestMessage(HttpMethod.Post, $"{_config.ApiUrl}/api/attendance/break/end");
+                request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _config.Token);
+                request.Content = new StringContent("{}", Encoding.UTF8, "application/json");
+
+                var response = await _httpClient.SendAsync(request);
+                return response.IsSuccessStatusCode;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error ending break: {ex.Message}");
+                return false;
             }
         }
     }

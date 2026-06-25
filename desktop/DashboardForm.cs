@@ -365,7 +365,7 @@ namespace HRMS_Agent
             {
                 Text = "Sync Now",
                 Location = new Point(540, 466),
-                Size = new Size(110, 34),
+                Size = new Size(120, 34),
                 BackColor = Color.FromArgb(47, 54, 64),
                 ForeColor = Color.White,
                 FlatStyle = FlatStyle.Flat,
@@ -379,7 +379,7 @@ namespace HRMS_Agent
             {
                 Text = "Disconnect",
                 Location = new Point(670, 466),
-                Size = new Size(110, 34),
+                Size = new Size(125, 34),
                 BackColor = Color.FromArgb(192, 57, 43), // Muted red
                 ForeColor = Color.White,
                 FlatStyle = FlatStyle.Flat,
@@ -529,14 +529,14 @@ namespace HRMS_Agent
 
             if (_btnDisconnect != null)
             {
-                _btnDisconnect.Location = new Point(formWidth - 20 - 110, formHeight - 54);
-                _btnDisconnect.Size = new Size(110, 34);
+                _btnDisconnect.Location = new Point(formWidth - 20 - 125, formHeight - 54);
+                _btnDisconnect.Size = new Size(125, 34);
             }
 
             if (_btnSync != null && _btnDisconnect != null)
             {
-                _btnSync.Location = new Point(_btnDisconnect.Left - 15 - 110, formHeight - 54);
-                _btnSync.Size = new Size(110, 34);
+                _btnSync.Location = new Point(_btnDisconnect.Left - 15 - 120, formHeight - 54);
+                _btnSync.Size = new Size(120, 34);
             }
         }
 

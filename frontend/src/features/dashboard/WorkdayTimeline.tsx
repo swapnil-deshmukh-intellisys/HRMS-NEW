@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { ChevronDown, ChevronUp, CheckCircle, Lock, Unlock, Moon, Sun, Power, LogOut } from 'lucide-react';
+import { ChevronDown, ChevronUp, CheckCircle, Lock, Unlock, Moon, Sun, Power, LogOut, Coffee, Utensils } from 'lucide-react';
 import { apiRequest } from '../../services/api';
 import './WorkdayTimeline.css';
 import type { BreakSession, DesktopActivityLog } from '../../types';
@@ -31,6 +31,19 @@ function format12h(timeStr: string): string {
   const displayH = h % 12 || 12;
   return `${displayH}:${m.toString().padStart(2, '0')} ${period}`;
 }
+
+const getBreakName = (dateInput: Date | string): string => {
+  const date = new Date(dateInput);
+  const hour = date.getHours();
+  const minute = date.getMinutes();
+  if (hour === 10 || (hour === 11 && minute <= 15)) {
+    return "Morning Tea Break";
+  } else if (hour === 12 || hour === 13) {
+    return "Lunch Break";
+  } else {
+    return "Evening Tea Break";
+  }
+};
 
 
 const WorkdayTimeline: React.FC<WorkdayTimelineProps> = ({
@@ -269,6 +282,93 @@ const WorkdayTimeline: React.FC<WorkdayTimelineProps> = ({
     return segments;
   }, [desktopLogs, startTime, endTime, dateContext, checkInTime, checkOutTime]);
 
+  const combinedLogItems = useMemo(() => {
+    const items: Array<{
+      key: string;
+      timestamp: Date;
+      icon: React.ReactNode;
+      desc: string;
+    }> = [];
+
+    // 1. Check In
+    if (checkInTime) {
+      items.push({
+        key: 'check-in',
+        timestamp: new Date(checkInTime),
+        icon: <CheckCircle size={14} color="var(--wdt-accent-emerald)" strokeWidth={2.5} />,
+        desc: 'Checked In',
+      });
+    }
+
+    // 2. Check Out
+    if (checkOutTime) {
+      items.push({
+        key: 'check-out',
+        timestamp: new Date(checkOutTime),
+        icon: <LogOut size={14} color="var(--wdt-accent-rose)" />,
+        desc: 'Checked Out',
+      });
+    }
+
+    // 3. Desktop Activity Logs
+    desktopLogs.forEach((log) => {
+      const isLock = log.eventType === 'LOCK' || log.eventType === 'SLEEP';
+      const isUnlock = log.eventType === 'UNLOCK' || log.eventType === 'WAKE';
+      const isIdleStart = log.eventType === 'IDLE_START';
+      const isIdleEnd = log.eventType === 'IDLE_END';
+      
+      let icon = <Power size={14} color="var(--wdt-accent-rose)" />;
+      let desc = 'Shutdown';
+      
+      if (isLock) {
+        icon = <Lock size={14} color="#8b5cf6" />;
+        desc = log.eventType === 'LOCK' ? 'Screen Locked' : 'System Sleep';
+      } else if (isUnlock) {
+        icon = <Unlock size={14} color="var(--wdt-accent-emerald)" />;
+        desc = log.eventType === 'UNLOCK' ? 'Screen Unlocked' : 'System Wake';
+      } else if (isIdleStart) {
+        icon = <Moon size={14} color="#64748b" />;
+        desc = 'Went Idle';
+      } else if (isIdleEnd) {
+        icon = <Sun size={14} color="#f59e0b" />;
+        desc = 'Returned from Idle';
+      }
+
+      items.push({
+        key: `desktop-${log.id}`,
+        timestamp: new Date(log.timestamp),
+        icon,
+        desc,
+      });
+    });
+
+    // 4. Break Sessions
+    breakSessions.forEach((session) => {
+      const startD = new Date(session.startTime);
+      const name = getBreakName(startD);
+
+      items.push({
+        key: `break-start-${session.id}`,
+        timestamp: startD,
+        icon: name.includes('Lunch') ? <Utensils size={14} color="#3b82f6" /> : <Coffee size={14} color="#f59e0b" />,
+        desc: `${name} Started`,
+      });
+
+      if (session.endTime) {
+        const endD = new Date(session.endTime);
+        items.push({
+          key: `break-end-${session.id}`,
+          timestamp: endD,
+          icon: name.includes('Lunch') ? <Utensils size={14} color="var(--wdt-accent-emerald)" /> : <Coffee size={14} color="var(--wdt-accent-emerald)" />,
+          desc: `${name} Ended`,
+        });
+      }
+    });
+
+    // Sort chronologically
+    return items.sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
+  }, [checkInTime, checkOutTime, desktopLogs, breakSessions]);
+
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
     if (isExpanded) return;
     const rect = e.currentTarget.getBoundingClientRect();
@@ -487,39 +587,13 @@ const WorkdayTimeline: React.FC<WorkdayTimelineProps> = ({
           <div className="wdt-event-log-panel">
             <h3 className="wdt-panel-title">Event Log</h3>
             <div className="wdt-log-list">
-              {checkInTime && (
-                <div className="wdt-log-item">
-                  <span className="wdt-log-time">{new Date(checkInTime).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', hour12: true })}</span>
-                  <span className="wdt-log-icon"><CheckCircle size={14} color="var(--wdt-accent-emerald)" strokeWidth={2.5} /></span>
-                  <span className="wdt-log-desc">Checked In</span>
-                </div>
-              )}
-              {desktopLogs.map((log) => (
-                <div key={log.id} className="wdt-log-item">
-                  <span className="wdt-log-time">{new Date(log.timestamp).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', hour12: true })}</span>
-                  <span className="wdt-log-icon">
-                    {log.eventType === 'LOCK' || log.eventType === 'SLEEP' ? <Lock size={14} color="#8b5cf6" /> : 
-                     log.eventType === 'UNLOCK' || log.eventType === 'WAKE' ? <Unlock size={14} color="var(--wdt-accent-emerald)" /> : 
-                     log.eventType === 'IDLE_START' ? <Moon size={14} color="#64748b" /> : 
-                     log.eventType === 'IDLE_END' ? <Sun size={14} color="#f59e0b" /> : <Power size={14} color="var(--wdt-accent-rose)" />}
-                  </span>
-                  <span className="wdt-log-desc">
-                    {log.eventType === 'LOCK' ? 'Screen Locked' : 
-                     log.eventType === 'UNLOCK' ? 'Screen Unlocked' : 
-                     log.eventType === 'IDLE_START' ? 'Went Idle' : 
-                     log.eventType === 'IDLE_END' ? 'Returned from Idle' : 
-                     log.eventType === 'SLEEP' ? 'System Sleep' : 
-                     log.eventType === 'WAKE' ? 'System Wake' : 'Shutdown'}
-                  </span>
+              {combinedLogItems.map((item) => (
+                <div key={item.key} className="wdt-log-item">
+                  <span className="wdt-log-time">{item.timestamp.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', hour12: true })}</span>
+                  <span className="wdt-log-icon">{item.icon}</span>
+                  <span className="wdt-log-desc">{item.desc}</span>
                 </div>
               ))}
-              {checkOutTime && (
-                <div className="wdt-log-item">
-                  <span className="wdt-log-time">{new Date(checkOutTime).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', hour12: true })}</span>
-                  <span className="wdt-log-icon"><LogOut size={14} color="var(--wdt-accent-rose)" /></span>
-                  <span className="wdt-log-desc">Checked Out</span>
-                </div>
-              )}
             </div>
           </div>
 

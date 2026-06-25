@@ -769,6 +769,39 @@ namespace HRMS_Agent
                         }
                     }
 
+                    // 4. Add Break events
+                    foreach (var b in breaks)
+                    {
+                        if (DateTimeOffset.TryParse(b.StartTime, out var startOffset))
+                        {
+                            var localStart = startOffset.LocalDateTime;
+                            string breakName = "Break";
+                            if (localStart.Hour == 10 || (localStart.Hour == 11 && localStart.Minute <= 15))
+                                breakName = "Morning Tea Break";
+                            else if (localStart.Hour == 12 || localStart.Hour == 13)
+                                breakName = "Lunch Break";
+                            else
+                                breakName = "Evening Tea Break";
+
+                            displayItems.Add(new DisplayEventItem
+                            {
+                                Timestamp = localStart,
+                                Description = $"{breakName} Started",
+                                Color = Color.FromArgb(230, 126, 34) // Orange
+                            });
+
+                            if (!string.IsNullOrEmpty(b.EndTime) && DateTimeOffset.TryParse(b.EndTime, out var endOffset))
+                            {
+                                displayItems.Add(new DisplayEventItem
+                                {
+                                    Timestamp = endOffset.LocalDateTime,
+                                    Description = $"{breakName} Ended",
+                                    Color = Color.FromArgb(46, 204, 113) // Green
+                                });
+                            }
+                        }
+                    }
+
                     // Sort display items chronologically
                     displayItems.Sort((a, b) => a.Timestamp.CompareTo(b.Timestamp));
 

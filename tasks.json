@@ -665,5 +665,34 @@
     "expectedOutput": "Desktop Agent features a fully functional visible dashboard window with telemetry event logging and state-aware marking controls.",
     "createdAt": "2026-06-25T10:00:00Z",
     "updatedAt": "2026-06-25T11:42:01.427Z"
+  },
+  {
+    "taskId": "TSK-EMP-004",
+    "moduleId": "MOD-EMPLOYEE",
+    "sprint": "Sprint 4",
+    "project": "HRMS",
+    "page": "Leaderboard Page",
+    "module": "Leaderboard & Points",
+    "submodule": "Points Dispute Tickets",
+    "title": "Implement Points Dispute Tickets raising and resolution workflow",
+    "description": "Add PointsDisputeTicket database model. Implement backend POST/GET endpoints for raising and listing disputes, and POST resolve endpoint with automatic points reversal inside database transactions. Overhaul Leaderboard frontend points history modal with raise options and build HR Disputes Queue tab.",
+    "frontendWork": "Add dispute raising form to Points History modal, display ticket status, and build HR Disputes Queue tab under Leaderboard page.",
+    "backendWork": "Implement POST /api/employees/disputes, GET /api/employees/disputes, and POST /api/employees/disputes/:id/resolve with rollback transaction.",
+    "databaseWork": "Add PointsDisputeTicket model and PointsDisputeStatus enum to Prisma schema.",
+    "apiWork": "POST /api/employees/disputes, GET /api/employees/disputes, POST /api/employees/disputes/:id/resolve",
+    "testingWork": "Manual verification of raising dispute, HR review, approval points reversal, and database consistency.",
+    "priority": "HIGH",
+    "estimatedHours": 12,
+    "actualHours": 12,
+    "dependencies": [
+      "TSK-EMP-001"
+    ],
+    "riskLevel": "LOW",
+    "status": "COMPLETED",
+    "completionPercentage": 100,
+    "owner": "Fullstack Team",
+    "expectedOutput": "Employees can raise dispute tickets for point transactions, and HR can resolve/reverse points automatically from their queue.",
+    "createdAt": "2026-06-25T12:00:00Z",
+    "updatedAt": "2026-06-25T18:27:00Z"
   }
 ]

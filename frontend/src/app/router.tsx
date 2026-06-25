@@ -214,7 +214,7 @@ function AppRoutes() {
             path="/team/leaderboard"
             element={
               <Page context="Leaderboard">
-                <LeaderboardPage token={token} role={sessionUser?.role ?? "EMPLOYEE"} />
+                <LeaderboardPage token={token} role={sessionUser?.role ?? "EMPLOYEE"} currentEmployeeId={sessionUser?.employee?.id ?? null} />
               </Page>
             }
           />

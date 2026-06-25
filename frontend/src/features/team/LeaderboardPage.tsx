@@ -48,6 +48,28 @@ type PointsEntry = {
   points: number;
 };
 
+type PointsDisputeTicket = {
+  id: number;
+  pointHistoryId: number;
+  employeeId: number;
+  reason: string;
+  status: "PENDING" | "APPROVED" | "REJECTED";
+  hrRemarks: string | null;
+  resolvedById: number | null;
+  resolvedAt: string | null;
+  createdAt: string;
+  employee?: {
+    id: number;
+    firstName: string;
+    lastName: string;
+    employeeCode: string;
+    profilePictureUrl: string | null;
+  };
+  pointHistory?: PointHistoryEntry;
+  resolvedBy?: { id: number; firstName: string; lastName: string } | null;
+};
+
+
 type LeaderboardData = {
   month: number;
   year: number;
@@ -80,14 +102,22 @@ function ProgressBar({ value, max, color }: { value: number; max: number; color:
   );
 }
 
-export default function LeaderboardPage({ token, role = "EMPLOYEE" }: { token: string | null, role?: string }) {
+export default function LeaderboardPage({ 
+  token, 
+  role = "EMPLOYEE",
+  currentEmployeeId = null
+}: { 
+  token: string | null, 
+  role?: string,
+  currentEmployeeId?: number | null 
+}) {
   const navigate = useNavigate();
   const now = new Date();
   const [month, setMonth] = useState(now.getMonth() + 1);
   const [year, setYear] = useState(now.getFullYear());
   const [data, setData] = useState<LeaderboardData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<"WORK_HOURS" | "ON_TIME" | "POINTS">("WORK_HOURS");
+  const [activeTab, setActiveTab] = useState<"WORK_HOURS" | "ON_TIME" | "POINTS" | "DISPUTES">("WORK_HOURS");
 
   // Points state
   const [pointsModal, setPointsModal] = useState<LeaderboardEmployee | null>(null);
@@ -102,6 +132,16 @@ export default function LeaderboardPage({ token, role = "EMPLOYEE" }: { token: s
   const [historyModal, setHistoryModal] = useState<LeaderboardEmployee | null>(null);
   const [pointsHistory, setPointsHistory] = useState<PointHistoryEntry[]>([]);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
+
+  // Disputes state
+  const [disputesMap, setDisputesMap] = useState<Record<number, PointsDisputeTicket>>({});
+  const [allDisputes, setAllDisputes] = useState<PointsDisputeTicket[]>([]);
+  const [isLoadingDisputes, setIsLoadingDisputes] = useState(false);
+  const [disputeReasonInput, setDisputeReasonInput] = useState<Record<number, string>>({});
+  const [submittingDisputeId, setSubmittingDisputeId] = useState<number | null>(null);
+  const [showDisputeFormId, setShowDisputeFormId] = useState<number | null>(null);
+  const [hrRemarksInput, setHrRemarksInput] = useState<Record<number, string>>({});
+  const [resolvingDisputeId, setResolvingDisputeId] = useState<number | null>(null);
 
   // Previous month winners for current month highlights
   const [prevWorkHoursWinnerId, setPrevWorkHoursWinnerId] = useState<number | null>(null);
@@ -220,15 +260,121 @@ export default function LeaderboardPage({ token, role = "EMPLOYEE" }: { token: s
     setHistoryModal(emp);
     setIsLoadingHistory(true);
     setPointsHistory([]);
+    setDisputesMap({});
+    setShowDisputeFormId(null);
+    setDisputeReasonInput({});
     try {
-      const res = await apiRequest<PointHistoryEntry[]>(`/employees/${emp.id}/points-history`, { token });
-      setPointsHistory(res.data);
+      const [historyRes, disputesRes] = await Promise.all([
+        apiRequest<PointHistoryEntry[]>(`/employees/${emp.id}/points-history`, { token }),
+        apiRequest<PointsDisputeTicket[]>("/employees/disputes", { token })
+      ]);
+      setPointsHistory(historyRes.data);
+
+      const dMap: Record<number, PointsDisputeTicket> = {};
+      disputesRes.data.forEach(d => {
+        dMap[d.pointHistoryId] = d;
+      });
+      setDisputesMap(dMap);
     } catch (err: any) {
       toast.error(err.message || "Failed to load history");
     } finally {
       setIsLoadingHistory(false);
     }
   }
+
+  async function handleRaiseDispute(pointHistoryId: number) {
+    const reason = disputeReasonInput[pointHistoryId]?.trim();
+    if (!reason) {
+      toast.error("Please enter a reason for the dispute");
+      return;
+    }
+
+    try {
+      setSubmittingDisputeId(pointHistoryId);
+      const res = await apiRequest<PointsDisputeTicket>("/employees/disputes", {
+        method: "POST",
+        token,
+        body: { pointHistoryId, reason }
+      });
+      toast.success("Dispute ticket raised successfully");
+      
+      // Update local disputesMap immediately
+      setDisputesMap(prev => ({
+        ...prev,
+        [pointHistoryId]: res.data
+      }));
+      setShowDisputeFormId(null);
+    } catch (err: any) {
+      toast.error(err.message || "Failed to raise dispute");
+    } finally {
+      setSubmittingDisputeId(null);
+    }
+  }
+
+  async function fetchAllDisputes() {
+    try {
+      setIsLoadingDisputes(true);
+      const res = await apiRequest<PointsDisputeTicket[]>("/employees/disputes", { token });
+      setAllDisputes(res.data);
+    } catch (err: any) {
+      toast.error(err.message || "Failed to load disputes queue");
+    } finally {
+      setIsLoadingDisputes(false);
+    }
+  }
+
+  async function handleResolveDispute(ticketId: number, status: "APPROVED" | "REJECTED") {
+    const hrRemarks = hrRemarksInput[ticketId]?.trim();
+    if (status === "REJECTED" && !hrRemarks) {
+      toast.error("Remarks are required when rejecting a dispute");
+      return;
+    }
+
+    try {
+      setResolvingDisputeId(ticketId);
+      const res = await apiRequest<PointsDisputeTicket>(`/employees/disputes/${ticketId}/resolve`, {
+        method: "POST",
+        token,
+        body: { status, hrRemarks }
+      });
+      toast.success(`Dispute successfully ${status === "APPROVED" ? "approved" : "rejected"}`);
+      
+      // Update in the list
+      setAllDisputes(prev => prev.map(d => d.id === ticketId ? res.data : d));
+      
+      // If approved, update the employee's points on our rankings in pointsMap!
+      if (status === "APPROVED" && res.data.pointHistory) {
+        const empId = res.data.employeeId;
+        const originalAmount = res.data.pointHistory.amount;
+        const originalMode = res.data.pointHistory.mode;
+        
+        let pointDiff = 0;
+        if (originalMode === "subtract") {
+          pointDiff = originalAmount; // we added them back
+        } else if (originalMode === "add") {
+          pointDiff = -originalAmount; // we deducted them
+        }
+        
+        setPointsMap(prev => {
+          const currentPoints = prev[empId] ?? 0;
+          return {
+            ...prev,
+            [empId]: currentPoints + pointDiff
+          };
+        });
+      }
+    } catch (err: any) {
+      toast.error(err.message || "Failed to resolve dispute");
+    } finally {
+      setResolvingDisputeId(null);
+    }
+  }
+
+  useEffect(() => {
+    if (activeTab === "DISPUTES") {
+      fetchAllDisputes();
+    }
+  }, [activeTab, token]);
 
   const isCurrentMonth = month === now.getMonth() + 1 && year === now.getFullYear();
   const prevMonthIndex = month - 2 < 0 ? 11 : month - 2;
@@ -428,6 +574,15 @@ export default function LeaderboardPage({ token, role = "EMPLOYEE" }: { token: s
               <Star size={16} />
               Points Ranking
             </button>
+            {(role === "HR" || role === "ADMIN") && (
+              <button
+                className={`lb-tab ${activeTab === "DISPUTES" ? "lb-tab--active" : ""}`}
+                onClick={() => setActiveTab("DISPUTES")}
+              >
+                <History size={16} />
+                Disputes Queue
+              </button>
+            )}
           </div>
 
           {/* Work Hours Ranking */}
@@ -669,6 +824,128 @@ export default function LeaderboardPage({ token, role = "EMPLOYEE" }: { token: s
               )}
             </div>
           )}
+          
+          {/* Disputes Queue */}
+          {activeTab === "DISPUTES" && (
+            <div className="lb-ranking-card">
+              <div className="lb-ranking-header">
+                <History size={18} />
+                <h3>Points Dispute Queue</h3>
+                <span className="lb-ranking-period">Manage ticket disputes</span>
+              </div>
+              {isLoadingDisputes ? (
+                <div style={{ padding: "40px", textAlign: "center", color: "#64748b" }}>Loading disputes...</div>
+              ) : allDisputes.length === 0 ? (
+                <div className="lb-empty" style={{ padding: "40px" }}>
+                  <p>No dispute tickets found.</p>
+                </div>
+              ) : (
+                <div className="lb-disputes-queue" style={{ padding: "20px", display: "flex", flexDirection: "column", gap: "20px" }}>
+                  {allDisputes.map(dispute => {
+                    const original = dispute.pointHistory;
+                    const isPending = dispute.status === "PENDING";
+                    const isApproved = dispute.status === "APPROVED";
+                    const isRejected = dispute.status === "REJECTED";
+                    
+                    return (
+                      <div key={dispute.id} className="lb-dispute-card">
+                        <div className="lb-dispute-header">
+                          <div className="lb-dispute-emp-info">
+                            <div className="lb-dispute-emp-avatar">
+                              {dispute.employee?.firstName?.[0] || "U"}{dispute.employee?.lastName?.[0] || "P"}
+                            </div>
+                            <div>
+                              <div className="lb-dispute-emp-name">
+                                {dispute.employee?.firstName} {dispute.employee?.lastName}
+                              </div>
+                              <div className="lb-dispute-emp-code">
+                                Code: #{dispute.employee?.employeeCode}
+                              </div>
+                            </div>
+                          </div>
+                          
+                          <span className={`lb-dispute-badge lb-dispute-badge--${dispute.status.toLowerCase()}`}>
+                            {isPending && "Pending Review"}
+                            {isApproved && "Dispute Approved"}
+                            {isRejected && "Dispute Rejected"}
+                          </span>
+                        </div>
+                        
+                        <div className="lb-dispute-details">
+                          <div className="lb-dispute-history-ref">
+                            <span>
+                              Disputed points: <strong>{original?.mode === "subtract" ? "-" : "+"}{original?.amount} pts</strong>
+                            </span>
+                            <span>
+                              Original date: {original ? new Date(original.createdAt).toLocaleDateString() : ""}
+                            </span>
+                          </div>
+                          <div style={{ fontSize: "13px", color: "#64748b" }}>
+                            <strong>Original Reason:</strong> {original?.reason}
+                          </div>
+                        </div>
+                        
+                        <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                          <span className="lb-dispute-reason-label">Employee Dispute Reason:</span>
+                          <div className="lb-dispute-reason-text">
+                            {dispute.reason}
+                          </div>
+                        </div>
+                        
+                        {isPending ? (
+                          <div className="lb-dispute-actions">
+                            <textarea
+                              className="lb-dispute-remarks-textarea"
+                              placeholder="Add HR remarks or reason for decision here (Required for Rejections)"
+                              value={hrRemarksInput[dispute.id] || ""}
+                              onChange={e => setHrRemarksInput(prev => ({ ...prev, [dispute.id]: e.target.value }))}
+                              rows={2}
+                              disabled={resolvingDisputeId === dispute.id}
+                            />
+                            
+                            <div className="lb-dispute-buttons">
+                              <button
+                                className="button button--secondary"
+                                onClick={() => handleResolveDispute(dispute.id, "REJECTED")}
+                                style={{ background: "#fef2f2", color: "#dc2626", borderColor: "#fecaca" }}
+                                disabled={resolvingDisputeId !== null}
+                              >
+                                {resolvingDisputeId === dispute.id ? "Processing..." : "Reject Dispute"}
+                              </button>
+                              <button
+                                className="button button--primary"
+                                onClick={() => handleResolveDispute(dispute.id, "APPROVED")}
+                                style={{ background: "#ecfdf5", color: "#059669", borderColor: "#a7f3d0" }}
+                                disabled={resolvingDisputeId !== null}
+                              >
+                                {resolvingDisputeId === dispute.id ? "Processing..." : "Approve (Reverse Points)"}
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="lb-dispute-resolved-info">
+                            <div>
+                              <strong>Status:</strong> {isApproved ? "Approved & Points Reversed" : "Rejected"}
+                            </div>
+                            {dispute.hrRemarks && (
+                              <div>
+                                <strong>Remarks:</strong> {dispute.hrRemarks}
+                              </div>
+                            )}
+                            {dispute.resolvedBy && (
+                              <div style={{ fontSize: "11px", color: "#94a3b8", marginTop: "4px" }}>
+                                Resolved by {dispute.resolvedBy.firstName} {dispute.resolvedBy.lastName} on {dispute.resolvedAt ? new Date(dispute.resolvedAt).toLocaleDateString() : ""}
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
         </>
       )}
 
@@ -815,6 +1092,88 @@ export default function LeaderboardPage({ token, role = "EMPLOYEE" }: { token: s
                       Given by {entry.givenBy.firstName} {entry.givenBy.lastName}
                     </div>
                   )}
+
+                  {/* Dispute Section */}
+                  {(() => {
+                    const dispute = disputesMap[entry.id];
+                    if (dispute) {
+                      const isPending = dispute.status === "PENDING";
+                      const isApproved = dispute.status === "APPROVED";
+                      const isRejected = dispute.status === "REJECTED";
+                      
+                      return (
+                        <div style={{ marginTop: "12px", borderTop: "1px dashed #cbd5e1", paddingTop: "8px" }}>
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "4px" }}>
+                            <span style={{ fontSize: "11px", fontWeight: "600", textTransform: "uppercase", color: "#64748b" }}>Points Dispute</span>
+                            <span className={`lb-dispute-badge lb-dispute-badge--${dispute.status.toLowerCase()}`}>
+                              {isPending && "Pending Review"}
+                              {isApproved && "Approved"}
+                              {isRejected && "Rejected"}
+                            </span>
+                          </div>
+                          <div style={{ fontSize: "12px", color: "#475569" }}>
+                            <strong>My Reason:</strong> {dispute.reason}
+                          </div>
+                          {dispute.hrRemarks && (
+                            <div style={{ fontSize: "12px", color: "#0f172a", background: "#f1f5f9", padding: "6px 10px", borderRadius: "6px", marginTop: "4px" }}>
+                              <strong>HR Response:</strong> {dispute.hrRemarks}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    }
+                    
+                    // If no dispute exists, and this is the employee's own page, show dispute option
+                    if (historyModal && historyModal.id === currentEmployeeId) {
+                      const isShowForm = showDisputeFormId === entry.id;
+                      
+                      return (
+                        <div style={{ marginTop: "12px", borderTop: "1px dashed #cbd5e1", paddingTop: "8px", display: "flex", flexDirection: "column", gap: "6px" }}>
+                          {!isShowForm ? (
+                            <button
+                              className="button button--secondary"
+                              style={{ padding: "4px 8px", fontSize: "11px", height: "auto", alignSelf: "flex-end" }}
+                              onClick={() => setShowDisputeFormId(entry.id)}
+                            >
+                              Dispute Transaction
+                            </button>
+                          ) : (
+                            <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                              <textarea
+                                className="lb-dispute-remarks-textarea"
+                                style={{ padding: "6px 8px", fontSize: "12px" }}
+                                placeholder="State why you are disputing this points transaction..."
+                                value={disputeReasonInput[entry.id] || ""}
+                                onChange={e => setDisputeReasonInput(prev => ({ ...prev, [entry.id]: e.target.value }))}
+                                rows={2}
+                                disabled={submittingDisputeId === entry.id}
+                              />
+                              <div style={{ display: "flex", gap: "8px", justifyContent: "flex-end" }}>
+                                <button
+                                  className="button button--secondary"
+                                  style={{ padding: "4px 8px", fontSize: "11px", height: "auto" }}
+                                  onClick={() => setShowDisputeFormId(null)}
+                                  disabled={submittingDisputeId === entry.id}
+                                >
+                                  Cancel
+                                </button>
+                                <button
+                                  className="button button--primary"
+                                  style={{ padding: "4px 8px", fontSize: "11px", height: "auto" }}
+                                  onClick={() => handleRaiseDispute(entry.id)}
+                                  disabled={submittingDisputeId === entry.id}
+                                >
+                                  {submittingDisputeId === entry.id ? "Submitting..." : "Submit Dispute"}
+                                </button>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    }
+                    
+                    return null;
+                  })()}
                 </div>
               ))}
             </div>

@@ -162,6 +162,243 @@ router.get("/birthdays/upcoming", async (request, response, next) => {
   }
 });
 
+// --- Points Dispute Tickets Routes ---
+
+const createDisputeSchema = z.object({
+  pointHistoryId: z.coerce.number().int().positive(),
+  reason: z.string().trim().min(1, "Reason is required"),
+});
+
+const resolveDisputeSchema = z.object({
+  status: z.enum(["APPROVED", "REJECTED"]),
+  hrRemarks: z.string().trim().optional(),
+});
+
+// Create a points dispute ticket
+router.post("/disputes", requireRoles("EMPLOYEE", "MANAGER", "HR", "ADMIN"), validate(createDisputeSchema), async (request, response, next) => {
+  try {
+    const employeeId = request.user?.employeeId;
+    if (!employeeId) {
+      throw new AppError("Only employees with an employee profile can raise disputes", 403);
+    }
+
+    const { pointHistoryId, reason } = request.body;
+
+    // Verify the points transaction exists and belongs to the employee
+    const pointHistory = await prisma.pointHistory.findUnique({
+      where: { id: pointHistoryId },
+    });
+
+    if (!pointHistory) {
+      throw new AppError("Points transaction not found", 404);
+    }
+
+    if (pointHistory.employeeId !== employeeId) {
+      throw new AppError("You can only dispute your own points transactions", 403);
+    }
+
+    // Check if a dispute already exists for this transaction
+    const existingDispute = await prisma.pointsDisputeTicket.findUnique({
+      where: { pointHistoryId },
+    });
+
+    if (existingDispute) {
+      throw new AppError("A dispute ticket already exists for this points transaction", 400);
+    }
+
+    const dispute = await prisma.pointsDisputeTicket.create({
+      data: {
+        pointHistoryId,
+        employeeId,
+        reason,
+        status: "PENDING",
+      },
+      include: {
+        pointHistory: true,
+      },
+    });
+
+    return sendSuccess(response, "Points dispute ticket raised successfully", dispute, 201);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Fetch dispute tickets
+router.get("/disputes", requireRoles("ADMIN", "HR", "MANAGER", "EMPLOYEE"), async (request, response, next) => {
+  try {
+    const userRole = request.user?.role;
+    const employeeId = request.user?.employeeId;
+
+    let disputes;
+
+    if (userRole === "ADMIN" || userRole === "HR") {
+      // HR and Admin can see all disputes
+      disputes = await prisma.pointsDisputeTicket.findMany({
+        include: {
+          employee: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              employeeCode: true,
+              profilePictureUrl: true,
+            },
+          },
+          pointHistory: true,
+          resolvedBy: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+            },
+          },
+        },
+        orderBy: { createdAt: "desc" },
+      });
+    } else {
+      // Regular employees can only see their own disputes
+      if (!employeeId) {
+        return sendSuccess(response, "Disputes fetched successfully", []);
+      }
+
+      disputes = await prisma.pointsDisputeTicket.findMany({
+        where: { employeeId },
+        include: {
+          pointHistory: true,
+          resolvedBy: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+            },
+          },
+        },
+        orderBy: { createdAt: "desc" },
+      });
+    }
+
+    return sendSuccess(response, "Disputes fetched successfully", disputes);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Resolve a dispute ticket (Approve / Reject)
+router.post("/disputes/:id/resolve", requireRoles("ADMIN", "HR"), validate(resolveDisputeSchema), async (request, response, next) => {
+  try {
+    const ticketId = Number(request.params.id);
+    const { status, hrRemarks } = request.body;
+    const resolverEmployeeId = request.user?.employeeId || null;
+
+    const ticket = await prisma.pointsDisputeTicket.findUnique({
+      where: { id: ticketId },
+      include: {
+        pointHistory: true,
+        employee: true,
+      },
+    });
+
+    if (!ticket) {
+      throw new AppError("Dispute ticket not found", 404);
+    }
+
+    if (ticket.status !== "PENDING") {
+      throw new AppError("This dispute ticket has already been resolved", 400);
+    }
+
+    const resolvedTicket = await prisma.$transaction(async (tx) => {
+      if (status === "REJECTED") {
+        return tx.pointsDisputeTicket.update({
+          where: { id: ticketId },
+          data: {
+            status: "REJECTED",
+            hrRemarks: hrRemarks || null,
+            resolvedById: resolverEmployeeId,
+            resolvedAt: new Date(),
+          },
+          include: {
+            pointHistory: true,
+            employee: {
+              select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+                employeeCode: true,
+              },
+            },
+          },
+        });
+      }
+
+      // If APPROVED, perform transaction rollback and log compensating record
+      const original = ticket.pointHistory;
+      let pointsAdjustment = 0;
+      let newMode = "add";
+
+      if (original.mode === "subtract") {
+        // Adding points back
+        pointsAdjustment = original.amount;
+        newMode = "add";
+      } else if (original.mode === "add") {
+        // Deducting points
+        pointsAdjustment = -original.amount;
+        newMode = "subtract";
+      } else {
+        // If mode is "set" or something else, we don't reverse automatically
+        throw new AppError(`Cannot automatically reverse points transaction mode: ${original.mode}`, 400);
+      }
+
+      // Update Employee points balance
+      await tx.employee.update({
+        where: { id: ticket.employeeId },
+        data: {
+          points: {
+            increment: pointsAdjustment,
+          },
+        },
+      });
+
+      // Create compensating PointHistory record
+      await tx.pointHistory.create({
+        data: {
+          employeeId: ticket.employeeId,
+          amount: Math.abs(pointsAdjustment),
+          mode: newMode,
+          reason: `Dispute Reversal: ${original.reason}`,
+          givenById: resolverEmployeeId,
+        },
+      });
+
+      // Update PointsDisputeTicket
+      return tx.pointsDisputeTicket.update({
+        where: { id: ticketId },
+        data: {
+          status: "APPROVED",
+          hrRemarks: hrRemarks || null,
+          resolvedById: resolverEmployeeId,
+          resolvedAt: new Date(),
+        },
+        include: {
+          pointHistory: true,
+          employee: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              employeeCode: true,
+            },
+          },
+        },
+      });
+    });
+
+    return sendSuccess(response, `Dispute ticket ${status.toLowerCase()} successfully`, resolvedTicket);
+  } catch (error) {
+    next(error);
+  }
+});
+
 router.get("/:id", async (request, response, next) => {
   try {
     const id = Number(request.params.id);

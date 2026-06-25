@@ -113,6 +113,8 @@ model Employee {
   generalTaskCompletions            GeneralTaskCompletion[]
   pointHistory                      PointHistory[]                    @relation("EmployeePointHistory")
   givenPointHistory                 PointHistory[]                    @relation("GivenPointHistory")
+  employeeDisputes                  PointsDisputeTicket[]             @relation("EmployeeDisputes")
+  resolvedDisputes                  PointsDisputeTicket[]             @relation("ResolvedDisputes")
   documents                         EmployeeDocument[]                @relation("EmployeeDocuments")
   salesRecords                      SalesRecord[]                     @relation("EmployeeSalesRecords")
   desktopActivityLogs               DesktopActivityLog[]
@@ -591,19 +593,46 @@ model GeneralTaskCompletion {
 }
 
 model PointHistory {
-  id          Int      @id @default(autoincrement())
-  employeeId  Int
-  amount      Int
-  reason      String
-  mode        String   // "add", "subtract", "set"
-  givenById   Int?
-  createdAt   DateTime @default(now())
+  id            Int                  @id @default(autoincrement())
+  employeeId    Int
+  amount        Int
+  reason        String
+  mode          String               // "add", "subtract", "set"
+  givenById     Int?
+  createdAt     DateTime             @default(now())
   
-  employee    Employee @relation("EmployeePointHistory", fields: [employeeId], references: [id])
-  givenBy     Employee? @relation("GivenPointHistory", fields: [givenById], references: [id])
+  employee      Employee             @relation("EmployeePointHistory", fields: [employeeId], references: [id])
+  givenBy       Employee?            @relation("GivenPointHistory", fields: [givenById], references: [id])
+  disputeTicket PointsDisputeTicket?
 
   @@index([employeeId])
   @@index([givenById])
+}
+
+enum PointsDisputeStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model PointsDisputeTicket {
+  id             Int                 @id @default(autoincrement())
+  pointHistoryId Int                 @unique
+  employeeId     Int
+  reason         String
+  status         PointsDisputeStatus @default(PENDING)
+  hrRemarks      String?
+  resolvedById   Int?
+  resolvedAt     DateTime?
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+
+  pointHistory   PointHistory        @relation(fields: [pointHistoryId], references: [id], onDelete: Cascade)
+  employee       Employee            @relation("EmployeeDisputes", fields: [employeeId], references: [id], onDelete: Cascade)
+  resolvedBy     Employee?           @relation("ResolvedDisputes", fields: [resolvedById], references: [id], onDelete: SetNull)
+
+  @@index([employeeId])
+  @@index([resolvedById])
 }
 
 model EmployeeDocument {

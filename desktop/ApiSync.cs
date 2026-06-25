@@ -20,6 +20,7 @@ namespace HRMS_Agent
         public string ApiUrl { get; set; } = "https://www.intellihrhub.com";
         public string Token { get; set; } = string.Empty;
         public string UserEmail { get; set; } = string.Empty;
+        public string UserName { get; set; } = string.Empty;
     }
 
     public class AttendanceRecord
@@ -104,6 +105,7 @@ namespace HRMS_Agent
 
         public static bool IsLoggedIn => !string.IsNullOrEmpty(_config.Token);
         public static string CurrentEmail => _config.UserEmail;
+        public static string CurrentName => _config.UserName;
         public static string ApiUrl => _config.ApiUrl;
 
         public static void SetApiUrl(string url)
@@ -206,6 +208,21 @@ namespace HRMS_Agent
                     {
                         _config.Token = tokenProp.GetString() ?? string.Empty;
                         _config.UserEmail = email;
+                        
+                        string fullName = "";
+                        if (dataProp.TryGetProperty("user", out var userProp))
+                        {
+                            if (userProp.TryGetProperty("employee", out var empProp) && empProp.ValueKind != JsonValueKind.Null)
+                            {
+                                string firstName = "";
+                                string lastName = "";
+                                if (empProp.TryGetProperty("firstName", out var fnProp)) firstName = fnProp.GetString() ?? "";
+                                if (empProp.TryGetProperty("lastName", out var lnProp)) lastName = lnProp.GetString() ?? "";
+                                fullName = $"{firstName} {lastName}".Trim();
+                            }
+                        }
+                        _config.UserName = !string.IsNullOrEmpty(fullName) ? fullName : email;
+
                         SaveConfig();
                         OnStatusChanged?.Invoke("Logged in successfully");
                         
@@ -227,6 +244,7 @@ namespace HRMS_Agent
         {
             _config.Token = string.Empty;
             _config.UserEmail = string.Empty;
+            _config.UserName = string.Empty;
             SaveConfig();
             OnStatusChanged?.Invoke("Logged out");
         }
@@ -329,6 +347,50 @@ namespace HRMS_Agent
             finally
             {
                 _isProcessingQueue = false;
+            }
+        }
+
+        public static async Task<bool> FetchProfileAsync()
+        {
+            if (!IsLoggedIn) return false;
+            try
+            {
+                using var request = new HttpRequestMessage(HttpMethod.Get, $"{_config.ApiUrl}/api/auth/me");
+                request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _config.Token);
+
+                var response = await _httpClient.SendAsync(request);
+                if (!response.IsSuccessStatusCode) return false;
+
+                var json = await response.Content.ReadAsStringAsync();
+                using var doc = JsonDocument.Parse(json);
+                var root = doc.RootElement;
+
+                if (root.TryGetProperty("success", out var successProp) && successProp.GetBoolean() &&
+                    root.TryGetProperty("data", out var dataProp))
+                {
+                    string fullName = "";
+                    if (dataProp.TryGetProperty("employee", out var empProp) && empProp.ValueKind != JsonValueKind.Null)
+                    {
+                        string firstName = "";
+                        string lastName = "";
+                        if (empProp.TryGetProperty("firstName", out var fnProp)) firstName = fnProp.GetString() ?? "";
+                        if (empProp.TryGetProperty("lastName", out var lnProp)) lastName = lnProp.GetString() ?? "";
+                        fullName = $"{firstName} {lastName}".Trim();
+                    }
+
+                    if (!string.IsNullOrEmpty(fullName))
+                    {
+                        _config.UserName = fullName;
+                        SaveConfig();
+                        return true;
+                    }
+                }
+                return false;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error fetching profile: {ex.Message}");
+                return false;
             }
         }
 

@@ -174,10 +174,19 @@ namespace HRMS_Agent
                     },
                     () => {
                         // On logout requested from Dashboard
-                        ApiSync.Logout();
-                        _dashboardForm?.Hide(); // Close/Hide dashboard window
-                        _ = RefreshStatusAndMenuAsync();
-                        ShowLoginForm();
+                        var result = MessageBox.Show(
+                            "Are you sure you want to disconnect and log out of your account?",
+                            "Confirm Disconnect",
+                            MessageBoxButtons.YesNo,
+                            MessageBoxIcon.Question
+                        );
+                        if (result == DialogResult.Yes)
+                        {
+                            ApiSync.Logout();
+                            _dashboardForm?.Hide(); // Close/Hide dashboard window
+                            _ = RefreshStatusAndMenuAsync();
+                            ShowLoginForm();
+                        }
                     }
                 );
             }
@@ -201,6 +210,11 @@ namespace HRMS_Agent
                 UpdateStatusText("Not connected");
                 _dashboardForm?.UpdateState(null, new List<BreakSessionRecord>());
                 return;
+            }
+
+            if (string.IsNullOrEmpty(ApiSync.CurrentName))
+            {
+                await ApiSync.FetchProfileAsync();
             }
 
             var attendance = await ApiSync.GetAttendanceTodayAsync();
@@ -289,20 +303,29 @@ namespace HRMS_Agent
                         var localStart = start.ToLocalTime();
                         if (localStart.Hour == 10 || (localStart.Hour == 11 && localStart.Minute <= 15))
                             breakName = "Morning Tea Break";
-                        else if (localStart.Hour == 12 || localStart.Hour == 13 || localStart.Hour == 14)
+                        else if (localStart.Hour == 12 || localStart.Hour == 13)
                             breakName = "Lunch Break";
                         else
                             breakName = "Evening Tea Break";
                     }
 
                     var endBreakItem = new ToolStripMenuItem($"🛑 End {breakName}", null, async (s, e) => {
-                        UpdateStatusText("Ending break...");
-                        bool res = await ApiSync.EndBreakAsync();
-                        if (res)
+                        var confirmResult = MessageBox.Show(
+                            $"Are you sure you want to end your {breakName} and return to work?",
+                            "Confirm End Break",
+                            MessageBoxButtons.YesNo,
+                            MessageBoxIcon.Question
+                        );
+                        if (confirmResult == DialogResult.Yes)
                         {
-                            _trayIcon.ShowBalloonTip(3000, "Break Ended", $"Your {breakName} has ended. Welcome back.", ToolTipIcon.Info);
+                            UpdateStatusText("Ending break...");
+                            bool res = await ApiSync.EndBreakAsync();
+                            if (res)
+                            {
+                                _trayIcon.ShowBalloonTip(3000, "Break Ended", $"Your {breakName} has ended. Welcome back.", ToolTipIcon.Info);
+                            }
+                            await RefreshStatusAndMenuAsync();
                         }
-                        await RefreshStatusAndMenuAsync();
                     });
                     contextMenu.Items.Add(endBreakItem);
                 }
@@ -322,7 +345,7 @@ namespace HRMS_Agent
                         if (DateTime.TryParse(b.StartTime, out var start))
                         {
                             var localStart = start.ToLocalTime();
-                            return localStart.Hour == 12 || localStart.Hour == 13 || localStart.Hour == 14;
+                            return localStart.Hour == 12 || localStart.Hour == 13;
                         }
                         return false;
                     });
@@ -331,7 +354,7 @@ namespace HRMS_Agent
                         if (DateTime.TryParse(b.StartTime, out var start))
                         {
                             var localStart = start.ToLocalTime();
-                            return localStart.Hour == 15 || localStart.Hour == 16 || localStart.Hour == 17;
+                            return localStart.Hour == 14 || localStart.Hour == 15 || localStart.Hour == 16 || localStart.Hour == 17;
                         }
                         return false;
                     });
@@ -339,9 +362,22 @@ namespace HRMS_Agent
                     if (!tookMorningTea)
                     {
                         var startMorningTeaItem = new ToolStripMenuItem("☕ Start Morning Tea Break", null, async (s, e) => {
-                            UpdateStatusText("Starting Morning Tea Break...");
-                            bool res = await ApiSync.StartBreakAsync();
-                            await RefreshStatusAndMenuAsync();
+                            var confirmResult = MessageBox.Show(
+                                "Are you sure you want to start your Morning Tea Break?",
+                                "Confirm Start Break",
+                                MessageBoxButtons.YesNo,
+                                MessageBoxIcon.Question
+                            );
+                            if (confirmResult == DialogResult.Yes)
+                            {
+                                UpdateStatusText("Starting Morning Tea Break...");
+                                bool res = await ApiSync.StartBreakAsync();
+                                if (res)
+                                {
+                                    _trayIcon.ShowBalloonTip(3000, "Break Started", "Morning tea break logged successfully.", ToolTipIcon.Info);
+                                }
+                                await RefreshStatusAndMenuAsync();
+                            }
                         });
                         contextMenu.Items.Add(startMorningTeaItem);
                     }
@@ -349,9 +385,22 @@ namespace HRMS_Agent
                     if (!tookLunch)
                     {
                         var startLunchItem = new ToolStripMenuItem("🍱 Start Lunch Break", null, async (s, e) => {
-                            UpdateStatusText("Starting Lunch Break...");
-                            bool res = await ApiSync.StartBreakAsync();
-                            await RefreshStatusAndMenuAsync();
+                            var confirmResult = MessageBox.Show(
+                                "Are you sure you want to start your Lunch Break?",
+                                "Confirm Start Break",
+                                MessageBoxButtons.YesNo,
+                                MessageBoxIcon.Question
+                            );
+                            if (confirmResult == DialogResult.Yes)
+                            {
+                                UpdateStatusText("Starting Lunch Break...");
+                                bool res = await ApiSync.StartBreakAsync();
+                                if (res)
+                                {
+                                    _trayIcon.ShowBalloonTip(3000, "Lunch Started", "Lunch break logged successfully.", ToolTipIcon.Info);
+                                }
+                                await RefreshStatusAndMenuAsync();
+                            }
                         });
                         contextMenu.Items.Add(startLunchItem);
                     }
@@ -359,9 +408,22 @@ namespace HRMS_Agent
                     if (!tookEveningTea)
                     {
                         var startEveningTeaItem = new ToolStripMenuItem("☕ Start Evening Tea Break", null, async (s, e) => {
-                            UpdateStatusText("Starting Evening Tea Break...");
-                            bool res = await ApiSync.StartBreakAsync();
-                            await RefreshStatusAndMenuAsync();
+                            var confirmResult = MessageBox.Show(
+                                "Are you sure you want to start your Evening Tea Break?",
+                                "Confirm Start Break",
+                                MessageBoxButtons.YesNo,
+                                MessageBoxIcon.Question
+                            );
+                            if (confirmResult == DialogResult.Yes)
+                            {
+                                UpdateStatusText("Starting Evening Tea Break...");
+                                bool res = await ApiSync.StartBreakAsync();
+                                if (res)
+                                {
+                                    _trayIcon.ShowBalloonTip(3000, "Break Started", "Evening tea break logged successfully.", ToolTipIcon.Info);
+                                }
+                                await RefreshStatusAndMenuAsync();
+                            }
                         });
                         contextMenu.Items.Add(startEveningTeaItem);
                     }
@@ -488,7 +550,7 @@ namespace HRMS_Agent
                         if (DateTime.TryParse(b.StartTime, out var start))
                         {
                             var localStart = start.ToLocalTime();
-                            return localStart.Hour == 12 || localStart.Hour == 13 || localStart.Hour == 14;
+                            return localStart.Hour == 12 || localStart.Hour == 13;
                         }
                         return false;
                     });
@@ -511,7 +573,7 @@ namespace HRMS_Agent
                         if (DateTime.TryParse(b.StartTime, out var start))
                         {
                             var localStart = start.ToLocalTime();
-                            return localStart.Hour == 15 || localStart.Hour == 16 || localStart.Hour == 17;
+                            return localStart.Hour == 14 || localStart.Hour == 15 || localStart.Hour == 16 || localStart.Hour == 17;
                         }
                         return false;
                     });
@@ -569,13 +631,23 @@ namespace HRMS_Agent
                     message = "It's 10:45 AM. Time for your morning tea break (15 minutes). Step away to rest and recharge.";
                     actionText = "Start Break";
                     onAction = async () => {
-                        bool res = await ApiSync.StartBreakAsync();
-                        if (res)
+                        var confirmResult = MessageBox.Show(
+                            "Are you sure you want to start your Morning Tea Break?",
+                            "Confirm Start Break",
+                            MessageBoxButtons.YesNo,
+                            MessageBoxIcon.Question
+                        );
+                        if (confirmResult == DialogResult.Yes)
                         {
-                            _trayIcon.ShowBalloonTip(3000, "Break Started", "Morning tea break logged successfully.", ToolTipIcon.Info);
-                            await RefreshStatusAndMenuAsync();
+                            bool res = await ApiSync.StartBreakAsync();
+                            if (res)
+                            {
+                                _trayIcon.ShowBalloonTip(3000, "Break Started", "Morning tea break logged successfully.", ToolTipIcon.Info);
+                                await RefreshStatusAndMenuAsync();
+                            }
+                            return res;
                         }
-                        return res;
+                        return false;
                     };
                     break;
 
@@ -585,13 +657,23 @@ namespace HRMS_Agent
                     message = "It's 1:00 PM. Time to grab some lunch (40 minutes). Make sure to log your break session.";
                     actionText = "Start Break";
                     onAction = async () => {
-                        bool res = await ApiSync.StartBreakAsync();
-                        if (res)
+                        var confirmResult = MessageBox.Show(
+                            "Are you sure you want to start your Lunch Break?",
+                            "Confirm Start Break",
+                            MessageBoxButtons.YesNo,
+                            MessageBoxIcon.Question
+                        );
+                        if (confirmResult == DialogResult.Yes)
                         {
-                            _trayIcon.ShowBalloonTip(3000, "Lunch Started", "Lunch break logged successfully.", ToolTipIcon.Info);
-                            await RefreshStatusAndMenuAsync();
+                            bool res = await ApiSync.StartBreakAsync();
+                            if (res)
+                            {
+                                _trayIcon.ShowBalloonTip(3000, "Lunch Started", "Lunch break logged successfully.", ToolTipIcon.Info);
+                                await RefreshStatusAndMenuAsync();
+                            }
+                            return res;
                         }
-                        return res;
+                        return false;
                     };
                     break;
 
@@ -601,13 +683,23 @@ namespace HRMS_Agent
                     message = "It's 4:10 PM. Time for your evening tea break (20 minutes) to refresh your focus.";
                     actionText = "Start Break";
                     onAction = async () => {
-                        bool res = await ApiSync.StartBreakAsync();
-                        if (res)
+                        var confirmResult = MessageBox.Show(
+                            "Are you sure you want to start your Evening Tea Break?",
+                            "Confirm Start Break",
+                            MessageBoxButtons.YesNo,
+                            MessageBoxIcon.Question
+                        );
+                        if (confirmResult == DialogResult.Yes)
                         {
-                            _trayIcon.ShowBalloonTip(3000, "Break Started", "Evening tea break logged successfully.", ToolTipIcon.Info);
-                            await RefreshStatusAndMenuAsync();
+                            bool res = await ApiSync.StartBreakAsync();
+                            if (res)
+                            {
+                                _trayIcon.ShowBalloonTip(3000, "Break Started", "Evening tea break logged successfully.", ToolTipIcon.Info);
+                                await RefreshStatusAndMenuAsync();
+                            }
+                            return res;
                         }
-                        return res;
+                        return false;
                     };
                     break;
 
@@ -617,13 +709,23 @@ namespace HRMS_Agent
                     message = "Your standard shift is complete. Don't forget to check out and log your hours.";
                     actionText = "Check Out Now";
                     onAction = async () => {
-                        bool res = await ApiSync.CheckOutAsync();
-                        if (res)
+                        var confirmResult = MessageBox.Show(
+                            "Are you sure you want to check out? This will end your workday.",
+                            "Confirm Check Out",
+                            MessageBoxButtons.YesNo,
+                            MessageBoxIcon.Question
+                        );
+                        if (confirmResult == DialogResult.Yes)
                         {
-                            _trayIcon.ShowBalloonTip(3000, "Checked Out", "Successfully checked out from reminder.", ToolTipIcon.Info);
-                            await RefreshStatusAndMenuAsync();
+                            bool res = await ApiSync.CheckOutAsync();
+                            if (res)
+                            {
+                                _trayIcon.ShowBalloonTip(3000, "Checked Out", "Successfully checked out from reminder.", ToolTipIcon.Info);
+                                await RefreshStatusAndMenuAsync();
+                            }
+                            return res;
                         }
-                        return res;
+                        return false;
                     };
                     break;
             }

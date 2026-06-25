@@ -131,12 +131,16 @@
     ],
     "bugsFixed": [
       "Fixed desktop agent active shift and break elapsed timers showing incorrect negative durations due to local time vs UTC timezone mismatch",
-      "Fixed desktop dashboard UI text clipping, label overlapping, and button text truncation on High-DPI displays by optimizing control layout dimensions and enabling PerMonitorV2 high-DPI scaling awareness"
+      "Fixed desktop dashboard UI text clipping, label overlapping, and button text truncation on High-DPI displays by optimizing control layout dimensions and enabling PerMonitorV2 high-DPI scaling awareness",
+      "Fixed a classification bug where Hour 14 (2:00 PM to 2:59 PM) was incorrectly grouped into the Lunch break window, causing afternoon breaks to show as Lunch Break / End Lunch instead of Evening Tea / End Tea",
+      "Added specific, context-aware confirmation dialogs to prevent accidental break markings (starting and ending breaks) across the Desktop Dashboard, System Tray menu, and slide-up reminders",
+      "Fixed an issue in the desktop dashboard where the tea break button was named 'Tea Break' by default, refactoring it to dynamically display 'Morning Tea' in the morning hours (before 12 PM) and 'Evening Tea' in the afternoon/evening",
+      "Fixed UI clipping, padding, and spacing discrepancies in both normal and maximized window states of the C# Desktop Agent, increasing the header titlebar height, adding a 25px symmetrical padding/margin to all internal controls, and perfectly aligning window controllers"
     ],
     "blockers": [],
-    "hoursWorked": 6,
-    "dailyProgress": 0.7,
-    "overallProjectProgress": 97,
-    "remarks": "Successfully implemented and integrated check-in/out and break reminders, dynamic state-aware tray context menus, and custom slide-up notification alert cards. Additionally, developed a fully interactive, visible C# Desktop Dashboard mini-app window featuring a state-aware quick action panel, active workday/break timers, and a live telemetry activity log. Identified and fixed a timezone mismatch bug where the C# desktop agent's active shift/break timers subtracted local time from UTC time, resulting in incorrect negative elapsed times. Also optimized the desktop dashboard layout coordinates, enlarged button dimensions, removed space-heavy emojis from action controls, and configured high-DPI scaling mode (PerMonitorV2) in the project configuration to prevent text clipping and overlapping on high-resolution screens. Re-compiled, updated the downloadable ZIP archive, and pushed the updates to the main branch."
+    "hoursWorked": 8,
+    "dailyProgress": 1.0,
+    "overallProjectProgress": 98,
+    "remarks": "Successfully implemented and integrated check-in/out and break reminders, dynamic state-aware tray context menus, and custom slide-up notification alert cards. Additionally, developed a fully interactive, visible C# Desktop Dashboard mini-app window featuring a state-aware quick action panel, active workday/break timers, and a live telemetry activity log. Identified and fixed a timezone mismatch bug where the C# desktop agent's active shift/break timers subtracted local time from UTC time, resulting in incorrect negative elapsed times. Also optimized the desktop dashboard layout coordinates, enlarged button dimensions, removed space-heavy emojis from action controls, and configured high-DPI scaling mode (PerMonitorV2) in the project configuration to prevent text clipping and overlapping on high-resolution screens. Resolved the Hour 14 Evening Tea classification bug and added safety confirmation boxes to all break start/end actions across the dashboard, system tray menu, and slide-up reminder popups. Re-compiled, updated the downloadable ZIP archive, and pushed the updates to the main branch."
   }
 ]

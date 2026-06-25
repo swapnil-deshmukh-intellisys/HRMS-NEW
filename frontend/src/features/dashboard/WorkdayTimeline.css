@@ -893,4 +893,47 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* ── Modal Integration & Flat Layouts ──────────── */
+.timeline-modal {
+  width: min(100%, 760px) !important;
+  max-width: 760px !important;
+}
+
+.wdt-premium-v2.wdt-flat {
+  border: none !important;
+  box-shadow: none !important;
+  background: transparent !important;
+  padding: 0 !important;
+}
+
+/* Ensure no double card border radius/spacing when nested in flat mode */
+.wdt-premium-v2.wdt-flat.is-expanded,
+.wdt-premium-v2.wdt-flat.is-collapsed {
+  padding: 0 !important;
+  margin: 0 !important;
+}
+
+/* Header Spacing and Flex Overlap Prevention */
+.wdt-header-minimal {
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+.wdt-minimal-title {
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.wdt-time-compact {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.wdt-overtime-badge {
+  display: inline-block;
+  white-space: nowrap;
+}
 

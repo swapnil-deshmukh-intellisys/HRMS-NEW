@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { ChevronDown, ChevronUp, CheckCircle, Lock, Unlock, Moon, Sun, Power, LogOut, Coffee, Utensils } from 'lucide-react';
 import { apiRequest } from '../../services/api';
+import { isToday, formatAttendanceTime, toZonedTime } from '../../utils/format';
 import './WorkdayTimeline.css';
 import type { BreakSession, DesktopActivityLog } from '../../types';
 
@@ -16,6 +17,7 @@ interface WorkdayTimelineProps {
   token?: string | null;
   customBreakSessions?: BreakSession[];
   dateContext?: string;
+  className?: string;
 }
 
 const BREAK_SCHEDULE_DATA = [
@@ -33,7 +35,7 @@ function format12h(timeStr: string): string {
 }
 
 const getBreakName = (dateInput: Date | string): string => {
-  const date = new Date(dateInput);
+  const date = toZonedTime(new Date(dateInput), 'Asia/Kolkata');
   const hour = date.getHours();
   const minute = date.getMinutes();
   if (hour === 10 || (hour === 11 && minute <= 15)) {
@@ -58,6 +60,7 @@ const WorkdayTimeline: React.FC<WorkdayTimelineProps> = ({
   token = null,
   customBreakSessions,
   dateContext,
+  className = '',
 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -115,7 +118,23 @@ const WorkdayTimeline: React.FC<WorkdayTimelineProps> = ({
   useEffect(() => {
     const calculate = () => {
       const baseDate = dateContext ? new Date(dateContext + 'T00:00:00') : new Date();
-      const now = dateContext ? new Date(dateContext + 'T23:59:59') : new Date();
+      const isDateToday = dateContext ? isToday(dateContext) : true;
+      
+      // Determine logical endpoint for active tracking
+      let activeEnd = new Date();
+      if (!isDateToday) {
+        if (checkOutTime) {
+          activeEnd = new Date(checkOutTime);
+        } else if (desktopLogs.length > 0) {
+          activeEnd = new Date(desktopLogs[desktopLogs.length - 1].timestamp);
+        } else if (checkInTime) {
+          activeEnd = new Date(checkInTime);
+        } else {
+          activeEnd = new Date(baseDate);
+          activeEnd.setHours(23, 59, 59, 999);
+        }
+      }
+
       const [startH, startM] = startTime.split(':').map(Number);
       const [endH, endM] = endTime.split(':').map(Number);
       const [lateH, lateM] = lateThreshold.split(':').map(Number);
@@ -126,50 +145,69 @@ const WorkdayTimeline: React.FC<WorkdayTimelineProps> = ({
 
       const totalMs = end.getTime() - start.getTime();
       
-      let elapsedMs = now.getTime() - start.getTime();
+      let elapsedMs = activeEnd.getTime() - start.getTime();
       if (checkOutTime) {
-        const co = new Date(checkOutTime);
+        const co = toZonedTime(new Date(checkOutTime), 'Asia/Kolkata');
         const coToday = new Date(baseDate);
         coToday.setHours(co.getHours(), co.getMinutes(), co.getSeconds(), 0);
         elapsedMs = coToday.getTime() - start.getTime();
+      } else if (!isDateToday) {
+        // For past dates without checkout, set elapsed to show up to the activeEnd (e.g. last desktop activity or checkin)
+        const activeEndZoned = toZonedTime(activeEnd, 'Asia/Kolkata');
+        const activeEndToday = new Date(baseDate);
+        activeEndToday.setHours(activeEndZoned.getHours(), activeEndZoned.getMinutes(), activeEndZoned.getSeconds(), 0);
+        elapsedMs = activeEndToday.getTime() - start.getTime();
       }
 
       const pct = Math.max(0, (elapsedMs / totalMs) * 100);
       setProgress(checkInTime ? pct : 0);
-      setIsShiftOver(checkOutTime ? true : now > end);
-      setIsShiftPending(now < start);
+      setIsShiftOver(checkOutTime ? true : activeEnd > end);
+      setIsShiftPending(activeEnd < start);
 
       if (checkInTime) {
-        const ci = new Date(checkInTime);
+        const ci = toZonedTime(new Date(checkInTime), 'Asia/Kolkata');
         const ciToday = new Date(baseDate);
         ciToday.setHours(ci.getHours(), ci.getMinutes(), ci.getSeconds(), 0);
         
-        let workedMins = Math.max(0, Math.floor((now.getTime() - ciToday.getTime()) / 60000));
-        if (checkOutTime && typeof workedMinutes === 'number') {
-          workedMins = workedMinutes;
-        } else if (checkOutTime) {
-          const co = new Date(checkOutTime);
-          const coToday = new Date(baseDate);
-          coToday.setHours(co.getHours(), co.getMinutes(), co.getSeconds(), 0);
-          workedMins = Math.max(0, Math.floor((coToday.getTime() - ciToday.getTime()) / 60000));
+        let workedMins = 0;
+        if (checkOutTime) {
+          if (typeof workedMinutes === 'number' && workedMinutes > 0) {
+            workedMins = workedMinutes;
+          } else {
+            const co = toZonedTime(new Date(checkOutTime), 'Asia/Kolkata');
+            const coToday = new Date(baseDate);
+            coToday.setHours(co.getHours(), co.getMinutes(), co.getSeconds(), 0);
+            workedMins = Math.max(0, Math.floor((coToday.getTime() - ciToday.getTime()) / 60000));
+          }
+        } else {
+          if (isDateToday) {
+            // Today - in progress
+            const activeEndZoned = toZonedTime(activeEnd, 'Asia/Kolkata');
+            const activeEndToday = new Date(baseDate);
+            activeEndToday.setHours(activeEndZoned.getHours(), activeEndZoned.getMinutes(), activeEndZoned.getSeconds(), 0);
+            workedMins = Math.max(0, Math.floor((activeEndToday.getTime() - ciToday.getTime()) / 60000));
+          } else {
+            // Past date - missing checkout
+            workedMins = typeof workedMinutes === 'number' ? workedMinutes : 0;
+          }
         }
 
         setWorkedTime({ hours: Math.floor(workedMins / 60), minutes: workedMins % 60 });
         const ciPct = Math.max(0, Math.min(100, ((ciToday.getTime() - start.getTime()) / totalMs) * 100));
         setCheckInPct(ciPct);
-        setCheckInLabel(ci.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', hour12: true }));
+        setCheckInLabel(formatAttendanceTime(checkInTime instanceof Date ? checkInTime.toISOString() : checkInTime));
         setCheckInIsLate(ciToday > late);
       } else {
         setWorkedTime(null); setCheckInPct(null); setCheckInLabel(''); setCheckInIsLate(false);
       }
 
       if (checkOutTime) {
-        const co = new Date(checkOutTime);
+        const co = toZonedTime(new Date(checkOutTime), 'Asia/Kolkata');
         const coToday = new Date(baseDate);
         coToday.setHours(co.getHours(), co.getMinutes(), co.getSeconds(), 0);
         const coPct = Math.max(0, Math.min(100, ((coToday.getTime() - start.getTime()) / totalMs) * 100));
         setCheckOutPct(coPct);
-        setCheckOutLabel(co.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', hour12: true }));
+        setCheckOutLabel(formatAttendanceTime(checkOutTime instanceof Date ? checkOutTime.toISOString() : checkOutTime));
       } else {
         setCheckOutPct(null); setCheckOutLabel('');
       }
@@ -183,29 +221,36 @@ const WorkdayTimeline: React.FC<WorkdayTimelineProps> = ({
 
     const iv = setInterval(calculate, 30000);
     return () => clearInterval(iv);
-  }, [startTime, endTime, lateThreshold, checkInTime, checkOutTime, workedMinutes, dateContext]);
+  }, [startTime, endTime, lateThreshold, checkInTime, checkOutTime, workedMinutes, dateContext, desktopLogs]);
 
   const breakSessionsMapped = breakSessions.map(s => {
     const baseDate = dateContext ? new Date(dateContext + 'T00:00:00') : new Date();
-    const now = dateContext ? new Date(dateContext + 'T23:59:59') : new Date();
+    const isDateToday = dateContext ? isToday(dateContext) : true;
+    const now = isDateToday ? new Date() : new Date(dateContext + 'T23:59:59');
     const [startH, startM] = startTime.split(':').map(Number);
     const [endH, endM] = endTime.split(':').map(Number);
     const shiftStart = new Date(baseDate); shiftStart.setHours(startH, startM, 0, 0);
     const shiftEnd = new Date(baseDate); shiftEnd.setHours(endH, endM, 0, 0);
     const totalMs = shiftEnd.getTime() - shiftStart.getTime();
 
-    const bStart = new Date(s.startTime);
-    const bEnd = s.endTime ? new Date(s.endTime) : now;
-    const startPct = Math.max(0, Math.min(100, ((bStart.getTime() - shiftStart.getTime()) / totalMs) * 100));
-    const endPct = Math.max(0, Math.min(100, ((bEnd.getTime() - shiftStart.getTime()) / totalMs) * 100));
+    const bStart = toZonedTime(new Date(s.startTime), 'Asia/Kolkata');
+    const bStartToday = new Date(baseDate);
+    bStartToday.setHours(bStart.getHours(), bStart.getMinutes(), bStart.getSeconds(), 0);
+
+    const bEndZoned = toZonedTime(new Date(s.endTime || now), 'Asia/Kolkata');
+    const bEndToday = new Date(baseDate);
+    bEndToday.setHours(bEndZoned.getHours(), bEndZoned.getMinutes(), bEndZoned.getSeconds(), 0);
+
+    const startPct = Math.max(0, Math.min(100, ((bStartToday.getTime() - shiftStart.getTime()) / totalMs) * 100));
+    const endPct = Math.max(0, Math.min(100, ((bEndToday.getTime() - shiftStart.getTime()) / totalMs) * 100));
 
     return {
       id: s.id,
       startPct,
       endPct,
       isOpen: !s.endTime,
-      startTimeLabel: bStart.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', hour12: true }),
-      endTimeLabel: s.endTime ? new Date(s.endTime).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', hour12: true }) : 'Ongoing'
+      startTimeLabel: formatAttendanceTime(s.startTime),
+      endTimeLabel: s.endTime ? formatAttendanceTime(s.endTime) : 'Ongoing'
     };
   });
 
@@ -234,18 +279,22 @@ const WorkdayTimeline: React.FC<WorkdayTimelineProps> = ({
     const shiftEnd = new Date(baseDate); shiftEnd.setHours(endH, endM, 0, 0);
     const totalMs = shiftEnd.getTime() - shiftStart.getTime();
 
+    const getLocalDateForTimestamp = (ts: string | Date) => {
+      const zoned = toZonedTime(new Date(ts), 'Asia/Kolkata');
+      const local = new Date(baseDate);
+      local.setHours(zoned.getHours(), zoned.getMinutes(), zoned.getSeconds(), 0);
+      return local;
+    };
+
     const segments: Array<{ type: 'active' | 'idle' | 'locked', startPct: number, endPct: number, durationMs: number }> = [];
 
     // Base start point is check-in or first log
-    let lastTime = checkInTime ? new Date(checkInTime) : new Date(desktopLogs[0].timestamp);
-    // Ensure lastTime has the correct dateContext
-    lastTime.setFullYear(baseDate.getFullYear(), baseDate.getMonth(), baseDate.getDate());
+    let lastTime = checkInTime ? getLocalDateForTimestamp(checkInTime) : getLocalDateForTimestamp(desktopLogs[0].timestamp);
 
     let currentState: 'active' | 'idle' | 'locked' = 'active';
 
     for (const log of desktopLogs) {
-      const logTime = new Date(log.timestamp);
-      logTime.setFullYear(baseDate.getFullYear(), baseDate.getMonth(), baseDate.getDate());
+      const logTime = getLocalDateForTimestamp(log.timestamp);
 
       if (logTime < lastTime) continue;
 
@@ -266,8 +315,21 @@ const WorkdayTimeline: React.FC<WorkdayTimelineProps> = ({
       lastTime = logTime;
     }
 
-    const finalEnd = checkOutTime ? new Date(checkOutTime) : new Date();
-    finalEnd.setFullYear(baseDate.getFullYear(), baseDate.getMonth(), baseDate.getDate());
+    const isDateToday = dateContext ? isToday(dateContext) : true;
+    let finalEndValue = new Date();
+    if (!isDateToday) {
+      if (checkOutTime) {
+        finalEndValue = new Date(checkOutTime);
+      } else if (desktopLogs.length > 0) {
+        finalEndValue = new Date(desktopLogs[desktopLogs.length - 1].timestamp);
+      } else if (checkInTime) {
+        finalEndValue = new Date(checkInTime);
+      } else {
+        finalEndValue = new Date(baseDate);
+        finalEndValue.setHours(23, 59, 59, 999);
+      }
+    }
+    const finalEnd = getLocalDateForTimestamp(finalEndValue);
     
     // Only add final segment if we haven't checked out and the shift isn't completely over
     // or if we have a checkout time to bound it
@@ -424,7 +486,7 @@ const WorkdayTimeline: React.FC<WorkdayTimelineProps> = ({
   const statusClass = checkOutTime ? 'over' : isShiftOver ? 'over' : isShiftPending ? 'pending' : checkInIsLate ? 'late' : 'active';
 
   return (
-    <div className={`card wdt-premium-v2 ${isExpanded ? 'is-expanded' : 'is-collapsed'}`}>
+    <div className={`card wdt-premium-v2 ${isExpanded ? 'is-expanded' : 'is-collapsed'} ${className}`}>
       <div className="wdt-body-clipper">
         <div className="wdt-glass-shine" />
       </div>
@@ -589,7 +651,7 @@ const WorkdayTimeline: React.FC<WorkdayTimelineProps> = ({
             <div className="wdt-log-list">
               {combinedLogItems.map((item) => (
                 <div key={item.key} className="wdt-log-item">
-                  <span className="wdt-log-time">{item.timestamp.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', hour12: true })}</span>
+                  <span className="wdt-log-time">{formatAttendanceTime(item.timestamp.toISOString())}</span>
                   <span className="wdt-log-icon">{item.icon}</span>
                   <span className="wdt-log-desc">{item.desc}</span>
                 </div>

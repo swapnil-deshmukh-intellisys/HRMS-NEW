@@ -694,5 +694,34 @@
     "expectedOutput": "Employees can raise dispute tickets for point transactions, and HR can resolve/reverse points automatically from their queue.",
     "createdAt": "2026-06-25T12:00:00Z",
     "updatedAt": "2026-06-25T18:27:00Z"
+  },
+  {
+    "taskId": "TSK-ATT-005",
+    "moduleId": "MOD-ATTENDANCE",
+    "sprint": "Sprint 4",
+    "project": "HRMS",
+    "page": "Attendance Page",
+    "module": "Attendance",
+    "submodule": "Workday Timeline Redesign",
+    "title": "Fix Workday Timeline Calculations and Overhaul UI Popup",
+    "description": "Correct timezone offsets and worked minutes calculations for past missing checkout entries, and expand the modal popup layout with a wider flat style to prevent label overlapping.",
+    "frontendWork": "Inject custom className props to Modal and WorkdayTimeline, configure flat layout CSS, support wrapper width settings, and use zoned time conversions.",
+    "backendWork": "None",
+    "databaseWork": "None",
+    "apiWork": "None",
+    "testingWork": "Verify calculations for past days and checkouts align accurately.",
+    "priority": "HIGH",
+    "estimatedHours": 6,
+    "actualHours": 4,
+    "dependencies": [
+      "TSK-ATT-004"
+    ],
+    "riskLevel": "LOW",
+    "status": "COMPLETED",
+    "completionPercentage": 100,
+    "owner": "Fullstack Team",
+    "expectedOutput": "Workday Timeline displays correct overtime and duration, and renders spacious layout without overlaps.",
+    "createdAt": "2026-06-25T18:30:00Z",
+    "updatedAt": "2026-06-25T18:55:00Z"
   }
 ]

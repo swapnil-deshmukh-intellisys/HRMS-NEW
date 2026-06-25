@@ -600,6 +600,7 @@ export default function EmployeeAttendanceTab({ attendance, exceptions, joiningD
         open={!!selectedTimelineItem} 
         title={`Workday Timeline - ${selectedTimelineItem ? formatDateLabel(selectedTimelineItem.date) : ""}`} 
         onClose={() => setSelectedTimelineItem(null)}
+        className="timeline-modal"
       >
         {selectedTimelineItem && (
           <div className="stack" style={{ padding: '8px 0', gap: '16px' }}>
@@ -610,6 +611,7 @@ export default function EmployeeAttendanceTab({ attendance, exceptions, joiningD
               penaltyMinutes={selectedTimelineItem.record.penaltyMinutes}
               customBreakSessions={selectedTimelineItem.record.breakSessions || []}
               dateContext={selectedTimelineItem.date}
+              className="wdt-flat"
             />
             <div className="button-row" style={{ marginTop: '12px', justifyContent: 'flex-end' }}>
               <button className="secondary" onClick={() => setSelectedTimelineItem(null)}>

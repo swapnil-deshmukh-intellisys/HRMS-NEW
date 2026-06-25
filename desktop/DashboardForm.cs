@@ -195,7 +195,7 @@ namespace HRMS_Agent
                 Font = new Font("Segoe UI", 9, FontStyle.Bold),
                 ForeColor = Color.FromArgb(9, 132, 227), // Accent Blue
                 Location = new Point(25, 30), // Y shifted to 30 for top breathing room
-                Size = new Size(310, 18)
+                AutoSize = true
             };
 
             _lblStatusText = new Label
@@ -214,7 +214,7 @@ namespace HRMS_Agent
                 Font = new Font("Segoe UI", 9, FontStyle.Bold),
                 ForeColor = Color.FromArgb(127, 140, 141),
                 Location = new Point(25, 115), // Y shifted to 115
-                Size = new Size(310, 18)
+                AutoSize = true
             };
 
             _lblTimerText = new Label
@@ -323,7 +323,7 @@ namespace HRMS_Agent
                 Font = new Font("Segoe UI", 9, FontStyle.Bold),
                 ForeColor = Color.FromArgb(127, 140, 141),
                 Location = new Point(25, 30), // Y shifted to 30
-                Size = new Size(330, 20)
+                AutoSize = true
             };
 
             // Custom Owner-Drawn ListBox to support state-specific colors
@@ -454,7 +454,6 @@ namespace HRMS_Agent
                 if (_lblStatusTitle != null)
                 {
                     _lblStatusTitle.Location = new Point(25, 30);
-                    _lblStatusTitle.Size = new Size(leftWidth - 50, 18);
                 }
                 if (_lblStatusText != null)
                 {
@@ -464,7 +463,6 @@ namespace HRMS_Agent
                 if (_lblTimerTitle != null)
                 {
                     _lblTimerTitle.Location = new Point(25, 115);
-                    _lblTimerTitle.Size = new Size(leftWidth - 50, 18);
                 }
                 if (_lblTimerText != null)
                 {
@@ -506,7 +504,6 @@ namespace HRMS_Agent
                 if (_lblLogTitle != null)
                 {
                     _lblLogTitle.Location = new Point(25, 30);
-                    _lblLogTitle.Size = new Size(rightWidth - 50, 20);
                 }
 
                 if (_lstEvents != null)

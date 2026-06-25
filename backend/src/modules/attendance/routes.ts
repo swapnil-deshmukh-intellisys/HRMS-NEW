@@ -510,15 +510,20 @@ router.post("/break/end", async (request, response, next) => {
     let breakLabel = "Break";
     let allowedDuration = 0;
 
-    // Lunch window: 12:00 (720 min) – 14:30 (870 min)
-    if (totalStartMins >= 720 && totalStartMins <= 870) {
-      breakLabel = "Lunch";
-      allowedDuration = 45;
-    }
-    // Tea Break window: 15:30 (930 min) – 17:00 (1020 min)
-    else if (totalStartMins >= 930 && totalStartMins <= 1020) {
-      breakLabel = "Tea Break";
+    // Morning Tea Break window: 10:30 (630 min) – 11:15 (675 min)
+    if (totalStartMins >= 630 && totalStartMins <= 675) {
+      breakLabel = "Morning Tea Break";
       allowedDuration = 15;
+    }
+    // Lunch window: 12:00 (720 min) – 14:30 (870 min)
+    else if (totalStartMins >= 720 && totalStartMins <= 870) {
+      breakLabel = "Lunch";
+      allowedDuration = 40;
+    }
+    // Evening Tea Break window: 15:30 (930 min) – 17:00 (1020 min)
+    else if (totalStartMins >= 930 && totalStartMins <= 1020) {
+      breakLabel = "Evening Tea Break";
+      allowedDuration = 20;
     }
 
     let penaltyPoints = 0;

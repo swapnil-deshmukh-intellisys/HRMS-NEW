@@ -19,8 +19,9 @@ interface WorkdayTimelineProps {
 }
 
 const BREAK_SCHEDULE_DATA = [
-  { label: 'Lunch', start: '13:00', end: '13:45', display: '1:00 PM – 1:45 PM' },
-  { label: 'Tea Break', start: '16:15', end: '16:30', display: '4:15 PM – 4:30 PM' },
+  { label: 'Morning Tea Break', start: '10:45', end: '11:00', display: '10:45 AM – 11:00 AM' },
+  { label: 'Lunch', start: '13:00', end: '13:40', display: '1:00 PM – 1:40 PM' },
+  { label: 'Evening Tea Break', start: '16:10', end: '16:30', display: '4:10 PM – 4:30 PM' },
 ];
 
 function format12h(timeStr: string): string {

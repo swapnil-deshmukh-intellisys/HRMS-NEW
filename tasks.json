@@ -44,7 +44,9 @@
     "priority": "HIGH",
     "estimatedHours": 16,
     "actualHours": 18,
-    "dependencies": ["TSK-AUTH-001"],
+    "dependencies": [
+      "TSK-AUTH-001"
+    ],
     "riskLevel": "LOW",
     "status": "COMPLETED",
     "completionPercentage": 100,
@@ -71,7 +73,9 @@
     "priority": "HIGH",
     "estimatedHours": 12,
     "actualHours": 14,
-    "dependencies": ["TSK-AUTH-002"],
+    "dependencies": [
+      "TSK-AUTH-002"
+    ],
     "riskLevel": "MEDIUM",
     "status": "COMPLETED",
     "completionPercentage": 100,
@@ -98,7 +102,9 @@
     "priority": "HIGH",
     "estimatedHours": 20,
     "actualHours": 22,
-    "dependencies": ["TSK-AUTH-002"],
+    "dependencies": [
+      "TSK-AUTH-002"
+    ],
     "riskLevel": "LOW",
     "status": "COMPLETED",
     "completionPercentage": 100,
@@ -125,7 +131,9 @@
     "priority": "MEDIUM",
     "estimatedHours": 14,
     "actualHours": 13,
-    "dependencies": ["TSK-EMP-001"],
+    "dependencies": [
+      "TSK-EMP-001"
+    ],
     "riskLevel": "MEDIUM",
     "status": "COMPLETED",
     "completionPercentage": 100,
@@ -152,7 +160,9 @@
     "priority": "HIGH",
     "estimatedHours": 16,
     "actualHours": 15,
-    "dependencies": ["TSK-EMP-001"],
+    "dependencies": [
+      "TSK-EMP-001"
+    ],
     "riskLevel": "LOW",
     "status": "COMPLETED",
     "completionPercentage": 100,
@@ -179,7 +189,9 @@
     "priority": "MEDIUM",
     "estimatedHours": 12,
     "actualHours": 12,
-    "dependencies": ["TSK-ATT-001"],
+    "dependencies": [
+      "TSK-ATT-001"
+    ],
     "riskLevel": "LOW",
     "status": "COMPLETED",
     "completionPercentage": 100,
@@ -206,7 +218,9 @@
     "priority": "HIGH",
     "estimatedHours": 24,
     "actualHours": 26,
-    "dependencies": ["TSK-EMP-001"],
+    "dependencies": [
+      "TSK-EMP-001"
+    ],
     "riskLevel": "MEDIUM",
     "status": "COMPLETED",
     "completionPercentage": 100,
@@ -233,7 +247,9 @@
     "priority": "MEDIUM",
     "estimatedHours": 12,
     "actualHours": 11,
-    "dependencies": ["TSK-LV-001"],
+    "dependencies": [
+      "TSK-LV-001"
+    ],
     "riskLevel": "LOW",
     "status": "COMPLETED",
     "completionPercentage": 100,
@@ -260,7 +276,10 @@
     "priority": "HIGH",
     "estimatedHours": 16,
     "actualHours": 15,
-    "dependencies": ["TSK-EMP-001", "TSK-ATT-001"],
+    "dependencies": [
+      "TSK-EMP-001",
+      "TSK-ATT-001"
+    ],
     "riskLevel": "LOW",
     "status": "COMPLETED",
     "completionPercentage": 100,
@@ -287,7 +306,9 @@
     "priority": "MEDIUM",
     "estimatedHours": 10,
     "actualHours": 9,
-    "dependencies": ["TSK-PAY-001"],
+    "dependencies": [
+      "TSK-PAY-001"
+    ],
     "riskLevel": "LOW",
     "status": "COMPLETED",
     "completionPercentage": 100,
@@ -314,7 +335,9 @@
     "priority": "MEDIUM",
     "estimatedHours": 12,
     "actualHours": 11,
-    "dependencies": ["TSK-PAY-001"],
+    "dependencies": [
+      "TSK-PAY-001"
+    ],
     "riskLevel": "LOW",
     "status": "COMPLETED",
     "completionPercentage": 100,
@@ -341,7 +364,9 @@
     "priority": "HIGH",
     "estimatedHours": 14,
     "actualHours": 4,
-    "dependencies": ["TSK-PAY-003"],
+    "dependencies": [
+      "TSK-PAY-003"
+    ],
     "riskLevel": "MEDIUM",
     "status": "IN_PROGRESS",
     "completionPercentage": 30,
@@ -368,7 +393,9 @@
     "priority": "HIGH",
     "estimatedHours": 16,
     "actualHours": 15,
-    "dependencies": ["TSK-AUTH-003"],
+    "dependencies": [
+      "TSK-AUTH-003"
+    ],
     "riskLevel": "HIGH",
     "status": "COMPLETED",
     "completionPercentage": 100,
@@ -395,7 +422,10 @@
     "priority": "HIGH",
     "estimatedHours": 14,
     "actualHours": 13,
-    "dependencies": ["TSK-GOOG-001", "TSK-LV-001"],
+    "dependencies": [
+      "TSK-GOOG-001",
+      "TSK-LV-001"
+    ],
     "riskLevel": "MEDIUM",
     "status": "COMPLETED",
     "completionPercentage": 100,
@@ -422,7 +452,9 @@
     "priority": "MEDIUM",
     "estimatedHours": 10,
     "actualHours": 8,
-    "dependencies": ["TSK-GOOG-001"],
+    "dependencies": [
+      "TSK-GOOG-001"
+    ],
     "riskLevel": "MEDIUM",
     "status": "IN_PROGRESS",
     "completionPercentage": 80,
@@ -449,7 +481,9 @@
     "priority": "HIGH",
     "estimatedHours": 8,
     "actualHours": 4,
-    "dependencies": ["TSK-DSH-001"],
+    "dependencies": [
+      "TSK-DSH-001"
+    ],
     "riskLevel": "LOW",
     "status": "IN_PROGRESS",
     "completionPercentage": 50,
@@ -476,7 +510,9 @@
     "priority": "MEDIUM",
     "estimatedHours": 8,
     "actualHours": 0,
-    "dependencies": ["TSK-EMP-001"],
+    "dependencies": [
+      "TSK-EMP-001"
+    ],
     "riskLevel": "LOW",
     "status": "PENDING",
     "completionPercentage": 0,
@@ -503,7 +539,9 @@
     "priority": "HIGH",
     "estimatedHours": 16,
     "actualHours": 16,
-    "dependencies": ["TSK-AUTH-002"],
+    "dependencies": [
+      "TSK-AUTH-002"
+    ],
     "riskLevel": "MEDIUM",
     "status": "COMPLETED",
     "completionPercentage": 100,
@@ -530,7 +568,9 @@
     "priority": "HIGH",
     "estimatedHours": 16,
     "actualHours": 16,
-    "dependencies": ["TSK-DESK-001"],
+    "dependencies": [
+      "TSK-DESK-001"
+    ],
     "riskLevel": "LOW",
     "status": "COMPLETED",
     "completionPercentage": 100,
@@ -557,7 +597,9 @@
     "priority": "HIGH",
     "estimatedHours": 8,
     "actualHours": 6,
-    "dependencies": ["TSK-DESK-001"],
+    "dependencies": [
+      "TSK-DESK-001"
+    ],
     "riskLevel": "LOW",
     "status": "COMPLETED",
     "completionPercentage": 100,
@@ -565,5 +607,34 @@
     "expectedOutput": "Workday Timeline successfully acts as a flagship USP feature, vividly showing employee daily activity.",
     "createdAt": "2026-06-24T12:00:00Z",
     "updatedAt": "2026-06-24T18:00:00Z"
+  },
+  {
+    "taskId": "TSK-DESK-002",
+    "moduleId": "MOD-ATTENDANCE",
+    "sprint": "Sprint 4",
+    "project": "HRMS",
+    "page": "N/A",
+    "module": "Attendance",
+    "submodule": "Desktop Agent Reminders",
+    "title": "Integrate check-in/out and break reminders and dynamic logging in Desktop Agent",
+    "description": "Implement state-aware dynamic tray context menu, native Windows Toast notifications, custom slide-up reminder forms, and background status checking/snooze timers in the C# Desktop Agent.",
+    "frontendWork": "None (done in desktop C#)",
+    "backendWork": "Implement check-in, check-out and break status API queries for the agent if needed, or use existing endpoints.",
+    "databaseWork": "None",
+    "apiWork": "Get user status and trigger checkin/checkout/break endpoints.",
+    "testingWork": "Verify dynamic tray menu changes states, Toast notifications trigger on schedule, and snooze timers fire correctly.",
+    "priority": "HIGH",
+    "estimatedHours": 12,
+    "actualHours": 0,
+    "dependencies": [
+      "TSK-DESK-001"
+    ],
+    "riskLevel": "LOW",
+    "status": "IN_PROGRESS",
+    "completionPercentage": 10,
+    "owner": "Fullstack Team",
+    "expectedOutput": "Desktop Agent displays native reminders, custom popups, and state-aware context menus for check-in/out and breaks.",
+    "createdAt": "2026-06-25T09:00:00Z",
+    "updatedAt": "2026-06-25T09:50:00Z"
   }
 ]

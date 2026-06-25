@@ -180,6 +180,17 @@ export function initScheduler() {
       console.error("[Scheduler] Google Sheets sync failed:", err);
     });
   });
+  // ☕ Scheduled Morning Tea Break: 10:45 AM IST (Mon-Fri)
+  cron.schedule("45 10 * * 1-5", async () => {
+    console.log("[Scheduler] Triggering 10:45 AM Morning Tea Break Reminder...");
+    await broadcastBreakReminder(
+      "☕ Morning Tea Break!",
+      "It's 10:45 AM. Time for a quick morning tea break."
+    );
+  }, {
+    timezone: "Asia/Kolkata"
+  });
+
   // 🍱 Scheduled Lunch Break: 1:00 PM IST (Mon-Fri)
   cron.schedule("0 13 * * 1-5", async () => {
     console.log("[Scheduler] Triggering 1:00 PM Lunch Break Reminder...");
@@ -191,12 +202,12 @@ export function initScheduler() {
     timezone: "Asia/Kolkata"
   });
 
-  // ☕ Scheduled Tea Break: 4:15 PM IST (Mon-Fri)
-  cron.schedule("15 16 * * 1-5", async () => {
-    console.log("[Scheduler] Triggering 4:15 PM Tea Break Reminder...");
+  // ☕ Scheduled Evening Tea Break: 4:10 PM IST (Mon-Fri)
+  cron.schedule("10 16 * * 1-5", async () => {
+    console.log("[Scheduler] Triggering 4:10 PM Evening Tea Break Reminder...");
     await broadcastBreakReminder(
-      "☕ Tea Break!",
-      "It's 4:15 PM. Time for a quick tea break to recharge."
+      "☕ Evening Tea Break!",
+      "It's 4:10 PM. Time for a quick evening tea break to recharge."
     );
   }, {
     timezone: "Asia/Kolkata"

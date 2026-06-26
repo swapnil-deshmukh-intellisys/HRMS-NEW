@@ -47,5 +47,12 @@
     "title": "Fix Workday Timeline Calculations & Overhaul UI Popup",
     "status": "COMPLETED",
     "narrative": "Corrected Workday Timeline calculations to prevent calculating worked duration up to 23:59:59 PM for past dates with missing checkouts, aligning it with database workedMinutes. Used zoned time parsing for check-in/out and break times to eliminate UTC-to-local timezone conversion offsets. Overhauled modal UI, increasing width to 760px, resolving overlaps, and stripping double card styles when displayed inside popups."
+  },
+  {
+    "date": "2026-06-26",
+    "taskId": "TSK-ATT-006",
+    "title": "Fix Overtime Calculation in Attendance History Table",
+    "status": "COMPLETED",
+    "narrative": "Resolved a discrepancy where the attendance history table displayed incorrect overtime durations for employees with late check-ins. Refactored the renderOvertime function in AttendancePage.tsx to dynamically factor in late check-in penalty minutes, ensuring the table matches the employee dashboard Workday Timeline exactly."
   }
 ]

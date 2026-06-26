@@ -82,5 +82,12 @@
     "title": "Fix Web Break Session AWAY Status Telemetry",
     "status": "COMPLETED",
     "narrative": "Resolved a major telemetry tracking issue where checked-in employees on active web-initiated breaks remained stuck as ACTIVE. Modified the /live-status backend query to select BreakSession records where endTime is null, setting user status to AWAY if an active break session is present. Implemented a break-updated global event listener in the frontend AppProvider to instantly synchronize and refresh local status dots in the Navbar and Sidebar upon starting or ending breaks."
+  },
+  {
+    "date": "2026-06-26",
+    "taskId": "TSK-ATT-009",
+    "title": "Implement Paid Overtime Pre-Approval Workflow and Paid Tags",
+    "status": "COMPLETED",
+    "narrative": "Designed and implemented a comprehensive pre-approval workflow for Paid Overtime. Employees can submit pre-approval requests before 5:00 PM IST on working days (with full calendar-exception check) by stating their reason in a premium purple-styled modal. Managers, HR, or Admins can approve these requests, transitioning their status to APPROVED. Starting overtime transitions approved sessions to ACTIVE (isPaid: true) while rejected pre-approvals fallback to regular overtime (isPaid: false). Refactored the Attendance History table to render a purple 'Paid' tag next to the overtime hours for all verified paid overtime sessions, ensuring premium visual consistency."
   }
 ]

@@ -1179,6 +1179,84 @@ router.get("/", requireRoles("ADMIN", "HR", "MANAGER", "EMPLOYEE"), async (reque
 });
 
 // Overtime Routes
+router.post(
+  "/overtime/pre-approval",
+  validate(z.object({ reason: z.string().trim().min(1, "Reason is required") })),
+  async (request, response, next) => {
+    try {
+      const employeeId = request.user?.employeeId;
+      if (!employeeId) {
+        throw new AppError("Employee context is required", 400);
+      }
+
+      const today = startOfDay(new Date());
+
+      // 1. Check if today is a working day
+      const exceptions = await prisma.calendarException.findMany({
+        where: {
+          date: {
+            gte: today,
+            lte: endOfDay(new Date()),
+          },
+        },
+      });
+      const isWorking = getCalendarDayStatus(today, exceptions).isWorkingDay;
+      if (!isWorking) {
+        throw new AppError("Overtime pre-approval can only be requested on a working day", 400);
+      }
+
+      // 2. Check if submitted before 5:00 PM IST (Asia/Kolkata)
+      const zonedNow = toZonedTime(new Date(), TIMEZONE);
+      if (zonedNow.getHours() >= 17) {
+        throw new AppError("Overtime pre-approval requests must be submitted before 5:00 PM", 400);
+      }
+
+      // 3. Check if employee has today's attendance record
+      const attendance = await prisma.attendance.findFirst({
+        where: {
+          employeeId,
+          attendanceDate: buildAttendanceWhereForDate(today),
+        },
+        orderBy: { createdAt: "desc" },
+      });
+
+      if (!attendance || !attendance.checkInTime) {
+        throw new AppError("You must be checked in today to request overtime pre-approval", 400);
+      }
+
+      // 4. Check if an overtime session already exists for today
+      const existingOvertime = await prisma.overtimeSession.findUnique({
+        where: {
+          employeeId_date: {
+            employeeId,
+            date: today,
+          },
+        },
+      });
+
+      if (existingOvertime) {
+        throw new AppError("An overtime session or pre-approval request already exists for today", 400);
+      }
+
+      // 5. Create OvertimeSession record with status: "PENDING_VERIFICATION" and isPaid: true
+      const overtimeSession = await prisma.overtimeSession.create({
+        data: {
+          employeeId,
+          date: today,
+          startTime: new Date(),
+          isPaid: true,
+          status: "PENDING_VERIFICATION",
+          reason: request.body.reason,
+        },
+      });
+
+      return sendSuccess(response, "Overtime pre-approval request submitted successfully", overtimeSession, 201);
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
 router.get("/overtime/today", requireRoles("EMPLOYEE", "MANAGER", "HR", "ADMIN"), async (request, response, next) => {
   try {
     const employeeId = request.user?.employeeId;
@@ -1250,6 +1328,30 @@ router.post("/overtime/start", validate(attendanceSchema), async (request, respo
     if (existingOvertime) {
       if (existingOvertime.status === "ACTIVE") {
         throw new AppError("Overtime session already in progress");
+      } else if (existingOvertime.status === "APPROVED") {
+        // Pre-approved: transition to ACTIVE and update startTime to now
+        const overtimeSession = await prisma.overtimeSession.update({
+          where: { id: existingOvertime.id },
+          data: {
+            status: "ACTIVE",
+            startTime: new Date(),
+          },
+        });
+        return sendSuccess(response, "Overtime started successfully", overtimeSession);
+      } else if (existingOvertime.status === "PENDING_VERIFICATION" && existingOvertime.isPaid && !existingOvertime.endTime) {
+        throw new AppError("Your paid overtime pre-approval request is still pending approval by a manager or HR", 400);
+      } else if (existingOvertime.status === "REJECTED") {
+        // Pre-approval was rejected: let them start regular overtime by overwriting the session to ACTIVE with isPaid = false
+        const overtimeSession = await prisma.overtimeSession.update({
+          where: { id: existingOvertime.id },
+          data: {
+            status: "ACTIVE",
+            startTime: new Date(),
+            isPaid: false,
+            rejectionReason: null,
+          },
+        });
+        return sendSuccess(response, "Overtime started successfully (Regular)", overtimeSession);
       } else {
         throw new AppError("Overtime session already completed for today");
       }
@@ -1416,7 +1518,9 @@ router.post(
         throw new AppError("Overtime session not found", 404);
       }
 
-      if (overtimeSession.status !== "COMPLETED") {
+      const isPreApprovalRequest = overtimeSession.isPaid && !overtimeSession.endTime;
+
+      if (!isPreApprovalRequest && overtimeSession.status !== "COMPLETED") {
         throw new AppError("Only completed overtime sessions can be verified");
       }
 
@@ -1432,10 +1536,15 @@ router.post(
         throw new AppError("Rejection reason is required");
       }
 
+      let targetStatus = request.body.status;
+      if (isPreApprovalRequest && targetStatus === "VERIFIED") {
+        targetStatus = "APPROVED";
+      }
+
       const updatedSession = await prisma.overtimeSession.update({
         where: { id: sessionId },
         data: {
-          status: request.body.status,
+          status: targetStatus,
           verifiedBy: request.user?.employeeId,
           verifiedAt: new Date(),
           rejectionReason: request.body.status === "REJECTED" ? request.body.rejectionReason : null,

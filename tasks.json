@@ -868,5 +868,34 @@
     "expectedOutput": "Web-initiated break sessions correctly set status to AWAY and update Navbar, Sidebar status dots instantly.",
     "createdAt": "2026-06-26T13:00:00Z",
     "updatedAt": "2026-06-26T13:50:00Z"
+  },
+  {
+    "taskId": "TSK-ATT-009",
+    "moduleId": "MOD-ATTENDANCE",
+    "sprint": "Sprint 4",
+    "project": "HRMS",
+    "page": "Attendance Page",
+    "module": "Attendance",
+    "submodule": "Paid Overtime Pre-Approval Workflow",
+    "title": "Implement Paid Overtime Pre-Approval Workflow and Paid Tags",
+    "description": "Allow employees to submit overtime pre-approval requests before 5:00 PM on working days. Approved requests are classified as Paid Overtime and display a 'Paid' tag next to the hours in the Attendance History table.",
+    "frontendWork": "Add Request Paid Overtime button with time cutoff checking, pre-approval reason modal, and Paid tag rendering next to verified overtime hours in the history table.",
+    "backendWork": "Implement POST /attendance/overtime/pre-approval endpoint with time cutoff and calendar exceptions validation. Update start and verify routes to handle pre-approved sessions.",
+    "databaseWork": "Add APPROVED to OvertimeStatus enum and isPaid boolean to OvertimeSession model.",
+    "apiWork": "POST /api/attendance/overtime/pre-approval, POST /api/attendance/overtime/start, POST /api/attendance/overtime/:id/verify",
+    "testingWork": "Verify database schema changes, route permissions and cutoffs, button visibility rules, and rendering of the 'Paid' tags.",
+    "priority": "HIGH",
+    "estimatedHours": 8,
+    "actualHours": 8,
+    "dependencies": [
+      "TSK-ATT-008"
+    ],
+    "riskLevel": "LOW",
+    "status": "COMPLETED",
+    "completionPercentage": 100,
+    "owner": "Fullstack Team",
+    "expectedOutput": "Employees can request paid overtime pre-approval before 5 PM, which displays a Paid tag upon verification.",
+    "createdAt": "2026-06-26T14:00:00Z",
+    "updatedAt": "2026-06-26T14:35:00Z"
   }
 ]

@@ -316,6 +316,7 @@ model OvertimeSession {
   verifiedBy      Int?
   verifiedAt      DateTime?
   rejectionReason String?
+  isPaid          Boolean        @default(false)
   createdAt       DateTime       @default(now())
   updatedAt       DateTime       @updatedAt
   employee        Employee       @relation(fields: [employeeId], references: [id])
@@ -493,6 +494,7 @@ enum EmployeeCapabilityType {
 
 enum OvertimeStatus {
   ACTIVE
+  APPROVED
   COMPLETED
   PENDING_VERIFICATION
   VERIFIED

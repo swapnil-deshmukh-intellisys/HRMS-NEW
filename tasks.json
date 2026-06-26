@@ -955,5 +955,34 @@
     "expectedOutput": "Admin can seamlessly create shifts and assign employees, with dynamic attendance and overtime logic reacting to the assigned shift timings.",
     "createdAt": "2026-06-26T15:00:00Z",
     "updatedAt": "2026-06-26T15:10:00Z"
+  },
+  {
+    "taskId": "TSK-ATT-012",
+    "moduleId": "MOD-ATTENDANCE",
+    "sprint": "Sprint 4",
+    "project": "HRMS",
+    "page": "Shift Management Page",
+    "module": "Attendance",
+    "submodule": "Shift Break Configurations",
+    "title": "Implement Shift-Specific Break Configurations & Customizable Timing Windows",
+    "description": "Provide shift-specific break toggles (hasBreaks, allowMorningTea, allowLunch, allowEveningTea, allowDinner) and customizable start/end timing windows for each break type, including a 40-minute Dinner Break (20:00 - 22:00 IST) for night shifts. Restrict Lunch to morning shifts and Dinner to night shifts.",
+    "frontendWork": "Add checkboxes and inline start/end timing inputs (HH:MM) to the Shift modal, automatically sync Lunch/Dinner toggles with shift start time, and display allowed breaks with their timing ranges on shift cards.",
+    "backendWork": "Enforce shift break toggles and custom timings dynamically in /break/start and /break/end. Implement 40-minute Dinner Break. Automatically set allowLunch/allowDinner based on shift start time in POST and PUT API routes, validating HH:MM formats via Zod.",
+    "databaseWork": "Shift model schema fields (hasBreaks, allowMorningTea, allowLunch, allowEveningTea, allowDinner, and start/end time columns for all 4 break types) synced via Prisma.",
+    "apiWork": "POST /api/attendance/break/start, POST /api/attendance/break/end, POST /api/shifts, PUT /api/shifts/:id",
+    "testingWork": "Verify Lunch-only for morning shifts, Dinner-only for night shifts, custom timing ranges, and global break toggles in API and UI.",
+    "priority": "HIGH",
+    "estimatedHours": 10,
+    "actualHours": 10,
+    "dependencies": [
+      "TSK-ATT-011"
+    ],
+    "riskLevel": "LOW",
+    "status": "COMPLETED",
+    "completionPercentage": 100,
+    "owner": "Fullstack Team",
+    "expectedOutput": "Admin can configure shift-specific breaks and custom start/end timings; Lunch is restricted to morning shifts, Dinner is restricted to night shifts, and infractions are penalized automatically based on the custom shift-level windows.",
+    "createdAt": "2026-06-26T16:00:00Z",
+    "updatedAt": "2026-06-26T17:15:00Z"
   }
 ]

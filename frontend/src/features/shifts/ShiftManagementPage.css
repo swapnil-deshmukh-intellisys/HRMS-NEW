@@ -296,7 +296,7 @@
 
 .search-input-wrapper {
   position: relative;
-  flex: 1 1 200px;
+  flex: 3 1 240px;
 }
 
 .search-icon {
@@ -350,14 +350,13 @@
 }
 
 .filter-dropdown-wrapper {
-  flex: 0 1 200px;
-  min-width: 150px;
+  flex: 0 0 160px;
 }
 
 .select-input {
   width: 100%;
   height: 44px;
-  padding: 0 var(--control-padding-x);
+  padding: 0 32px 0 var(--control-padding-x);
   background: var(--color-surface-secondary);
   border: 1px solid var(--color-border-default);
   border-radius: var(--radius-sm);
@@ -367,11 +366,19 @@
   cursor: pointer;
   outline: none;
   transition: all var(--transition-fast);
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
 }
 
 .select-input:focus {
   border-color: var(--color-accent);
-  background: rgba(255, 255, 255, 0.9);
+  background-color: rgba(255, 255, 255, 0.9);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236366f1' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
 }
 
 /* Switcher Directory List / Table */
@@ -391,7 +398,7 @@
 }
 
 .switcher-table th {
-  background: rgba(226, 232, 240, 0.6);
+  background: rgb(226, 232, 240);
   padding: var(--space-3) var(--space-4);
   font-weight: var(--fw-semibold);
   color: var(--color-text-muted);
@@ -669,4 +676,230 @@
   height: 220px;
   background: var(--color-skeleton);
   border-radius: var(--radius-md);
+}
+
+/* Break Configuration Styles */
+.shift-breaks-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin-top: var(--space-2);
+}
+
+.breaks-title {
+  font-size: 11px;
+  color: var(--color-text-secondary);
+  font-weight: var(--fw-semibold);
+}
+
+.breaks-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.break-badge {
+  background: rgba(22, 101, 52, 0.08);
+  color: #166534; /* green-800 */
+  font-size: 10px;
+  font-weight: var(--fw-semibold);
+  padding: 2px 6px;
+  border-radius: 4px;
+  border: 1px solid rgba(22, 101, 52, 0.15);
+}
+
+.break-badge--none {
+  background: rgba(225, 29, 72, 0.08);
+  color: #be123c; /* rose-700 */
+  border-color: rgba(225, 29, 72, 0.15);
+}
+
+.break-status-disabled {
+  font-size: var(--text-xs);
+  color: var(--color-danger);
+  font-weight: var(--fw-bold);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.break-settings-section {
+  background: var(--color-surface-secondary);
+  padding: var(--space-4);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border-subtle);
+}
+
+.checkbox-container {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  cursor: pointer;
+  user-select: none;
+}
+
+.checkbox-label-text {
+  font-size: var(--text-sm);
+  color: var(--color-text-strong);
+  font-weight: var(--fw-medium);
+}
+
+.break-toggles-grid {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.form-section-title {
+  font-size: 11px;
+  font-weight: var(--fw-bold);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--color-text-secondary);
+  margin-bottom: var(--space-1);
+}
+
+.checkbox-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-3);
+  background: var(--color-surface-secondary);
+  padding: var(--space-4);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border-subtle);
+}
+
+@media (max-width: 480px) {
+  .checkbox-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Break Config Row & Custom Timings */
+.break-toggles-grid .checkbox-grid {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.break-config-row {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-2) 0;
+  border-bottom: 1px dashed var(--color-border-subtle);
+}
+
+.break-config-row:last-child {
+  border-bottom: none;
+}
+
+.break-time-inputs {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-left: 28px; /* align with label text past the checkbox */
+}
+
+/* Legacy selector — no longer used as a standalone input, kept for safety */
+.break-time-control {
+  font-family: var(--font-mono);
+}
+
+.time-sep {
+  color: var(--color-text-secondary);
+  font-size: var(--text-xs);
+  font-weight: var(--fw-bold);
+}
+
+/* ── 12-hour time input widget ────────────────────────────────────────────── */
+.time-input-12 {
+  display: inline-flex;
+  align-items: stretch;
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  height: 38px;
+  background: var(--color-bg-input, var(--color-surface));
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.time-input-12:focus-within {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-primary) 18%, transparent);
+}
+
+.time-input-12__field {
+  /* Override global .form-control styles so the border/shadow are on the wrapper */
+  border: none !important;
+  box-shadow: none !important;
+  border-radius: 0 !important;
+  height: 100% !important;
+  width: 62px;
+  padding: 0 6px !important;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+  margin: 0 !important;
+  font-family: var(--font-mono);
+  font-size: var(--text-sm) !important;
+  text-align: center;
+  background: transparent !important;
+  color: var(--color-text-strong);
+  line-height: 36px !important;
+  vertical-align: middle;
+}
+
+.time-input-12__period {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 36px;
+  padding: 0 6px;
+  border: none;
+  border-left: 1px solid var(--color-border-subtle);
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: var(--fw-semibold);
+  letter-spacing: 0.03em;
+  transition: background 0.15s, color 0.15s;
+  border-radius: 0;
+}
+
+.time-input-12__period--am {
+  background: color-mix(in srgb, #22c55e 12%, transparent);
+  color: #15803d;
+}
+
+.time-input-12__period--pm {
+  background: color-mix(in srgb, #6366f1 12%, transparent);
+  color: #4338ca;
+}
+
+.time-input-12__period:hover:not(:disabled) {
+  filter: brightness(0.92);
+}
+
+.time-input-12__period:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Compact variant used inside break-time-inputs rows */
+.break-time-control.time-input-12 {
+  height: 30px;
+}
+
+.break-time-control .time-input-12__field {
+  width: 60px;
+  font-size: var(--text-xs) !important;
+  padding: 0 4px !important;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+  line-height: 28px !important;
+}
+
+.break-time-control .time-input-12__period {
+  min-width: 28px;
+  font-size: 10px;
+  padding: 0 4px;
+  letter-spacing: 0;
 }

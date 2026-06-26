@@ -486,6 +486,16 @@ router.post("/break/start", async (request, response, next) => {
     if (!attendance?.checkInTime) throw new AppError("You must be checked in before starting a break");
     if (attendance.checkOutTime) throw new AppError("Your shift has already ended");
 
+    // Fetch employee shift to check if breaks are allowed
+    const employee = await prisma.employee.findUnique({
+      where: { id: employeeId },
+      include: { shift: true },
+    });
+    const hasBreaks = employee?.shift ? employee.shift.hasBreaks : true;
+    if (!hasBreaks) {
+      throw new AppError("Breaks are not allowed for your assigned shift", 400);
+    }
+
     const openBreak = await prisma.breakSession.findFirst({
       where: { attendanceId: attendance.id, endTime: null },
     });
@@ -533,20 +543,60 @@ router.post("/break/end", async (request, response, next) => {
     let breakLabel = "Break";
     let allowedDuration = 0;
 
-    // Morning Tea Break window: 10:30 (630 min) – 11:15 (675 min)
-    if (totalStartMins >= 630 && totalStartMins <= 675) {
-      breakLabel = "Morning Tea Break";
-      allowedDuration = 15;
-    }
-    // Lunch window: 12:00 (720 min) – 14:30 (870 min)
-    else if (totalStartMins >= 720 && totalStartMins <= 870) {
-      breakLabel = "Lunch";
-      allowedDuration = 40;
-    }
-    // Evening Tea Break window: 15:30 (930 min) – 17:00 (1020 min)
-    else if (totalStartMins >= 930 && totalStartMins <= 1020) {
-      breakLabel = "Evening Tea Break";
-      allowedDuration = 20;
+    // Fetch the employee's shift config
+    const employee = await prisma.employee.findUnique({
+      where: { id: employeeId },
+      include: { shift: true },
+    });
+    const shift = employee?.shift;
+    const hasBreaks = shift ? shift.hasBreaks : true;
+
+    // A shift is a morning shift if its start hour is before 12:00 PM (defaulting to true for standard/null shift)
+    const shiftStartTime = shift?.startTime || "09:00";
+    const shiftStartHour = parseInt(shiftStartTime.split(":")[0], 10);
+    const isMorningShift = !isNaN(shiftStartHour) && shiftStartHour < 12;
+
+    // Helper to parse "HH:MM" time string into minutes-from-midnight
+    const parseTimeToMinutes = (timeStr: string): number => {
+      const [hours, minutes] = timeStr.split(":").map(Number);
+      return (isNaN(hours) || isNaN(minutes)) ? 0 : hours * 60 + minutes;
+    };
+
+    // Dynamically retrieve break windows from the shift profile (with defaults)
+    const morningTeaStartMins = parseTimeToMinutes(shift?.morningTeaStart || "10:30");
+    const morningTeaEndMins = parseTimeToMinutes(shift?.morningTeaEnd || "11:15");
+    const lunchStartMins = parseTimeToMinutes(shift?.lunchStart || "12:00");
+    const lunchEndMins = parseTimeToMinutes(shift?.lunchEnd || "14:30");
+    const eveningTeaStartMins = parseTimeToMinutes(shift?.eveningTeaStart || "15:30");
+    const eveningTeaEndMins = parseTimeToMinutes(shift?.eveningTeaEnd || "17:00");
+    const dinnerStartMins = parseTimeToMinutes(shift?.dinnerStart || "20:00");
+    const dinnerEndMins = parseTimeToMinutes(shift?.dinnerEnd || "22:00");
+
+    if (hasBreaks) {
+      // Morning Tea Break window
+      if (totalStartMins >= morningTeaStartMins && totalStartMins <= morningTeaEndMins) {
+        breakLabel = "Morning Tea Break";
+        allowedDuration = (shift ? shift.allowMorningTea : true) ? 15 : 0;
+      }
+      // Lunch window
+      else if (totalStartMins >= lunchStartMins && totalStartMins <= lunchEndMins) {
+        breakLabel = "Lunch";
+        // ONLY allowed for morning shifts
+        allowedDuration = (isMorningShift && (shift ? shift.allowLunch : true)) ? 40 : 0;
+      }
+      // Evening Tea Break window
+      else if (totalStartMins >= eveningTeaStartMins && totalStartMins <= eveningTeaEndMins) {
+        breakLabel = "Evening Tea Break";
+        allowedDuration = (shift ? shift.allowEveningTea : true) ? 20 : 0;
+      }
+      // Dinner Break window
+      else if (totalStartMins >= dinnerStartMins && totalStartMins <= dinnerEndMins) {
+        breakLabel = "Dinner Break";
+        // ONLY allowed for night shifts
+        allowedDuration = (!isMorningShift && (shift ? shift.allowDinner : true)) ? 40 : 0;
+      }
+    } else {
+      allowedDuration = 0;
     }
 
     let penaltyPoints = 0;
@@ -1844,23 +1894,31 @@ router.post(
 
       // 2. Automate workflows based on event
       if (eventType === "LOCK" || eventType === "SLEEP" || eventType === "IDLE_START") {
-        // Automatically START Break Session
-        const activeBreak = await prisma.breakSession.findFirst({
-          where: {
-            attendanceId: attendance.id,
-            endTime: null,
-          },
+        // Automatically START Break Session if breaks are enabled for this employee's shift
+        const employee = await prisma.employee.findUnique({
+          where: { id: employeeId },
+          include: { shift: true },
         });
+        const hasBreaks = employee?.shift ? employee.shift.hasBreaks : true;
 
-        if (!activeBreak) {
-          await prisma.breakSession.create({
-            data: {
+        if (hasBreaks) {
+          const activeBreak = await prisma.breakSession.findFirst({
+            where: {
               attendanceId: attendance.id,
-              employeeId,
-              startTime: parsedTime,
+              endTime: null,
             },
           });
-          breakUpdated = true;
+
+          if (!activeBreak) {
+            await prisma.breakSession.create({
+              data: {
+                attendanceId: attendance.id,
+                employeeId,
+                startTime: parsedTime,
+              },
+            });
+            breakUpdated = true;
+          }
         }
       } else if (eventType === "UNLOCK" || eventType === "WAKE" || eventType === "IDLE_END") {
         // Automatically END Break Session

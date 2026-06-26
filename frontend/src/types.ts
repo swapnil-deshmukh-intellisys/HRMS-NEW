@@ -121,6 +121,19 @@ export type Shift = {
   endTime: string;
   requiredMinutes: number;
   gracePeriodMinutes: number;
+  hasBreaks?: boolean;
+  allowMorningTea?: boolean;
+  allowLunch?: boolean;
+  allowEveningTea?: boolean;
+  allowDinner?: boolean;
+  morningTeaStart?: string;
+  morningTeaEnd?: string;
+  lunchStart?: string;
+  lunchEnd?: string;
+  eveningTeaStart?: string;
+  eveningTeaEnd?: string;
+  dinnerStart?: string;
+  dinnerEnd?: string;
   createdAt: string;
   updatedAt: string;
   _count?: {

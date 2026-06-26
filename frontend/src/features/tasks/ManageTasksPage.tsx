@@ -1,12 +1,12 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Plus, Trash2, Edit2, CheckSquare, ClipboardList, BarChart3, Search, Check, AlertCircle } from "lucide-react";
+import { Plus, Trash2, Edit2, CheckSquare, ClipboardList, BarChart3, Search, Check, AlertCircle, Users } from "lucide-react";
 import { apiRequest } from "../../services/api";
 import { useAuth } from "../../hooks/useAuth";
 import Modal from "../../components/common/Modal";
 import toast from "react-hot-toast";
 import "./ManageTasksPage.css";
-
+ 
 type ManagerTask = {
   id: number;
   title: string;
@@ -24,6 +24,12 @@ type ManagerTask = {
     firstName: string;
     lastName: string;
     employeeCode: string;
+  } | null;
+  creator?: {
+    id: number;
+    firstName: string;
+    lastName: string;
+    jobTitle?: string | null;
   } | null;
   completions?: {
     id: number;
@@ -237,7 +243,9 @@ export default function ManageTasksPage({ token }: { token: string | null }) {
   const isTeamLead = Boolean(sessionUser?.employee?.capabilities?.some((capability) => capability.capability === "TEAM_LEAD"));
   const isNormalEmployee = role === "EMPLOYEE" && !isTeamLead;
 
-  const [tasks, setTasks] = useState<ManagerTask[]>([]);
+  const [tasksAssignedToMe, setTasksAssignedToMe] = useState<ManagerTask[]>([]);
+  const [tasksAssignedToOthers, setTasksAssignedToOthers] = useState<ManagerTask[]>([]);
+  const [activeSubView, setActiveSubView] = useState<"assigned_to_me" | "assigned_to_others">("assigned_to_me");
   const [employees, setEmployees] = useState<AssignableEmployee[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -282,9 +290,17 @@ export default function ManageTasksPage({ token }: { token: string | null }) {
 
   async function fetchTasks() {
     try {
-      const endpoint = isNormalEmployee ? "/tasks" : "/tasks/manager";
-      const response = await apiRequest<ManagerTask[]>(endpoint, { token });
-      setTasks(response.data);
+      if (isNormalEmployee) {
+        const response = await apiRequest<ManagerTask[]>("/tasks", { token });
+        setTasksAssignedToMe(response.data);
+      } else {
+        const [meResponse, othersResponse] = await Promise.all([
+          apiRequest<ManagerTask[]>("/tasks", { token }),
+          apiRequest<ManagerTask[]>("/tasks/manager", { token })
+        ]);
+        setTasksAssignedToMe(meResponse.data);
+        setTasksAssignedToOthers(othersResponse.data);
+      }
     } catch (error) {
       console.error("Failed to fetch tasks", error);
       toast.error("Failed to load tasks");
@@ -315,6 +331,7 @@ export default function ManageTasksPage({ token }: { token: string | null }) {
     setBulkTasks((prev) => prev.filter((_, i) => i !== index));
   }
 
+  // Handle bulk task changes
   function handleBulkTaskChange(index: number, field: keyof FormTaskInput, value: string) {
     setBulkTasks((prev) =>
       prev.map((item, i) => (i === index ? { ...item, [field]: value } : item))
@@ -412,7 +429,7 @@ export default function ManageTasksPage({ token }: { token: string | null }) {
         token,
       });
       toast.success("Task deleted successfully");
-      setTasks((prev) => prev.filter((t) => t.id !== taskId));
+      setTasksAssignedToOthers((prev) => prev.filter((t) => t.id !== taskId));
     } catch (error: any) {
       toast.error(error.message || "Failed to delete task");
     }
@@ -420,13 +437,14 @@ export default function ManageTasksPage({ token }: { token: string | null }) {
 
   // Direct toggle completion
   async function handleToggleTask(taskId: number, currentCompleted: boolean) {
-    if (isNormalEmployee) {
-      await submitToggleTask(taskId, currentCompleted);
+    const isAssignedToMe = isNormalEmployee || activeSubView === "assigned_to_me";
+    if (isAssignedToMe) {
+      await submitToggleTask(taskId, currentCompleted, undefined, true);
     } else {
       if (!currentCompleted) {
         const confirmToggle = window.confirm("Are you sure you want to mark this task as completed?");
         if (!confirmToggle) return;
-        await submitToggleTask(taskId, false);
+        await submitToggleTask(taskId, false, undefined, false);
       } else {
         setTaskToRevert(taskId);
         setRevertReasonInput("");
@@ -435,22 +453,26 @@ export default function ManageTasksPage({ token }: { token: string | null }) {
     }
   }
 
-  async function submitToggleTask(taskId: number, currentCompleted: boolean, revertReason?: string) {
+  async function submitToggleTask(taskId: number, currentCompleted: boolean, revertReason?: string, isAssignedToMe: boolean = false) {
     if (submitting) return;
     try {
       setSubmitting(true);
       const targetState = !currentCompleted;
-      const endpoint = isNormalEmployee
+      const endpoint = isAssignedToMe
         ? `/tasks/items/${taskId}`
         : `/tasks/manager/${taskId}`;
 
       const response = await apiRequest<ManagerTask>(endpoint, {
         method: "PUT",
         token,
-        body: isNormalEmployee ? { isCompleted: targetState } : { isCompleted: targetState, revertReason },
+        body: isAssignedToMe ? { isCompleted: targetState } : { isCompleted: targetState, revertReason },
       });
 
-      setTasks((prev) => prev.map((t) => (t.id === taskId ? response.data : t)));
+      if (isAssignedToMe) {
+        setTasksAssignedToMe((prev) => prev.map((t) => (t.id === taskId ? response.data : t)));
+      } else {
+        setTasksAssignedToOthers((prev) => prev.map((t) => (t.id === taskId ? response.data : t)));
+      }
       toast.success(targetState ? "Task completed" : "Task marked as pending");
     } catch (error: any) {
       toast.error(error.message || "Failed to update task status");
@@ -459,8 +481,12 @@ export default function ManageTasksPage({ token }: { token: string | null }) {
     }
   }
 
-  // Filtering
-  const filteredTasks = tasks.filter((task) => {
+  // Filtering based on active view
+  const currentTasks = (isNormalEmployee || activeSubView === "assigned_to_me")
+    ? tasksAssignedToMe
+    : tasksAssignedToOthers;
+
+  const filteredTasks = currentTasks.filter((task) => {
     const matchesSearch =
       task.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       (task.description && task.description.toLowerCase().includes(searchQuery.toLowerCase())) ||
@@ -503,8 +529,8 @@ export default function ManageTasksPage({ token }: { token: string | null }) {
   const groupedEmployeeList = Object.values(directTasksByEmployee);
 
   // Aggregated Stats
-  const totalTasks = tasks.length;
-  const completedTasks = tasks.filter((t) => t.isCompleted).length;
+  const totalTasks = currentTasks.length;
+  const completedTasks = currentTasks.filter((t) => t.isCompleted).length;
   const pendingTasks = totalTasks - completedTasks;
   const completionRate = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
 
@@ -521,6 +547,7 @@ export default function ManageTasksPage({ token }: { token: string | null }) {
   }
 
   function renderTaskCard(task: ManagerTask) {
+    const isAssignedToMe = isNormalEmployee || activeSubView === "assigned_to_me";
     return (
       <article key={task.id} className={`manager-list-card ${task.isCompleted ? "finished" : ""}`} style={{ padding: "var(--space-4)" }}>
         <div className="manager-list-title-row">
@@ -536,7 +563,7 @@ export default function ManageTasksPage({ token }: { token: string | null }) {
             >
               <CheckSquare size={20} />
             </button>
-
+ 
             <div 
               className="stack" 
               onClick={() => {
@@ -553,19 +580,32 @@ export default function ManageTasksPage({ token }: { token: string | null }) {
                   {task.description}
                 </p>
               )}
-
+ 
               <div className="assignment-meta-row" style={{ marginTop: "6px" }}>
                 <span>
-                  Target:{" "}
-                  <strong>
-                    {task.employee
-                      ? `${task.employee.firstName} ${task.employee.lastName} (#${task.employee.employeeCode})`
-                      : "All Employees (General)"}
-                  </strong>
+                  {isAssignedToMe ? (
+                    <>
+                      Assigned by:{" "}
+                      <strong>
+                        {task.creator
+                          ? `${task.creator.firstName} ${task.creator.lastName} (${task.creator.jobTitle || "Manager"})`
+                          : "System"}
+                      </strong>
+                    </>
+                  ) : (
+                    <>
+                      Target:{" "}
+                      <strong>
+                        {task.employee
+                          ? `${task.employee.firstName} ${task.employee.lastName} (#${task.employee.employeeCode})`
+                          : "All Employees (General)"}
+                      </strong>
+                    </>
+                  )}
                 </span>
               </div>
-
-              {task.employeeId === null && (
+ 
+              {!isAssignedToMe && task.employeeId === null && (
                 <div className="general-completions-box" style={{ marginTop: "12px", padding: "10px 12px", background: "var(--color-surface-page)", borderRadius: "var(--radius-md)", border: "1.5px solid var(--color-border-default)" }} onClick={(e) => e.stopPropagation()}>
                   <span style={{ fontSize: "11px", fontWeight: "bold", color: "var(--color-text-secondary)", display: "flex", justifyContent: "space-between" }}>
                     <span>Completion Tracking ({task.completions?.length || 0} Done)</span>
@@ -588,18 +628,18 @@ export default function ManageTasksPage({ token }: { token: string | null }) {
               )}
             </div>
           </div>
-
+ 
           <span className={`task-badge ${task.employeeId === null ? "badge-general" : "badge-assigned"}`}>
             {task.employeeId === null ? "General" : "Direct"}
           </span>
         </div>
-
+ 
         <div className="manager-card-actions" style={{ marginTop: "var(--space-4)", paddingTop: "var(--space-3)", borderTop: "1px solid var(--color-border-subtle)" }}>
           <span className="task-date-tag" style={{ fontSize: "11px", color: "var(--color-text-secondary)" }}>
             Created: <strong>{new Date(task.createdAt).toLocaleDateString()}</strong>
           </span>
-
-          {!isNormalEmployee && (
+ 
+          {!isNormalEmployee && activeSubView === "assigned_to_others" && (
             <div className="action-icons">
               <button
                 className="action-icon-btn edit"
@@ -627,27 +667,69 @@ export default function ManageTasksPage({ token }: { token: string | null }) {
       </article>
     );
   }
-
+ 
   return (
     <div className="manage-tasks-page">
       {/* Page Header */}
       <header className="page-header-container">
         <div className="stack" style={{ gap: "4px" }}>
-          <span className="eyebrow eyebrow--purple">{isNormalEmployee ? "Self Console" : "Manager Console"}</span>
-          <h2 className="page-title">{isNormalEmployee ? "My Tasks & Progress" : "Assigned Tasks & Progress"}</h2>
+          <span className="eyebrow eyebrow--purple">
+            {isNormalEmployee 
+              ? "Self Console" 
+              : activeSubView === "assigned_to_me" 
+                ? "Recipient Console" 
+                : "Manager Console"}
+          </span>
+          <h2 className="page-title">
+            {isNormalEmployee 
+              ? "My Tasks & Progress" 
+              : activeSubView === "assigned_to_me" 
+                ? "Tasks Assigned to Me" 
+                : "Assigned Tasks & Progress"}
+          </h2>
         </div>
         {!isNormalEmployee && (
           <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
             <button className="button button--secondary" onClick={() => navigate("/tasks/employee-todos")}>
               Employee Todos
             </button>
-            <button className="button button--primary add-task-list-btn" onClick={openBulkCreateModal}>
-              <Plus size={18} />
-              Assign Direct Tasks
-            </button>
+            {activeSubView === "assigned_to_others" && (
+              <button className="button button--primary add-task-list-btn" onClick={openBulkCreateModal}>
+                <Plus size={18} />
+                Assign Direct Tasks
+              </button>
+            )}
           </div>
         )}
       </header>
+
+      {/* Tab Switcher for Managers / Team Leads */}
+      {!isNormalEmployee && (
+        <div className="team-page-primary-tabs" role="tablist" aria-label="Task views" style={{ marginBottom: "var(--space-5)", display: "flex", borderBottom: "1px solid var(--color-border-subtle)" }}>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={activeSubView === "assigned_to_me"}
+            className={`team-page-primary-tab ${activeSubView === "assigned_to_me" ? "team-page-primary-tab--active" : ""}`.trim()}
+            onClick={() => setActiveSubView("assigned_to_me")}
+            style={{ display: "flex", alignItems: "center", gap: "8px" }}
+          >
+            <ClipboardList size={16} />
+            Tasks Assigned to Me
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={activeSubView === "assigned_to_others"}
+            className={`team-page-primary-tab ${activeSubView === "assigned_to_others" ? "team-page-primary-tab--active" : ""}`.trim()}
+            onClick={() => setActiveSubView("assigned_to_others")}
+            style={{ display: "flex", alignItems: "center", gap: "8px" }}
+          >
+            <Users size={16} />
+            Tasks Assigned to Others
+          </button>
+        </div>
+      )}
 
       {/* Stats Board */}
       <section className="tasks-stats-grid">

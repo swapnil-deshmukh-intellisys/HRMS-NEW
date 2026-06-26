@@ -68,5 +68,12 @@
     "title": "Unify Projects under The Star Prime (TSP)",
     "status": "COMPLETED",
     "narrative": "Migrated all 48 Outlook email identities to 'The Star Prime' (TSP) client in the database, preserving all existing assignments. Cleaned up the old TUT and TEC client records. Consolidated the hardcoded magazines and industries into single TSP-owned lists in the Team workspace UI. Removed the client-switcher buttons and integrated inline delete (✕) controls with verification dialogs next to every project card, enabling dynamic addition and removal of projects for managers and team leads."
+  },
+  {
+    "date": "2026-06-26",
+    "taskId": "TSK-TASK-001",
+    "title": "Implement Dual-View Task Console for Managers and Team Leads",
+    "status": "COMPLETED",
+    "narrative": "Developed a unified Dual-View Task Console for managers, team leads, admin, and HR. Fetches both personal assigned tasks and manager assigned tasks concurrently. Integrated a premium tab switcher ('Tasks Assigned to Me' vs 'Tasks Assigned to Others') with custom icons and stats, and overhauled the card layout to display creator/assigner metadata (e.g. 'Assigned by: Swapnil Deshmukh (Manager)') for received tasks."
   }
 ]

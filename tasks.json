@@ -810,5 +810,34 @@
     "expectedOutput": "Clients unified under The Star Prime (TSP) with full dynamic project CRUD and preserved email mappings.",
     "createdAt": "2026-06-26T11:43:00Z",
     "updatedAt": "2026-06-26T06:23:05.738Z"
+  },
+  {
+    "taskId": "TSK-TASK-001",
+    "moduleId": "MOD-TASK",
+    "sprint": "Sprint 4",
+    "project": "HRMS",
+    "page": "Manage Tasks Page",
+    "module": "Task Management",
+    "submodule": "Dual-View Task Console",
+    "title": "Implement Dual-View Task Console for Managers and Team Leads",
+    "description": "Enable managers and team leads to both assign tasks to their team members and receive/complete tasks assigned to them by their superiors, with a unified tab-switcher and card-based metadata.",
+    "frontendWork": "Implement tabs switcher for received vs assigned tasks, support dual fetching logic, conditionally render action buttons, and display creator/assignee metadata.",
+    "backendWork": "Verify compatibility of existing /tasks and /tasks/manager APIs.",
+    "databaseWork": "None",
+    "apiWork": "None",
+    "testingWork": "Manual verification of tab switching, task toggling, and role-based visibility.",
+    "priority": "HIGH",
+    "estimatedHours": 6,
+    "actualHours": 6,
+    "dependencies": [
+      "TSK-EMP-001"
+    ],
+    "riskLevel": "LOW",
+    "status": "COMPLETED",
+    "completionPercentage": 100,
+    "owner": "Fullstack Team",
+    "expectedOutput": "Managers and team leads can toggle between tasks assigned to them and tasks they assigned to others, with full completion workflows.",
+    "createdAt": "2026-06-26T12:16:00Z",
+    "updatedAt": "2026-06-26T06:52:05.458Z"
   }
 ]

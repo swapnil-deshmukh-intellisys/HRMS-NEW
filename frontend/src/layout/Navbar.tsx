@@ -384,7 +384,26 @@ export default function Navbar({ title, navOpen, onToggleNav, token, currentEmpl
           variant="secondary"
           aria-label="Logout"
           onClick={() => {
-            if (window.confirm("Are you sure you want to log out? Your current session will be ended.")) {
+            const attendance = summary?.attendanceToday;
+            const checkInTimeStr = attendance?.checkInTime;
+            const isCheckedIn = Boolean(checkInTimeStr && !attendance?.checkOutTime);
+            
+            let confirmMessage = "Are you sure you want to log out? Your current session will be ended.";
+            if (isCheckedIn && checkInTimeStr) {
+              const checkIn = new Date(checkInTimeStr);
+              const currentCalibratedTime = new Date(now + serverTimeOffset);
+              const elapsedMins = Math.max(0, Math.floor((currentCalibratedTime.getTime() - checkIn.getTime()) / 60000));
+              const requiredMins = 540 + (attendance?.penaltyMinutes || 0);
+              
+              if (elapsedMins < requiredMins) {
+                const remaining = requiredMins - elapsedMins;
+                const remH = Math.floor(remaining / 60);
+                const remM = remaining % 60;
+                confirmMessage = `⚠️ WARNING: You have not completed your required working hours today yet!\n\nYou still have approximately ${remH}h ${remM}m remaining (including any late penalties).\n\nAre you sure you want to log out of the application?`;
+              }
+            }
+            
+            if (window.confirm(confirmMessage)) {
               void onLogout();
             }
           }}

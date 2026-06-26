@@ -189,6 +189,26 @@ export default function AttendanceQuickAction({
 
     return `${minutes}m`;
   }, [attendanceToday?.checkInTime, attendanceToday?.checkOutTime, now]);
+
+  const isShiftIncomplete = useMemo(() => {
+    if (!attendanceToday || !attendanceToday.checkInTime || attendanceToday.checkOutTime) {
+      return false;
+    }
+
+    const checkIn = new Date(attendanceToday.checkInTime);
+    const elapsedMins = Math.max(0, Math.floor((now - checkIn.getTime()) / 60000));
+    const requiredMins = 540 + (attendanceToday.penaltyMinutes || 0);
+
+    return elapsedMins < requiredMins;
+  }, [attendanceToday, now]);
+
+  const remainingMins = useMemo(() => {
+    if (!attendanceToday || !attendanceToday.checkInTime) return 0;
+    const checkIn = new Date(attendanceToday.checkInTime);
+    const elapsedMins = Math.max(0, Math.floor((now - checkIn.getTime()) / 60000));
+    const requiredMins = 540 + (attendanceToday.penaltyMinutes || 0);
+    return Math.max(0, requiredMins - elapsedMins);
+  }, [attendanceToday, now]);
   async function handleClick() {
     if (!actionState.actionPath || actionState.disabled || submitting || isTimeDrifted) {
       return;
@@ -384,6 +404,30 @@ export default function AttendanceQuickAction({
         className="checkout-modal"
       >
         <form onSubmit={handleCheckoutSubmit} className="stack">
+          {isShiftIncomplete && (
+            <div style={{
+              background: 'rgba(239, 68, 68, 0.1)',
+              border: '1.5px solid rgba(239, 68, 68, 0.3)',
+              borderRadius: '10px',
+              padding: '12px 16px',
+              color: '#dc2626',
+              fontSize: '13px',
+              fontWeight: '700',
+              lineHeight: '1.5',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '4px',
+              marginBottom: '4px'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <span style={{ fontSize: '16px' }}>⚠️</span>
+                <span>Incomplete Working Hours Warning</span>
+              </div>
+              <span style={{ fontWeight: '500', opacity: 0.9 }}>
+                You have not completed your required working hours for today yet! Your shift required time is {Math.floor((540 + (attendanceToday?.penaltyMinutes || 0)) / 60)}h {((540 + (attendanceToday?.penaltyMinutes || 0)) % 60)}m (including penalties), and you still have approximately {Math.floor(remainingMins / 60)}h {(remainingMins % 60)}m remaining.
+              </span>
+            </div>
+          )}
           <div className="checkout-choice-grid">
             <div 
               className={`checkout-choice-card ${useSupportUpdate ? 'active' : ''}`}

@@ -756,25 +756,6 @@ export default function AttendancePage({ token, role, currentEmployeeId, current
             <span className="live-status-time">Real-time telemetry</span>
           </div>
 
-          {/* Summary counters */}
-          <div className="live-summary-row">
-            <div className="live-summary-pill live-summary-pill--active">
-              <span className="live-summary-dot live-summary-dot--active" />
-              <span className="live-summary-count">{activeCount}</span>
-              <span className="live-summary-label">Active</span>
-            </div>
-            <div className="live-summary-pill live-summary-pill--away">
-              <span className="live-summary-dot live-summary-dot--away" />
-              <span className="live-summary-count">{awayCount}</span>
-              <span className="live-summary-label">Away</span>
-            </div>
-            <div className="live-summary-pill live-summary-pill--offline">
-              <span className="live-summary-dot live-summary-dot--offline" />
-              <span className="live-summary-count">{offlineCount}</span>
-              <span className="live-summary-label">Offline</span>
-            </div>
-          </div>
-
           {/* Filter tabs */}
           <div className="live-filter-tabs">
             {(["ALL", "ACTIVE", "AWAY", "OFFLINE"] as const).map((filter) => {

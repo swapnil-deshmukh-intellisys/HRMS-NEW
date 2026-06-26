@@ -729,6 +729,19 @@ model Shift {
   endTime            String     // 24h format, e.g. "18:00"
   requiredMinutes    Int        @default(540)
   gracePeriodMinutes Int        @default(15)
+  hasBreaks          Boolean    @default(true)
+  allowMorningTea    Boolean    @default(true)
+  allowLunch         Boolean    @default(true)
+  allowEveningTea    Boolean    @default(true)
+  allowDinner        Boolean    @default(true)
+  morningTeaStart    String     @default("10:30")
+  morningTeaEnd      String     @default("11:15")
+  lunchStart         String     @default("12:00")
+  lunchEnd           String     @default("14:30")
+  eveningTeaStart    String     @default("15:30")
+  eveningTeaEnd      String     @default("17:00")
+  dinnerStart        String     @default("20:00")
+  dinnerEnd          String     @default("22:00")
   createdAt          DateTime   @default(now())
   updatedAt          DateTime   @updatedAt
   employees          Employee[]

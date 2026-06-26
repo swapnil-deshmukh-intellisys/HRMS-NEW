@@ -15,6 +15,19 @@ const shiftSchema = z.object({
   endTime: z.string().regex(timeRegex, "End time must be in HH:MM format"),
   requiredMinutes: z.number().int().min(60, "Required minutes must be at least 60 (1 hour)").default(540),
   gracePeriodMinutes: z.number().int().min(0, "Grace period minutes must be at least 0").default(15),
+  hasBreaks: z.boolean().default(true),
+  allowMorningTea: z.boolean().default(true),
+  allowLunch: z.boolean().default(true),
+  allowEveningTea: z.boolean().default(true),
+  allowDinner: z.boolean().default(true),
+  morningTeaStart: z.string().regex(timeRegex, "Morning tea start must be in HH:MM format").default("10:30"),
+  morningTeaEnd: z.string().regex(timeRegex, "Morning tea end must be in HH:MM format").default("11:15"),
+  lunchStart: z.string().regex(timeRegex, "Lunch start must be in HH:MM format").default("12:00"),
+  lunchEnd: z.string().regex(timeRegex, "Lunch end must be in HH:MM format").default("14:30"),
+  eveningTeaStart: z.string().regex(timeRegex, "Evening tea start must be in HH:MM format").default("15:30"),
+  eveningTeaEnd: z.string().regex(timeRegex, "Evening tea end must be in HH:MM format").default("17:00"),
+  dinnerStart: z.string().regex(timeRegex, "Dinner start must be in HH:MM format").default("20:00"),
+  dinnerEnd: z.string().regex(timeRegex, "Dinner end must be in HH:MM format").default("22:00"),
 });
 
 const assignSchema = z.object({
@@ -45,13 +58,25 @@ router.get("/", requireRoles("ADMIN", "HR", "MANAGER", "EMPLOYEE"), async (_requ
 // 2. Create a new shift [ADMIN ONLY]
 router.post("/", requireRoles("ADMIN"), validate(shiftSchema), async (request, response, next) => {
   try {
-    const { name } = request.body;
+    const { name, startTime } = request.body;
     const existing = await prisma.shift.findUnique({
       where: { name },
     });
 
     if (existing) {
       throw new AppError("A shift with this name already exists", 400);
+    }
+
+    // Enforce: Lunch only for morning shifts (starts before 12:00 PM) and Dinner only for night shifts
+    if (startTime) {
+      const hour = parseInt(startTime.split(":")[0], 10);
+      if (!isNaN(hour)) {
+        if (hour < 12) {
+          request.body.allowDinner = false;
+        } else {
+          request.body.allowLunch = false;
+        }
+      }
     }
 
     const shift = await prisma.shift.create({
@@ -86,6 +111,19 @@ router.put("/:id", requireRoles("ADMIN"), validate(shiftSchema.partial()), async
       });
       if (nameConflict) {
         throw new AppError("A shift with this name already exists", 400);
+      }
+    }
+
+    // Enforce: Lunch only for morning shifts (starts before 12:00 PM) and Dinner only for night shifts
+    const effectiveStartTime = request.body.startTime || existing.startTime;
+    if (effectiveStartTime) {
+      const hour = parseInt(effectiveStartTime.split(":")[0], 10);
+      if (!isNaN(hour)) {
+        if (hour < 12) {
+          request.body.allowDinner = false;
+        } else {
+          request.body.allowLunch = false;
+        }
       }
     }
 
@@ -125,9 +163,9 @@ router.delete("/:id", requireRoles("ADMIN"), async (request, response, next) => 
       throw new AppError("Cannot delete shift because it is currently assigned to active employees", 400);
     }
 
-    // Standard Shift cannot be deleted to prevent locking employees out of default configurations
-    if (shift.name === "Standard Shift") {
-      throw new AppError("The default Standard Shift cannot be deleted", 400);
+    // Day Shift cannot be deleted to prevent locking employees out of default configurations
+    if (shift.name === "Day Shift") {
+      throw new AppError("The default Day Shift cannot be deleted", 400);
     }
 
     await prisma.shift.delete({

@@ -103,5 +103,12 @@
     "title": "Implement Dynamic Shift Management System",
     "status": "COMPLETED",
     "narrative": "Designed and implemented a comprehensive dynamic Shift Management system restricted strictly to the ADMIN role. Built a premium React dashboard featuring shift profile cards with timing and grace period metrics, a shift creation/editing form, and a search-and-filter Employee Shift Switcher directory supporting bulk shift assignments. Secured the app layout by rendering the sidebar link only for administrators, and updated backend employee queries to return their active shift. All check-in delays, grace penalties, and overtime required hours automatically recalculate in real-time according to the employee's dynamically assigned shift."
+  },
+  {
+    "date": "2026-06-26",
+    "taskId": "TSK-ATT-012",
+    "title": "Implement Shift Break Configurations & Customizable Timing Windows",
+    "status": "COMPLETED",
+    "narrative": "Designed and implemented a comprehensive Shift Break Configuration system and customizable timing windows. Added five break toggles and eight break start/end timing columns to the Shift model in the database schema, pushed it via Prisma, and regenerated the client. Refactored backend break start and end routes to enforce shift-specific break configurations and dynamically parse/evaluate break start times against custom shift timing windows rather than hardcoded ranges. Also introduced a brand new 40-minute Dinner Break. Restricted Lunch breaks exclusively to morning shifts (start time before 12 PM) and Dinner breaks exclusively to night shifts (start time 12 PM or later) in both the backend APIs and frontend UI, enforcing this via Zod and route intercepts. Overhauled the frontend Shift Management modal to add customizable inline start/end timing inputs (HH:MM) that dynamically render when a break is enabled, and configured a useEffect hook to automatically sync Lunch/Dinner toggles based on the shift start time. Finally, designed and integrated allowed break badges on the active shift cards displaying their custom time ranges."
   }
 ]

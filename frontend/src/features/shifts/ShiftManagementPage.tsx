@@ -104,6 +104,11 @@ export default function ShiftManagementPage({ token, role }: ShiftManagementPage
       return;
     }
     
+    const payload = {
+      ...formState,
+      gracePeriodMinutes: 5, // Enforce system-standard 5 minutes grace period
+    };
+
     setSubmitting(true);
     try {
       if (editingShift) {
@@ -111,7 +116,7 @@ export default function ShiftManagementPage({ token, role }: ShiftManagementPage
         const res = await apiRequest<Shift>(`/shifts/${editingShift.id}`, {
           method: "PUT",
           token,
-          body: formState,
+          body: payload,
         });
         setShifts(prev => prev.map(s => s.id === editingShift.id ? { ...s, ...res.data } : s));
         toast.success("Shift updated successfully");
@@ -120,7 +125,7 @@ export default function ShiftManagementPage({ token, role }: ShiftManagementPage
         const res = await apiRequest<Shift>("/shifts", {
           method: "POST",
           token,
-          body: formState,
+          body: payload,
         });
         setShifts(prev => [...prev, res.data]);
         toast.success("Shift created successfully");
@@ -337,10 +342,6 @@ export default function ShiftManagementPage({ token, role }: ShiftManagementPage
                       <div className="metric-item">
                         <span className="metric-label">Required Time</span>
                         <span className="metric-value">{formatDuration(shift.requiredMinutes)}</span>
-                      </div>
-                      <div className="metric-item">
-                        <span className="metric-label">Late Grace Period</span>
-                        <span className="metric-value">{shift.gracePeriodMinutes} mins</span>
                       </div>
                     </div>
 
@@ -584,22 +585,6 @@ export default function ShiftManagementPage({ token, role }: ShiftManagementPage
               </span>
             </div>
 
-            <div className="form-group">
-              <label htmlFor="shift-grace">Lateness Grace Period (Minutes)</label>
-              <input
-                id="shift-grace"
-                type="number"
-                min={0}
-                value={formState.gracePeriodMinutes}
-                onChange={(e) => setFormState(prev => ({ ...prev, gracePeriodMinutes: parseInt(e.target.value, 10) || 0 }))}
-                required
-                className="form-control"
-                disabled={submitting}
-              />
-              <span className="form-input-hint">
-                Standard late penalties will apply relative to this threshold.
-              </span>
-            </div>
           </div>
 
           <div className="form-actions">

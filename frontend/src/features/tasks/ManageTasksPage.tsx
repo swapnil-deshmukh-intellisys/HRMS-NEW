@@ -678,7 +678,9 @@ export default function ManageTasksPage({ token }: { token: string | null }) {
               ? "Self Console" 
               : activeSubView === "assigned_to_me" 
                 ? "Recipient Console" 
-                : "Manager Console"}
+                : isTeamLead 
+                  ? "Team Leader Console" 
+                  : "Manager Console"}
           </span>
           <h2 className="page-title">
             {isNormalEmployee 

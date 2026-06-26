@@ -723,5 +723,34 @@
     "expectedOutput": "Workday Timeline displays correct overtime and duration, and renders spacious layout without overlaps.",
     "createdAt": "2026-06-25T18:30:00Z",
     "updatedAt": "2026-06-25T18:55:00Z"
+  },
+  {
+    "taskId": "TSK-ATT-006",
+    "moduleId": "MOD-ATTENDANCE",
+    "sprint": "Sprint 4",
+    "project": "HRMS",
+    "page": "Attendance Page",
+    "module": "Attendance",
+    "submodule": "Overtime History Fix",
+    "title": "Fix Overtime Calculation in Attendance History Table",
+    "description": "Factor in late check-in penalty minutes when displaying overtime in the attendance history table to prevent calculation discrepancies with the dashboard workday timeline.",
+    "frontendWork": "Update renderOvertime in AttendancePage.tsx to calculate dynamic required minutes as 540 + penaltyMinutes and check worked minutes against it.",
+    "backendWork": "None",
+    "databaseWork": "None",
+    "apiWork": "None",
+    "testingWork": "Verify overtime column accurately accounts for late check-in penalties on the Attendance page.",
+    "priority": "HIGH",
+    "estimatedHours": 2,
+    "actualHours": 2,
+    "dependencies": [
+      "TSK-ATT-005"
+    ],
+    "riskLevel": "LOW",
+    "status": "COMPLETED",
+    "completionPercentage": 100,
+    "owner": "Fullstack Team",
+    "expectedOutput": "Overtime column in history table correctly accounts for late penalties and shows accurate durations.",
+    "createdAt": "2026-06-26T09:30:00Z",
+    "updatedAt": "2026-06-26T09:42:00Z"
   }
 ]

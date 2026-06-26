@@ -307,9 +307,12 @@ export default function AttendancePage({ token, role, currentEmployeeId, current
   }
 
   function renderOvertime(record: AttendanceListRow) {
+    const penaltyMins = record.penaltyMinutes || 0;
+    const requiredMins = 540 + penaltyMins;
+
     if (!record.overtimeSession) {
-      if (record.workedMinutes > 540) {
-        const otMins = record.workedMinutes - 540;
+      if (record.workedMinutes > requiredMins) {
+        const otMins = record.workedMinutes - requiredMins;
         return (
           <span className="status-pill status-pill--approved" style={{ fontSize: '11px', fontWeight: 'bold' }}>
             +{formatWorkedDuration(otMins)}

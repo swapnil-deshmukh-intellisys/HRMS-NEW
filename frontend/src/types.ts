@@ -93,6 +93,8 @@ export type Employee = {
   stipend?: number | null;
   department?: Department;
   manager?: Employee | null;
+  shiftId?: number | null;
+  shift?: Shift | null;
   user?: {
     email: string;
     googleEmail?: string | null;
@@ -110,6 +112,20 @@ export type Employee = {
   teamMembers?: Employee[];
   outlookEmails?: OutlookEmail[];
   documents?: EmployeeDocument[];
+};
+
+export type Shift = {
+  id: number;
+  name: string;
+  startTime: string;
+  endTime: string;
+  requiredMinutes: number;
+  gracePeriodMinutes: number;
+  createdAt: string;
+  updatedAt: string;
+  _count?: {
+    employees: number;
+  };
 };
 
 export type EmployeeDocument = {

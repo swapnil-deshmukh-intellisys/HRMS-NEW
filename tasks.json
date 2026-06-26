@@ -926,5 +926,34 @@
     "expectedOutput": "Employees receive detailed bold red warnings and confirm alerts if they attempt to checkout or log out early.",
     "createdAt": "2026-06-26T14:45:00Z",
     "updatedAt": "2026-06-26T14:58:00Z"
+  },
+  {
+    "taskId": "TSK-ATT-011",
+    "moduleId": "MOD-ATTENDANCE",
+    "sprint": "Sprint 4",
+    "project": "HRMS",
+    "page": "Shift Management Page",
+    "module": "Attendance",
+    "submodule": "Dynamic Shift Management",
+    "title": "Implement Dynamic Shift Management System",
+    "description": "Provide a complete dynamic Shift Management system where an Admin can configure work shifts (start/end times, required hours, grace periods) and switch employees between shifts. Non-admin roles are barred from accessing these features.",
+    "frontendWork": "Create ShiftManagementPage with active shift cards and bulk employee shift switcher. Secure sidebar link for ADMIN role only.",
+    "backendWork": "Modify GET /api/employees to include shift relation. Backend routes, models, and shift-aware penalties/overtime calculations are fully integrated.",
+    "databaseWork": "None (Shift schema and migrations completed earlier)",
+    "apiWork": "GET /api/shifts, POST /api/shifts, PUT /api/shifts/:id, DELETE /api/shifts/:id, POST /api/shifts/assign, GET /api/employees",
+    "testingWork": "Verify admin-restricted access, shift creation, bulk switching, and shift-aware check-in/out and overtime logic.",
+    "priority": "HIGH",
+    "estimatedHours": 12,
+    "actualHours": 12,
+    "dependencies": [
+      "TSK-ATT-010"
+    ],
+    "riskLevel": "LOW",
+    "status": "COMPLETED",
+    "completionPercentage": 100,
+    "owner": "Fullstack Team",
+    "expectedOutput": "Admin can seamlessly create shifts and assign employees, with dynamic attendance and overtime logic reacting to the assigned shift timings.",
+    "createdAt": "2026-06-26T15:00:00Z",
+    "updatedAt": "2026-06-26T15:10:00Z"
   }
 ]

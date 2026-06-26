@@ -82,6 +82,7 @@ router.get("/", requireRoles("ADMIN", "HR", "MANAGER"), async (request, response
           department: true,
           manager: true,
           capabilities: true,
+          shift: true,
         },
         skip,
         take: limit,

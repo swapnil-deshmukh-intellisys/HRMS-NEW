@@ -526,15 +526,23 @@
 
 .select-target-shift {
   height: 38px;
-  background: rgba(255, 255, 255, 0.15);
-  border: 1px solid rgba(255, 255, 255, 0.25);
+  background: var(--color-accent-strong);
+  border: 1px solid rgba(255, 255, 255, 0.3);
   color: white;
   font-size: var(--text-xs);
   width: 180px;
 }
 
+.select-target-shift:focus {
+  background: var(--color-accent-strong) !important;
+  color: white !important;
+  border-color: rgba(255, 255, 255, 0.6) !important;
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.2) !important;
+}
+
 .select-target-shift option {
   color: var(--color-text-strong);
+  background: white;
 }
 
 .btn-assign-shift {

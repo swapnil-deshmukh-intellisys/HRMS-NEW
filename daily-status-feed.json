@@ -89,5 +89,12 @@
     "title": "Implement Paid Overtime Pre-Approval Workflow and Paid Tags",
     "status": "COMPLETED",
     "narrative": "Designed and implemented a comprehensive pre-approval workflow for Paid Overtime. Employees can submit pre-approval requests before 5:00 PM IST on working days (with full calendar-exception check) by stating their reason in a premium purple-styled modal. Managers, HR, or Admins can approve these requests, transitioning their status to APPROVED. Starting overtime transitions approved sessions to ACTIVE (isPaid: true) while rejected pre-approvals fallback to regular overtime (isPaid: false). Refactored the Attendance History table to render a purple 'Paid' tag next to the overtime hours for all verified paid overtime sessions, ensuring premium visual consistency."
+  },
+  {
+    "date": "2026-06-26",
+    "taskId": "TSK-ATT-010",
+    "title": "Implement Incomplete Shift Hours Warning on Checkout and Logout",
+    "status": "COMPLETED",
+    "narrative": "Designed and implemented proactive warnings for employees who attempt to check out of their shift or log out of the application before completing their required working hours (9 hours + late penalties). Rendered a prominent, high-visibility red warning banner at the top of the Checkout Modal detailing their shift requirements and remaining time. Integrated a similar warning into the browser confirmation alert when clicking the application logout button in the topbar, ensuring zero gaps in compliance and attendance tracking."
   }
 ]

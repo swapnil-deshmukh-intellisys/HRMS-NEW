@@ -897,5 +897,34 @@
     "expectedOutput": "Employees can request paid overtime pre-approval before 5 PM, which displays a Paid tag upon verification.",
     "createdAt": "2026-06-26T14:00:00Z",
     "updatedAt": "2026-06-26T14:35:00Z"
+  },
+  {
+    "taskId": "TSK-ATT-010",
+    "moduleId": "MOD-ATTENDANCE",
+    "sprint": "Sprint 4",
+    "project": "HRMS",
+    "page": "Navbar & Attendance Quick Action",
+    "module": "Attendance",
+    "submodule": "Shift Concluding Warning",
+    "title": "Implement Incomplete Shift Hours Warning on Checkout and Logout",
+    "description": "Add proactive warnings to alert employees who try to checkout of their shift or log out of the application before completing their required working hours (9 hours + late check-in penalties). Shows a prominent red card inside the checkout modal and a browser confirm alert upon app logout.",
+    "frontendWork": "Add isShiftIncomplete and remainingMins calculations. Render a red warning banner inside the Checkout Modal in AttendanceQuickAction.tsx, and integrate a descriptive confirm warning in the Navbar.tsx logout handler.",
+    "backendWork": "None",
+    "databaseWork": "None",
+    "apiWork": "None",
+    "testingWork": "Verify warning calculations under different check-in times and late penalties. Assert red banner visibility inside checkout modal and alert message on app logout.",
+    "priority": "HIGH",
+    "estimatedHours": 4,
+    "actualHours": 4,
+    "dependencies": [
+      "TSK-ATT-009"
+    ],
+    "riskLevel": "LOW",
+    "status": "COMPLETED",
+    "completionPercentage": 100,
+    "owner": "Frontend Team",
+    "expectedOutput": "Employees receive detailed bold red warnings and confirm alerts if they attempt to checkout or log out early.",
+    "createdAt": "2026-06-26T14:45:00Z",
+    "updatedAt": "2026-06-26T14:58:00Z"
   }
 ]

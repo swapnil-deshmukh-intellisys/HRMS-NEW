@@ -752,5 +752,63 @@
     "expectedOutput": "Overtime column in history table correctly accounts for late penalties and shows accurate durations.",
     "createdAt": "2026-06-26T09:30:00Z",
     "updatedAt": "2026-06-26T09:42:00Z"
+  },
+  {
+    "taskId": "TSK-ATT-007",
+    "moduleId": "MOD-ATTENDANCE",
+    "sprint": "Sprint 4",
+    "project": "HRMS",
+    "page": "Attendance Page",
+    "module": "Attendance",
+    "submodule": "Net Work & Crash-Aware Scheduler",
+    "title": "Implement Net Worked Minutes and Crash-Aware Concluding Scheduler",
+    "description": "Subtract break durations from workedMinutes at the database level during checkout/finalization. Reschedule the automated attendance finalization to 7:00 AM daily and implement telemetry-based crash vs clean shutdown distinction. Overhaul the frontend Day Summary to replace Events Logged with Uptime and Active Penalties cards.",
+    "frontendWork": "Update WorkdayTimeline.tsx to calculate and display Uptime (since last break/away) and Active Penalties, replacing the old Events Logged card.",
+    "backendWork": "Refactor routes.ts and scheduler.ts to compute net productive time by subtracting break sessions, remove immediate checkout on SHUTDOWN, and implement telemetry analysis in the 7:00 AM daily finalization job.",
+    "databaseWork": "None",
+    "apiWork": "POST /api/attendance/checkout, POST /api/attendance/desktop-event",
+    "testingWork": "Verify net productive time calculations, 7:00 AM scheduler crash detection, and Day Summary cards.",
+    "priority": "HIGH",
+    "estimatedHours": 8,
+    "actualHours": 6,
+    "dependencies": [
+      "TSK-ATT-006"
+    ],
+    "riskLevel": "LOW",
+    "status": "COMPLETED",
+    "completionPercentage": 100,
+    "owner": "Fullstack Team",
+    "expectedOutput": "Productive Time displays net worked hours, the 7:00 AM scheduler correctly handles PC crashes without penalizing employees, and the Day Summary shows Uptime and Active Penalties.",
+    "createdAt": "2026-06-26T11:00:00Z",
+    "updatedAt": "2026-06-26T11:40:00Z"
+  },
+  {
+    "taskId": "TSK-TEAM-001",
+    "moduleId": "MOD-EMPLOYEE",
+    "sprint": "Sprint 4",
+    "project": "HRMS",
+    "page": "Team Page",
+    "module": "Team Management",
+    "submodule": "Ongoing Projects & Clients",
+    "title": "Unify Projects under The Star Prime (TSP)",
+    "description": "Migrate TUT/TEC clients to TSP in the database, preserve email assignments, remove hardcoded frontend switchers, and add dynamic project creation and removal capabilities.",
+    "frontendWork": "Consolidate magazines/industries states under TSP, remove client-switcher, and add inline delete buttons with confirmation.",
+    "backendWork": "Create and execute database migration script to unify client records and re-map all Outlook emails to TSP.",
+    "databaseWork": "Prisma client table migration and email foreign key updates.",
+    "apiWork": "None",
+    "testingWork": "Manual verification of project add/delete actions and email lists.",
+    "priority": "HIGH",
+    "estimatedHours": 4,
+    "actualHours": 4,
+    "dependencies": [
+      "TSK-EMP-001"
+    ],
+    "riskLevel": "LOW",
+    "status": "COMPLETED",
+    "completionPercentage": 100,
+    "owner": "Fullstack Team",
+    "expectedOutput": "Clients unified under The Star Prime (TSP) with full dynamic project CRUD and preserved email mappings.",
+    "createdAt": "2026-06-26T11:43:00Z",
+    "updatedAt": "2026-06-26T06:23:05.738Z"
   }
 ]

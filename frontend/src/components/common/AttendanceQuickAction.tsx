@@ -54,12 +54,12 @@ export default function AttendanceQuickAction({
       const response = await apiRequest<any>(`/employees/${currentEmployeeId}`, { token });
       const allEmails = response.data.outlookEmails || [];
       
-      // Filter for TEC and TUT clients
+      // Filter for TEC, TUT, and TSP clients
       const filtered = allEmails.filter((item: any) => {
         const clientCode = item.client?.code?.toUpperCase();
         const clientName = item.client?.name?.toUpperCase();
-        return clientCode === "TEC" || clientCode === "TUT" || 
-               clientName?.includes("TEC") || clientName?.includes("TUT");
+        return clientCode === "TEC" || clientCode === "TUT" || clientCode === "TSP" || 
+               clientName?.includes("TEC") || clientName?.includes("TUT") || clientName?.includes("TSP");
       });
       
       setAssignedEmails(filtered);

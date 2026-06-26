@@ -155,7 +155,9 @@
     "date": "2026-06-26",
     "developer": "Fullstack Team",
     "completedTasks": [
-      "TSK-ATT-006"
+      "TSK-ATT-006",
+      "TSK-ATT-007",
+      "TSK-TEAM-001"
     ],
     "inProgressTasks": [
       "TSK-PAY-004",
@@ -163,15 +165,20 @@
       "TSK-PERF-001"
     ],
     "newTasksCreated": [
-      "TSK-ATT-006"
+      "TSK-ATT-006",
+      "TSK-ATT-007",
+      "TSK-TEAM-001"
     ],
     "bugsFixed": [
-      "Fixed overtime calculation in attendance history table by factoring in late check-in penalty minutes to ensure alignment with dashboard timeline calculations"
+      "Fixed overtime calculation in attendance history table by factoring in late check-in penalty minutes to ensure alignment with dashboard timeline calculations",
+      "Excluded break times from Productive Time (Net Work Time Option B) across checkout, regularization, and daily finalization",
+      "Refactored the automated daily finalization cron job, rescheduling it to 7:00 AM daily and implementing crash-aware logic that uses telemetry logs to distinguish between clean shutdown (marked HALF_DAY) and unexpected crash/power failure (marked PRESENT)",
+      "Removed immediate checkout behavior on SHUTDOWN events in the desktop event route to let sessions remain open for reboot recovery"
     ],
     "blockers": [],
-    "hoursWorked": 2,
-    "dailyProgress": 1,
+    "hoursWorked": 8,
+    "dailyProgress": 2,
     "overallProjectProgress": 100,
-    "remarks": "Identified and resolved a calculation bug in the attendance history table where overtime was computed using a hardcoded 9-hour workday threshold, completely ignoring late check-in penalty minutes. Factored in penaltyMinutes to compute dynamic required minutes (540 + penaltyMinutes) before calculating overtime, ensuring 100% mathematical consistency with the dashboard's Workday Timeline popup."
+    "remarks": "Resolved a major overtime calculation bug in the attendance history table by incorporating late check-in penalty minutes. Additionally, implemented Net Productive Time (Option B) by subtracting completed break session durations from workedMinutes during checkout, regularization approval, and daily finalization. Refactored the daily finalization scheduler, moving it to 7:00 AM IST and implementing intelligent crash detection: using desktop activity logs, the scheduler marks clean shutdowns without web checkout as HALF_DAY (neglect penalty), but automatically checks out and marks sudden hardware crashes or power cuts as PRESENT (no penalty). Overhauled the frontend WorkdayTimeline summary cards, replacing Events Logged with premium Uptime (since last break/away) and Active Penalties cards. Unified all project contexts under 'The Star Prime' (TSP). Migrated all 48 outlook email identities to the new TSP client inside the PostgreSQL database, successfully preserving all employee email mappings. Cleaned up the obsolete TUT and TEC database client records. Completely redesigned the frontend Team workspace Ongoing Projects and Outlook Emails tabs by removing the obsolete TUT/TEC switcher tabs and showing all lists under TSP. Added dynamic project (magazine and industry) add and delete functionalities directly into the UI with instant state updates and double confirmation boxes."
   }
 ]

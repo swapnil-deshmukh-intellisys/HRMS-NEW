@@ -478,6 +478,48 @@ const WorkdayTimeline: React.FC<WorkdayTimelineProps> = ({
     setHoverText(`${displayH}:${m.toString().padStart(2, '0')} ${period}`);
   };
 
+  const uptimeStr = useMemo(() => {
+    if (!checkInTime) return '--';
+
+    const isDateToday = dateContext ? isToday(dateContext) : true;
+    
+    let activeEnd = new Date();
+    if (!isDateToday) {
+      if (checkOutTime) {
+        activeEnd = new Date(checkOutTime);
+      } else if (desktopLogs.length > 0) {
+        activeEnd = new Date(desktopLogs[desktopLogs.length - 1].timestamp);
+      } else {
+        activeEnd = new Date(checkInTime);
+      }
+    }
+
+    const hasActiveBreak = breakSessions.some(s => !s.endTime);
+    if (hasActiveBreak) return '0m';
+
+    const completedBreaks = breakSessions
+      .filter(s => s.endTime)
+      .sort((a, b) => {
+        const timeA = a.endTime ? new Date(a.endTime).getTime() : 0;
+        const timeB = b.endTime ? new Date(b.endTime).getTime() : 0;
+        return timeB - timeA;
+      });
+
+    let uptimeMs = 0;
+    if (completedBreaks.length > 0 && completedBreaks[0].endTime) {
+      const lastBreakEnd = new Date(completedBreaks[0].endTime);
+      uptimeMs = activeEnd.getTime() - lastBreakEnd.getTime();
+    } else {
+      const ci = new Date(checkInTime);
+      uptimeMs = activeEnd.getTime() - ci.getTime();
+    }
+
+    const uptimeMins = Math.max(0, Math.floor(uptimeMs / 60000));
+    const h = Math.floor(uptimeMins / 60);
+    const m = uptimeMins % 60;
+    return h > 0 ? `${h}h ${m}m` : `${m}m`;
+  }, [checkInTime, checkOutTime, breakSessions, dateContext, desktopLogs]);
+
   const formatDuration = (h: number, m: number) => h > 0 ? `${h}h ${m}m` : `${m}m`;
   const requiredMins = 540 + (penaltyMinutes || 0);
   const isOvertime = workedTime ? (workedTime.hours * 60 + workedTime.minutes) > requiredMins : false;
@@ -673,8 +715,12 @@ const WorkdayTimeline: React.FC<WorkdayTimelineProps> = ({
                 </span>
               </div>
               <div className="wdt-summary-card">
-                <span className="wdt-sc-label">Events Logged</span>
-                <span className="wdt-sc-value">{desktopLogs.length}</span>
+                <span className="wdt-sc-label">Uptime (since break/away)</span>
+                <span className="wdt-sc-value">{uptimeStr}</span>
+              </div>
+              <div className="wdt-summary-card">
+                <span className="wdt-sc-label">Active Penalties</span>
+                <span className="wdt-sc-value">{penaltyMinutes && penaltyMinutes > 0 ? `${penaltyMinutes}m` : '--'}</span>
               </div>
             </div>
             

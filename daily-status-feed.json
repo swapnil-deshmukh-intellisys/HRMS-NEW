@@ -75,5 +75,12 @@
     "title": "Implement Dual-View Task Console for Managers and Team Leads",
     "status": "COMPLETED",
     "narrative": "Developed a unified Dual-View Task Console for managers, team leads, admin, and HR. Fetches both personal assigned tasks and manager assigned tasks concurrently. Integrated a premium tab switcher ('Tasks Assigned to Me' vs 'Tasks Assigned to Others') with custom icons and stats, and overhauled the card layout to display creator/assigner metadata (e.g. 'Assigned by: Swapnil Deshmukh (Manager)') for received tasks."
+  },
+  {
+    "date": "2026-06-26",
+    "taskId": "TSK-ATT-008",
+    "title": "Fix Web Break Session AWAY Status Telemetry",
+    "status": "COMPLETED",
+    "narrative": "Resolved a major telemetry tracking issue where checked-in employees on active web-initiated breaks remained stuck as ACTIVE. Modified the /live-status backend query to select BreakSession records where endTime is null, setting user status to AWAY if an active break session is present. Implemented a break-updated global event listener in the frontend AppProvider to instantly synchronize and refresh local status dots in the Navbar and Sidebar upon starting or ending breaks."
   }
 ]

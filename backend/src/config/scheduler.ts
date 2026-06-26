@@ -287,6 +287,7 @@ export function initScheduler() {
 
             let updatedCount = 0;
             for (const attendance of attendancesToUpdate) {
+              if (!attendance.checkInTime) continue;
               if (attendance.checkOutTime) {
                 // Already checked out, finalize status normally based on net worked minutes
                 const finalStatus = finalizeAttendanceStatus(

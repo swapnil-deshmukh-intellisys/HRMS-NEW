@@ -54,5 +54,19 @@
     "title": "Fix Overtime Calculation in Attendance History Table",
     "status": "COMPLETED",
     "narrative": "Resolved a discrepancy where the attendance history table displayed incorrect overtime durations for employees with late check-ins. Refactored the renderOvertime function in AttendancePage.tsx to dynamically factor in late check-in penalty minutes, ensuring the table matches the employee dashboard Workday Timeline exactly."
+  },
+  {
+    "date": "2026-06-26",
+    "taskId": "TSK-ATT-007",
+    "title": "Implement Net Worked Minutes and Crash-Aware Concluding Scheduler",
+    "status": "COMPLETED",
+    "narrative": "Successfully implemented Net Worked Minutes (Option B) by deducting completed break durations from gross checked-in minutes across web checkout, regularization approval, and daily finalization. Rescheduled daily finalization cron job to 7:00 AM IST and implemented a crash-aware classification algorithm: it uses desktop agent activity logs to distinguish between clean OS shutdown without checkout (marked HALF_DAY as neglect penalty) and unexpected power cuts/system crashes (marked PRESENT without penalty). Replaced Events Logged in the frontend Day Summary panel with premium Uptime (since last break/away) and Active Penalties cards."
+  },
+  {
+    "date": "2026-06-26",
+    "taskId": "TSK-TEAM-001",
+    "title": "Unify Projects under The Star Prime (TSP)",
+    "status": "COMPLETED",
+    "narrative": "Migrated all 48 Outlook email identities to 'The Star Prime' (TSP) client in the database, preserving all existing assignments. Cleaned up the old TUT and TEC client records. Consolidated the hardcoded magazines and industries into single TSP-owned lists in the Team workspace UI. Removed the client-switcher buttons and integrated inline delete (✕) controls with verification dialogs next to every project card, enabling dynamic addition and removal of projects for managers and team leads."
   }
 ]

@@ -65,19 +65,12 @@ export default function TeamPage({ token, role, currentEmployee }: TeamPageProps
 
   // Derive state from URL search params
   const activeTab = (searchParams.get("tab") as TeamTab) || "SALES";
-  const activeClientCode = (searchParams.get("client") as "TUT" | "TEC") || "TUT";
+  const activeClientCode = "TSP";
   const projectCategory = (searchParams.get("category") as "MAGAZINES" | "INDUSTRIES") || "MAGAZINES";
 
   const setActiveTab = (tab: TeamTab) => {
     setSearchParams(prev => {
       prev.set("tab", tab);
-      return prev;
-    });
-  };
-
-  const setActiveClientCode = (client: "TUT" | "TEC") => {
-    setSearchParams(prev => {
-      prev.set("client", client);
       return prev;
     });
   };
@@ -104,12 +97,16 @@ export default function TeamPage({ token, role, currentEmployee }: TeamPageProps
   const [isSavingEmails, setIsSavingEmails] = useState(false);
   const { refreshSession } = useAuth();
 
-  const [tutMagazines, setTutMagazines] = useState(["Forbes", "Fortune", "Financial Times", "Business Today"]);
-  const [tecMagazines, setTecMagazines] = useState(["Entrepreneur", "Wired", "HBR", "Fast Company"]);
-  const [tutIndustries, setTutIndustries] = useState(["Tech", "Fashion", "Finance", "Health", "Real Estate"]);
-  const [tecIndustries, setTecIndustries] = useState(["Logistics", "Agri", "Manufacturing", "E-com", "Energy"]);
+  const [tspMagazines, setTspMagazines] = useState([
+    "Forbes", "Fortune", "Financial Times", "Business Today",
+    "Entrepreneur", "Wired", "HBR", "Fast Company"
+  ]);
+  const [tspIndustries, setTspIndustries] = useState([
+    "Tech", "Fashion", "Finance", "Health", "Real Estate",
+    "Logistics", "Agri", "Manufacturing", "E-com", "Energy"
+  ]);
 
-  const [addProjectModal, setAddProjectModal] = useState<{ type: "MAGAZINE" | "INDUSTRY"; client: "TUT" | "TEC" } | null>(null);
+  const [addProjectModal, setAddProjectModal] = useState<{ type: "MAGAZINE" | "INDUSTRY" } | null>(null);
   const [newProjectName, setNewProjectName] = useState("");
   
   const isTeamLead = Boolean(currentEmployee?.capabilities?.some((capability) => capability.capability === "TEAM_LEAD"));
@@ -712,20 +709,10 @@ export default function TeamPage({ token, role, currentEmployee }: TeamPageProps
                 Industries
               </button>
             </div>
-
-            <div className="client-switcher">
-              <button 
-                className={`client-switcher-btn ${activeClientCode === "TUT" ? "active" : ""}`}
-                onClick={() => setActiveClientCode("TUT")}
-              >
-                TUT
-              </button>
-              <button 
-                className={`client-switcher-btn ${activeClientCode === "TEC" ? "active" : ""}`}
-                onClick={() => setActiveClientCode("TEC")}
-              >
-                TEC
-              </button>
+            
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '6px 12px', background: 'var(--color-bg-subtle, #f8fafc)', borderRadius: '8px', border: '1px solid var(--color-border-default)' }}>
+              <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#3b82f6' }}></span>
+              <span style={{ fontSize: '13px', fontWeight: '700', color: 'var(--color-text-primary)' }}>The Star Prime (TSP)</span>
             </div>
           </div>
 
@@ -734,26 +721,46 @@ export default function TeamPage({ token, role, currentEmployee }: TeamPageProps
               <div className="team-page-header">
                 <div>
                   <h3>Magazines</h3>
-                  <p className="muted">Active editorial and publication projects.</p>
+                  <p className="muted">Active editorial and publication projects under The Star Prime.</p>
                 </div>
-                <button type="button" className="secondary team-page-add-btn" onClick={() => setAddProjectModal({ type: "MAGAZINE", client: activeClientCode })}>
+                <button type="button" className="secondary team-page-add-btn" onClick={() => setAddProjectModal({ type: "MAGAZINE" })}>
                   <span className="add-icon">+</span>
                   Add Magazine
                 </button>
               </div>
               <div className="stack projects-stack">
-                {(activeClientCode === "TUT" 
-                  ? tutMagazines
-                  : tecMagazines
-                ).map((magazine) => (
-                  <article key={magazine} className="project-item-card project-item-card--stacked">
-                    <div className="project-icon-wrap" style={{ background: activeClientCode === "TEC" ? 'linear-gradient(135deg, #059669, #10b981)' : undefined }}>
+                {tspMagazines.map((magazine) => (
+                  <article key={magazine} className="project-item-card project-item-card--stacked" style={{ display: 'flex', alignItems: 'center' }}>
+                    <div className="project-icon-wrap">
                       <span className="project-initial">{magazine[0]}</span>
                     </div>
                     <div className="project-info">
                       <strong>{magazine}</strong>
-                      <span className="muted text-xs">{activeClientCode === "TUT" ? "Editorial Publication" : "Innovation Digest"}</span>
+                      <span className="muted text-xs">Editorial Publication</span>
                     </div>
+                    <button
+                      type="button"
+                      style={{
+                        marginLeft: "auto",
+                        border: "none",
+                        background: "transparent",
+                        color: "#ef4444",
+                        cursor: "pointer",
+                        padding: "6px 10px",
+                        borderRadius: "4px",
+                        fontSize: "14px",
+                        transition: "all 0.2s"
+                      }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (window.confirm(`Are you sure you want to remove magazine "${magazine}"?`)) {
+                          setTspMagazines(prev => prev.filter(m => m !== magazine));
+                        }
+                      }}
+                      title="Remove Magazine"
+                    >
+                      ✕
+                    </button>
                   </article>
                 ))}
               </div>
@@ -763,24 +770,44 @@ export default function TeamPage({ token, role, currentEmployee }: TeamPageProps
               <div className="team-page-header">
                 <div>
                   <h3>Industries</h3>
-                  <p className="muted">Key industry focus areas and sectors for {activeClientCode}.</p>
+                  <p className="muted">Key industry focus areas and sectors for The Star Prime.</p>
                 </div>
-                <button type="button" className="secondary team-page-add-btn" onClick={() => setAddProjectModal({ type: "INDUSTRY", client: activeClientCode })}>
+                <button type="button" className="secondary team-page-add-btn" onClick={() => setAddProjectModal({ type: "INDUSTRY" })}>
                   <span className="add-icon">+</span>
                   Add Industry
                 </button>
               </div>
               <div className="grid cols-5 projects-grid">
-                {(activeClientCode === "TUT"
-                  ? tutIndustries
-                  : tecIndustries
-                ).map((industry) => (
+                {tspIndustries.map((industry) => (
                   <article key={industry} className="project-item-card">
-                    <div className={`project-icon-wrap ${activeClientCode === "TUT" ? "project-icon-wrap--industry" : "project-icon-wrap--tec-industry"}`}>
+                    <div className="project-icon-wrap project-icon-wrap--industry">
                       <span className="project-initial">{industry[0]}</span>
                     </div>
-                    <div className="project-info">
-                      <strong>{industry}</strong>
+                    <div className="project-info" style={{ width: '100%' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+                        <strong>{industry}</strong>
+                        <button
+                          type="button"
+                          style={{
+                            border: "none",
+                            background: "transparent",
+                            color: "#ef4444",
+                            cursor: "pointer",
+                            padding: "2px 6px",
+                            fontSize: "12px",
+                            fontWeight: "bold"
+                          }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (window.confirm(`Are you sure you want to remove industry "${industry}"?`)) {
+                              setTspIndustries(prev => prev.filter(i => i !== industry));
+                            }
+                          }}
+                          title="Remove Industry"
+                        >
+                          ✕
+                        </button>
+                      </div>
                       <span className="status-pill status-pill--stable">Monitoring</span>
                     </div>
                   </article>
@@ -1017,21 +1044,12 @@ export default function TeamPage({ token, role, currentEmployee }: TeamPageProps
           <div className="team-page-header">
             <div>
               <h3>Outlook Email Distribution</h3>
-              <p className="muted">Assigning shared identities for <strong>{activeClientCode === "TUT" ? "The Unicorn Times" : "Entrepreneurial Chronicles"}</strong>.</p>
+              <p className="muted">Assigning shared identities for <strong>The Star Prime (TSP)</strong>.</p>
             </div>
-            <div className="client-switcher">
-              <button 
-                className={`client-switcher-btn ${activeClientCode === "TUT" ? "active" : ""}`}
-                onClick={() => setActiveClientCode("TUT")}
-              >
-                TUT
-              </button>
-              <button 
-                className={`client-switcher-btn ${activeClientCode === "TEC" ? "active" : ""}`}
-                onClick={() => setActiveClientCode("TEC")}
-              >
-                TEC
-              </button>
+            
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '6px 12px', background: 'var(--color-bg-subtle, #f8fafc)', borderRadius: '8px', border: '1px solid var(--color-border-default)' }}>
+              <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#3b82f6' }}></span>
+              <span style={{ fontSize: '13px', fontWeight: '700', color: 'var(--color-text-primary)' }}>TSP Workspace</span>
             </div>
           </div>
           <div className="table-wrap">
@@ -1040,7 +1058,7 @@ export default function TeamPage({ token, role, currentEmployee }: TeamPageProps
                 <tr>
                   <th>Employee</th>
                   <th>Designation</th>
-                  <th>{activeClientCode} Assigned Email(s)</th>
+                  <th>Assigned Email(s)</th>
                   <th style={{ textAlign: 'right' }}>Actions</th>
                 </tr>
               </thead>
@@ -1056,7 +1074,7 @@ export default function TeamPage({ token, role, currentEmployee }: TeamPageProps
                           if (clientEmails.length > 0) {
                             navigate(`/team/outlook-report/${member.id}/${clientEmails[0].id}`);
                           } else {
-                            toast.error(`No ${activeClientCode} emails assigned to ${member.firstName}. Click "Manage" to assign one first.`);
+                            toast.error(`No TSP emails assigned to ${member.firstName}. Click "Manage" to assign one first.`);
                           }
                         }}
                         style={{ cursor: 'pointer' }}
@@ -1073,8 +1091,8 @@ export default function TeamPage({ token, role, currentEmployee }: TeamPageProps
                                   key={email.id} 
                                   className="status-pill status-pill--clickable" 
                                   style={{ 
-                                    background: activeClientCode === 'TEC' ? '#ecfdf5' : '#f1f5f9', 
-                                    color: activeClientCode === 'TEC' ? '#065f46' : '#475569', 
+                                    background: '#f1f5f9', 
+                                    color: '#475569', 
                                     fontSize: '11px',
                                     cursor: 'pointer',
                                     border: '1px solid transparent',
@@ -1086,7 +1104,7 @@ export default function TeamPage({ token, role, currentEmployee }: TeamPageProps
                                   }}
                                   title="Click to view detailed stats and logs"
                                   onMouseEnter={(e) => {
-                                    e.currentTarget.style.borderColor = activeClientCode === 'TEC' ? '#047857' : '#94a3b8';
+                                    e.currentTarget.style.borderColor = '#94a3b8';
                                     e.currentTarget.style.transform = 'translateY(-1px)';
                                   }}
                                   onMouseLeave={(e) => {
@@ -1098,7 +1116,7 @@ export default function TeamPage({ token, role, currentEmployee }: TeamPageProps
                                 </span>
                               ))
                             ) : (
-                              <span className="muted" style={{ fontSize: '11px' }}>No {activeClientCode} emails</span>
+                              <span className="muted" style={{ fontSize: '11px' }}>No TSP emails</span>
                             )}
                           </div>
                         </td>
@@ -1353,14 +1371,11 @@ export default function TeamPage({ token, role, currentEmployee }: TeamPageProps
                 }
                 const name = newProjectName.trim();
                 const type = addProjectModal?.type;
-                const client = addProjectModal?.client;
                 
                 if (type === "MAGAZINE") {
-                  if (client === "TUT") setTutMagazines(prev => [...prev, name]);
-                  else setTecMagazines(prev => [...prev, name]);
+                  setTspMagazines(prev => [...prev, name]);
                 } else if (type === "INDUSTRY") {
-                  if (client === "TUT") setTutIndustries(prev => [...prev, name]);
-                  else setTecIndustries(prev => [...prev, name]);
+                  setTspIndustries(prev => [...prev, name]);
                 }
                 
                 toast.success(`${type === "MAGAZINE" ? "Magazine" : "Industry"} added successfully`);

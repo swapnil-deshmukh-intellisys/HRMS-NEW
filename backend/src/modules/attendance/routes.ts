@@ -401,7 +401,14 @@ router.post("/check-out", validate(attendanceSchema), async (request, response, 
     }
 
     const checkOutTime = new Date();
-    const workedMinutes = Math.floor((checkOutTime.getTime() - attendance.checkInTime.getTime()) / (1000 * 60));
+    const grossMins = Math.floor((checkOutTime.getTime() - attendance.checkInTime.getTime()) / (1000 * 60));
+    
+    // Deduct completed breaks
+    const breakSessions = await prisma.breakSession.findMany({
+      where: { attendanceId: attendance.id, endTime: { not: null } },
+    });
+    const totalBreakMinutes = breakSessions.reduce((sum, session) => sum + (session.durationMinutes || 0), 0);
+    const workedMinutes = Math.max(0, grossMins - totalBreakMinutes);
 
     const updatedAttendance = await prisma.attendance.update({
       where: { id: attendance.id },
@@ -936,10 +943,15 @@ router.post(
           checkInTime,
           checkOutTime,
         );
-        const workedMinutes = calculateWorkedMinutes(
-          checkInTime,
-          checkOutTime,
-        );
+        let workedMinutes = 0;
+        if (checkInTime && checkOutTime) {
+          const grossMins = Math.max(0, Math.floor((checkOutTime.getTime() - checkInTime.getTime()) / (1000 * 60)));
+          const breakSessions = await prisma.breakSession.findMany({
+            where: { attendanceId: existingAttendance?.id || 0, endTime: { not: null } },
+          });
+          const totalBreakMinutes = breakSessions.reduce((sum, session) => sum + (session.durationMinutes || 0), 0);
+          workedMinutes = Math.max(0, grossMins - totalBreakMinutes);
+        }
 
         const [updatedAttendance] = await prisma.$transaction([
           existingAttendance
@@ -1735,22 +1747,6 @@ router.post(
             },
           });
           breakUpdated = true;
-        }
-      } else if (eventType === "SHUTDOWN") {
-        // Automatically check out the employee for the day if checked in but checkout is null
-        if (attendance.checkInTime && !attendance.checkOutTime) {
-          const workedMin = calculateWorkedMinutes(attendance.checkInTime, parsedTime);
-          const status = finalizeAttendanceStatus(attendance.checkInTime, parsedTime);
-
-          await prisma.attendance.update({
-            where: { id: attendance.id },
-            data: {
-              checkOutTime: parsedTime,
-              workedMinutes: workedMin,
-              status,
-            },
-          });
-          checkOutUpdated = true;
         }
       }
 

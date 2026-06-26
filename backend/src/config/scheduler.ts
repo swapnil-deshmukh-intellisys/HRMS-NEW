@@ -215,9 +215,9 @@ export function initScheduler() {
 
 
 
-  // 🕒 Automated Attendance Finalization: 6:00 AM IST daily
-  // Runs at 6:00 AM to finalize the PREVIOUS day's records.
-  cron.schedule("0 6 * * *", async () => {
+  // 🕒 Automated Attendance Finalization: 7:00 AM IST daily
+  // Runs at 7:00 AM to finalize the PREVIOUS day's records.
+  cron.schedule("0 7 * * *", async () => {
     // Correctly get yesterday's date in IST regardless of server environment
     const nowInIst = getCurrentTimeInIST();
     const yesterday = new Date(nowInIst);
@@ -274,6 +274,7 @@ export function initScheduler() {
             return result.count;
           },
           updateAttendanceWithMissingCheckout: async (attendanceDate, _cutoffHour) => {
+            // Find all attendance records for this date that are checked in
             const attendancesToUpdate = await prisma.attendance.findMany({
               where: {
                 attendanceDate: {
@@ -281,21 +282,68 @@ export function initScheduler() {
                   lte: endOfDay(attendanceDate),
                 },
                 checkInTime: { not: null },
-                status: AttendanceStatus.PRESENT,
               },
             });
 
             let updatedCount = 0;
             for (const attendance of attendancesToUpdate) {
-              const finalStatus = finalizeAttendanceStatus(
-                attendance.checkInTime,
-                attendance.checkOutTime
-              );
+              if (attendance.checkOutTime) {
+                // Already checked out, finalize status normally based on net worked minutes
+                const finalStatus = finalizeAttendanceStatus(
+                  attendance.checkInTime,
+                  attendance.checkOutTime
+                );
+                if (finalStatus !== attendance.status) {
+                  await prisma.attendance.update({
+                    where: { id: attendance.id },
+                    data: { status: finalStatus },
+                  });
+                  updatedCount++;
+                }
+              } else {
+                // Checkout is missing! Let's check telemetry logs
+                const lastEvent = await prisma.desktopActivityLog.findFirst({
+                  where: {
+                    employeeId: attendance.employeeId,
+                    timestamp: {
+                      gte: startOfDay(attendanceDate),
+                      lte: endOfDay(attendanceDate),
+                    },
+                  },
+                  orderBy: { timestamp: "desc" },
+                });
 
-              if (finalStatus !== attendance.status) {
+                let checkOutTime: Date;
+                let isAccidental = false;
+
+                if (lastEvent) {
+                  checkOutTime = lastEvent.timestamp;
+                  // Accidental if last event was active/idle/wake etc, and not LOCK/SHUTDOWN
+                  isAccidental = !["SHUTDOWN", "LOCK"].includes(lastEvent.eventType);
+                } else {
+                  // No desktop activity, fallback to check-in time plus 1 minute
+                  checkOutTime = new Date(attendance.checkInTime.getTime() + 60 * 1000);
+                  isAccidental = false; // Neglected
+                }
+
+                // Deduct break durations
+                const grossMins = Math.floor((checkOutTime.getTime() - attendance.checkInTime.getTime()) / (1000 * 60));
+                const breakSessions = await prisma.breakSession.findMany({
+                  where: { attendanceId: attendance.id, endTime: { not: null } },
+                });
+                const totalBreakMinutes = breakSessions.reduce((sum, session) => sum + (session.durationMinutes || 0), 0);
+                const workedMinutes = Math.max(0, grossMins - totalBreakMinutes);
+
+                // Set status based on crash classification
+                const finalStatus = isAccidental ? AttendanceStatus.PRESENT : AttendanceStatus.HALF_DAY;
+
                 await prisma.attendance.update({
                   where: { id: attendance.id },
-                  data: { status: finalStatus },
+                  data: {
+                    checkOutTime,
+                    workedMinutes,
+                    status: finalStatus,
+                  },
                 });
                 updatedCount++;
               }

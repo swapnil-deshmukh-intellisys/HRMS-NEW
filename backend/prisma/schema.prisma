@@ -118,9 +118,12 @@ model Employee {
   documents                         EmployeeDocument[]                @relation("EmployeeDocuments")
   salesRecords                      SalesRecord[]                     @relation("EmployeeSalesRecords")
   desktopActivityLogs               DesktopActivityLog[]
+  shiftId                           Int?
+  shift                             Shift?                            @relation(fields: [shiftId], references: [id])
 
   @@index([departmentId])
   @@index([managerId])
+  @@index([shiftId])
 }
 
 model EmployeeCapability {
@@ -717,4 +720,16 @@ model DesktopActivityLog {
   @@index([employeeId])
   @@index([eventType])
   @@index([timestamp])
+}
+
+model Shift {
+  id                 Int        @id @default(autoincrement())
+  name               String     @unique
+  startTime          String     // 24h format, e.g. "09:00"
+  endTime            String     // 24h format, e.g. "18:00"
+  requiredMinutes    Int        @default(540)
+  gracePeriodMinutes Int        @default(15)
+  createdAt          DateTime   @default(now())
+  updatedAt          DateTime   @updatedAt
+  employees          Employee[]
 }

@@ -96,5 +96,12 @@
     "title": "Implement Incomplete Shift Hours Warning on Checkout and Logout",
     "status": "COMPLETED",
     "narrative": "Designed and implemented proactive warnings for employees who attempt to check out of their shift or log out of the application before completing their required working hours (9 hours + late penalties). Rendered a prominent, high-visibility red warning banner at the top of the Checkout Modal detailing their shift requirements and remaining time. Integrated a similar warning into the browser confirmation alert when clicking the application logout button in the topbar, ensuring zero gaps in compliance and attendance tracking."
+  },
+  {
+    "date": "2026-06-26",
+    "taskId": "TSK-ATT-011",
+    "title": "Implement Dynamic Shift Management System",
+    "status": "COMPLETED",
+    "narrative": "Designed and implemented a comprehensive dynamic Shift Management system restricted strictly to the ADMIN role. Built a premium React dashboard featuring shift profile cards with timing and grace period metrics, a shift creation/editing form, and a search-and-filter Employee Shift Switcher directory supporting bulk shift assignments. Secured the app layout by rendering the sidebar link only for administrators, and updated backend employee queries to return their active shift. All check-in delays, grace penalties, and overtime required hours automatically recalculate in real-time according to the employee's dynamically assigned shift."
   }
 ]

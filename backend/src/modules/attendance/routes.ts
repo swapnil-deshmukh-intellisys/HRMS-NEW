@@ -188,7 +188,12 @@ router.get("/today", requireRoles("EMPLOYEE", "MANAGER", "HR", "ADMIN"), async (
       }),
     ]);
 
-    const requiredMinutes = 540 - (attendanceToday?.lateByMinutes || 0) + (attendanceToday?.penaltyMinutes || 0);
+    const employee = await prisma.employee.findUnique({
+      where: { id: employeeId },
+      include: { shift: true }
+    });
+    const standardShiftRequired = employee?.shift?.requiredMinutes ?? 540;
+    const requiredMinutes = standardShiftRequired - (attendanceToday?.lateByMinutes || 0) + (attendanceToday?.penaltyMinutes || 0);
     const isOvertimeEligible = (attendanceToday?.checkOutTime && attendanceToday.workedMinutes >= requiredMinutes) ? true : false;
 
     return sendSuccess(response, "Today's attendance fetched successfully", {
@@ -261,13 +266,24 @@ router.post("/check-in", validate(attendanceSchema), async (request, response, n
     const checkInTime = new Date();
 
     // --- Late Penalty Logic ---
-    // Shift starts at 09:00 AM IST. Penalties start at 5 minutes late.
+    // Shift timings are dynamic based on the employee's assigned shift
     const TIMEZONE = 'Asia/Kolkata';
-    const SHIFT_START_HOUR = 9;
-    const SHIFT_START_MINUTE = 0;
-    
+    const employee = await prisma.employee.findUnique({
+      where: { id: employeeId },
+      include: { shift: true },
+    });
+
+    if (!employee) {
+      throw new AppError("Employee not found", 404);
+    }
+
+    const shift = employee.shift;
+    const shiftStartTimeStr = shift?.startTime || "09:00";
+    const [startHour, startMinute] = shiftStartTimeStr.split(":").map(Number);
+    const gracePeriod = shift?.gracePeriodMinutes ?? 5;
+
     const shiftStartTime = toZonedTime(checkInTime, TIMEZONE);
-    shiftStartTime.setHours(SHIFT_START_HOUR, SHIFT_START_MINUTE, 0, 0);
+    shiftStartTime.setHours(startHour, startMinute, 0, 0);
     const shiftStartInUTC = fromZonedTime(shiftStartTime, TIMEZONE);
 
     const lateByMinutes = checkInTime > shiftStartInUTC
@@ -1310,7 +1326,12 @@ router.post("/overtime/start", validate(attendanceSchema), async (request, respo
       throw new AppError("Regular attendance checkout is required before starting overtime");
     }
 
-    const requiredMinutes = 540 - (attendance.lateByMinutes || 0) + (attendance.penaltyMinutes || 0);
+    const employee = await prisma.employee.findUnique({
+      where: { id: employeeId },
+      include: { shift: true }
+    });
+    const standardShiftRequired = employee?.shift?.requiredMinutes ?? 540;
+    const requiredMinutes = standardShiftRequired - (attendance.lateByMinutes || 0) + (attendance.penaltyMinutes || 0);
     if (attendance.workedMinutes < requiredMinutes) {
       throw new AppError(`You must complete at least ${(requiredMinutes / 60).toFixed(1)} hours of standard work today to be eligible for overtime`, 400);
     }

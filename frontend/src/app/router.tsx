@@ -50,6 +50,7 @@ const EmployeeTodosPage = lazyWithRetry(() => import("../features/tasks/Employee
 const NotificationsPage = lazyWithRetry(() => import("../features/notifications/NotificationsPage"));
 const EmailTemplatesPage = lazyWithRetry(() => import("../features/templates/EmailTemplatesPage"));
 const EmailBroadcasterPage = lazyWithRetry(() => import("../features/templates/EmailBroadcasterPage"));
+const ShiftManagementPage = lazyWithRetry(() => import("../features/shifts/ShiftManagementPage"));
 const AppLayout = lazyWithRetry(() => import("../layout/AppLayout"));
 import { AppProvider } from "../context/AppContext";
 
@@ -276,6 +277,11 @@ function AppRoutes() {
           <Route path="/email-broadcaster" element={
             <Page context="Broadcaster">
               <EmailBroadcasterPage token={token || ""} />
+            </Page>
+          } />
+          <Route path="/shifts" element={
+            <Page context="Shift Management">
+              <ShiftManagementPage token={token} role={sessionUser?.role ?? "EMPLOYEE"} />
             </Page>
           } />
         </Route>

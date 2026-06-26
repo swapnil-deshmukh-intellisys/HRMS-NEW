@@ -898,7 +898,7 @@
 
 .live-badge {
   position: absolute;
-  bottom: -2px;
+  top: -2px;
   right: -2px;
   width: 10px;
   height: 10px;

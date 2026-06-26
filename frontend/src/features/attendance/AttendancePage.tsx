@@ -1,7 +1,7 @@
 import "./AttendancePage.css";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Calendar, Clock, ChevronDown } from "lucide-react";
+import { Calendar, Clock, ChevronDown, Search } from "lucide-react";
 import toast from "react-hot-toast";
 import Modal from "../../components/common/Modal";
 import Table from "../../components/common/Table";
@@ -196,6 +196,7 @@ export default function AttendancePage({ token, role, currentEmployeeId, current
   const [teamLeadMainTab, setTeamLeadMainTab] = useState<TeamLeadMainTab>("DAY");
   const [dailyViewTab, setDailyViewTab] = useState<"LIVE" | "HISTORY">("HISTORY");
   const [liveStatusFilter, setLiveStatusFilter] = useState<"ALL" | "ACTIVE" | "AWAY" | "OFFLINE">("ALL");
+  const [liveSearchQuery, setLiveSearchQuery] = useState("");
   const [filterDate, setFilterDate] = useState(today);
   const [datePickerOpen, setDatePickerOpen] = useState(false);
   const [visibleMonth, setVisibleMonth] = useState<VisibleMonth>(() => getVisibleMonthFromDate(today));
@@ -740,8 +741,16 @@ export default function AttendancePage({ token, role, currentEmployeeId, current
           ? liveStatusArray
           : liveStatusArray.filter(e => e.status === liveStatusFilter);
 
+        const searchedEmployees = filteredEmployees.filter(e => {
+          const query = liveSearchQuery.trim().toLowerCase();
+          if (!query) return true;
+          const fullName = `${e.firstName} ${e.lastName}`.toLowerCase();
+          const code = e.employeeCode.toLowerCase();
+          return fullName.includes(query) || code.includes(query);
+        });
+
         // Sort: Active first, then Away, then Offline
-        const sortedEmployees = [...filteredEmployees].sort((a, b) => {
+        const sortedEmployees = [...searchedEmployees].sort((a, b) => {
           const order = { ACTIVE: 0, AWAY: 1, OFFLINE: 2 };
           return (order[a.status] ?? 3) - (order[b.status] ?? 3);
         });
@@ -754,6 +763,29 @@ export default function AttendancePage({ token, role, currentEmployeeId, current
               <h3 style={{ margin: 0 }}>Workforce Live Status</h3>
             </div>
             <span className="live-status-time">Real-time telemetry</span>
+          </div>
+
+          {/* Search bar */}
+          <div className="live-search-wrapper">
+            <div className="live-search-box">
+              <Search className="search-icon" />
+              <input
+                type="text"
+                placeholder="Search by employee name or code..."
+                value={liveSearchQuery}
+                onChange={(e) => setLiveSearchQuery(e.target.value)}
+              />
+              {liveSearchQuery && (
+                <button
+                  type="button"
+                  className="live-search-clear"
+                  onClick={() => setLiveSearchQuery("")}
+                  title="Clear search"
+                >
+                  ✕
+                </button>
+              )}
+            </div>
           </div>
 
           {/* Filter tabs */}

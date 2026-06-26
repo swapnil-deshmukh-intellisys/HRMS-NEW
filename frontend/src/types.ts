@@ -206,9 +206,11 @@ export type Attendance = {
   overtimeSession?: {
     id: number;
     duration: number | null;
-    status: "ACTIVE" | "COMPLETED" | "PENDING_VERIFICATION" | "VERIFIED" | "REJECTED";
+    status: "ACTIVE" | "APPROVED" | "COMPLETED" | "PENDING_VERIFICATION" | "VERIFIED" | "REJECTED";
     startTime: string;
     endTime?: string | null;
+    isPaid?: boolean;
+    reason?: string | null;
   } | null;
   breakSessions?: BreakSession[];
 };

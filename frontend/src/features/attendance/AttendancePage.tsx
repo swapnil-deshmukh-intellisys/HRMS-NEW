@@ -11,6 +11,7 @@ import type { Attendance, AttendanceRegularizationRequest, Employee, Role } from
 import { formatAttendanceTime, formatDateLabel, formatInTimeZone, formatWeekday, isToday } from "../../utils/format";
 import { useApp } from "../../context/useApp";
 import WorkdayTimeline from "../dashboard/WorkdayTimeline";
+import { toZonedTime } from "date-fns-tz";
 
 type AttendancePageProps = {
   token: string | null;
@@ -219,6 +220,62 @@ export default function AttendancePage({ token, role, currentEmployeeId, current
   const [loading, setLoading] = useState(true);
   const [submittingRegularization, setSubmittingRegularization] = useState(false);
 
+  const [overtimePreApprovalOpen, setOvertimePreApprovalOpen] = useState(false);
+  const [overtimeReason, setOvertimeReason] = useState("");
+  const [submittingOvertime, setSubmittingOvertime] = useState(false);
+
+  const myTodayAttendance = useMemo(() => {
+    if (!currentEmployeeId) return null;
+    return attendance.find(
+      (record) =>
+        record.employeeId === currentEmployeeId &&
+        toLocalDateString(new Date(record.attendanceDate)) === today
+    );
+  }, [attendance, currentEmployeeId, today]);
+
+  const showPaidOvertimeRequestBtn = useMemo(() => {
+    if (filterDate !== today) return false;
+
+    // Check if submitted before 5:00 PM IST (Asia/Kolkata)
+    const zonedNow = toZonedTime(new Date(), "Asia/Kolkata");
+    if (zonedNow.getHours() >= 17) return false;
+
+    // Must be checked in today
+    if (!myTodayAttendance || !myTodayAttendance.checkInTime) return false;
+
+    // Must not have an existing overtime session
+    if (myTodayAttendance.overtimeSession) return false;
+
+    return true;
+  }, [filterDate, today, myTodayAttendance]);
+
+  async function handleOvertimePreApprovalSubmit() {
+    if (!overtimeReason.trim()) {
+      toast.error("Reason is required");
+      return;
+    }
+    if (submittingOvertime) return;
+
+    try {
+      setSubmittingOvertime(true);
+      const response = await apiRequest<any>("/attendance/overtime/pre-approval", {
+        method: "POST",
+        token,
+        body: {
+          reason: overtimeReason.trim(),
+        },
+      });
+      toast.success(response.message || "Overtime pre-approval request submitted successfully");
+      setOvertimePreApprovalOpen(false);
+      setOvertimeReason("");
+      await reloadAttendance();
+    } catch (requestError) {
+      toast.error(requestError instanceof Error ? requestError.message : "Failed to submit overtime pre-approval request.");
+    } finally {
+      setSubmittingOvertime(false);
+    }
+  }
+
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       const target = event.target as HTMLElement;
@@ -323,34 +380,66 @@ export default function AttendancePage({ token, role, currentEmployeeId, current
       return <span className="muted">—</span>;
     }
 
-    const { duration, status } = record.overtimeSession;
+    const { duration, status, isPaid, endTime } = record.overtimeSession;
     
     if (status === "REJECTED") {
       return <span className="status-pill status-pill--rejected" style={{ fontSize: '11px' }}>Rejected</span>;
+    }
+
+    // 1. Pending Pre-Approval Request (Before 5 PM request, not yet worked)
+    if (status === "PENDING_VERIFICATION" && isPaid && !endTime) {
+      return (
+        <span className="status-pill status-pill--pending" style={{ fontSize: '11px', fontWeight: 'bold', border: '1px solid rgba(245, 158, 11, 0.3)' }}>
+          Pending Paid Approval
+        </span>
+      );
+    }
+
+    // 2. Pre-Approved Paid Overtime (Approved by Manager/HR, not yet started/worked)
+    if (status === "APPROVED") {
+      return (
+        <span className="status-pill" style={{ background: 'rgba(124, 58, 237, 0.1)', color: '#6d28d9', border: '1px solid rgba(124, 58, 237, 0.2)', fontSize: '11px', fontWeight: 'bold' }}>
+          Pre-Approved Paid
+        </span>
+      );
     }
 
     const durationLabel = duration ? formatWorkedDuration(duration) : "0m";
 
     if (status === "VERIFIED") {
       return (
-        <span className="status-pill status-pill--approved" style={{ fontSize: '11px', fontWeight: 'bold' }}>
-          +{durationLabel}
-        </span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <span className="status-pill status-pill--approved" style={{ fontSize: '11px', fontWeight: 'bold' }}>
+            +{durationLabel}
+          </span>
+          {isPaid && (
+            <span className="status-pill" style={{ background: 'rgba(124, 58, 237, 0.1)', color: '#6d28d9', border: '1px solid rgba(124, 58, 237, 0.2)', fontSize: '10px', fontWeight: 'bold', padding: '2px 6px', borderRadius: '4px', whiteSpace: 'nowrap' }}>
+              Paid
+            </span>
+          )}
+        </div>
       );
     }
 
     if (status === "ACTIVE") {
       return (
         <span className="status-pill status-pill--half-day" style={{ fontSize: '11px' }}>
-          Active
+          Active{isPaid ? " (Paid)" : ""}
         </span>
       );
     }
 
     return (
-      <span className="status-pill status-pill--pending" style={{ fontSize: '11px' }} title="Pending verification">
-        {durationLabel} (Pending)
-      </span>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+        <span className="status-pill status-pill--pending" style={{ fontSize: '11px' }} title="Pending verification">
+          {durationLabel} (Pending)
+        </span>
+        {isPaid && (
+          <span className="status-pill" style={{ background: 'rgba(124, 58, 237, 0.1)', color: '#6d28d9', border: '1px solid rgba(124, 58, 237, 0.2)', fontSize: '10px', fontWeight: 'bold', padding: '2px 6px', borderRadius: '4px', whiteSpace: 'nowrap' }}>
+            Paid
+          </span>
+        )}
+      </div>
     );
   }
 
@@ -902,6 +991,20 @@ export default function AttendancePage({ token, role, currentEmployeeId, current
                   </button>
                 ) : (
                   <div className="button-row">
+                    {showPaidOvertimeRequestBtn && (
+                      <button
+                        className="secondary attendance-header-action"
+                        onClick={() => setOvertimePreApprovalOpen(true)}
+                        style={{
+                          borderColor: 'rgba(124, 58, 237, 0.4)',
+                          color: '#6d28d9',
+                          background: 'rgba(124, 58, 237, 0.05)',
+                          fontWeight: 'bold'
+                        }}
+                      >
+                        Request Paid Overtime
+                      </button>
+                    )}
                     <button className="secondary attendance-header-action" onClick={() => setRegularizationOpen(true)}>
                       Request correction
                     </button>
@@ -1479,6 +1582,39 @@ export default function AttendancePage({ token, role, currentEmployeeId, current
               {submittingRegularization ? "Submitting..." : "Submit request"}
             </button>
             <button className="secondary" onClick={() => setRegularizationOpen(false)}>
+              Close
+            </button>
+          </div>
+        </div>
+      </Modal>
+
+      <Modal open={overtimePreApprovalOpen} title="Request Paid Overtime Approval" onClose={() => setOvertimePreApprovalOpen(false)}>
+        <div className="stack regularization-form">
+          <p className="muted" style={{ fontSize: '13px', marginBottom: '8px' }}>
+            Submit an overtime pre-approval request before 5:00 PM. Once approved by a Manager, HR, or Admin, your overtime will be classified as <strong>Paid Overtime</strong>.
+          </p>
+          <label>
+            Reason for Overtime
+            <textarea
+              rows={4}
+              value={overtimeReason}
+              onChange={(event) => setOvertimeReason(event.target.value)}
+              placeholder="Please provide the business justification or task list for this paid overtime..."
+              required
+            />
+          </label>
+          <div className="button-row">
+            <button 
+              onClick={handleOvertimePreApprovalSubmit} 
+              disabled={submittingOvertime || !overtimeReason.trim()}
+              style={{
+                background: 'var(--color-primary, #6d28d9)',
+                color: 'white'
+              }}
+            >
+              {submittingOvertime ? "Submitting..." : "Submit Pre-Approval Request"}
+            </button>
+            <button className="secondary" onClick={() => setOvertimePreApprovalOpen(false)}>
               Close
             </button>
           </div>

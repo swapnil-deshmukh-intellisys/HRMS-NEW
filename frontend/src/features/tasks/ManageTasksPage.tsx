@@ -707,14 +707,13 @@ export default function ManageTasksPage({ token }: { token: string | null }) {
 
       {/* Tab Switcher for Managers / Team Leads */}
       {!isNormalEmployee && (
-        <div className="team-page-primary-tabs" role="tablist" aria-label="Task views" style={{ marginBottom: "var(--space-5)", display: "flex", borderBottom: "1px solid var(--color-border-subtle)" }}>
+        <div className="task-tab-switcher" role="tablist" aria-label="Task views">
           <button
             type="button"
             role="tab"
             aria-selected={activeSubView === "assigned_to_me"}
-            className={`team-page-primary-tab ${activeSubView === "assigned_to_me" ? "team-page-primary-tab--active" : ""}`.trim()}
+            className={`task-tab-btn ${activeSubView === "assigned_to_me" ? "active" : ""}`}
             onClick={() => setActiveSubView("assigned_to_me")}
-            style={{ display: "flex", alignItems: "center", gap: "8px" }}
           >
             <ClipboardList size={16} />
             Tasks Assigned to Me
@@ -723,9 +722,8 @@ export default function ManageTasksPage({ token }: { token: string | null }) {
             type="button"
             role="tab"
             aria-selected={activeSubView === "assigned_to_others"}
-            className={`team-page-primary-tab ${activeSubView === "assigned_to_others" ? "team-page-primary-tab--active" : ""}`.trim()}
+            className={`task-tab-btn ${activeSubView === "assigned_to_others" ? "active" : ""}`}
             onClick={() => setActiveSubView("assigned_to_others")}
-            style={{ display: "flex", alignItems: "center", gap: "8px" }}
           >
             <Users size={16} />
             Tasks Assigned to Others

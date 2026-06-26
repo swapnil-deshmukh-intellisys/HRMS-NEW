@@ -839,5 +839,34 @@
     "expectedOutput": "Managers and team leads can toggle between tasks assigned to them and tasks they assigned to others, with full completion workflows.",
     "createdAt": "2026-06-26T12:16:00Z",
     "updatedAt": "2026-06-26T06:52:05.458Z"
+  },
+  {
+    "taskId": "TSK-ATT-008",
+    "moduleId": "MOD-ATTENDANCE",
+    "sprint": "Sprint 4",
+    "project": "HRMS",
+    "page": "Attendance Page",
+    "module": "Attendance",
+    "submodule": "Live Status Telemetry",
+    "title": "Fix Web Break Session AWAY Status Telemetry",
+    "description": "Fix live status determination by fetching active break sessions where endTime is null and marking employees on break as AWAY. Synchronize frontend with a break-updated event listener in AppProvider for instant status updates.",
+    "frontendWork": "Add event listener to AppProvider context to instantly trigger refreshLiveStatuses and refreshSummary upon break-updated event.",
+    "backendWork": "Modify live-status route to select active break sessions for today and set employee status to AWAY if active break session exists.",
+    "databaseWork": "None",
+    "apiWork": "GET /api/attendance/live-status",
+    "testingWork": "Manual verification of web break start/end status changes and Live status dashboard tab filtering; production build checks.",
+    "priority": "HIGH",
+    "estimatedHours": 4,
+    "actualHours": 3,
+    "dependencies": [
+      "TSK-ATT-007"
+    ],
+    "riskLevel": "LOW",
+    "status": "COMPLETED",
+    "completionPercentage": 100,
+    "owner": "Fullstack Team",
+    "expectedOutput": "Web-initiated break sessions correctly set status to AWAY and update Navbar, Sidebar status dots instantly.",
+    "createdAt": "2026-06-26T13:00:00Z",
+    "updatedAt": "2026-06-26T13:50:00Z"
   }
 ]

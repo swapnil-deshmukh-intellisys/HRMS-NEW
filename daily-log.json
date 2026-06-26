@@ -158,7 +158,8 @@
       "TSK-ATT-006",
       "TSK-ATT-007",
       "TSK-TEAM-001",
-      "TSK-TASK-001"
+      "TSK-TASK-001",
+      "TSK-ATT-008"
     ],
     "inProgressTasks": [
       "TSK-PAY-004",
@@ -169,18 +170,21 @@
       "TSK-ATT-006",
       "TSK-ATT-007",
       "TSK-TEAM-001",
-      "TSK-TASK-001"
+      "TSK-TASK-001",
+      "TSK-ATT-008"
     ],
     "bugsFixed": [
       "Fixed overtime calculation in attendance history table by factoring in late check-in penalty minutes to ensure alignment with dashboard timeline calculations",
       "Excluded break times from Productive Time (Net Work Time Option B) across checkout, regularization, and daily finalization",
       "Refactored the automated daily finalization cron job, rescheduling it to 7:00 AM daily and implementing crash-aware logic that uses telemetry logs to distinguish between clean shutdown (marked HALF_DAY) and unexpected crash/power failure (marked PRESENT)",
-      "Removed immediate checkout behavior on SHUTDOWN events in the desktop event route to let sessions remain open for reboot recovery"
+      "Removed immediate checkout behavior on SHUTDOWN events in the desktop event route to let sessions remain open for reboot recovery",
+      "Fixed the AWAY status bug in the live-status endpoint where web-initiated break sessions (BreakSession records with endTime: null) were ignored, leaving employees marked as ACTIVE instead of AWAY",
+      "Implemented a frontend break-updated event listener in AppProvider to force real-time Navbar and Sidebar status dot updates immediately when users start or end a break"
     ],
     "blockers": [],
     "hoursWorked": 8,
     "dailyProgress": 2,
     "overallProjectProgress": 100,
-    "remarks": "Resolved a major overtime calculation bug in the attendance history table by incorporating late check-in penalty minutes. Additionally, implemented Net Productive Time (Option B) by subtracting completed break session durations from workedMinutes during checkout, regularization approval, and daily finalization. Refactored the daily finalization scheduler, moving it to 7:00 AM IST and implementing intelligent crash detection: using desktop activity logs, the scheduler marks clean shutdowns without web checkout as HALF_DAY (neglect penalty), but automatically checks out and marks sudden hardware crashes or power cuts as PRESENT (no penalty). Overhauled the frontend WorkdayTimeline summary cards, replacing Events Logged with premium Uptime (since last break/away) and Active Penalties cards. Unified all project contexts under 'The Star Prime' (TSP). Migrated all 48 outlook email identities to the new TSP client inside the PostgreSQL database, successfully preserving all employee email mappings. Cleaned up the obsolete TUT and TEC database client records. Completely redesigned the frontend Team workspace Ongoing Projects and Outlook Emails tabs by removing the obsolete TUT/TEC switcher tabs and showing all lists under TSP. Added dynamic project (magazine and industry) add and delete functionalities directly into the UI with instant state updates and double confirmation boxes. Implemented the Dual-View Task Console for Managers and Team Leads, allowing them to both assign tasks to their team members and receive/complete tasks assigned to them by their superiors. Enabled concurrent dual-fetching of tasks assigned to me and tasks assigned to others, integrated a premium tab switcher globally consistent with the design system, and customized the task cards to dynamically render Assigned by metadata for received tasks."
+    "remarks": "Resolved a major overtime calculation bug in the attendance history table by incorporating late check-in penalty minutes. Additionally, implemented Net Productive Time (Option B) by subtracting completed break session durations from workedMinutes during checkout, regularization approval, and daily finalization. Refactored the daily finalization scheduler, moving it to 7:00 AM IST and implementing intelligent crash detection: using desktop activity logs, the scheduler marks clean shutdowns without web checkout as HALF_DAY (neglect penalty), but automatically checks out and marks sudden hardware crashes or power cuts as PRESENT (no penalty). Overhauled the frontend WorkdayTimeline summary cards, replacing Events Logged with premium Uptime (since last break/away) and Active Penalties cards. Unified all project contexts under 'The Star Prime' (TSP). Migrated all 48 outlook email identities to the new TSP client inside the PostgreSQL database, successfully preserving all employee email mappings. Cleaned up the obsolete TUT and TEC database client records. Completely redesigned the frontend Team workspace Ongoing Projects and Outlook Emails tabs by removing the obsolete TUT/TEC switcher tabs and showing all lists under TSP. Added dynamic project (magazine and industry) add and delete functionalities directly into the UI with instant state updates and double confirmation boxes. Implemented the Dual-View Task Console for Managers and Team Leads, allowing them to both assign tasks to their team members and receive/complete tasks assigned to them by their superiors. Enabled concurrent dual-fetching of tasks assigned to me and tasks assigned to others, integrated a premium tab switcher globally consistent with the design system, and customized the task cards to dynamically render Assigned by metadata for received tasks. Resolved the AWAY status bug by updating the live-status route to query active break sessions (endTime: null) and correctly classify checked-in employees on break as AWAY. Registered a break-updated global event listener in the frontend AppProvider context to instantly refresh status dots in the Navbar and Sidebar without waiting for the 30-second polling interval."
   }
 ]

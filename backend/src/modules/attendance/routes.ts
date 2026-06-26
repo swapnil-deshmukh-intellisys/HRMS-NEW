@@ -1603,6 +1603,10 @@ router.get("/live-status", requireRoles("ADMIN", "HR", "MANAGER", "EMPLOYEE"), a
           select: {
             checkInTime: true,
             checkOutTime: true,
+            breakSessions: {
+              where: { endTime: null },
+              take: 1,
+            },
           },
         },
         desktopActivityLogs: {
@@ -1626,10 +1630,11 @@ router.get("/live-status", requireRoles("ADMIN", "HR", "MANAGER", "EMPLOYEE"), a
       }
 
       if (todayAttendance) {
+        const hasActiveBreak = todayAttendance.breakSessions && todayAttendance.breakSessions.length > 0;
         if (todayAttendance.checkOutTime) {
           status = "OFFLINE";
         } else if (todayAttendance.checkInTime) {
-          if (lastLog && ["LOCK", "SLEEP", "IDLE_START"].includes(lastLog.eventType)) {
+          if (hasActiveBreak || (lastLog && ["LOCK", "SLEEP", "IDLE_START"].includes(lastLog.eventType))) {
             status = "AWAY";
           } else {
             status = "ACTIVE";

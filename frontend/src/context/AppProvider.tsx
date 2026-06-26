@@ -181,6 +181,15 @@ export function AppProvider({ children, token, role }: { children: ReactNode; to
   }, [token, refreshLiveStatuses]);
 
   useEffect(() => {
+    const handleBreakUpdated = () => {
+      void refreshLiveStatuses();
+      void refreshSummary();
+    };
+    window.addEventListener("break-updated", handleBreakUpdated);
+    return () => window.removeEventListener("break-updated", handleBreakUpdated);
+  }, [refreshLiveStatuses, refreshSummary]);
+
+  useEffect(() => {
     const handleAttendanceUpdated = (event: Event) => {
       const detail = getAttendanceUpdatedDetail(event);
       if (detail?.attendanceToday) {

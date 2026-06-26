@@ -726,7 +726,7 @@ export default function ManageTasksPage({ token }: { token: string | null }) {
             onClick={() => setActiveSubView("assigned_to_others")}
           >
             <Users size={16} />
-            Tasks Assigned to Others
+            Tasks Assigned by Me
           </button>
         </div>
       )}

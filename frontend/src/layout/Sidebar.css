@@ -92,7 +92,7 @@
 
 .sidebar-status-dot {
   position: absolute;
-  bottom: -2px;
+  top: -2px;
   right: -2px;
   width: 12px;
   height: 12px;

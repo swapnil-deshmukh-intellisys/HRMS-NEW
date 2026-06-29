@@ -309,12 +309,15 @@ router.post("/check-in", validate(attendanceSchema), async (request, response, n
     } else if (lateByMinutes >= 10) {
       penaltyPoints = 2;
       penaltyMinutes = 30;
-    } else if (lateByMinutes >= 5) {
+    } else if (lateByMinutes >= 6) {
       penaltyPoints = 1;
       penaltyMinutes = 20;
+    } else if (lateByMinutes > 0) {
+      penaltyPoints = 1;
+      penaltyMinutes = 0;
     }
 
-    const isLate = lateByMinutes >= 5;
+    const isLate = lateByMinutes > 0;
     // -------------------------
 
     const attendance = existing
@@ -534,8 +537,8 @@ router.post("/break/end", async (request, response, next) => {
     const endTime = new Date();
     const durationMinutes = Math.floor((endTime.getTime() - openBreak.startTime.getTime()) / 60000);
 
-    // Classify break based on start time
-    const bStart = new Date(openBreak.startTime);
+    // Classify break based on start time in Asia/Kolkata timezone
+    const bStart = toZonedTime(openBreak.startTime, TIMEZONE);
     const startHour = bStart.getHours();
     const startMin = bStart.getMinutes();
     const totalStartMins = startHour * 60 + startMin;
@@ -622,10 +625,12 @@ router.post("/break/end", async (request, response, next) => {
       } else if (lateByMinutes >= 10) {
         penaltyPoints = 2;
         penaltyMinutes = 30;
-      } else if (lateByMinutes > 0) {
-        // No grace period for breaks: any lateness from 1 to 9 minutes triggers the first tier
+      } else if (lateByMinutes >= 6) {
         penaltyPoints = 1;
         penaltyMinutes = 20;
+      } else if (lateByMinutes > 0) {
+        penaltyPoints = 1;
+        penaltyMinutes = 0;
       }
     }
 

@@ -8,7 +8,7 @@ import Table from "../../components/common/Table";
 import { ATTENDANCE_EVENT } from "../../components/common/attendanceQuickActionUtils";
 import { apiRequest } from "../../services/api";
 import type { Attendance, AttendanceRegularizationRequest, Employee, Role } from "../../types";
-import { formatAttendanceTime, formatDateLabel, formatInTimeZone, formatWeekday, isToday } from "../../utils/format";
+import { formatAttendanceTime, formatDateLabel, formatInTimeZone, formatWeekday, isToday, TIMEZONE, addMinutesToTime } from "../../utils/format";
 import { useApp } from "../../context/useApp";
 import WorkdayTimeline from "../dashboard/WorkdayTimeline";
 import { toZonedTime } from "date-fns-tz";
@@ -32,10 +32,7 @@ type VisibleMonth = {
 type TeamLeadMainTab = "DAY" | "MONTH";
 
 function toLocalDateString(value: Date) {
-  const year = value.getFullYear();
-  const month = String(value.getMonth() + 1).padStart(2, "0");
-  const day = String(value.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
+  return formatInTimeZone(value, TIMEZONE, "yyyy-MM-dd");
 }
 
 function convertTo24Hour(time12: string, ampm: string): string {
@@ -747,7 +744,7 @@ export default function AttendancePage({ token, role, currentEmployeeId, current
       ? attendance.filter((record) => record.employeeId === currentEmployeeId)
       : attendance;
     const grouped = source.reduce<Record<string, { year: number; month: number; present: number; halfDay: number; absent: number; leave: number; total: number }>>((acc, record) => {
-      const date = new Date(record.attendanceDate);
+      const date = toZonedTime(new Date(record.attendanceDate), TIMEZONE);
       const month = date.getMonth() + 1;
       const year = date.getFullYear();
       const key = `${year}-${month}`;
@@ -1675,6 +1672,11 @@ export default function AttendancePage({ token, role, currentEmployeeId, current
         {selectedTimelineItem && (
           <div className="stack" style={{ padding: '8px 0', gap: '16px' }}>
             <WorkdayTimeline
+              employeeId={selectedTimelineItem.record.employeeId}
+              token={token}
+              startTime={selectedTimelineItem.record.employee?.shift?.startTime}
+              endTime={selectedTimelineItem.record.employee?.shift?.endTime}
+              lateThreshold={selectedTimelineItem.record.employee?.shift ? addMinutesToTime(selectedTimelineItem.record.employee.shift.startTime, selectedTimelineItem.record.employee.shift.gracePeriodMinutes) : undefined}
               checkInTime={selectedTimelineItem.record.checkInTime}
               checkOutTime={selectedTimelineItem.record.checkOutTime}
               workedMinutes={selectedTimelineItem.record.workedMinutes}

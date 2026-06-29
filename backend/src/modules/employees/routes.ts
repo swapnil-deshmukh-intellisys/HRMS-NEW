@@ -409,6 +409,7 @@ router.get("/:id", async (request, response, next) => {
         user: { include: { role: true } },
         department: true,
         manager: true,
+        shift: true,
         capabilities: true,
         scopedTeamMembers: {
           include: {

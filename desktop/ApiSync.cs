@@ -249,7 +249,7 @@ namespace HRMS_Agent
             OnStatusChanged?.Invoke("Logged out");
         }
 
-        public static async Task LogEventAsync(string eventType)
+        public static Task LogEventAsync(string eventType)
         {
             OnEventLogged?.Invoke(eventType, DateTime.Now);
 
@@ -259,33 +259,19 @@ namespace HRMS_Agent
                 Timestamp = DateTime.UtcNow.ToString("o") // ISO 8601 UTC
             };
 
-            if (!IsLoggedIn)
+            // Offline-first: Queue and write to disk synchronously to survive sleeps/shutdowns
+            lock (_offlineQueue)
             {
-                lock (_offlineQueue)
-                {
-                    _offlineQueue.Add(newEvent);
-                    SaveOfflineQueue();
-                }
-                OnStatusChanged?.Invoke($"Offline: Queued {eventType}");
-                return;
+                _offlineQueue.Add(newEvent);
+                SaveOfflineQueue();
             }
 
-            bool sent = await SendEventPayloadAsync(newEvent);
-            if (!sent)
-            {
-                lock (_offlineQueue)
-                {
-                    _offlineQueue.Add(newEvent);
-                    SaveOfflineQueue();
-                }
-                OnStatusChanged?.Invoke($"Failed to send {eventType}. Queued offline.");
-            }
-            else
-            {
-                OnStatusChanged?.Invoke($"Sent: {eventType}");
-                // Trigger queue processing in case previous events are pending
-                _ = ProcessOfflineQueueAsync();
-            }
+            OnStatusChanged?.Invoke($"Queued: {eventType}");
+
+            // Process the queue asynchronously
+            _ = ProcessOfflineQueueAsync();
+
+            return Task.CompletedTask;
         }
 
         private static async Task<bool> SendEventPayloadAsync(DesktopEvent ev)

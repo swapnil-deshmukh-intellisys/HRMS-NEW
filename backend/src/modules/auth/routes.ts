@@ -12,6 +12,7 @@ const DEEP_USER_INCLUDE = {
   role: true,
   employee: {
     include: {
+      shift: true,
       department: true,
       manager: true,
       capabilities: true,

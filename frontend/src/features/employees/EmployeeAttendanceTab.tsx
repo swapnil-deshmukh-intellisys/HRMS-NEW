@@ -1,7 +1,7 @@
 import Table from "../../components/common/Table";
 import Modal from "../../components/common/Modal";
-import type { Attendance, CalendarException, LeaveRequest } from "../../types";
-import { formatAttendanceTime, formatDateLabel, formatWeekday, isToday } from "../../utils/format";
+import type { Attendance, CalendarException, LeaveRequest, Employee } from "../../types";
+import { formatAttendanceTime, formatDateLabel, formatWeekday, isToday, formatInTimeZone, toZonedTime, TIMEZONE, addMinutesToTime } from "../../utils/format";
 import EmployeeAttendanceBreakdownChart from "./charts/EmployeeAttendanceBreakdownChart";
 import EmployeeWorkedHoursChart from "./charts/EmployeeWorkedHoursChart";
 import { useApp } from "../../context/useApp";
@@ -9,10 +9,17 @@ import { useEffect, useMemo, useState } from "react";
 import WorkdayTimeline from "../dashboard/WorkdayTimeline";
 
 type EmployeeAttendanceTabProps = {
+  employee?: Employee;
   attendance: Attendance[];
   exceptions?: CalendarException[];
   joiningDate?: string;
   leaves?: LeaveRequest[];
+  selectedMonth: number;
+  selectedYear: number;
+  onMonthChange: (month: number) => void;
+  onYearChange: (year: number) => void;
+  employeeId?: number;
+  token?: string | null;
 };
 
 function formatWorkedDuration(workedMinutes: number, checkOutTime?: string | null) {
@@ -99,11 +106,21 @@ function getStatusLabel(record: Attendance | { status: string; leaveTypeCode?: s
   return baseLabel;
 }
 
-export default function EmployeeAttendanceTab({ attendance, exceptions, joiningDate, leaves }: EmployeeAttendanceTabProps) {
+export default function EmployeeAttendanceTab({
+  employee,
+  attendance,
+  exceptions,
+  joiningDate,
+  leaves,
+  selectedMonth,
+  selectedYear,
+  onMonthChange,
+  onYearChange,
+  employeeId,
+  token,
+}: EmployeeAttendanceTabProps) {
   const { calendarExceptions: globalExceptions } = useApp();
   const calendarExceptions = exceptions || globalExceptions;
-  const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
-  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [selectedUpdate, setSelectedUpdate] = useState<string | null>(null);
   const [selectedTimelineItem, setSelectedTimelineItem] = useState<{
     date: string;
@@ -161,16 +178,16 @@ export default function EmployeeAttendanceTab({ attendance, exceptions, joiningD
   // Adjust selectedMonth if it is no longer available in the newly selected year
   useEffect(() => {
     if (joinMonth !== null && joinYear !== null && selectedYear === joinYear && selectedMonth < joinMonth) {
-      setSelectedMonth(joinMonth);
+      onMonthChange(joinMonth);
     }
-  }, [selectedYear, joinYear, joinMonth, selectedMonth]);
+  }, [selectedYear, joinYear, joinMonth, selectedMonth, onMonthChange]);
 
   // Adjust selectedYear if it is prior to joinYear
   useEffect(() => {
     if (joinYear !== null && selectedYear < joinYear) {
-      setSelectedYear(new Date().getFullYear());
+      onYearChange(new Date().getFullYear());
     }
-  }, [joinYear, selectedYear]);
+  }, [joinYear, selectedYear, onYearChange]);
 
   const filteredAttendance = useMemo(() => {
     const cutoffDate = new Date(2026, 3, 1); // April 1, 2026
@@ -182,7 +199,7 @@ export default function EmployeeAttendanceTab({ attendance, exceptions, joiningD
       const localJoin = new Date(join.getFullYear(), join.getMonth(), join.getDate());
       
       filtered = filtered.filter(a => {
-        const rec = new Date(a.attendanceDate);
+        const rec = toZonedTime(new Date(a.attendanceDate), TIMEZONE);
         const localRec = new Date(rec.getFullYear(), rec.getMonth(), rec.getDate());
         return localRec >= localJoin;
       });
@@ -190,7 +207,7 @@ export default function EmployeeAttendanceTab({ attendance, exceptions, joiningD
 
     // Exclude records before 1st April 2026
     filtered = filtered.filter(a => {
-      const rec = new Date(a.attendanceDate);
+      const rec = toZonedTime(new Date(a.attendanceDate), TIMEZONE);
       const localRec = new Date(rec.getFullYear(), rec.getMonth(), rec.getDate());
       return localRec >= cutoffDate;
     });
@@ -260,11 +277,7 @@ export default function EmployeeAttendanceTab({ attendance, exceptions, joiningD
       // Match attendance records by extracting local date parts from the UTC ISO string
       // (safe because app is exclusively used in IST, so browser local = IST)
       const existingRecord = filteredAttendance.find(a => {
-        const rec = new Date(a.attendanceDate);
-        const ry = rec.getFullYear();
-        const rm = String(rec.getMonth() + 1).padStart(2, '0');
-        const rd = String(rec.getDate()).padStart(2, '0');
-        return `${ry}-${rm}-${rd}` === dateStr;
+        return formatInTimeZone(new Date(a.attendanceDate), TIMEZONE, 'yyyy-MM-dd') === dateStr;
       });
       
       // Use robust local date comparison for exceptions to avoid timezone shifts
@@ -305,11 +318,23 @@ export default function EmployeeAttendanceTab({ attendance, exceptions, joiningD
         status = "SCHEDULED";
       }
 
-      // If there is an exception (Holiday/Working Saturday), it should take visual precedence 
-      // over a generic "ABSENT" record.
-      let finalStatus = (exception && existingRecord?.status === "ABSENT") 
-        ? status 
-        : (existingRecord ? existingRecord.status : status);
+      // If there's an actual check-in (or half day), it takes precedence over everything
+      let finalStatus = status;
+      if (existingRecord) {
+        if (existingRecord.status === "PRESENT" || existingRecord.status === "HALF_DAY") {
+          finalStatus = existingRecord.status;
+        } else if (existingRecord.status === "LEAVE") {
+          finalStatus = "LEAVE";
+        } else if (existingRecord.status === "ABSENT") {
+          // If the DB says ABSENT, but the calculated status is LEAVE, HOLIDAY, or OFF,
+          // then the calculated status takes precedence.
+          if (status === "LEAVE" || status === "HOLIDAY" || status === "OFF") {
+            finalStatus = status;
+          } else {
+            finalStatus = "ABSENT";
+          }
+        }
+      }
 
       if (isBeforeCutoff) {
         finalStatus = "NO_DATA";
@@ -318,7 +343,7 @@ export default function EmployeeAttendanceTab({ attendance, exceptions, joiningD
       const isJoiningDay = joinDateStr !== null && dateStr === joinDateStr;
 
       return {
-        date: date.toISOString(),
+        date: dateStr,
         record: existingRecord,
         status: finalStatus,
         isOffDay: !isBeforeCutoff && !existingRecord && (status === "OFF" || status === "HOLIDAY"),
@@ -388,7 +413,7 @@ export default function EmployeeAttendanceTab({ attendance, exceptions, joiningD
           <div style={{ display: 'flex', gap: '10px' }}>
             <select 
               value={selectedMonth} 
-              onChange={(e) => setSelectedMonth(Number(e.target.value))}
+              onChange={(e) => onMonthChange(Number(e.target.value))}
               className="month-selector-dropdown"
               style={{ width: 'auto', padding: '6px 36px 6px 12px', borderRadius: '8px', border: '1px solid #e2e8f0', fontSize: '13px', fontWeight: '600', color: '#1e293b', backgroundColor: '#f8fafc', cursor: 'pointer', outline: 'none' }}
             >
@@ -398,7 +423,7 @@ export default function EmployeeAttendanceTab({ attendance, exceptions, joiningD
             </select>
             <select 
               value={selectedYear} 
-              onChange={(e) => setSelectedYear(Number(e.target.value))}
+              onChange={(e) => onYearChange(Number(e.target.value))}
               className="month-selector-dropdown"
               style={{ width: 'auto', padding: '6px 36px 6px 12px', borderRadius: '8px', border: '1px solid #e2e8f0', fontSize: '13px', fontWeight: '600', color: '#1e293b', backgroundColor: '#f8fafc', cursor: 'pointer', outline: 'none' }}
             >
@@ -605,6 +630,11 @@ export default function EmployeeAttendanceTab({ attendance, exceptions, joiningD
         {selectedTimelineItem && (
           <div className="stack" style={{ padding: '8px 0', gap: '16px' }}>
             <WorkdayTimeline
+              employeeId={employeeId}
+              token={token}
+              startTime={employee?.shift?.startTime}
+              endTime={employee?.shift?.endTime}
+              lateThreshold={employee?.shift ? addMinutesToTime(employee.shift.startTime, employee.shift.gracePeriodMinutes) : undefined}
               checkInTime={selectedTimelineItem.record.checkInTime}
               checkOutTime={selectedTimelineItem.record.checkOutTime}
               workedMinutes={selectedTimelineItem.record.workedMinutes}

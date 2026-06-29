@@ -984,5 +984,63 @@
     "expectedOutput": "Admin can configure shift-specific breaks and custom start/end timings; Lunch is restricted to morning shifts, Dinner is restricted to night shifts, and infractions are penalized automatically based on the custom shift-level windows.",
     "createdAt": "2026-06-26T16:00:00Z",
     "updatedAt": "2026-06-26T17:15:00Z"
+  },
+  {
+    "taskId": "TSK-ATT-013",
+    "moduleId": "MOD-ATTENDANCE",
+    "sprint": "Sprint 4",
+    "project": "HRMS",
+    "page": "Employee Profile Page — Attendance Tab",
+    "module": "Attendance",
+    "submodule": "Profile Attendance Accuracy",
+    "title": "Fix Weekend Attendance Accuracy: DB Cleanup, Status Priority & Dynamic Exceptions Fetching",
+    "description": "Identified and resolved three root-cause bugs causing Saturdays to incorrectly appear as 'Absent' in the employee profile attendance history. (1) The old daily finalization cron (pre-June 26) had no working-day guard, creating 87 rogue ABSENT records on Saturdays from May 23 to June 20. These were bulk-deleted via a one-time cleanup script. (2) Frontend status-priority logic was updated so that PRESENT/HALF_DAY > LEAVE > HOLIDAY/OFF > ABSENT, preventing rogue DB ABSENT records from overriding the calculated calendar status. (3) Calendar exceptions were previously fetched once at page load using the current date; switching months/years in the attendance history dropdown did not re-fetch. Exceptions fetch is now dynamic, re-triggering when selectedMonth or selectedYear changes.",
+    "frontendWork": "Refactored EmployeeAttendanceTab.tsx to accept selectedMonth, selectedYear, onMonthChange, onYearChange as props. Corrected finalStatus resolution priority logic. Lifted state to EmployeeProfilePage.tsx. Updated /calendar API call to use the selected month/year. Passed setter callbacks as props.",
+    "backendWork": "Wrote and ran clean-weekend-absents.ts one-time cleanup script to delete 87 invalid ABSENT records on weekends without a WORKING_SATURDAY exception.",
+    "databaseWork": "Deleted 87 rogue ABSENT attendance records on Saturdays (May 23 – June 20, 2026).",
+    "apiWork": "GET /api/calendar?month=X&year=Y — now called dynamically on month/year change.",
+    "testingWork": "TypeScript compilation: 0 errors. Manually verified Saturdays display as 'Off Day'. Verified month-switch dynamically loads correct exceptions.",
+    "priority": "HIGH",
+    "estimatedHours": 3,
+    "actualHours": 3,
+    "dependencies": [
+      "TSK-ATT-012"
+    ],
+    "riskLevel": "LOW",
+    "status": "COMPLETED",
+    "completionPercentage": 100,
+    "owner": "Fullstack Team",
+    "expectedOutput": "Employee profile attendance tab correctly displays Saturdays as 'Off Day', approved leaves are not overwritten by ABSENT records, and calendar exceptions load dynamically when the month/year selector is changed.",
+    "createdAt": "2026-06-29T04:07:00Z",
+    "updatedAt": "2026-06-29T04:21:00Z"
+  },
+  {
+    "taskId": "TSK-ATT-014",
+    "moduleId": "MOD-ATTENDANCE",
+    "sprint": "Sprint 4",
+    "project": "HRMS",
+    "page": "Attendance Page & Employee Directory",
+    "module": "Attendance",
+    "submodule": "Real-time Telemetry & Timeline",
+    "title": "Fix Timezone Mismatches in Attendance Timeline & Progress Bars",
+    "description": "Identified and resolved timezone mismatches in frontend components (EmployeeAttendanceTab, AttendancePage, WorkdayTimeline) where UTC attendance date strings were parsed locally and incorrectly shifted by one day depending on the browser's local timezone. Fixed matching of today's attendance record and monthly summaries, and resolved the local-to-ISO date serialization shift on profile grid rows. Resolved a bug where the WorkdayTimeline was called without employeeId and token props, preventing it from displaying telemetry idle segments. Also resolved a bug where the WorkdayTimeline fell back to the default 9:00 AM - 6:00 PM shift, incorrectly flagging night shift check-ins as LATE while leaving the Active Penalties card blank; fixed by passing down the shift and calculating the grace lateThreshold. Finally, updated the Day Summary card layout to match Break Schedule's styling, resolved a calculation bug where dynamic worked minutes did not deduct break durations and idle/away telemetry logs, added an elapsed time counter, and resolved a bug where the check-in/checkout tooltip arrows did not align exactly with the vertical marker lines when tooltip cards were shifted to avoid screen edge overflows.",
+    "frontendWork": "Updated date comparisons in EmployeeAttendanceTab.tsx and AttendancePage.tsx to use formatInTimeZone with 'Asia/Kolkata' timezone. Replaced date.toISOString() serialization with local dateStr in unifiedHistory map. Updated all WorkdayTimeline instantiations across components to pass employeeId, token, startTime, endTime, and the grace-calculated lateThreshold. Added addMinutesToTime utility to format.ts. Overhauled wdt-summary-card layout, margins, font sizes, weights, and borders in WorkdayTimeline.css to match Break Schedule's wdt-mini-row styling. Refactored dynamic workedMins calculation inside WorkdayTimeline.tsx calculate function to iterate minute-by-minute over the elapsed timeframe, checking against parsed break intervals and desktop activity idle/locked events to calculate the true productive minutes. Added elapsedTime state and formatted output showing productive time 'out of X elapsed' next to the header gauge label. Resolved tooltip arrow misalignment on check-in and checkout tags by introducing a dynamic --arrow-left CSS custom property calculated based on tooltip edge positioning.",
+    "backendWork": "Modified GET / attendance route in routes.ts, GET /employees/:id in routes.ts, and GET /me in auth/routes.ts to include the shift relation subquery inside the employee include block, ensuring shift times are populated for all records, profiles, and active user context.",
+    "databaseWork": "Updated all 33 employees in the database to be assigned to Day Shift (shiftId: 1) and recalculated late check-in penalties for all 20 check-in records today (June 29).",
+    "apiWork": "None",
+    "testingWork": "TypeScript compilation passed. Manually verified timeline matches exactly between live status tracker and profile pages, and date boundaries group correctly.",
+    "priority": "HIGH",
+    "estimatedHours": 2,
+    "actualHours": 2,
+    "dependencies": [
+      "TSK-ATT-013"
+    ],
+    "riskLevel": "LOW",
+    "status": "COMPLETED",
+    "completionPercentage": 100,
+    "owner": "Fullstack Team",
+    "expectedOutput": "Unified worked duration progress bars and timeline event logs between the Live Telemetry page and the Employee Profile page.",
+    "createdAt": "2026-06-29T12:35:00Z",
+    "updatedAt": "2026-06-29T12:54:00Z"
   }
 ]

@@ -1196,6 +1196,7 @@ router.get("/", requireRoles("ADMIN", "HR", "MANAGER", "EMPLOYEE"), async (reque
         breakSessions: true,
         employee: {
           include: {
+            shift: true,
             outlookEmails: {
               include: {
                 client: true

@@ -90,7 +90,20 @@ async function run() {
   };
 
   // ----------------------------------------------------
-  // Sheet 1: Projects_Master
+  // Sheet 1: Standup_Feed (FIRST TAB)
+  // ----------------------------------------------------
+  const standupFeedData = dailyStatusFeed.map((item: any) => ({
+    "Date": item.date,
+    "Task ID": item.taskId,
+    "Feature Title": item.title,
+    "Status": item.status,
+    "Development Narrative": item.narrative,
+    "Standup Copy-Paste Text": `* [${item.status}] ${item.taskId} (${item.title}): ${item.narrative}`
+  }));
+  appendSheet(standupFeedData, "Standup_Feed");
+
+  // ----------------------------------------------------
+  // Sheet 2: Projects_Master
   // ----------------------------------------------------
   const projectsMasterData = [
     {
@@ -437,18 +450,7 @@ async function run() {
   ];
   appendSheet(teamProductivityData, "Team_Productivity");
 
-  // ----------------------------------------------------
-  // Sheet 16: Standup_Feed (NEW TAB)
-  // ----------------------------------------------------
-  const standupFeedData = dailyStatusFeed.map((item: any) => ({
-    "Date": item.date,
-    "Task ID": item.taskId,
-    "Feature Title": item.title,
-    "Status": item.status,
-    "Development Narrative": item.narrative,
-    "Standup Copy-Paste Text": `* [${item.status}] ${item.taskId} (${item.title}): ${item.narrative}`
-  }));
-  appendSheet(standupFeedData, "Standup_Feed");
+  // (Standup_Feed is now Sheet 1 — see top of this function)
 
   console.log("Writing Excel workbook to file...");
   XLSX.writeFile(wb, excelOutputPath);

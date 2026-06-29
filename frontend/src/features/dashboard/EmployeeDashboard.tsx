@@ -6,6 +6,7 @@ import WorkdayTimeline from "./WorkdayTimeline";
 import TodoWidget from "./TodoWidget";
 import BirthdayCelebrations from "./BirthdayCelebrations";
 import AssignedTasksWidget from "./AssignedTasksWidget";
+import { addMinutesToTime } from "../../utils/format";
 
 
 export default function EmployeeDashboard({ token }: { token: string | null }) {
@@ -37,6 +38,10 @@ export default function EmployeeDashboard({ token }: { token: string | null }) {
       </article>
 
       <WorkdayTimeline 
+        employeeId={currentEmployee?.id}
+        startTime={currentEmployee?.shift?.startTime}
+        endTime={currentEmployee?.shift?.endTime}
+        lateThreshold={currentEmployee?.shift ? addMinutesToTime(currentEmployee.shift.startTime, currentEmployee.shift.gracePeriodMinutes) : undefined}
         checkInTime={attendanceToday?.checkInTime ?? null} 
         checkOutTime={attendanceToday?.checkOutTime ?? null}
         workedMinutes={attendanceToday?.workedMinutes ?? null}

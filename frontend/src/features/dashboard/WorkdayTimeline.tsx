@@ -69,6 +69,7 @@ const WorkdayTimeline: React.FC<WorkdayTimelineProps> = ({
   const [checkOutPct, setCheckOutPct] = useState<number | null>(null);
   const [checkOutLabel, setCheckOutLabel] = useState<string>('');
   const [workedTime, setWorkedTime] = useState<{ hours: number; minutes: number } | null>(null);
+  const [elapsedTime, setElapsedTime] = useState<{ hours: number; minutes: number } | null>(null);
   const [isShiftOver, setIsShiftOver] = useState(false);
   const [isShiftPending, setIsShiftPending] = useState(false);
   const [checkInIsLate, setCheckInIsLate] = useState(false);
@@ -170,35 +171,64 @@ const WorkdayTimeline: React.FC<WorkdayTimelineProps> = ({
         ciToday.setHours(ci.getHours(), ci.getMinutes(), ci.getSeconds(), 0);
         
         let workedMins = 0;
-        if (checkOutTime) {
-          if (typeof workedMinutes === 'number' && workedMinutes > 0) {
-            workedMins = workedMinutes;
-          } else {
-            const co = toZonedTime(new Date(checkOutTime), 'Asia/Kolkata');
-            const coToday = new Date(baseDate);
-            coToday.setHours(co.getHours(), co.getMinutes(), co.getSeconds(), 0);
-            workedMins = Math.max(0, Math.floor((coToday.getTime() - ciToday.getTime()) / 60000));
-          }
+        if (checkOutTime && typeof workedMinutes === 'number' && workedMinutes > 0) {
+          workedMins = workedMinutes;
         } else {
-          if (isDateToday) {
-            // Today - in progress
-            const activeEndZoned = toZonedTime(activeEnd, 'Asia/Kolkata');
-            const activeEndToday = new Date(baseDate);
-            activeEndToday.setHours(activeEndZoned.getHours(), activeEndZoned.getMinutes(), activeEndZoned.getSeconds(), 0);
-            workedMins = Math.max(0, Math.floor((activeEndToday.getTime() - ciToday.getTime()) / 60000));
-          } else {
-            // Past date - missing checkout
-            workedMins = typeof workedMinutes === 'number' ? workedMinutes : 0;
+          const coVal = checkOutTime ? new Date(checkOutTime) : new Date(activeEnd);
+          const totalElapsedMins = Math.max(0, Math.floor((coVal.getTime() - new Date(checkInTime).getTime()) / 60000));
+          
+          let productiveMins = 0;
+          
+          const parsedBreaks = breakSessions.map(s => {
+            const start = new Date(s.startTime).getTime();
+            const end = s.endTime ? new Date(s.endTime).getTime() : new Date().getTime();
+            return { start, end };
+          });
+
+          const sortedLogs = [...desktopLogs].sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+
+          for (let m = 0; m < totalElapsedMins; m++) {
+            const timeAtMinute = new Date(checkInTime).getTime() + m * 60000;
+            
+            const isInsideBreak = parsedBreaks.some(b => timeAtMinute >= b.start && timeAtMinute < b.end);
+            if (isInsideBreak) {
+              continue;
+            }
+
+            let state: 'active' | 'idle' | 'locked' = 'active';
+            for (const log of sortedLogs) {
+              const logTime = new Date(log.timestamp).getTime();
+              if (logTime <= timeAtMinute) {
+                if (log.eventType === 'LOCK' || log.eventType === 'SLEEP' || log.eventType === 'SHUTDOWN') {
+                  state = 'locked';
+                } else if (log.eventType === 'UNLOCK' || log.eventType === 'WAKE' || log.eventType === 'IDLE_END') {
+                  state = 'active';
+                } else if (log.eventType === 'IDLE_START') {
+                  state = 'idle';
+                }
+              } else {
+                break;
+              }
+            }
+
+            if (state === 'active') {
+              productiveMins++;
+            }
           }
+          workedMins = productiveMins;
         }
 
         setWorkedTime({ hours: Math.floor(workedMins / 60), minutes: workedMins % 60 });
+        const coVal = checkOutTime ? new Date(checkOutTime) : new Date(activeEnd);
+        const elapsedMins = Math.max(0, Math.floor((coVal.getTime() - new Date(checkInTime).getTime()) / 60000));
+        setElapsedTime({ hours: Math.floor(elapsedMins / 60), minutes: elapsedMins % 60 });
+
         const ciPct = Math.max(0, Math.min(100, ((ciToday.getTime() - start.getTime()) / totalMs) * 100));
         setCheckInPct(ciPct);
         setCheckInLabel(formatAttendanceTime(checkInTime instanceof Date ? checkInTime.toISOString() : checkInTime));
         setCheckInIsLate(ciToday > late);
       } else {
-        setWorkedTime(null); setCheckInPct(null); setCheckInLabel(''); setCheckInIsLate(false);
+        setWorkedTime(null); setElapsedTime(null); setCheckInPct(null); setCheckInLabel(''); setCheckInIsLate(false);
       }
 
       if (checkOutTime) {
@@ -221,7 +251,7 @@ const WorkdayTimeline: React.FC<WorkdayTimelineProps> = ({
 
     const iv = setInterval(calculate, 30000);
     return () => clearInterval(iv);
-  }, [startTime, endTime, lateThreshold, checkInTime, checkOutTime, workedMinutes, dateContext, desktopLogs]);
+  }, [startTime, endTime, lateThreshold, checkInTime, checkOutTime, workedMinutes, dateContext, desktopLogs, breakSessions]);
 
   const breakSessionsMapped = breakSessions.map(s => {
     const baseDate = dateContext ? new Date(dateContext + 'T00:00:00') : new Date();
@@ -543,6 +573,7 @@ const WorkdayTimeline: React.FC<WorkdayTimelineProps> = ({
             {workedTime && (
               <span className="wdt-time-compact">
                 {formatDuration(workedTime.hours, workedTime.minutes)} worked
+                {elapsedTime && ` (out of ${formatDuration(elapsedTime.hours, elapsedTime.minutes)} elapsed)`}
                 {penaltyMinutes ? ` (includes ${penaltyMinutes}m penalty)` : ''}
                 {isOvertime && (
                   <span className="wdt-overtime-badge">
@@ -639,8 +670,9 @@ const WorkdayTimeline: React.FC<WorkdayTimelineProps> = ({
                     style={{
                       left: checkInPct < 10 ? '0' : checkInPct > 90 ? 'auto' : '50%',
                       right: checkInPct > 90 ? '0' : 'auto',
-                      transform: checkInPct < 10 ? 'translateX(0)' : checkInPct > 90 ? 'translateX(0)' : 'translateX(-50%)'
-                    }}
+                      transform: checkInPct < 10 ? 'translateX(0)' : checkInPct > 90 ? 'translateX(0)' : 'translateX(-50%)',
+                      '--arrow-left': checkInPct < 10 ? '12px' : checkInPct > 90 ? 'calc(100% - 12px)' : '50%'
+                    } as React.CSSProperties}
                   >
                     Checked In: {checkInLabel}
                   </div>
@@ -654,8 +686,9 @@ const WorkdayTimeline: React.FC<WorkdayTimelineProps> = ({
                     style={{
                       left: checkOutPct < 10 ? '0' : checkOutPct > 90 ? 'auto' : '50%',
                       right: checkOutPct > 90 ? '0' : 'auto',
-                      transform: checkOutPct < 10 ? 'translateX(0)' : checkOutPct > 90 ? 'translateX(0)' : 'translateX(-50%)'
-                    }}
+                      transform: checkOutPct < 10 ? 'translateX(0)' : checkOutPct > 90 ? 'translateX(0)' : 'translateX(-50%)',
+                      '--arrow-left': checkOutPct < 10 ? '12px' : checkOutPct > 90 ? 'calc(100% - 12px)' : '50%'
+                    } as React.CSSProperties}
                   >
                     Checked Out: {checkOutLabel}
                   </div>

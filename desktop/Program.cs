@@ -60,6 +60,17 @@ namespace HRMS_Agent
             _sessionMonitor = new SessionMonitor();
             _idleTracker = new IdleTracker();
 
+            // Register app in Windows Startup
+            try
+            {
+                using var key = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(@"SOFTWARE\Microsoft\Windows\CurrentVersion\Run", true);
+                if (key != null)
+                {
+                    key.SetValue("IntelliHrHub_Agent", Application.ExecutablePath);
+                }
+            }
+            catch { /* Ignore if fails */ }
+
             // Set up context menu
             var contextMenu = new ContextMenuStrip();
 
@@ -72,7 +83,7 @@ namespace HRMS_Agent
                 new ToolStripSeparator(),
                 _connectMenuItem,
                 new ToolStripSeparator(),
-                new ToolStripMenuItem("Exit", null, OnExitClick) // Placeholder
+                new ToolStripMenuItem("Exit", null, OnExitClick) // Restored Exit
             });
 
             // Set up System Tray Icon

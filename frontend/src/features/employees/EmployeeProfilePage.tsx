@@ -65,6 +65,8 @@ export default function EmployeeProfilePage({ token, role, currentEmployeeId }: 
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [localExceptions, setLocalExceptions] = useState<CalendarException[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [activeTab, setActiveTab] = useState<EmployeeProfileTabKey>(() => {
     const requestedTab = searchParams.get("tab");
     return requestedTab === "attendance" || requestedTab === "leaves" || requestedTab === "payroll" || requestedTab === "overview" || requestedTab === "documents"
@@ -98,7 +100,7 @@ export default function EmployeeProfilePage({ token, role, currentEmployeeId }: 
         apiRequest<LeaveBalance[]>(`/leave-balances/me?employeeId=${employeeId}`, { token }),
         apiRequest<LeaveRequest[]>(`/leaves?employeeId=${employeeId}`, { token }),
         canViewPayroll ? apiRequest<PayrollRecord[]>(`/payroll?employeeId=${employeeId}`, { token }) : Promise.resolve({ data: [] as PayrollRecord[] }),
-        apiRequest<{ exceptions: CalendarException[] }>(`/calendar?month=${new Date().getMonth() + 1}&year=${new Date().getFullYear()}`, { token }),
+        apiRequest<{ exceptions: CalendarException[] }>(`/calendar?month=${selectedMonth + 1}&year=${selectedYear}`, { token }),
       ]);
 
       setEmployee(employeeResponse.data);
@@ -112,7 +114,7 @@ export default function EmployeeProfilePage({ token, role, currentEmployeeId }: 
     } finally {
       setLoading(false);
     }
-  }, [canViewPayroll, employeeId, token]);
+  }, [canViewPayroll, employeeId, token, selectedMonth, selectedYear]);
 
   useEffect(() => {
     reloadProfile();
@@ -327,7 +329,7 @@ export default function EmployeeProfilePage({ token, role, currentEmployeeId }: 
       />
       <EmployeeProfileTabs activeTab={activeTab} tabs={visibleTabs} onChange={setActiveTab} />
       {activeTab === "overview" ? <EmployeeOverviewTab employee={employee} token={token} /> : null}
-      {activeTab === "attendance" ? <EmployeeAttendanceTab attendance={attendance} exceptions={localExceptions} joiningDate={employee.joiningDate} leaves={leaves} /> : null}
+      {activeTab === "attendance" ? <EmployeeAttendanceTab employee={employee} attendance={attendance} exceptions={localExceptions} joiningDate={employee.joiningDate} leaves={leaves} selectedMonth={selectedMonth} selectedYear={selectedYear} onMonthChange={setSelectedMonth} onYearChange={setSelectedYear} employeeId={employee.id} token={token} /> : null}
       {activeTab === "leaves" ? (
         <EmployeeLeavesTab balances={balances} leaves={leaves} role={role} viewerEmployeeId={currentEmployeeId} />
       ) : null}

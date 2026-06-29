@@ -12,6 +12,7 @@ import { useApp, type DashboardSummary } from "../../context/AppContext";
 import TodoWidget from "./TodoWidget";
 import BirthdayCelebrations from "./BirthdayCelebrations";
 import TeamOnLeaveWidget from "./TeamOnLeaveWidget";
+import { addMinutesToTime } from "../../utils/format";
 
 
 
@@ -78,6 +79,10 @@ export default function ManagementDashboard({ token, role }: { token: string | n
       </article>
 
       <WorkdayTimeline 
+        employeeId={data.currentEmployee?.id}
+        startTime={data.currentEmployee?.shift?.startTime}
+        endTime={data.currentEmployee?.shift?.endTime}
+        lateThreshold={data.currentEmployee?.shift ? addMinutesToTime(data.currentEmployee.shift.startTime, data.currentEmployee.shift.gracePeriodMinutes) : undefined}
         checkInTime={data.attendanceToday?.checkInTime ?? null} 
         checkOutTime={data.attendanceToday?.checkOutTime ?? null}
         workedMinutes={data.attendanceToday?.workedMinutes ?? null}

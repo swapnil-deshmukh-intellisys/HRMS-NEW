@@ -606,6 +606,7 @@
   font-family: var(--font-primary);
   font-size: var(--text-sm);
   color: var(--color-text-strong);
+  line-height: normal;
   outline: none;
   transition: all var(--transition-fast);
 }
@@ -814,7 +815,7 @@
 /* ── 12-hour time input widget ────────────────────────────────────────────── */
 .time-input-12 {
   display: inline-flex;
-  align-items: stretch;
+  align-items: center;
   border: 1px solid var(--color-border-default);
   border-radius: var(--radius-sm);
   overflow: hidden;
@@ -833,7 +834,7 @@
   border: none !important;
   box-shadow: none !important;
   border-radius: 0 !important;
-  height: 100% !important;
+  height: auto !important;
   width: 62px;
   padding: 0 6px !important;
   padding-top: 0 !important;
@@ -844,7 +845,7 @@
   text-align: center;
   background: transparent !important;
   color: var(--color-text-strong);
-  line-height: 36px !important;
+  line-height: 1 !important;
   vertical-align: middle;
 }
 
@@ -852,6 +853,10 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  align-self: stretch;
+  min-height: 0 !important;
+  box-shadow: none !important;
+  line-height: 1 !important;
   min-width: 36px;
   padding: 0 6px;
   border: none;
@@ -894,7 +899,8 @@
   padding: 0 4px !important;
   padding-top: 0 !important;
   padding-bottom: 0 !important;
-  line-height: 28px !important;
+  height: auto !important;
+  line-height: 1 !important;
 }
 
 .break-time-control .time-input-12__period {

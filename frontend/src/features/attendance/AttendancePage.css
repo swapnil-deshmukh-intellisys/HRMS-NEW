@@ -1137,3 +1137,21 @@
   color: var(--color-text-strong, #0f172a) !important;
   background: transparent !important;
 }
+
+/* ── Attendance Filter Shortcuts ────────────────────────────────────────── */
+.shortcut-btn {
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 var(--space-4) !important;
+  font-size: var(--text-sm) !important;
+  font-weight: var(--fw-semibold) !important;
+  border-radius: var(--radius-md) !important;
+  transition: all var(--transition-fast) !important;
+}
+
+.attendance-date-trigger--active {
+  border-color: var(--color-accent) !important;
+  background: var(--color-surface-hover) !important;
+}

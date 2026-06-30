@@ -1,5 +1,5 @@
 import "./Navbar.css";
-import { Bell, LogOut, Search, UserRound, Clock } from "lucide-react";
+import { Bell, LogOut, Search, UserRound, Clock, Trophy, Star, Plus, Minus } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
@@ -10,6 +10,9 @@ import type { Role } from "../types";
 import { useApp } from "../context/AppContext";
 import { usePushNotifications } from "../hooks/usePushNotifications";
 import { formatAttendanceTime } from "../utils/format";
+import Modal from "../components/common/Modal";
+import { apiRequest } from "../services/api";
+import toast from "react-hot-toast";
 
 function getNotificationIcon(type: string): { emoji: string; className: string } {
   switch (type) {
@@ -69,6 +72,25 @@ export default function Navbar({ title, navOpen, onToggleNav, token, currentEmpl
 
   const myStatus = currentEmployeeId && liveStatuses ? liveStatuses[currentEmployeeId]?.status : "OFFLINE";
 
+  const [showPointsHistory, setShowPointsHistory] = useState(false);
+  const [pointsHistory, setPointsHistory] = useState<any[]>([]);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(false);
+
+  const handlePointsClick = async () => {
+    if (!currentEmployeeId) return;
+    setShowPointsHistory(true);
+    setIsLoadingHistory(true);
+    setPointsHistory([]);
+    try {
+      const res = await apiRequest<any[]>(`/employees/${currentEmployeeId}/points-history`, { token });
+      setPointsHistory(res.data);
+    } catch (err: any) {
+      toast.error(err.message || "Failed to load points history");
+    } finally {
+      setIsLoadingHistory(false);
+    }
+  };
+
   useEffect(() => {
     const timer = setInterval(() => {
       setNow(Date.now());
@@ -112,7 +134,7 @@ export default function Navbar({ title, navOpen, onToggleNav, token, currentEmpl
       penaltyPoints = 5;
     } else if (lateBy >= 10) {
       penaltyPoints = 2;
-    } else if (lateBy >= 5) {
+    } else if (lateBy >= 1) {
       penaltyPoints = 1;
     }
 
@@ -193,10 +215,10 @@ export default function Navbar({ title, navOpen, onToggleNav, token, currentEmpl
         <div className="topbar-attendance-action">
           {shiftTime ? (
             <div className="topbar-shift-timer" title="Shift time elapsed / Required shift time today">
-              {shiftTime.lateByMinutes >= 5 ? (
+              {shiftTime.lateByMinutes > 0 ? (
                 <span className="topbar-shift-timer__late">{shiftTime.lateByMinutes} min late</span>
               ) : null}
-              {shiftTime.lateByMinutes >= 5 ? (
+              {shiftTime.lateByMinutes > 0 ? (
                 <span className="topbar-shift-timer__sep" />
               ) : null}
               <Clock size={15} className="topbar-shift-timer__icon" />
@@ -211,7 +233,14 @@ export default function Navbar({ title, navOpen, onToggleNav, token, currentEmpl
                 <span className="topbar-shift-timer__sep" />
               ) : null}
               {shiftTime.penaltyPoints > 0 ? (
-                <span className="topbar-shift-timer__penalty">-{shiftTime.penaltyPoints} pts</span>
+                <span 
+                  className="topbar-shift-timer__penalty"
+                  style={{ cursor: "pointer" }}
+                  onClick={handlePointsClick}
+                  title="Click to view points history"
+                >
+                  -{shiftTime.penaltyPoints} pts
+                </span>
               ) : null}
             </div>
           ) : null}
@@ -411,6 +440,58 @@ export default function Navbar({ title, navOpen, onToggleNav, token, currentEmpl
           <LogOut size={18} strokeWidth={2} />
         </Button>
       </div>
+
+      {/* Points History Modal */}
+      <Modal
+        open={showPointsHistory}
+        title="My Points History"
+        onClose={() => setShowPointsHistory(false)}
+      >
+        <div style={{ padding: "12px 0" }}>
+          {isLoadingHistory ? (
+            <div style={{ padding: "40px", textAlign: "center", color: "#64748b" }}>Loading history...</div>
+          ) : pointsHistory.length === 0 ? (
+            <div style={{ 
+              padding: "40px 20px", 
+              textAlign: "center", 
+              color: "#64748b",
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: "8px"
+            }}>
+              <Trophy size={40} style={{ opacity: 0.35 }} />
+              <span style={{ fontSize: "12px", fontWeight: "500" }}>No points history found.</span>
+            </div>
+          ) : (
+            <div style={{ maxHeight: "400px", overflowY: "auto", display: "flex", flexDirection: "column", gap: "12px" }}>
+              {pointsHistory.map(entry => (
+                <div key={entry.id} style={{ padding: "16px", borderRadius: "8px", border: "1px solid #e2e8f0", background: "#f8fafc" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "8px", alignItems: "center" }}>
+                    <strong style={{ fontSize: "12px", color: entry.mode === "add" ? "#059669" : entry.mode === "subtract" ? "#dc2626" : "#4f46e5", display: "flex", alignItems: "center", gap: "6px" }}>
+                      {entry.mode === "add" ? <Plus size={14} /> : entry.mode === "subtract" ? <Minus size={14} /> : <Star size={14} />}
+                      {entry.amount} pts
+                    </strong>
+                    <span style={{ fontSize: "12px", color: "#64748b" }}>
+                      {new Date(entry.createdAt).toLocaleDateString()}
+                    </span>
+                  </div>
+                  <div style={{ fontSize: "12px", color: "#334155", marginBottom: "8px", lineHeight: "1.5" }}>{entry.reason}</div>
+                  {entry.givenBy && (
+                    <div style={{ fontSize: "12px", color: "#94a3b8", display: "flex", alignItems: "center", gap: "4px" }}>
+                      <span style={{ width: "16px", height: "16px", borderRadius: "50%", background: "#cbd5e1", display: "flex", alignItems: "center", justifyContent: "center", color: "white", fontSize: "10px", fontWeight: "bold" }}>
+                        {entry.givenBy.firstName[0]}{entry.givenBy.lastName[0]}
+                      </span>
+                      Given by {entry.givenBy.firstName} {entry.givenBy.lastName}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </Modal>
     </div>
   );
 }

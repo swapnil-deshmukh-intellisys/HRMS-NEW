@@ -163,6 +163,84 @@ function getCalendarDays({ month, year }: VisibleMonth) {
 export default function AttendancePage({ token, role, currentEmployeeId, currentEmployee }: AttendancePageProps) {
   const { liveStatuses } = useApp();
   const today = toLocalDateString(new Date());
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const getLatenessBreakdown = (rec: any) => {
+    const breakdown: string[] = [];
+    let totalLateness = 0;
+
+    // 1. Check-in lateness
+    const lateByMinutes = rec.lateByMinutes || 0;
+    if (lateByMinutes > 0) {
+      breakdown.push(`${lateByMinutes}m`);
+      totalLateness += lateByMinutes;
+    }
+
+    // 2. Break latenesses
+    if (rec.breakSessions && rec.breakSessions.length > 0) {
+      const emp = rec.employee || currentEmployee;
+      const shift = emp?.shift;
+      const hasBreaks = shift ? shift.hasBreaks : true;
+
+      if (hasBreaks) {
+        const shiftStartTimeStr = shift?.startTime || "09:00";
+        const shiftStartHour = parseInt(shiftStartTimeStr.split(":")[0], 10);
+        const isMorningShift = !isNaN(shiftStartHour) && shiftStartHour < 12;
+
+        const parseTimeToMinutes = (timeStr: string): number => {
+          const [hours, minutes] = timeStr.split(":").map(Number);
+          return (isNaN(hours) || isNaN(minutes)) ? 0 : hours * 60 + minutes;
+        };
+
+        const morningTeaStartMins = parseTimeToMinutes(shift?.morningTeaStart || "10:30");
+        const morningTeaEndMins = parseTimeToMinutes(shift?.morningTeaEnd || "11:15");
+        const lunchStartMins = parseTimeToMinutes(shift?.lunchStart || "12:00");
+        const lunchEndMins = parseTimeToMinutes(shift?.lunchEnd || "14:30");
+        const eveningTeaStartMins = parseTimeToMinutes(shift?.eveningTeaStart || "15:30");
+        const eveningTeaEndMins = parseTimeToMinutes(shift?.eveningTeaEnd || "17:00");
+        const dinnerStartMins = parseTimeToMinutes(shift?.dinnerStart || "20:00");
+        const dinnerEndMins = parseTimeToMinutes(shift?.dinnerEnd || "22:00");
+
+        for (const bs of rec.breakSessions) {
+          if (!bs.endTime) continue;
+
+          const durationMinutes = bs.durationMinutes || 0;
+          const bStartLocal = toZonedTime(new Date(bs.startTime), TIMEZONE);
+          const startHour = bStartLocal.getHours();
+          const startMin = bStartLocal.getMinutes();
+          const totalStartMins = startHour * 60 + startMin;
+
+          let allowedDuration = 0;
+          if (totalStartMins >= morningTeaStartMins && totalStartMins <= morningTeaEndMins) {
+            allowedDuration = (shift ? shift.allowMorningTea : true) ? 15 : 0;
+          } else if (totalStartMins >= lunchStartMins && totalStartMins <= lunchEndMins) {
+            allowedDuration = (isMorningShift && (shift ? shift.allowLunch : true)) ? 40 : 0;
+          } else if (totalStartMins >= eveningTeaStartMins && totalStartMins <= eveningTeaEndMins) {
+            allowedDuration = (shift ? shift.allowEveningTea : true) ? 20 : 0;
+          } else if (totalStartMins >= dinnerStartMins && totalStartMins <= dinnerEndMins) {
+            allowedDuration = (!isMorningShift && (shift ? shift.allowDinner : true)) ? 40 : 0;
+          }
+
+          if (allowedDuration > 0 && durationMinutes > allowedDuration) {
+            const breakLate = durationMinutes - allowedDuration;
+            if (breakLate > 0) {
+              breakdown.push(`${breakLate}m`);
+              totalLateness += breakLate;
+            }
+          }
+        }
+      }
+    }
+
+    if (totalLateness > 0) {
+      if (breakdown.length > 1) {
+        return `${breakdown.join(" + ")} = ${totalLateness}m`;
+      }
+      return `${breakdown[0]}`;
+    }
+
+    return "";
+  };
   const [selectedTimelineItem, setSelectedTimelineItem] = useState<{
     date: string;
     record: Attendance;
@@ -172,15 +250,26 @@ export default function AttendancePage({ token, role, currentEmployeeId, current
     return Object.values(liveStatuses || {});
   }, [liveStatuses]);
 
-  const handleViewTimeline = (empId: number) => {
-    const record = attendance.find(a => a.employeeId === empId);
-    if (record) {
-      setSelectedTimelineItem({
-        date: today,
-        record: record
-      });
-    } else {
-      toast.error("No active attendance record found for this employee today.");
+  const [loadingTimelineEmpId, setLoadingTimelineEmpId] = useState<number | null>(null);
+
+  const handleViewTimeline = async (empId: number) => {
+    if (loadingTimelineEmpId) return;
+    try {
+      setLoadingTimelineEmpId(empId);
+      const response = await apiRequest<Attendance[]>(`/attendance?employeeId=${empId}&date=${today}`, { token });
+      const record = response.data?.[0];
+      if (record) {
+        setSelectedTimelineItem({
+          date: today,
+          record: record
+        });
+      } else {
+        toast.error("No active attendance record found for this employee today.");
+      }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to load timeline.");
+    } finally {
+      setLoadingTimelineEmpId(null);
     }
   };
   const joiningDateFormatted = currentEmployee?.joiningDate 
@@ -196,6 +285,29 @@ export default function AttendancePage({ token, role, currentEmployeeId, current
   const [liveStatusFilter, setLiveStatusFilter] = useState<"ALL" | "ACTIVE" | "AWAY" | "OFFLINE">("ALL");
   const [liveSearchQuery, setLiveSearchQuery] = useState("");
   const [filterDate, setFilterDate] = useState(today);
+  const [filterMode, setFilterMode] = useState<"DAY" | "MONTH">("DAY");
+  const [filterMonth, setFilterMonth] = useState<number>(() => new Date().getMonth() + 1);
+  const [filterYear, setFilterYear] = useState<number>(() => new Date().getFullYear());
+
+  const monthOptions = useMemo(() => {
+    const options = [];
+    const now = new Date();
+    for (let i = 0; i < 12; i++) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const m = d.getMonth() + 1;
+      const y = d.getFullYear();
+      const label = formatInTimeZone(d, TIMEZONE, "MMMM yyyy");
+      options.push({ value: `${m}-${y}`, label, month: m, year: y });
+    }
+    return options;
+  }, []);
+
+  const yesterdayDateStr = useMemo(() => {
+    const yest = new Date();
+    yest.setDate(yest.getDate() - 1);
+    return toLocalDateString(yest);
+  }, []);
+
   const [datePickerOpen, setDatePickerOpen] = useState(false);
   const [visibleMonth, setVisibleMonth] = useState<VisibleMonth>(() => getVisibleMonthFromDate(today));
   const [regularizationOpen, setRegularizationOpen] = useState(false);
@@ -445,8 +557,13 @@ export default function AttendancePage({ token, role, currentEmployeeId, current
       setLoading(true);
       const searchParams = new URLSearchParams();
       const useDayFilter = !(showTeamWorkspace && teamLeadMainTab === "MONTH");
-      if (useDayFilter && filterDate) {
-        searchParams.set("date", filterDate);
+      if (useDayFilter) {
+        if (filterMode === "DAY" && filterDate) {
+          searchParams.set("date", filterDate);
+        } else if (filterMode === "MONTH") {
+          searchParams.set("month", String(filterMonth));
+          searchParams.set("year", String(filterYear));
+        }
       }
       const path = `/attendance${searchParams.toString() ? `?${searchParams.toString()}` : ""}`;
       const response = await apiRequest<Attendance[]>(path, { token });
@@ -456,7 +573,7 @@ export default function AttendancePage({ token, role, currentEmployeeId, current
     } finally {
       setLoading(false);
     }
-  }, [filterDate, showTeamWorkspace, teamLeadMainTab, token]);
+  }, [filterDate, filterMode, filterMonth, filterYear, showTeamWorkspace, teamLeadMainTab, token]);
 
   const reloadRegularizations = useCallback(async () => {
     try {
@@ -947,10 +1064,10 @@ export default function AttendancePage({ token, role, currentEmployeeId, current
                       <button
                         type="button"
                         className="live-timeline-btn"
-                        disabled={!hasCheckIn || !todayRecord}
+                        disabled={!hasCheckIn || loadingTimelineEmpId !== null}
                         onClick={() => handleViewTimeline(emp.employeeId)}
                       >
-                        Timeline
+                        {loadingTimelineEmpId === emp.employeeId ? "Loading..." : "Timeline"}
                       </button>
                     </div>
                   </div>
@@ -1018,16 +1135,17 @@ export default function AttendancePage({ token, role, currentEmployeeId, current
               </div>
             </div>
             <div className="attendance-toolbar">
-              <div className="attendance-history-filters">
+              <div className="attendance-history-filters" style={{ display: "flex", alignItems: "flex-end", flexWrap: "wrap", gap: "var(--space-4)" }}>
+                {/* Date Picker (Day Mode) */}
                 <label className="attendance-filter-field attendance-filter-field--date">
                   Date
                   <div className="attendance-date-picker">
                     <button
                       type="button"
-                      className="attendance-date-input attendance-date-trigger"
+                      className={`attendance-date-input attendance-date-trigger ${filterMode === "DAY" ? "attendance-date-trigger--active" : ""}`}
                       onClick={() => setDatePickerOpen((current) => !current)}
                     >
-                      <span>{formatDateLabel(filterDate)}</span>
+                      <span>{filterMode === "DAY" ? formatDateLabel(filterDate) : "Select Day..."}</span>
                       <ChevronDown size={16} className="attendance-date-chevron" />
                     </button>
                     {datePickerOpen ? (
@@ -1073,7 +1191,7 @@ export default function AttendancePage({ token, role, currentEmployeeId, current
                         <div className="attendance-date-popover__grid">
                           {calendarDays.map((day) => {
                             const isoDate = toLocalDateString(day.value);
-                            const isSelected = isoDate === filterDate;
+                            const isSelected = isoDate === filterDate && filterMode === "DAY";
                             const isFuture = isoDate > today;
 
                             return (
@@ -1084,6 +1202,7 @@ export default function AttendancePage({ token, role, currentEmployeeId, current
                                 disabled={isFuture}
                                 onClick={() => {
                                   setFilterDate(isoDate);
+                                  setFilterMode("DAY");
                                   setDatePickerOpen(false);
                                 }}
                               >
@@ -1094,6 +1213,48 @@ export default function AttendancePage({ token, role, currentEmployeeId, current
                         </div>
                       </div>
                     ) : null}
+                  </div>
+                </label>
+
+                {/* Yesterday Shortcut */}
+                <button
+                  type="button"
+                  className="secondary shortcut-btn"
+                  onClick={() => {
+                    setFilterDate(yesterdayDateStr);
+                    setFilterMode("DAY");
+                  }}
+                >
+                  Yesterday
+                </button>
+
+                {/* View by Month Dropdown */}
+                <label className="attendance-filter-field">
+                  View by Month
+                  <div className="attendance-date-picker" style={{ position: "relative", display: "inline-block" }}>
+                    <select
+                      className={`attendance-date-input attendance-date-trigger ${filterMode === "MONTH" ? "attendance-date-trigger--active" : ""}`}
+                      style={{ minWidth: "160px", cursor: "pointer", paddingRight: "36px", appearance: "none", WebkitAppearance: "none", MozAppearance: "none" }}
+                      value={filterMode === "MONTH" ? `${filterMonth}-${filterYear}` : ""}
+                      onChange={(e) => {
+                        if (e.target.value === "") {
+                          setFilterMode("DAY");
+                        } else {
+                          const [m, y] = e.target.value.split("-").map(Number);
+                          setFilterMonth(m);
+                          setFilterYear(y);
+                          setFilterMode("MONTH");
+                        }
+                      }}
+                    >
+                      <option value="">Select Month</option>
+                      {monthOptions.map((opt) => (
+                        <option key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </option>
+                      ))}
+                    </select>
+                    <ChevronDown size={16} className="attendance-date-chevron" style={{ position: "absolute", right: "12px", top: "50%", transform: "translateY(-50%)", pointerEvents: "none", color: "#64748b" }} />
                   </div>
                 </label>
               </div>
@@ -1155,6 +1316,7 @@ export default function AttendancePage({ token, role, currentEmployeeId, current
                 }
               }}
               rows={attendanceRows.map((record) => {
+                const latenessLabel = getLatenessBreakdown(record);
                 const cells = [
                   <div className="table-cell-stack" key={`date-${record.id}`}>
                     <span className="table-cell-primary">{isToday(record.attendanceDate) ? "Today" : formatDateLabel(record.attendanceDate)}</span>
@@ -1164,7 +1326,7 @@ export default function AttendancePage({ token, role, currentEmployeeId, current
                   </div>,
                   formatAttendanceTime(record.checkInTime),
                   formatAttendanceTime(record.checkOutTime),
-                  record.lateByMinutes && record.lateByMinutes >= 5 ? (
+                  latenessLabel ? (
                     <span key={`late-${record.id}`} style={{
                       fontWeight: '600',
                       color: '#b45309',
@@ -1176,7 +1338,7 @@ export default function AttendancePage({ token, role, currentEmployeeId, current
                       display: 'inline-block',
                       whiteSpace: 'nowrap'
                     }}>
-                      {record.lateByMinutes} min late
+                      {latenessLabel}
                     </span>
                   ) : (
                     <span key={`late-${record.id}`} className="muted">—</span>
@@ -1665,7 +1827,13 @@ export default function AttendancePage({ token, role, currentEmployeeId, current
 
       <Modal 
         open={!!selectedTimelineItem} 
-        title={`Workday Timeline - ${selectedTimelineItem ? formatDateLabel(selectedTimelineItem.date) : ""}`} 
+        title={(() => {
+          if (!selectedTimelineItem) return "Workday Timeline";
+          const emp = selectedTimelineItem.record.employee || (selectedTimelineItem.record.employeeId === currentEmployeeId ? currentEmployee : null);
+          const empName = emp ? `${emp.firstName} ${emp.lastName}` : "";
+          const dateLabel = formatDateLabel(selectedTimelineItem.date);
+          return empName ? `${empName} - Workday Timeline (${dateLabel})` : `Workday Timeline - ${dateLabel}`;
+        })()}
         onClose={() => setSelectedTimelineItem(null)}
         className="timeline-modal"
       >

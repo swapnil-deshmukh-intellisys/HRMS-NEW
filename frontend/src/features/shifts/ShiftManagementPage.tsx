@@ -799,7 +799,10 @@ export default function ShiftManagementPage({ token, role }: ShiftManagementPage
               <input
                 type="checkbox"
                 checked={formState.hasBreaks}
-                onChange={(e) => setFormState(prev => ({ ...prev, hasBreaks: e.target.checked }))}
+                onChange={(e) => {
+                  const checked = e.target.checked;
+                  setFormState(prev => ({ ...prev, hasBreaks: checked }));
+                }}
                 className="checkbox-input"
                 disabled={submitting}
               />
@@ -827,7 +830,10 @@ export default function ShiftManagementPage({ token, role }: ShiftManagementPage
                             <input
                               type="checkbox"
                               checked={formState.allowMorningTea}
-                              onChange={(e) => setFormState(prev => ({ ...prev, allowMorningTea: e.target.checked }))}
+                              onChange={(e) => {
+                                const checked = e.target.checked;
+                                setFormState(prev => ({ ...prev, allowMorningTea: checked }));
+                              }}
                               className="checkbox-input"
                               disabled={submitting}
                             />
@@ -862,7 +868,10 @@ export default function ShiftManagementPage({ token, role }: ShiftManagementPage
                             <input
                               type="checkbox"
                               checked={formState.allowLunch}
-                              onChange={(e) => setFormState(prev => ({ ...prev, allowLunch: e.target.checked }))}
+                              onChange={(e) => {
+                                const checked = e.target.checked;
+                                setFormState(prev => ({ ...prev, allowLunch: checked }));
+                              }}
                               className="checkbox-input"
                               disabled={submitting}
                             />
@@ -894,7 +903,10 @@ export default function ShiftManagementPage({ token, role }: ShiftManagementPage
                             <input
                               type="checkbox"
                               checked={formState.allowDinner}
-                              onChange={(e) => setFormState(prev => ({ ...prev, allowDinner: e.target.checked }))}
+                              onChange={(e) => {
+                                const checked = e.target.checked;
+                                setFormState(prev => ({ ...prev, allowDinner: checked }));
+                              }}
                               className="checkbox-input"
                               disabled={submitting}
                             />
@@ -928,7 +940,10 @@ export default function ShiftManagementPage({ token, role }: ShiftManagementPage
                           <input
                             type="checkbox"
                             checked={formState.allowEveningTea}
-                            onChange={(e) => setFormState(prev => ({ ...prev, allowEveningTea: e.target.checked }))}
+                            onChange={(e) => {
+                              const checked = e.target.checked;
+                              setFormState(prev => ({ ...prev, allowEveningTea: checked }));
+                            }}
                             className="checkbox-input"
                             disabled={submitting}
                           />

@@ -80,6 +80,7 @@
   margin: 0;
   color: var(--color-text-strong);
   letter-spacing: -0.01em;
+  line-height: 1;
 }
 
 .wdt-status-text {
@@ -96,6 +97,7 @@
   background: var(--color-surface-secondary);
   border-radius: 6px;
   line-height: 1;
+  transform: translateY(-1px);
 }
 
 .wdt-time-compact {
@@ -112,6 +114,7 @@
   border-radius: 50%;
   display: inline-block;
   flex-shrink: 0;
+  transform: translateY(-1px);
 }
 
 .wdt-pulse-dot.active {

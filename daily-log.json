@@ -248,7 +248,9 @@
       "TSK-ATT-016",
       "TSK-EMP-005",
       "TSK-NAV-004",
-      "TSK-INC-001"
+      "TSK-INC-001",
+      "TSK-DSK-002",
+      "TSK-DSK-003"
     ],
     "inProgressTasks": [],
     "newTasksCreated": [
@@ -257,7 +259,9 @@
       "TSK-ATT-016",
       "TSK-EMP-005",
       "TSK-NAV-004",
-      "TSK-INC-001"
+      "TSK-INC-001",
+      "TSK-DSK-002",
+      "TSK-DSK-003"
     ],
     "bugsFixed": [
       "Fixed all departments showing 0 count of employees on the remote server by committing and pushing the backend query updates",
@@ -267,12 +271,17 @@
       "Fixed a bug where a user who is not checked in was shown as ACTIVE with a pulsing green dot by implementing Not Checked In status logic and a gray offline dot",
       "Fixed low contrast on leave page secondary buttons by using var(--color-text-strong) and a semi-transparent adaptive overlay",
       "Fixed mobile sidebar menu clickability by increasing the sidebar's z-index to 1810 so it sits in front of the backdrop overlay",
-      "Fixed incentives page button styling by converting primary and secondary buttons to the premium dark blue gradient and outline themes"
+      "Fixed incentives page button styling by converting primary and secondary buttons to the premium dark blue gradient and outline themes",
+      "Fixed desktop agent reminders to trigger dynamically by fetching employee shift details from the backend",
+      "Fixed duplicate break reminders on the desktop agent by matching taken breaks against the shift's break windows",
+      "Fixed missing checkout status update in the desktop agent by implementing a custom dark-themed input dialog",
+      "Fixed missing early checkout warnings in the desktop agent by validating worked hours against shift required hours and penalties",
+      "Resized the desktop reminder popup to double size (880x480), centered it on screen, and replaced the slide-up animation with a centered topmost fade-in/fade-out animation"
     ],
     "blockers": [],
-    "hoursWorked": 16,
-    "dailyProgress": 6,
+    "hoursWorked": 23,
+    "dailyProgress": 8,
     "overallProjectProgress": 100,
-    "remarks": "Successfully redesigned the Departments page to display a grid of premium cards. The backend query was updated to fetch the active employee count in each department via Prisma relations, and the frontend renders modern gradient avatars, pill-shaped code badges, and hover lift effects. Also refined the Leaderboard page: resized the Previous Winner card to be a square block taking half the parent's height, replaced the trophy emoji with an animated party popper, and changed the employee list ranking avatars to use the same 6 premium linear gradients. Lastly, unified the button styling across the app by transforming the Add Department, Add Employee, Create Record, View Team Calendar, View Leave Balances, Apply for Leave, Create Incentive, Apply Filters, and Cancel buttons to use the dark blue accent gradient and outline themes. Restructured the Workday Progress header to center the title horizontally while keeping the status dot and badge side-by-side on the left. Correctly handled the not-checked-in state by showing a Not Checked In status label, a gray dot, and a centered placeholder text overlay inside the progress bar rail. Created a seeding script to add test1@gmail.com and test2@gmail.com test employee accounts with default profiles and leave balances. Fixed mobile sidebar clickability, added a confirmation box before downloading the desktop agent, and added a conditional 'Back to Leaves' button on the Calendar page."
+    "remarks": "Successfully redesigned the Departments page to display a grid of premium cards. The backend query was updated to fetch the active employee count in each department via Prisma relations, and the frontend renders modern gradient avatars, pill-shaped code badges, and hover lift effects. Also refined the Leaderboard page: resized the Previous Winner card to be a square block taking half the parent's height, replaced the trophy emoji with an animated party popper, and changed the employee list ranking avatars to use the same 6 premium linear gradients. Lastly, unified the button styling across the app by transforming the Add Department, Add Employee, Create Record, View Team Calendar, View Leave Balances, Apply for Leave, Create Incentive, Apply Filters, and Cancel buttons to use the dark blue accent gradient and outline themes. Restructured the Workday Progress header to center the title horizontally while keeping the status dot and badge side-by-side on the left. Correctly handled the not-checked-in state by showing a Not Checked In status label, a gray dot, and a centered placeholder text overlay inside the progress bar rail. Created a seeding script to add test1@gmail.com and test2@gmail.com test employee accounts with default profiles and leave balances. Fixed mobile sidebar clickability, added a confirmation box before downloading the desktop agent, and added a conditional 'Back to Leaves' button on the Calendar page. Integrated dynamic shift-based reminders, early checkout validation and warnings, and a checkout status update dialog in the C# desktop agent, and redesigned the reminder popup to be twice as large, centered on screen, and topmost with a fade-in animation."
   }
 ]

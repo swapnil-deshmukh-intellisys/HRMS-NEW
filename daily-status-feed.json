@@ -173,5 +173,19 @@
     "title": "Align Incentives Page Button Themes to Premium Theme",
     "status": "COMPLETED",
     "narrative": "Unified the button styling on the Incentives page by transforming the Create Incentive, Apply Filters, and Cancel buttons to use the dark blue accent gradient and outline themes."
+  },
+  {
+    "date": "2026-06-30",
+    "taskId": "TSK-DSK-002",
+    "title": "Implement Dynamic Reminders, Early Checkout Warnings, and Status Updates in Desktop Agent",
+    "status": "COMPLETED",
+    "narrative": "Refactored the C# desktop agent to fetch employee shift details and late penalties dynamically from the backend, replacing all hardcoded reminder times. Implemented early checkout validation to warn users before checking out with incomplete hours. Designed and integrated a new dark-themed status update dialog to collect and save daily work summaries during checkout."
+  },
+  {
+    "date": "2026-06-30",
+    "taskId": "TSK-DSK-003",
+    "title": "Redesign and Center Desktop Reminder Popup with Topmost Fade Animation",
+    "status": "COMPLETED",
+    "narrative": "Redesigned the desktop reminder popup, doubling its size to 880x480 and scaling all controls. Positioned it in the center of the screen with a smooth opacity fade-in/fade-out animation, and forced topmost focus on load using BringToFront() and Activate() to ensure it displays above all running apps."
   }
 ]

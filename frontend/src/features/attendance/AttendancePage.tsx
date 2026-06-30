@@ -1023,7 +1023,6 @@ export default function AttendancePage({ token, role, currentEmployeeId, current
                 const isAway = emp.status === "AWAY";
                 const statusClass = isActive ? "active" : isAway ? "away" : "offline";
                 const statusLabel = isActive ? "Active" : isAway ? "Away" : "Offline";
-                const todayRecord = attendance.find(a => a.employeeId === emp.employeeId);
                 const hasCheckIn = !!emp.checkInTime;
 
                 return (

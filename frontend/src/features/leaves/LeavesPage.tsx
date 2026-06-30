@@ -494,7 +494,7 @@ export default function LeavesPage({ token, role, currentEmployeeId, currentEmpl
               <p className="muted">Track and manage your time off applications.</p>
             </div>
             <div className="button-row row-actions leaves-page-actions">
-              <button type="button" className="secondary leaves-page-balance-button" onClick={() => navigate('/calendar')}>
+              <button type="button" className="secondary leaves-page-balance-button" onClick={() => navigate('/calendar', { state: { fromLeaves: true } })}>
                 View team calendar
               </button>
               <button type="button" className="secondary leaves-page-balance-button" onClick={() => setLeaveBalancesOpen(true)}>

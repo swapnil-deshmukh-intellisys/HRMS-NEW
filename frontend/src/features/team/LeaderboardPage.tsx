@@ -104,23 +104,12 @@ function ProgressBar({ value, max, color }: { value: number; max: number; color:
 }
 
 const AVATAR_COLORS = [
-  "#e57373", // Red
-  "#f06292", // Pink
-  "#ba68c8", // Purple
-  "#9575cd", // Deep Purple
-  "#7986cb", // Indigo
-  "#64b5f6", // Blue
-  "#4fc3f7", // Light Blue
-  "#4dd0e1", // Cyan
-  "#4db6ac", // Teal
-  "#81c784", // Green
-  "#aed581", // Light Green
-  "#d4e157", // Lime
-  "#ffd54f", // Amber
-  "#ffb74d", // Orange
-  "#ff8a65", // Deep Orange
-  "#a1887f", // Brown
-  "#90a4ae"  // Blue Grey
+  "linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)", // Blue
+  "linear-gradient(135deg, #10b981 0%, #047857 100%)", // Emerald
+  "linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%)", // Purple
+  "linear-gradient(135deg, #f59e0b 0%, #b45309 100%)", // Amber
+  "linear-gradient(135deg, #ec4899 0%, #be185d 100%)", // Pink
+  "linear-gradient(135deg, #06b6d4 0%, #0891b2 100%)", // Cyan
 ];
 
 function getAvatarColor(employeeId: number) {

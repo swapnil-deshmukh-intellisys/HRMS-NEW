@@ -487,7 +487,7 @@ export default function LeaderboardPage({
               {/* Previous Winner (Smaller Nested Container in Top-Left) */}
               {prevWinnerEntry ? (
                 <div className="lb-hero-nested-prev">
-                  <span className="lb-nested-crown">🏆</span>
+                  <span className="lb-nested-crown">🎉</span>
                   <div className="lb-nested-info">
                     <span className="lb-nested-label">
                       Prev Winner ({MONTH_NAMES[prevMonthIndex]})
@@ -502,7 +502,7 @@ export default function LeaderboardPage({
                 </div>
               ) : (
                 <div className="lb-hero-nested-prev lb-hero-nested-empty">
-                  <span className="lb-nested-crown">🏆</span>
+                  <span className="lb-nested-crown">🎉</span>
                   <div className="lb-nested-info">
                     <span className="lb-nested-label">Prev Winner</span>
                     <span className="lb-nested-name" style={{ opacity: 0.6 }}>No data</span>

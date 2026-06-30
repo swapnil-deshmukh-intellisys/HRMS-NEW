@@ -199,7 +199,8 @@ router.get("/today", requireRoles("EMPLOYEE", "MANAGER", "HR", "ADMIN"), async (
     return sendSuccess(response, "Today's attendance fetched successfully", {
       attendanceToday,
       overtimeSession,
-      isOvertimeEligible
+      isOvertimeEligible,
+      shift: employee?.shift ?? null,
     });
   } catch (error) {
     next(error);

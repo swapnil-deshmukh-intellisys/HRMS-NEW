@@ -44,9 +44,29 @@ namespace HRMS_Agent
         public int? DurationMinutes { get; set; }
     }
 
+    public class ShiftRecord
+    {
+        public int Id { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public string StartTime { get; set; } = "09:00";
+        public string EndTime { get; set; } = "18:00";
+        public int RequiredMinutes { get; set; } = 540;
+        public int GracePeriodMinutes { get; set; } = 15;
+        public bool AllowMorningTea { get; set; }
+        public string MorningTeaStart { get; set; } = "10:30";
+        public string MorningTeaEnd { get; set; } = "11:15";
+        public bool AllowLunch { get; set; }
+        public string LunchStart { get; set; } = "12:00";
+        public string LunchEnd { get; set; } = "14:30";
+        public bool AllowEveningTea { get; set; }
+        public string EveningTeaStart { get; set; } = "15:30";
+        public string EveningTeaEnd { get; set; } = "17:00";
+    }
+
     public class AttendanceTodayData
     {
         public AttendanceRecord? AttendanceToday { get; set; }
+        public ShiftRecord? Shift { get; set; }
     }
 
     public class AttendanceTodayResponse
@@ -81,6 +101,8 @@ namespace HRMS_Agent
         private static ApiConfig _config = new ApiConfig();
         private static readonly List<DesktopEvent> _offlineQueue = new List<DesktopEvent>();
         private static bool _isProcessingQueue = false;
+
+        public static ShiftRecord? CurrentShift { get; private set; }
 
         public static event Action<string>? OnStatusChanged;
         public static event Action<string, DateTime>? OnEventLogged;
@@ -394,6 +416,12 @@ namespace HRMS_Agent
                 var json = await response.Content.ReadAsStringAsync();
                 var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
                 var resObj = JsonSerializer.Deserialize<AttendanceTodayResponse>(json, options);
+
+                if (resObj?.Data != null)
+                {
+                    CurrentShift = resObj.Data.Shift;
+                }
+
                 return resObj?.Data?.AttendanceToday;
             }
             catch (Exception ex)
@@ -445,14 +473,16 @@ namespace HRMS_Agent
             }
         }
 
-        public static async Task<bool> CheckOutAsync()
+        public static async Task<bool> CheckOutAsync(string statusUpdate)
         {
             if (!IsLoggedIn) return false;
             try
             {
                 using var request = new HttpRequestMessage(HttpMethod.Post, $"{_config.ApiUrl}/api/attendance/check-out");
                 request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _config.Token);
-                request.Content = new StringContent("{}", Encoding.UTF8, "application/json");
+                
+                var payload = new { todaysUpdate = statusUpdate };
+                request.Content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
 
                 var response = await _httpClient.SendAsync(request);
                 return response.IsSuccessStatusCode;

@@ -23,7 +23,6 @@ namespace HRMS_Agent
         private readonly Action _onDismiss;
 
         private System.Windows.Forms.Timer? _animTimer;
-        private int _targetTop;
         private bool _isSlidingDown = false;
         private bool _actionInProgress = false;
 
@@ -49,23 +48,24 @@ namespace HRMS_Agent
 
             // Configure Form Settings
             Text = title;
-            Size = new Size(440, 240); // Doubled size for a luxurious, spacious layout
+            Size = new Size(880, 480); // Doubled size
             FormBorderStyle = FormBorderStyle.None;
             ShowInTaskbar = false;
             TopMost = true;
             BackColor = Color.FromArgb(33, 33, 44); // Sleek Dark Background
-            StartPosition = FormStartPosition.Manual;
+            StartPosition = FormStartPosition.CenterScreen;
+            Opacity = 0; // Start fully transparent for fade-in
 
             // Apply GDI Rounded Corners
-            Region = Region.FromHrgn(CreateRoundRectRgn(0, 0, Width, Height, 16, 16));
+            Region = Region.FromHrgn(CreateRoundRectRgn(0, 0, Width, Height, 24, 24));
 
             // Emoji icon label
             _lblEmoji = new Label
             {
                 Text = emoji,
-                Font = new Font("Segoe UI Emoji", 36), // Extremely large emoji
-                Location = new Point(25, 25), // Elegant 25px margin
-                Size = new Size(64, 64),
+                Font = new Font("Segoe UI Emoji", 72), // Doubled font size
+                Location = new Point(50, 50), // Spaced layout
+                Size = new Size(128, 128),
                 TextAlign = ContentAlignment.MiddleCenter
             };
 
@@ -73,9 +73,9 @@ namespace HRMS_Agent
             _lblTitle = new Label
             {
                 Text = title,
-                Font = new Font("Segoe UI", 13, FontStyle.Bold), // Large title
-                Location = new Point(105, 25),
-                Size = new Size(310, 30),
+                Font = new Font("Segoe UI", 22, FontStyle.Bold), // Large bold title
+                Location = new Point(200, 50),
+                Size = new Size(630, 50),
                 ForeColor = Color.FromArgb(245, 246, 250),
                 TextAlign = ContentAlignment.MiddleLeft
             };
@@ -84,9 +84,9 @@ namespace HRMS_Agent
             _lblMessage = new Label
             {
                 Text = message,
-                Font = new Font("Segoe UI", 10.5f, FontStyle.Regular), // Highly readable message
-                Location = new Point(105, 60),
-                Size = new Size(310, 70),
+                Font = new Font("Segoe UI", 14f, FontStyle.Regular), // Highly readable large message
+                Location = new Point(200, 110),
+                Size = new Size(630, 160),
                 ForeColor = Color.FromArgb(200, 200, 210),
                 TextAlign = ContentAlignment.TopLeft
             };
@@ -95,12 +95,12 @@ namespace HRMS_Agent
             _btnAction = new Button
             {
                 Text = actionText,
-                Location = new Point(25, 145), // Well-spaced row
-                Size = new Size(185, 40), // Large premium height and width
+                Location = new Point(50, 290),
+                Size = new Size(370, 60), // Larger button
                 BackColor = Color.FromArgb(9, 132, 227), // Primary Blue
                 ForeColor = Color.White,
                 FlatStyle = FlatStyle.Flat,
-                Font = new Font("Segoe UI", 10.5f, FontStyle.Bold),
+                Font = new Font("Segoe UI", 14f, FontStyle.Bold),
                 Cursor = Cursors.Hand
             };
             _btnAction.FlatAppearance.BorderSize = 0;
@@ -110,12 +110,12 @@ namespace HRMS_Agent
             _btnSnooze = new Button
             {
                 Text = "Snooze",
-                Location = new Point(230, 145),
-                Size = new Size(185, 40), // Symmetrical button
+                Location = new Point(460, 290),
+                Size = new Size(370, 60),
                 BackColor = Color.FromArgb(47, 54, 64),
                 ForeColor = Color.FromArgb(220, 221, 230),
                 FlatStyle = FlatStyle.Flat,
-                Font = new Font("Segoe UI", 10.5f, FontStyle.Bold),
+                Font = new Font("Segoe UI", 14f, FontStyle.Bold),
                 Cursor = Cursors.Hand
             };
             _btnSnooze.FlatAppearance.BorderSize = 0;
@@ -125,12 +125,12 @@ namespace HRMS_Agent
             _btnDismiss = new Button
             {
                 Text = "Dismiss",
-                Location = new Point(25, 195),
-                Size = new Size(390, 32), // Perfectly centered and wide
+                Location = new Point(50, 375),
+                Size = new Size(780, 50), // Wide footer button
                 BackColor = Color.Transparent,
                 ForeColor = Color.FromArgb(127, 140, 141),
                 FlatStyle = FlatStyle.Flat,
-                Font = new Font("Segoe UI", 9.5f),
+                Font = new Font("Segoe UI", 12f),
                 Cursor = Cursors.Hand
             };
             _btnDismiss.FlatAppearance.BorderSize = 1;
@@ -143,7 +143,11 @@ namespace HRMS_Agent
             });
 
             // Set up animation
-            Load += (s, e) => StartSlideUp();
+            Load += (s, e) => {
+                StartSlideUp();
+                BringToFront();
+                Activate();
+            };
         }
 
         private void StartSlideUp()
@@ -157,31 +161,27 @@ namespace HRMS_Agent
                 // Fallback in case of sound device issues
             }
 
-            var workingArea = Screen.PrimaryScreen.WorkingArea;
-            Left = workingArea.Right - Width - 15;
-            Top = workingArea.Bottom;
-            _targetTop = workingArea.Bottom - Height - 15;
-
-            _animTimer = new System.Windows.Forms.Timer { Interval = 10 };
+            // Smooth fade-in in the center of the screen
+            _animTimer = new System.Windows.Forms.Timer { Interval = 15 };
             _animTimer.Tick += (s, e) =>
             {
                 if (!_isSlidingDown)
                 {
-                    if (Top > _targetTop)
+                    if (Opacity < 1.0)
                     {
-                        Top -= Math.Max(1, (Top - _targetTop) / 4); // Smooth ease-out slide
+                        Opacity += 0.08;
                     }
                     else
                     {
-                        Top = _targetTop;
+                        Opacity = 1.0;
                         _animTimer.Stop();
                     }
                 }
                 else
                 {
-                    if (Top < workingArea.Bottom)
+                    if (Opacity > 0.0)
                     {
-                        Top += Math.Max(1, (workingArea.Bottom - Top) / 4);
+                        Opacity -= 0.08;
                     }
                     else
                     {

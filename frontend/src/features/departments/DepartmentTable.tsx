@@ -17,6 +17,16 @@ const GRADIENTS = [
 ];
 
 export default function DepartmentTable({ departments, onAddDepartment }: DepartmentTableProps) {
+  // Sort departments by employee count (strength) descending, with name as alphabetical fallback
+  const sortedDepartments = [...departments].sort((a, b) => {
+    const countA = a._count?.employees ?? 0;
+    const countB = b._count?.employees ?? 0;
+    if (countB !== countA) {
+      return countB - countA;
+    }
+    return a.name.localeCompare(b.name);
+  });
+
   return (
     <div className="departments-container">
       <div className="action-row" style={{ marginBottom: "24px" }}>
@@ -34,7 +44,7 @@ export default function DepartmentTable({ departments, onAddDepartment }: Depart
       </div>
 
       <div className="departments-grid">
-        {departments.map((department, index) => {
+        {sortedDepartments.map((department, index) => {
           const gradient = GRADIENTS[index % GRADIENTS.length];
           const initials = department.name.slice(0, 2).toUpperCase();
           const employeeCount = department._count?.employees ?? 0;

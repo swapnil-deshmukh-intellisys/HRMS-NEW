@@ -1,5 +1,7 @@
 import "./CalendarPage.css";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
+import { ArrowLeft } from "lucide-react";
 import Modal from "../../components/common/Modal";
 import toast from "react-hot-toast";
 import { apiRequest } from "../../services/api";
@@ -60,6 +62,9 @@ function getDayStatusLabel(status: CalendarDay["status"]) {
 }
 
 export default function CalendarPage({ token, role }: CalendarPageProps) {
+  const navigate = useNavigate();
+  const location = useLocation();
+
   const [visibleMonth, setVisibleMonth] = useState(() => {
     const now = new Date();
     return { year: now.getFullYear(), month: now.getMonth() + 1 };
@@ -206,9 +211,22 @@ export default function CalendarPage({ token, role }: CalendarPageProps) {
     <section className="stack calendar-page">
       <article className="calendar-page__surface">
         <div className="calendar-page__header">
-          <div>
-            <p className="eyebrow">Calendar</p>
-            <h3>{formatMonthTitle(visibleMonth.year, visibleMonth.month)}</h3>
+          <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
+            {location.state?.fromLeaves && (
+              <button
+                type="button"
+                className="secondary calendar-action-button"
+                onClick={() => navigate("/leaves")}
+                style={{ display: "inline-flex", alignItems: "center", gap: "6px", padding: "0 12px", height: "38px" }}
+              >
+                <ArrowLeft size={16} />
+                <span>Back to Leaves</span>
+              </button>
+            )}
+            <div>
+              <p className="eyebrow">Calendar</p>
+              <h3>{formatMonthTitle(visibleMonth.year, visibleMonth.month)}</h3>
+            </div>
           </div>
           <div className="calendar-page__actions">
             <div className="button-row">

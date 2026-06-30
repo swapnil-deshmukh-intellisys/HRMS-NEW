@@ -121,6 +121,12 @@ export default function Sidebar({ sessionUser, navOpen, onNavigate }: SidebarPro
             href="/downloads/HRMS_Agent.zip"
             download="HRMS_Agent.zip"
             style={{ marginTop: 'auto', borderTop: '1px solid var(--color-border-subtle)', paddingTop: '12px', borderRadius: '0' }}
+            onClick={(e) => {
+              const confirmed = window.confirm("Are you sure you want to download the HRMS Desktop Agent?");
+              if (!confirmed) {
+                e.preventDefault();
+              }
+            }}
           >
             <Download size={16} strokeWidth={2} />
             <span className="nav-link-label">Download Agent</span>

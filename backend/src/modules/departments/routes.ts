@@ -18,6 +18,11 @@ router.get("/", requireRoles("ADMIN", "HR", "MANAGER"), async (_request, respons
   try {
     const departments = await prisma.department.findMany({
       where: { isActive: true },
+      include: {
+        _count: {
+          select: { employees: true },
+        },
+      },
       orderBy: { name: "asc" },
     });
 

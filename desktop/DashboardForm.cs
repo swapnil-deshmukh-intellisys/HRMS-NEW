@@ -299,15 +299,59 @@ namespace HRMS_Agent
             };
             _btnCheckOut.FlatAppearance.BorderSize = 0;
             _btnCheckOut.Click += async (s, e) => {
-                var confirmResult = MessageBox.Show(
-                    "Are you sure you want to check out? This will end your workday.",
-                    "Confirm Check Out",
-                    MessageBoxButtons.YesNo,
-                    MessageBoxIcon.Question
-                );
-                if (confirmResult == DialogResult.Yes)
+                if (_currentAttendance != null && _currentAttendance.CheckInTime != null)
                 {
-                    await TriggerAction(ApiSync.CheckOutAsync, "Checked out successfully!");
+                    if (DateTimeOffset.TryParse(_currentAttendance.CheckInTime, out var checkInOffset))
+                    {
+                        double grossMins = (DateTimeOffset.UtcNow - checkInOffset).TotalMinutes;
+                        double totalBreakMinutes = 0;
+                        foreach (var b in _currentBreaks)
+                        {
+                            if (DateTimeOffset.TryParse(b.StartTime, out var bStart))
+                            {
+                                DateTimeOffset bEnd = DateTimeOffset.UtcNow;
+                                if (!string.IsNullOrEmpty(b.EndTime) && DateTimeOffset.TryParse(b.EndTime, out var tempEnd))
+                                {
+                                    bEnd = tempEnd;
+                                }
+                                totalBreakMinutes += (bEnd - bStart).TotalMinutes;
+                            }
+                        }
+
+                        double workedMinutes = Math.Max(0, grossMins - totalBreakMinutes);
+                        int requiredMinutes = ApiSync.CurrentShift != null ? ApiSync.CurrentShift.RequiredMinutes : 540;
+                        requiredMinutes += _currentAttendance.PenaltyMinutes;
+
+                        if (workedMinutes < requiredMinutes)
+                        {
+                            double remaining = requiredMinutes - workedMinutes;
+                            int remH = (int)(remaining / 60);
+                            int remM = (int)(remaining % 60);
+
+                            var warnResult = MessageBox.Show(
+                                $"⚠️ WARNING: You have not completed your required working hours today yet!\n\n" +
+                                $"You still have approximately {remH}h {remM}m remaining (including any late penalties).\n\n" +
+                                $"Are you sure you want to check out?",
+                                "Early Check-Out Warning",
+                                MessageBoxButtons.YesNo,
+                                MessageBoxIcon.Warning
+                            );
+
+                            if (warnResult == DialogResult.No)
+                            {
+                                return;
+                            }
+                        }
+                    }
+                }
+
+                using (var statusForm = new StatusUpdateForm())
+                {
+                    if (statusForm.ShowDialog(this) == DialogResult.OK)
+                    {
+                        string statusUpdate = statusForm.StatusUpdate;
+                        await TriggerAction(() => ApiSync.CheckOutAsync(statusUpdate), "Checked out successfully!");
+                    }
                 }
             };
 

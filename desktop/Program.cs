@@ -447,21 +447,65 @@ namespace HRMS_Agent
                     }
 
                     var checkOutItem = new ToolStripMenuItem("🚪 Check Out Now", null, async (s, e) => {
-                        var confirmResult = MessageBox.Show(
-                            "Are you sure you want to check out? This will end your workday.",
-                            "Confirm Check Out",
-                            MessageBoxButtons.YesNo,
-                            MessageBoxIcon.Question
-                        );
-                        if (confirmResult == DialogResult.Yes)
+                        if (attendance != null && attendance.CheckInTime != null)
                         {
-                            UpdateStatusText("Checking out...");
-                            bool res = await ApiSync.CheckOutAsync();
-                            if (res)
+                            if (DateTimeOffset.TryParse(attendance.CheckInTime, out var checkInOffset))
                             {
-                                _trayIcon.ShowBalloonTip(3000, "Shift Completed", "You have successfully checked out. Have a great evening!", ToolTipIcon.Info);
+                                double grossMins = (DateTimeOffset.UtcNow - checkInOffset).TotalMinutes;
+                                double totalBreakMinutes = 0;
+                                foreach (var b in breaks)
+                                {
+                                    if (DateTimeOffset.TryParse(b.StartTime, out var bStart))
+                                    {
+                                        DateTimeOffset bEnd = DateTimeOffset.UtcNow;
+                                        if (!string.IsNullOrEmpty(b.EndTime) && DateTimeOffset.TryParse(b.EndTime, out var tempEnd))
+                                        {
+                                            bEnd = tempEnd;
+                                        }
+                                        totalBreakMinutes += (bEnd - bStart).TotalMinutes;
+                                    }
+                                }
+
+                                double workedMinutes = Math.Max(0, grossMins - totalBreakMinutes);
+                                int requiredMinutes = ApiSync.CurrentShift != null ? ApiSync.CurrentShift.RequiredMinutes : 540;
+                                requiredMinutes += attendance.PenaltyMinutes;
+
+                                if (workedMinutes < requiredMinutes)
+                                {
+                                    double remaining = requiredMinutes - workedMinutes;
+                                    int remH = (int)(remaining / 60);
+                                    int remM = (int)(remaining % 60);
+
+                                    var warnResult = MessageBox.Show(
+                                        $"⚠️ WARNING: You have not completed your required working hours today yet!\n\n" +
+                                        $"You still have approximately {remH}h {remM}m remaining (including any late penalties).\n\n" +
+                                        $"Are you sure you want to check out?",
+                                        "Early Check-Out Warning",
+                                        MessageBoxButtons.YesNo,
+                                        MessageBoxIcon.Warning
+                                    );
+
+                                    if (warnResult == DialogResult.No)
+                                    {
+                                        return;
+                                    }
+                                }
                             }
-                            await RefreshStatusAndMenuAsync();
+                        }
+
+                        using (var statusForm = new StatusUpdateForm())
+                        {
+                            if (statusForm.ShowDialog() == DialogResult.OK)
+                            {
+                                string statusUpdate = statusForm.StatusUpdate;
+                                UpdateStatusText("Checking out...");
+                                bool res = await ApiSync.CheckOutAsync(statusUpdate);
+                                if (res)
+                                {
+                                    _trayIcon.ShowBalloonTip(3000, "Shift Completed", "You have successfully checked out. Have a great evening!", ToolTipIcon.Info);
+                                }
+                                await RefreshStatusAndMenuAsync();
+                            }
                         }
                     });
                     contextMenu.Items.Add(checkOutItem);
@@ -525,8 +569,50 @@ namespace HRMS_Agent
             bool hasCheckedOut = attendance?.CheckOutTime != null;
             bool isOnBreak = breaks.Exists(b => b.EndTime == null);
 
-            // 1. Check-In Reminder (Triggered between 9:05 AM and 9:30 AM)
-            if (now.Hour == 9 && now.Minute >= 5 && now.Minute <= 30)
+            var shift = ApiSync.CurrentShift;
+
+            // Default shift settings
+            TimeSpan shiftStart = new TimeSpan(9, 0, 0);
+            TimeSpan shiftEnd = new TimeSpan(18, 0, 0);
+            int gracePeriod = 15;
+
+            bool allowMorningTea = true;
+            TimeSpan morningTeaStart = new TimeSpan(10, 30, 0);
+            TimeSpan morningTeaEnd = new TimeSpan(11, 15, 0);
+
+            bool allowLunch = true;
+            TimeSpan lunchStart = new TimeSpan(12, 0, 0);
+            TimeSpan lunchEnd = new TimeSpan(14, 30, 0);
+
+            bool allowEveningTea = true;
+            TimeSpan eveningTeaStart = new TimeSpan(15, 30, 0);
+            TimeSpan eveningTeaEnd = new TimeSpan(17, 0, 0);
+
+            if (shift != null)
+            {
+                TimeSpan.TryParse(shift.StartTime, out shiftStart);
+                TimeSpan.TryParse(shift.EndTime, out shiftEnd);
+                gracePeriod = shift.GracePeriodMinutes;
+
+                allowMorningTea = shift.AllowMorningTea;
+                TimeSpan.TryParse(shift.MorningTeaStart, out morningTeaStart);
+                TimeSpan.TryParse(shift.MorningTeaEnd, out morningTeaEnd);
+
+                allowLunch = shift.AllowLunch;
+                TimeSpan.TryParse(shift.LunchStart, out lunchStart);
+                TimeSpan.TryParse(shift.LunchEnd, out lunchEnd);
+
+                allowEveningTea = shift.AllowEveningTea;
+                TimeSpan.TryParse(shift.EveningTeaStart, out eveningTeaStart);
+                TimeSpan.TryParse(shift.EveningTeaEnd, out eveningTeaEnd);
+            }
+
+            TimeSpan currentTime = now.TimeOfDay;
+
+            // 1. Check-In Reminder
+            var checkInStartTrigger = shiftStart.Add(TimeSpan.FromMinutes(gracePeriod > 0 ? gracePeriod : 5));
+            var checkInEndTrigger = shiftStart.Add(TimeSpan.FromMinutes(30));
+            if (currentTime >= checkInStartTrigger && currentTime <= checkInEndTrigger)
             {
                 if (!hasCheckedIn && _lastCheckInReminderDate != today)
                 {
@@ -536,16 +622,16 @@ namespace HRMS_Agent
                 }
             }
 
-            // 2. Morning Tea Break Reminder (Triggered between 10:50 AM and 11:05 AM)
-            if ((now.Hour == 10 && now.Minute >= 50) || (now.Hour == 11 && now.Minute <= 5))
+            // 2. Morning Tea Break Reminder
+            if (allowMorningTea && hasCheckedIn && !hasCheckedOut && !isOnBreak && _lastMorningTeaReminderDate != today)
             {
-                if (hasCheckedIn && !hasCheckedOut && !isOnBreak && _lastMorningTeaReminderDate != today)
+                if (currentTime >= morningTeaStart.Add(TimeSpan.FromMinutes(20)) && currentTime <= morningTeaEnd)
                 {
                     bool tookMorningTea = breaks.Exists(b => {
-                        if (DateTime.TryParse(b.StartTime, out var start))
+                        if (DateTimeOffset.TryParse(b.StartTime, out var startOffset))
                         {
-                            var localStart = start.ToLocalTime();
-                            return localStart.Hour == 10 || (localStart.Hour == 11 && localStart.Minute <= 15);
+                            var localStart = startOffset.LocalDateTime.TimeOfDay;
+                            return localStart >= morningTeaStart && localStart <= morningTeaEnd;
                         }
                         return false;
                     });
@@ -559,16 +645,16 @@ namespace HRMS_Agent
                 }
             }
 
-            // 3. Lunch Break Reminder (Triggered between 1:00 PM and 1:40 PM)
-            if (now.Hour == 13 && now.Minute >= 0 && now.Minute <= 40)
+            // 3. Lunch Break Reminder
+            if (allowLunch && hasCheckedIn && !hasCheckedOut && !isOnBreak && _lastLunchReminderDate != today)
             {
-                if (hasCheckedIn && !hasCheckedOut && !isOnBreak && _lastLunchReminderDate != today)
+                if (currentTime >= lunchStart.Add(TimeSpan.FromMinutes(30)) && currentTime <= lunchEnd)
                 {
                     bool tookLunch = breaks.Exists(b => {
-                        if (DateTime.TryParse(b.StartTime, out var start))
+                        if (DateTimeOffset.TryParse(b.StartTime, out var startOffset))
                         {
-                            var localStart = start.ToLocalTime();
-                            return localStart.Hour == 12 || localStart.Hour == 13;
+                            var localStart = startOffset.LocalDateTime.TimeOfDay;
+                            return localStart >= lunchStart && localStart <= lunchEnd;
                         }
                         return false;
                     });
@@ -582,16 +668,16 @@ namespace HRMS_Agent
                 }
             }
 
-            // 4. Evening Tea Break Reminder (Triggered between 4:15 PM and 4:40 PM)
-            if (now.Hour == 16 && now.Minute >= 15 && now.Minute <= 40)
+            // 4. Evening Tea Break Reminder
+            if (allowEveningTea && hasCheckedIn && !hasCheckedOut && !isOnBreak && _lastEveningTeaReminderDate != today)
             {
-                if (hasCheckedIn && !hasCheckedOut && !isOnBreak && _lastEveningTeaReminderDate != today)
+                if (currentTime >= eveningTeaStart.Add(TimeSpan.FromMinutes(20)) && currentTime <= eveningTeaEnd)
                 {
                     bool tookEveningTea = breaks.Exists(b => {
-                        if (DateTime.TryParse(b.StartTime, out var start))
+                        if (DateTimeOffset.TryParse(b.StartTime, out var startOffset))
                         {
-                            var localStart = start.ToLocalTime();
-                            return localStart.Hour == 14 || localStart.Hour == 15 || localStart.Hour == 16 || localStart.Hour == 17;
+                            var localStart = startOffset.LocalDateTime.TimeOfDay;
+                            return localStart >= eveningTeaStart && localStart <= eveningTeaEnd;
                         }
                         return false;
                     });
@@ -605,14 +691,22 @@ namespace HRMS_Agent
                 }
             }
 
-            // 5. Check-Out Reminder (Triggered between 6:00 PM and 6:30 PM)
-            if (now.Hour == 18 && now.Minute >= 0 && now.Minute <= 30)
+            // 5. Check-Out Reminder
+            if (hasCheckedIn && !hasCheckedOut && _lastCheckOutReminderDate != today)
             {
-                if (hasCheckedIn && !hasCheckedOut && _lastCheckOutReminderDate != today)
+                if (DateTimeOffset.TryParse(attendance.CheckInTime, out var checkInOffset))
                 {
-                    _lastCheckOutReminderDate = today;
-                    TriggerReminderPopup(ReminderType.CheckOut);
-                    return;
+                    int requiredMinutes = shift != null ? shift.RequiredMinutes : 540;
+                    requiredMinutes += attendance.PenaltyMinutes;
+
+                    var targetCheckoutTime = checkInOffset.LocalDateTime.AddMinutes(requiredMinutes);
+
+                    if (now >= targetCheckoutTime && now <= targetCheckoutTime.AddMinutes(30))
+                    {
+                        _lastCheckOutReminderDate = today;
+                        TriggerReminderPopup(ReminderType.CheckOut);
+                        return;
+                    }
                 }
             }
         }
@@ -724,24 +818,70 @@ namespace HRMS_Agent
                 case ReminderType.CheckOut:
                     emoji = "🚪";
                     title = "End of Shift Check-Out";
-                    message = "Your standard shift is complete. Don't forget to check out and log your hours.";
+                    message = "Your shift is complete. Don't forget to check out and log your hours.";
                     actionText = "Check Out Now";
                     onAction = async () => {
-                        var confirmResult = MessageBox.Show(
-                            "Are you sure you want to check out? This will end your workday.",
-                            "Confirm Check Out",
-                            MessageBoxButtons.YesNo,
-                            MessageBoxIcon.Question
-                        );
-                        if (confirmResult == DialogResult.Yes)
+                        var tempAttendance = await ApiSync.GetAttendanceTodayAsync();
+                        var tempBreaks = await ApiSync.GetBreaksTodayAsync();
+                        if (tempAttendance != null && tempAttendance.CheckInTime != null)
                         {
-                            bool res = await ApiSync.CheckOutAsync();
-                            if (res)
+                            if (DateTimeOffset.TryParse(tempAttendance.CheckInTime, out var checkInOffset))
                             {
-                                _trayIcon.ShowBalloonTip(3000, "Checked Out", "Successfully checked out from reminder.", ToolTipIcon.Info);
-                                await RefreshStatusAndMenuAsync();
+                                double grossMins = (DateTimeOffset.UtcNow - checkInOffset).TotalMinutes;
+                                double totalBreakMinutes = 0;
+                                foreach (var b in tempBreaks)
+                                {
+                                    if (DateTimeOffset.TryParse(b.StartTime, out var bStart))
+                                    {
+                                        DateTimeOffset bEnd = DateTimeOffset.UtcNow;
+                                        if (!string.IsNullOrEmpty(b.EndTime) && DateTimeOffset.TryParse(b.EndTime, out var tempEnd))
+                                        {
+                                            bEnd = tempEnd;
+                                        }
+                                        totalBreakMinutes += (bEnd - bStart).TotalMinutes;
+                                    }
+                                }
+
+                                double workedMinutes = Math.Max(0, grossMins - totalBreakMinutes);
+                                int requiredMinutes = ApiSync.CurrentShift != null ? ApiSync.CurrentShift.RequiredMinutes : 540;
+                                requiredMinutes += tempAttendance.PenaltyMinutes;
+
+                                if (workedMinutes < requiredMinutes)
+                                {
+                                    double remaining = requiredMinutes - workedMinutes;
+                                    int remH = (int)(remaining / 60);
+                                    int remM = (int)(remaining % 60);
+
+                                    var warnResult = MessageBox.Show(
+                                        $"⚠️ WARNING: You have not completed your required working hours today yet!\n\n" +
+                                        $"You still have approximately {remH}h {remM}m remaining (including any late penalties).\n\n" +
+                                        $"Are you sure you want to check out?",
+                                        "Early Check-Out Warning",
+                                        MessageBoxButtons.YesNo,
+                                        MessageBoxIcon.Warning
+                                    );
+
+                                    if (warnResult == DialogResult.No)
+                                    {
+                                        return false;
+                                    }
+                                }
                             }
-                            return res;
+                        }
+
+                        using (var statusForm = new StatusUpdateForm())
+                        {
+                            if (statusForm.ShowDialog() == DialogResult.OK)
+                            {
+                                string statusUpdate = statusForm.StatusUpdate;
+                                bool res = await ApiSync.CheckOutAsync(statusUpdate);
+                                if (res)
+                                {
+                                    _trayIcon.ShowBalloonTip(3000, "Checked Out", "Successfully checked out from reminder.", ToolTipIcon.Info);
+                                    await RefreshStatusAndMenuAsync();
+                                }
+                                return res;
+                            }
                         }
                         return false;
                     };

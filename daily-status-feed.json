@@ -131,5 +131,19 @@
     "title": "Enforce Desktop Client Continuous Tracking",
     "status": "COMPLETED",
     "narrative": "Enforced desktop client telemetry tracking to prevent users from bypassing tracking or disconnecting manually. Removed the Disconnect button from the Dashboard UI and the Exit context menu from the system tray icon to ensure the app cannot be manually closed or logged out of. Implemented a registry key injection on application start to automatically register the client as a Windows startup application (HKCU\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run)."
+  },
+  {
+    "date": "2026-06-30",
+    "taskId": "TSK-DEPT-001",
+    "title": "Redesign Departments Page with Box Structure and Employee Counts",
+    "status": "COMPLETED",
+    "narrative": "Redesigned the Departments page to display a grid of premium cards instead of a table list. Updated the backend /departments API to include the active employee count via Prisma relations. The frontend cards render modern linear-gradient avatars, pill-shaped code badges, and hover lift effects."
+  },
+  {
+    "date": "2026-06-30",
+    "taskId": "TSK-LDB-002",
+    "title": "Refine Leaderboard Previous Winner Card, Avatars, and Button Themes",
+    "status": "COMPLETED",
+    "narrative": "Refined the Previous Winner card on the Leaderboard page to be a square block taking exactly half the parent height on desktop, with responsive overrides for mobile. Replaced the trophy emoji with a party popper emoji featuring a custom scale-and-sway animation. Updated the employee ranking list avatars to use the same 6 premium linear gradients. Finally, unified the button design across the app by updating the Add Department and Add Employee buttons to use the dark blue accent gradient, 16px border-radius, and custom glow shadows."
   }
 ]

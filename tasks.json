@@ -1216,5 +1216,63 @@
     "expectedOutput": "All buttons on the Incentives page follow the premium design system.",
     "createdAt": "2026-06-30T11:40:00Z",
     "updatedAt": "2026-06-30T11:55:00Z"
+  },
+  {
+    "taskId": "TSK-DSK-002",
+    "moduleId": "MOD-DESKTOP",
+    "sprint": "Sprint 4",
+    "project": "HRMS",
+    "page": "Desktop Agent App",
+    "module": "Desktop Agent",
+    "submodule": "Dynamic Reminders and Checkout Validation",
+    "title": "Implement Dynamic Reminders, Early Checkout Warnings, and Status Updates in Desktop Agent",
+    "description": "Refactor the desktop agent's reminder timers to use dynamic shift schedules and late penalties fetched from the backend. Implement early checkout validation that compares worked minutes against required shift minutes plus penalties, prompting a warning message box. Add a new dark-themed status update dialog (StatusUpdateForm.cs) to prompt users for their work summary upon checkout.",
+    "frontendWork": "Create StatusUpdateForm.cs. Update DashboardForm.cs, Program.cs, and ApiSync.cs to calculate worked hours, warn on early checkout, and prompt/send the status update string.",
+    "backendWork": "Update GET /api/attendance/today in routes.ts to return the employee's shift details.",
+    "databaseWork": "None",
+    "apiWork": "Include shift details in /api/attendance/today response.",
+    "testingWork": "Verify shift details are fetched. Verify early checkout warning triggers when working hours are incomplete. Verify status update text is saved on checkout.",
+    "priority": "HIGH",
+    "estimatedHours": 4,
+    "actualHours": 4,
+    "dependencies": [
+      "TSK-ATT-016"
+    ],
+    "riskLevel": "LOW",
+    "status": "COMPLETED",
+    "completionPercentage": 100,
+    "owner": "Fullstack Team",
+    "expectedOutput": "Desktop agent reminders are fully dynamic based on shift. Early checkout displays a warning. Daily status update is prompted and saved on checkout.",
+    "createdAt": "2026-06-30T12:00:00Z",
+    "updatedAt": "2026-06-30T12:30:00Z"
+  },
+  {
+    "taskId": "TSK-DSK-003",
+    "moduleId": "MOD-DESKTOP",
+    "sprint": "Sprint 4",
+    "project": "HRMS",
+    "page": "Desktop Agent App",
+    "module": "Desktop Agent",
+    "submodule": "Reminder Form Centering and Sizing",
+    "title": "Redesign and Center Desktop Reminder Popup with Topmost Fade Animation",
+    "description": "Double the size of the desktop reminder popup to 880x480, scaling all inner controls proportionally. Set its position to the center of the screen and replace the slide-up animation with a smooth opacity fade-in/fade-out animation. Force topmost focus on load using BringToFront() and Activate() to ensure it displays above all running apps.",
+    "frontendWork": "Update ReminderForm.cs to set Size = 880x480, StartPosition = CenterScreen, and implement opacity fade timer. Call BringToFront() and Activate() on Load.",
+    "backendWork": "None",
+    "databaseWork": "None",
+    "apiWork": "None",
+    "testingWork": "Verify reminder popup is centered, twice as large, and fades in/out smoothly. Verify it gains focus and displays on top of other running windows.",
+    "priority": "HIGH",
+    "estimatedHours": 3,
+    "actualHours": 3,
+    "dependencies": [
+      "TSK-DSK-002"
+    ],
+    "riskLevel": "LOW",
+    "status": "COMPLETED",
+    "completionPercentage": 100,
+    "owner": "Fullstack Team",
+    "expectedOutput": "Reminder popup is centered, large, fades in/out, and stays topmost above all running applications.",
+    "createdAt": "2026-06-30T12:30:00Z",
+    "updatedAt": "2026-06-30T13:00:00Z"
   }
 ]

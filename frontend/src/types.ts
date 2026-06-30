@@ -33,6 +33,9 @@ export type Department = {
   id: number;
   name: string;
   code: string;
+  _count?: {
+    employees: number;
+  };
 };
 
 export type CalendarException = {

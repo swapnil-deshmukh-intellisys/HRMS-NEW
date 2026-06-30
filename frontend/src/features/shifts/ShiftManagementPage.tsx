@@ -136,6 +136,7 @@ type ShiftFormState = {
   eveningTeaEnd: string;
   dinnerStart: string;
   dinnerEnd: string;
+  employeeIds: number[];
 };
 
 const initialFormState: ShiftFormState = {
@@ -157,6 +158,7 @@ const initialFormState: ShiftFormState = {
   eveningTeaEnd: "17:00",
   dinnerStart: "20:00",
   dinnerEnd: "22:00",
+  employeeIds: [],
 };
 
 export default function ShiftManagementPage({ token, role }: ShiftManagementPageProps) {
@@ -169,12 +171,22 @@ export default function ShiftManagementPage({ token, role }: ShiftManagementPage
   const [formOpen, setFormOpen] = useState(false);
   const [editingShift, setEditingShift] = useState<Shift | null>(null);
   const [formState, setFormState] = useState<ShiftFormState>(initialFormState);
+  const [empSearchQuery, setEmpSearchQuery] = useState("");
 
   // Search & Filter & Selection
   const [searchQuery, setSearchQuery] = useState("");
   const [shiftFilter, setShiftFilter] = useState<string>("all");
   const [selectedEmployees, setSelectedEmployees] = useState<number[]>([]);
   const [targetShiftId, setTargetShiftId] = useState<string>("");
+
+  const filteredFormEmployees = useMemo(() => {
+    return employees.filter(emp => {
+      const name = `${emp.firstName} ${emp.lastName}`.toLowerCase();
+      const code = emp.employeeCode.toLowerCase();
+      const query = empSearchQuery.toLowerCase();
+      return name.includes(query) || code.includes(query);
+    });
+  }, [employees, empSearchQuery]);
   
   // 1. Fetch data
   const fetchData = async () => {
@@ -228,13 +240,18 @@ export default function ShiftManagementPage({ token, role }: ShiftManagementPage
   // 2. Form helper - open create
   const handleOpenCreate = () => {
     setEditingShift(null);
-    setFormState(initialFormState);
+    setFormState({
+      ...initialFormState,
+      employeeIds: [],
+    });
+    setEmpSearchQuery("");
     setFormOpen(true);
   };
 
   // 3. Form helper - open edit
   const handleOpenEdit = (shift: Shift) => {
     setEditingShift(shift);
+    const assignedIds = (shift as any).employees?.map((e: any) => e.id) || [];
     setFormState({
       name: shift.name,
       startTime: shift.startTime,
@@ -254,7 +271,9 @@ export default function ShiftManagementPage({ token, role }: ShiftManagementPage
       eveningTeaEnd: shift.eveningTeaEnd ?? "17:00",
       dinnerStart: shift.dinnerStart ?? "20:00",
       dinnerEnd: shift.dinnerEnd ?? "22:00",
+      employeeIds: assignedIds,
     });
+    setEmpSearchQuery("");
     setFormOpen(true);
   };
 
@@ -977,6 +996,59 @@ export default function ShiftManagementPage({ token, role }: ShiftManagementPage
               </div>
             </div>
           )}
+
+          <div className="form-group shift-employees-section">
+            <label className="form-section-title">Assign Employees to this Shift</label>
+            <div className="shift-employee-search-box">
+              <Search size={14} className="search-icon" />
+              <input
+                type="text"
+                placeholder="Search employees by name or code..."
+                value={empSearchQuery}
+                onChange={(e) => setEmpSearchQuery(e.target.value)}
+                className="form-control search-input-small"
+              />
+            </div>
+            <div className="shift-employee-list-scrollable">
+              {filteredFormEmployees.length === 0 ? (
+                <div className="empty-message-small">No employees found.</div>
+              ) : (
+                filteredFormEmployees.map((emp) => {
+                  const isChecked = formState.employeeIds.includes(emp.id);
+                  const currentShift = shifts.find(s => s.id === emp.shiftId);
+                  return (
+                    <label key={emp.id} className="shift-employee-checkbox-item">
+                      <input
+                        type="checkbox"
+                        checked={isChecked}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setFormState(prev => ({
+                              ...prev,
+                              employeeIds: [...prev.employeeIds, emp.id]
+                            }));
+                          } else {
+                            setFormState(prev => ({
+                              ...prev,
+                              employeeIds: prev.employeeIds.filter(id => id !== emp.id)
+                            }));
+                          }
+                        }}
+                        className="checkbox-input"
+                      />
+                      <span className="checkbox-label-text">
+                        {emp.firstName} {emp.lastName}
+                        <span className="emp-code-small"> (#{emp.employeeCode})</span>
+                        {currentShift && currentShift.id !== editingShift?.id && (
+                          <span className="current-shift-hint"> (currently on: {currentShift.name})</span>
+                        )}
+                      </span>
+                    </label>
+                  );
+                })
+              )}
+            </div>
+          </div>
 
           <div className="form-actions">
             <button

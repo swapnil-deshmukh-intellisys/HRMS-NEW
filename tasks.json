@@ -1100,5 +1100,63 @@
     "expectedOutput": "Leaderboard page Previous Winner card is square, half-height, and features an animated party popper; employee ranking avatars use premium gradients, and buttons are unified under the dark blue theme.",
     "createdAt": "2026-06-30T09:10:00Z",
     "updatedAt": "2026-06-30T09:40:00Z"
+  },
+  {
+    "taskId": "TSK-ATT-016",
+    "moduleId": "MOD-ATTENDANCE",
+    "sprint": "Sprint 4",
+    "project": "HRMS",
+    "page": "Dashboard Page & Live Status Tracking",
+    "module": "Attendance",
+    "submodule": "Workday Progress Header Alignment and Not-Checked-In State",
+    "title": "Refine Workday Progress Header Layout and Handle Not-Checked-In State",
+    "description": "Center the Workday Progress title horizontally above the progress bar using a 3-column grid, keeping the status dot and badge grouped on the left. Correctly handle the not-checked-in state by showing a Not Checked In status label, a gray dot, and a centered placeholder text overlay inside the progress bar rail.",
+    "frontendWork": "Update WorkdayTimeline.tsx and WorkdayTimeline.css to use a 3-column grid on .wdt-header-minimal. Add .wdt-status-group for grouping dot and badge. Implement Not Checked In status check and .wdt-rail-placeholder text overlay. Remove all translate nudge offsets.",
+    "backendWork": "None",
+    "databaseWork": "None",
+    "apiWork": "None",
+    "testingWork": "Verify vertical and horizontal alignment of header elements on localhost. Assert Not Checked In status displays and progress bar placeholder renders for non-checked-in employees.",
+    "priority": "HIGH",
+    "estimatedHours": 4,
+    "actualHours": 4,
+    "dependencies": [
+      "TSK-ATT-014"
+    ],
+    "riskLevel": "LOW",
+    "status": "COMPLETED",
+    "completionPercentage": 100,
+    "owner": "Fullstack Team",
+    "expectedOutput": "Workday Progress header is perfectly centered with status dot/badge on the left. Un-checked-in users show a Not Checked In label with a gray dot and a centered rail placeholder.",
+    "createdAt": "2026-06-30T10:00:00Z",
+    "updatedAt": "2026-06-30T10:30:00Z"
+  },
+  {
+    "taskId": "TSK-EMP-005",
+    "moduleId": "MOD-EMPLOYEE",
+    "sprint": "Sprint 4",
+    "project": "HRMS",
+    "page": "Payroll & Leaves Pages & Seeding",
+    "module": "Employee Management",
+    "submodule": "Button Theme Alignments & Test Account Seeding",
+    "title": "Align Button Themes on Payroll/Leaves Pages and Seed Test Accounts",
+    "description": "Convert primary and secondary buttons on the Payroll and Leaves pages to use the premium dark blue gradient and outline styles with proper text contrast on light cards. Write and execute a script to seed test1@gmail.com and test2@gmail.com test employee accounts with default profiles and leave balances.",
+    "frontendWork": "Update PayrollPage.css and LeavesPage.css to style primary buttons with var(--color-accent-gradient) and secondary buttons with an outline adaptive overlay (rgba(148, 163, 184, 0.08)) and var(--color-text-strong) for high contrast.",
+    "backendWork": "Create create-two-test-users.ts script to programmatically seed two test employees with Password@123 as password, unique employee codes, Day Shift assignment, and initialized leave balances.",
+    "databaseWork": "Seed test1@gmail.com and test2@gmail.com users and employees in the PostgreSQL database.",
+    "apiWork": "None",
+    "testingWork": "Verify button styles on localhost, assert text readability on light cards. Verify successful database insertion and login capability for the test accounts.",
+    "priority": "HIGH",
+    "estimatedHours": 3,
+    "actualHours": 3,
+    "dependencies": [
+      "TSK-DEPT-001"
+    ],
+    "riskLevel": "LOW",
+    "status": "COMPLETED",
+    "completionPercentage": 100,
+    "owner": "Fullstack Team",
+    "expectedOutput": "All payroll and leave page buttons use the premium theme with high contrast. Two test accounts are seeded in the database and can be used to log in.",
+    "createdAt": "2026-06-30T10:40:00Z",
+    "updatedAt": "2026-06-30T11:10:00Z"
   }
 ]

@@ -1,7 +1,7 @@
 import "./EmployeeForm.css";
 import { Eye, EyeOff } from "lucide-react";
 import { useMemo, useState } from "react";
-import type { Department, Employee } from "../../types";
+import type { Department, Employee, Shift } from "../../types";
 import { calculateCompensationPreview } from "./employeeFormUtils";
 
 export type EmployeeFormValues = {
@@ -29,12 +29,14 @@ export type EmployeeFormValues = {
   internshipType: string;
   stipend: string;
   maritalStatus: string;
+  shiftId: string;
 };
 
 type EmployeeFormProps = {
   form: EmployeeFormValues;
   departments: Department[];
   employees: Employee[];
+  shifts: Shift[];
   editingEmployeeId: number | null;
   isSubmitting?: boolean;
   onChange: (nextForm: EmployeeFormValues) => void;
@@ -46,6 +48,7 @@ export default function EmployeeForm({
   form,
   departments,
   employees,
+  shifts,
   editingEmployeeId,
   isSubmitting = false,
   onChange,
@@ -195,6 +198,17 @@ export default function EmployeeForm({
               {departments.map((department) => (
                 <option key={department.id} value={department.id}>
                   {department.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            Shift
+            <select value={form.shiftId} onChange={(event) => onChange({ ...form, shiftId: event.target.value })}>
+              <option value="">Select shift</option>
+              {shifts.map((shift) => (
+                <option key={shift.id} value={shift.id}>
+                  {shift.name} ({shift.startTime} - {shift.endTime})
                 </option>
               ))}
             </select>

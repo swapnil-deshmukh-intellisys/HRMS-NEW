@@ -6,7 +6,7 @@ import MessageCard from "../../components/common/MessageCard";
 import Modal from "../../components/common/Modal";
 import toast from "react-hot-toast";
 import { apiRequest } from "../../services/api";
-import type { Department, Employee, Role } from "../../types";
+import type { Department, Employee, Role, Shift } from "../../types";
 import EmployeeForm, { type EmployeeFormValues } from "./EmployeeForm";
 import EmployeeTable from "./EmployeeTable";
 import { createDefaultJoiningDateInput, createInitialEmployeeForm, serializeLocalDateTime } from "./employeeFormUtils";
@@ -21,6 +21,7 @@ export default function EmployeesPage({ token, role }: EmployeesPageProps) {
   const [searchParams] = useSearchParams();
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
+  const [shifts, setShifts] = useState<Shift[]>([]);
   const [editingEmployeeId, setEditingEmployeeId] = useState<number | null>(null);
   const [employeeModalOpen, setEmployeeModalOpen] = useState(false);
   const [form, setForm] = useState<EmployeeFormValues>(createInitialEmployeeForm);
@@ -54,6 +55,16 @@ export default function EmployeesPage({ token, role }: EmployeesPageProps) {
     setDepartments(response.data);
     return response.data;
   }, [departments, token]);
+
+  const ensureShiftsLoaded = useCallback(async () => {
+    if (shifts.length) {
+      return shifts;
+    }
+
+    const response = await apiRequest<Shift[]>("/shifts", { token });
+    setShifts(response.data);
+    return response.data;
+  }, [shifts, token]);
 
   useEffect(() => {
     if (role === "EMPLOYEE") return;
@@ -97,6 +108,7 @@ export default function EmployeesPage({ token, role }: EmployeesPageProps) {
         employmentType: formValues.employmentType || "FULL_TIME",
         internshipType: formValues.employmentType === "INTERNSHIP" ? formValues.internshipType : null,
         stipend: formValues.employmentType === "INTERNSHIP" && formValues.internshipType === "PAID" && formValues.stipend ? Number(formValues.stipend) : null,
+        shiftId: formValues.shiftId ? Number(formValues.shiftId) : null,
       };
 
       const response = await apiRequest<Employee>(editingEmployeeId ? `/employees/${editingEmployeeId}` : "/employees", {
@@ -120,14 +132,14 @@ export default function EmployeesPage({ token, role }: EmployeesPageProps) {
   }
 
   function startCreate() {
-    ensureDepartmentsLoaded()
+    Promise.all([ensureDepartmentsLoaded(), ensureShiftsLoaded()])
       .then(() => {
         setEditingEmployeeId(null);
         setForm(createEmployeeFormWithDefaults());
         setEmployeeModalOpen(true);
       })
       .catch((requestError) => {
-        toast.error(requestError instanceof Error ? requestError.message : "Failed to load departments");
+        toast.error(requestError instanceof Error ? requestError.message : "Failed to load departments or shifts");
       });
   }
 
@@ -168,6 +180,7 @@ export default function EmployeesPage({ token, role }: EmployeesPageProps) {
           form={form}
           departments={departments}
           employees={employees}
+          shifts={shifts}
           editingEmployeeId={editingEmployeeId}
           isSubmitting={submitting}
           onChange={setForm}

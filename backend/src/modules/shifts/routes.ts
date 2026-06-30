@@ -28,6 +28,7 @@ const shiftSchema = z.object({
   eveningTeaEnd: z.string().regex(timeRegex, "Evening tea end must be in HH:MM format").default("17:00"),
   dinnerStart: z.string().regex(timeRegex, "Dinner start must be in HH:MM format").default("20:00"),
   dinnerEnd: z.string().regex(timeRegex, "Dinner end must be in HH:MM format").default("22:00"),
+  employeeIds: z.array(z.number()).optional(),
 });
 
 const assignSchema = z.object({
@@ -46,6 +47,9 @@ router.get("/", requireRoles("ADMIN", "HR", "MANAGER", "EMPLOYEE"), async (_requ
         _count: {
           select: { employees: true },
         },
+        employees: {
+          select: { id: true },
+        },
       },
     });
 
@@ -58,7 +62,7 @@ router.get("/", requireRoles("ADMIN", "HR", "MANAGER", "EMPLOYEE"), async (_requ
 // 2. Create a new shift [ADMIN ONLY]
 router.post("/", requireRoles("ADMIN"), validate(shiftSchema), async (request, response, next) => {
   try {
-    const { name, startTime } = request.body;
+    const { name, startTime, employeeIds } = request.body;
     const existing = await prisma.shift.findUnique({
       where: { name },
     });
@@ -79,9 +83,20 @@ router.post("/", requireRoles("ADMIN"), validate(shiftSchema), async (request, r
       }
     }
 
+    const shiftData = { ...request.body };
+    delete shiftData.employeeIds;
+
     const shift = await prisma.shift.create({
-      data: request.body,
+      data: shiftData,
     });
+
+    // Assign selected employees to the new shift
+    if (employeeIds && Array.isArray(employeeIds) && employeeIds.length > 0) {
+      await prisma.employee.updateMany({
+        where: { id: { in: employeeIds } },
+        data: { shiftId: shift.id },
+      });
+    }
 
     return sendSuccess(response, "Shift created successfully", shift, 201);
   } catch (error) {
@@ -127,10 +142,31 @@ router.put("/:id", requireRoles("ADMIN"), validate(shiftSchema.partial()), async
       }
     }
 
+    const { employeeIds } = request.body;
+    const shiftData = { ...request.body };
+    delete shiftData.employeeIds;
+
     const shift = await prisma.shift.update({
       where: { id },
-      data: request.body,
+      data: shiftData,
     });
+
+    // Synchronize employees assigned to this shift
+    if (employeeIds && Array.isArray(employeeIds)) {
+      // 1. Unassign all employees currently assigned to this shift
+      await prisma.employee.updateMany({
+        where: { shiftId: id },
+        data: { shiftId: null },
+      });
+
+      // 2. Assign the new set of selected employees
+      if (employeeIds.length > 0) {
+        await prisma.employee.updateMany({
+          where: { id: { in: employeeIds } },
+          data: { shiftId: id },
+        });
+      }
+    }
 
     return sendSuccess(response, "Shift updated successfully", shift);
   } catch (error) {

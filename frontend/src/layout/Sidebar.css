@@ -242,7 +242,7 @@
     top: 0;
     bottom: 0;
     left: 0;
-    z-index: calc(var(--z-nav) + 10);
+    z-index: calc(var(--z-overlay) + 10);
     width: var(--sidebar-width);
     height: 100vh;
     transform: translateX(-100%);

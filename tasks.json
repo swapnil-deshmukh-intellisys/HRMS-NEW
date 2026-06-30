@@ -1042,5 +1042,63 @@
     "expectedOutput": "Unified worked duration progress bars and timeline event logs between the Live Telemetry page and the Employee Profile page.",
     "createdAt": "2026-06-29T12:35:00Z",
     "updatedAt": "2026-06-29T12:54:00Z"
+  },
+  {
+    "taskId": "TSK-DEPT-001",
+    "moduleId": "MOD-DASHBOARD",
+    "sprint": "Sprint 4",
+    "project": "HRMS",
+    "page": "Departments Page",
+    "module": "Role Dashboards & Analytics",
+    "submodule": "Departments Redesign",
+    "title": "Redesign Departments Page with Box Structure and Employee Counts",
+    "description": "Convert the Departments page from a table list to a premium grid of cards matching the dashboard's style. Update the backend /departments API to include the active employee count via Prisma relations.",
+    "frontendWork": "Create card-grid layout in DepartmentTable.tsx and style it in DepartmentTable.css with custom linear-gradient avatars based on department initials, pill-like code badges, and hover lift effects. Add employee count display.",
+    "backendWork": "Modify GET /departments endpoint to include _count: { select: { employees: true } } in the Prisma query.",
+    "databaseWork": "None",
+    "apiWork": "GET /api/departments",
+    "testingWork": "Verify correct employee counts are returned by the API and render accurately on the frontend cards.",
+    "priority": "HIGH",
+    "estimatedHours": 6,
+    "actualHours": 6,
+    "dependencies": [
+      "TSK-EMP-001"
+    ],
+    "riskLevel": "LOW",
+    "status": "COMPLETED",
+    "completionPercentage": 100,
+    "owner": "Fullstack Team",
+    "expectedOutput": "Departments page displays as a grid of premium cards showing the count of employees in each department.",
+    "createdAt": "2026-06-30T09:00:00Z",
+    "updatedAt": "2026-06-30T09:20:00Z"
+  },
+  {
+    "taskId": "TSK-LDB-002",
+    "moduleId": "MOD-DASHBOARD",
+    "sprint": "Sprint 4",
+    "project": "HRMS",
+    "page": "Leaderboard Page",
+    "module": "Role Dashboards & Analytics",
+    "submodule": "Leaderboard Refinements",
+    "title": "Refine Leaderboard Previous Winner Card, Avatars, and Button Themes",
+    "description": "Refine the Previous Winner card on the Leaderboard page to be a square block taking exactly half the parent height. Replace the trophy emoji with an animated party popper. Swapped flat avatar backgrounds for premium gradients. Swapped sky blue buttons for the unified dark blue accent gradient.",
+    "frontendWork": "Update LeaderboardPage.css to set bottom: 50% and aspect-ratio: 1/1 on the previous winner card. Add party-pop keyframe animation to the party popper emoji. Replace AVATAR_COLORS in LeaderboardPage.tsx with 6 premium linear gradients. Update DepartmentTable.css and EmployeeTable.css to style buttons with var(--color-accent-gradient), var(--radius-md) border radius, and custom glow shadows.",
+    "backendWork": "None",
+    "databaseWork": "None",
+    "apiWork": "None",
+    "testingWork": "Verify previous winner card layout on desktop and mobile, assert party popper animation triggers, verify avatar gradients, and check button styles.",
+    "priority": "HIGH",
+    "estimatedHours": 4,
+    "actualHours": 4,
+    "dependencies": [
+      "TSK-ATT-014"
+    ],
+    "riskLevel": "LOW",
+    "status": "COMPLETED",
+    "completionPercentage": 100,
+    "owner": "Fullstack Team",
+    "expectedOutput": "Leaderboard page Previous Winner card is square, half-height, and features an animated party popper; employee ranking avatars use premium gradients, and buttons are unified under the dark blue theme.",
+    "createdAt": "2026-06-30T09:10:00Z",
+    "updatedAt": "2026-06-30T09:40:00Z"
   }
 ]

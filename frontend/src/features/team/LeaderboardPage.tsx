@@ -427,7 +427,6 @@ export default function LeaderboardPage({
 
   const isCurrentMonth = month === now.getMonth() + 1 && year === now.getFullYear();
   const prevMonthIndex = month - 2 < 0 ? 11 : month - 2;
-  const prevMonthYear = month - 2 < 0 ? year - 1 : year;
   const maxHours = data?.workHoursRanking[0]?.totalHours ?? 1;
   const maxOnTime = data?.onTimeRanking[0]?.onTimeDays ?? 1;
 

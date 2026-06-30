@@ -554,8 +554,8 @@ const WorkdayTimeline: React.FC<WorkdayTimelineProps> = ({
   const requiredMins = 540 + (penaltyMinutes || 0);
   const isOvertime = workedTime ? (workedTime.hours * 60 + workedTime.minutes) > requiredMins : false;
 
-  const statusLabel = checkOutTime ? 'Completed' : isShiftOver ? 'Shift Ended' : isShiftPending ? 'Pending' : checkInIsLate ? 'Late' : checkInPct !== null ? 'Present' : 'Active';
-  const statusClass = checkOutTime ? 'over' : isShiftOver ? 'over' : isShiftPending ? 'pending' : checkInIsLate ? 'late' : 'active';
+  const statusLabel = !checkInTime ? 'Not Checked In' : checkOutTime ? 'Completed' : isShiftOver ? 'Shift Ended' : isShiftPending ? 'Pending' : checkInIsLate ? 'Late' : checkInPct !== null ? 'Present' : 'Active';
+  const statusClass = !checkInTime ? 'offline' : checkOutTime ? 'over' : isShiftOver ? 'over' : isShiftPending ? 'pending' : checkInIsLate ? 'late' : 'active';
 
   const finalEndTimeLabel = useMemo(() => {
     if (!endTime) return '';
@@ -577,29 +577,31 @@ const WorkdayTimeline: React.FC<WorkdayTimelineProps> = ({
       </div>
 
       <div className={`wdt-header-minimal ${!isExpanded ? 'wdt-header-collapsed' : ''}`}>
-          <div className="wdt-minimal-title">
-            <span className={`wdt-pulse-dot ${statusClass}`} />
-            <h3 className="wdt-title-sleek">Workday Progress</h3>
-            <span className="wdt-status-text">{statusLabel}</span>
-          </div>
-          <div className="wdt-minimal-meta">
-            {workedTime && (
-              <span className="wdt-time-compact">
-                {formatDuration(workedTime.hours, workedTime.minutes)} worked
-                {elapsedTime && ` (out of ${formatDuration(elapsedTime.hours, elapsedTime.minutes)} elapsed)`}
-                {penaltyMinutes ? ` (includes ${penaltyMinutes}m penalty)` : ''}
-                {isOvertime && (
-                  <span className="wdt-overtime-badge">
-                    +{formatDuration(
-                      Math.floor((workedTime.hours * 60 + workedTime.minutes - requiredMins) / 60),
-                      (workedTime.hours * 60 + workedTime.minutes - requiredMins) % 60
-                    )} OT
-                  </span>
-                )}
-              </span>
-            )}
-          </div>
+        <div className="wdt-status-group">
+          <span className={`wdt-pulse-dot ${statusClass}`} />
+          <span className="wdt-status-text">{statusLabel}</span>
         </div>
+
+        <h3 className="wdt-title-sleek">Workday Progress</h3>
+
+        <div className="wdt-minimal-meta">
+          {workedTime && (
+            <span className="wdt-time-compact">
+              {formatDuration(workedTime.hours, workedTime.minutes)} worked
+              {elapsedTime && ` (out of ${formatDuration(elapsedTime.hours, elapsedTime.minutes)} elapsed)`}
+              {penaltyMinutes ? ` (includes ${penaltyMinutes}m penalty)` : ''}
+              {isOvertime && (
+                <span className="wdt-overtime-badge">
+                  +{formatDuration(
+                    Math.floor((workedTime.hours * 60 + workedTime.minutes - requiredMins) / 60),
+                    (workedTime.hours * 60 + workedTime.minutes - requiredMins) % 60
+                  )} OT
+                </span>
+              )}
+            </span>
+          )}
+        </div>
+      </div>
       <div className="wdt-bar-interface-row">
         <div className="wdt-gauge-area">
           <div className="wdt-gauge-container">
@@ -609,6 +611,12 @@ const WorkdayTimeline: React.FC<WorkdayTimelineProps> = ({
               onMouseLeave={() => setHoverText(null)}
             >
               <div className="wdt-rail-glass" />
+              
+              {!checkInTime && (
+                <div className="wdt-rail-placeholder">
+                  Not checked in today
+                </div>
+              )}
               
               <div className="wdt-rail-content">
                 {checkInPct !== null && checkInIsLate && (

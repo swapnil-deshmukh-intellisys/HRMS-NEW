@@ -145,5 +145,19 @@
     "title": "Refine Leaderboard Previous Winner Card, Avatars, and Button Themes",
     "status": "COMPLETED",
     "narrative": "Refined the Previous Winner card on the Leaderboard page to be a square block taking exactly half the parent height on desktop, with responsive overrides for mobile. Replaced the trophy emoji with a party popper emoji featuring a custom scale-and-sway animation. Updated the employee ranking list avatars to use the same 6 premium linear gradients. Finally, unified the button design across the app by updating the Add Department and Add Employee buttons to use the dark blue accent gradient, 16px border-radius, and custom glow shadows."
+  },
+  {
+    "date": "2026-06-30",
+    "taskId": "TSK-ATT-016",
+    "title": "Refine Workday Progress Header Layout and Handle Not-Checked-In State",
+    "status": "COMPLETED",
+    "narrative": "Restructured the Workday Progress header to center the title horizontally while keeping the status dot and badge side-by-side on the left. Correctly handled the not-checked-in state by showing a Not Checked In status label, a gray dot, and a centered placeholder text overlay inside the progress bar rail."
+  },
+  {
+    "date": "2026-06-30",
+    "taskId": "TSK-EMP-005",
+    "title": "Align Button Themes on Payroll/Leaves Pages and Seed Test Accounts",
+    "status": "COMPLETED",
+    "narrative": "Unified the button styling across the app by transforming the Create Record, View Team Calendar, View Leave Balances, and Apply for Leave buttons to use the dark blue accent gradient and outline themes with high contrast. Created a seeding script to add test1@gmail.com and test2@gmail.com test employee accounts with default profiles and leave balances."
   }
 ]

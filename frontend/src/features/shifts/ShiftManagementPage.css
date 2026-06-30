@@ -909,3 +909,88 @@
   padding: 0 4px;
   letter-spacing: 0;
 }
+
+/* Shift Modal Employee Assignment Section */
+.shift-employees-section {
+  margin-top: var(--space-5);
+  border-top: 1px solid var(--color-border-subtle);
+  padding-top: var(--space-4);
+}
+
+.shift-employee-search-box {
+  position: relative;
+  margin-bottom: var(--space-3);
+  width: 100%;
+}
+
+.shift-employee-search-box .search-icon {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--color-text-secondary);
+  pointer-events: none;
+}
+
+.shift-employee-search-box .search-input-small {
+  padding-left: 32px !important;
+  height: 36px;
+  font-size: var(--text-sm);
+  width: 100%;
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-hover);
+}
+
+.shift-employee-list-scrollable {
+  max-height: 180px;
+  overflow-y: auto;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-sm);
+  padding: 8px;
+  background: var(--color-surface-hover);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.shift-employee-checkbox-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: var(--radius-xs);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.shift-employee-checkbox-item:hover {
+  background: rgba(148, 163, 184, 0.08);
+}
+
+.shift-employee-checkbox-item .checkbox-input {
+  cursor: pointer;
+}
+
+.shift-employee-checkbox-item .checkbox-label-text {
+  font-size: var(--text-sm);
+  color: var(--color-text-default);
+}
+
+.shift-employee-checkbox-item .emp-code-small {
+  font-size: 11px;
+  color: var(--color-text-secondary);
+  font-family: var(--font-mono);
+}
+
+.shift-employee-checkbox-item .current-shift-hint {
+  font-size: 11px;
+  color: var(--color-text-secondary);
+  font-style: italic;
+}
+
+.empty-message-small {
+  font-size: var(--text-xs);
+  color: var(--color-text-secondary);
+  text-align: center;
+  padding: var(--space-4) 0;
+}

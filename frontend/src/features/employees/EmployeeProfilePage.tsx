@@ -6,7 +6,17 @@ import MessageCard from "../../components/common/MessageCard";
 import Modal from "../../components/common/Modal";
 import toast from "react-hot-toast";
 import { apiRequest } from "../../services/api";
-import type { Attendance, Department, Employee, LeaveBalance, LeaveRequest, PayrollRecord, Role, CalendarException } from "../../types";
+import type {
+  Attendance,
+  CalendarException,
+  Department,
+  Employee,
+  LeaveBalance,
+  LeaveRequest,
+  PayrollRecord,
+  Role,
+  Shift,
+} from "../../types";
 import EmployeeForm, { type EmployeeFormValues } from "./EmployeeForm";
 import EmployeeAttendanceTab from "./EmployeeAttendanceTab";
 import EmployeeLeavesTab from "./EmployeeLeavesTab";
@@ -49,6 +59,7 @@ function toEmployeeForm(employee: Employee): EmployeeFormValues {
     internshipType: employee.internshipType ?? "PAID",
     stipend: employee.stipend ? String(employee.stipend) : "",
     maritalStatus: employee.maritalStatus ?? "",
+    shiftId: employee.shiftId ? String(employee.shiftId) : "",
   };
 }
 
@@ -63,6 +74,7 @@ export default function EmployeeProfilePage({ token, role, currentEmployeeId }: 
   const [payroll, setPayroll] = useState<PayrollRecord[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
+  const [shifts, setShifts] = useState<Shift[]>([]);
   const [localExceptions, setLocalExceptions] = useState<CalendarException[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
@@ -181,8 +193,16 @@ export default function EmployeeProfilePage({ token, role, currentEmployeeId }: 
       );
     }
 
+    if (!shifts.length) {
+      requests.push(
+        apiRequest<Shift[]>("/shifts", { token }).then((response) => {
+          setShifts(response.data);
+        }),
+      );
+    }
+
     await Promise.all(requests);
-  }, [canManageEmployee, departments.length, employees.length, token]);
+  }, [canManageEmployee, departments.length, employees.length, shifts.length, token]);
 
   async function openEmployeeModal() {
     if (!canManageEmployee) {
@@ -222,6 +242,7 @@ export default function EmployeeProfilePage({ token, role, currentEmployeeId }: 
         employmentType: formValues.employmentType || "FULL_TIME",
         internshipType: formValues.employmentType === "INTERNSHIP" ? formValues.internshipType : null,
         stipend: formValues.employmentType === "INTERNSHIP" && formValues.internshipType === "PAID" && formValues.stipend ? Number(formValues.stipend) : null,
+        shiftId: formValues.shiftId ? Number(formValues.shiftId) : null,
       };
 
       await apiRequest<Employee>(`/employees/${employee.id}`, {
@@ -340,6 +361,7 @@ export default function EmployeeProfilePage({ token, role, currentEmployeeId }: 
           form={form}
           departments={departments}
           employees={employees}
+          shifts={shifts}
           editingEmployeeId={employee.id}
           isSubmitting={submitting}
           onChange={setForm}

@@ -42,6 +42,7 @@ const employeeSchema = z.object({
   internshipType: z.string().optional().nullable(),
   stipend: z.union([z.coerce.number(), z.null()]).optional(),
   maritalStatus: z.string().optional().nullable(),
+  shiftId: z.coerce.number().int().positive().nullable().optional(),
 });
 
 const statusSchema = z.object({
@@ -518,6 +519,7 @@ router.post("/", requireRoles("ADMIN", "HR"), validate(employeeSchema), async (r
           internshipType: employeeData.internshipType,
           stipend: employeeData.stipend !== undefined && employeeData.stipend !== null ? Number(employeeData.stipend) : null,
           maritalStatus: employeeData.maritalStatus || null,
+          shiftId: employeeData.shiftId || null,
         },
         include: {
           user: { include: { role: true } },

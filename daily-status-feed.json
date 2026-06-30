@@ -159,5 +159,19 @@
     "title": "Align Button Themes on Payroll/Leaves Pages and Seed Test Accounts",
     "status": "COMPLETED",
     "narrative": "Unified the button styling across the app by transforming the Create Record, View Team Calendar, View Leave Balances, and Apply for Leave buttons to use the dark blue accent gradient and outline themes with high contrast. Created a seeding script to add test1@gmail.com and test2@gmail.com test employee accounts with default profiles and leave balances."
+  },
+  {
+    "date": "2026-06-30",
+    "taskId": "TSK-NAV-004",
+    "title": "Refine Navigation Layouts: Mobile Z-Index, Download Confirmation, and Conditional Back Button",
+    "status": "COMPLETED",
+    "narrative": "Refined mobile navigation layouts. Solved mobile sidebar menu clickability by increasing the sidebar's z-index to 1810 to place it in front of the backdrop overlay (1800). Added a download confirmation dialog to the 'Download Agent' sidebar button. Implemented a conditional 'Back to Leaves' button on the Calendar page that only displays when navigated to from the Leaves page."
+  },
+  {
+    "date": "2026-06-30",
+    "taskId": "TSK-INC-001",
+    "title": "Align Incentives Page Button Themes to Premium Theme",
+    "status": "COMPLETED",
+    "narrative": "Unified the button styling on the Incentives page by transforming the Create Incentive, Apply Filters, and Cancel buttons to use the dark blue accent gradient and outline themes."
   }
 ]

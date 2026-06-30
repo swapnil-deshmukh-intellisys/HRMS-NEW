@@ -1158,5 +1158,63 @@
     "expectedOutput": "All payroll and leave page buttons use the premium theme with high contrast. Two test accounts are seeded in the database and can be used to log in.",
     "createdAt": "2026-06-30T10:40:00Z",
     "updatedAt": "2026-06-30T11:10:00Z"
+  },
+  {
+    "taskId": "TSK-NAV-004",
+    "moduleId": "MOD-NAVIGATION",
+    "sprint": "Sprint 4",
+    "project": "HRMS",
+    "page": "Sidebar & Calendar Pages",
+    "module": "Navigation",
+    "submodule": "Mobile Sidebar Overlay and Download Agent Dialog",
+    "title": "Refine Navigation Layouts: Mobile Z-Index, Download Confirmation, and Conditional Back Button",
+    "description": "Fix mobile sidebar menu clickability by increasing the sidebar's z-index to 1810, placing it in front of the backdrop overlay (1800). Add a confirmation dialog before downloading the HRMS desktop agent from the sidebar. Implement a conditional 'Back to Leaves' button on the Calendar page that only displays when navigated to from the Leaves page.",
+    "frontendWork": "Update Sidebar.css to set z-index: calc(var(--z-overlay) + 10) on mobile. Update Sidebar.tsx to add onClick handler with window.confirm on the Download Agent link. Update LeavesPage.tsx to pass router state on calendar navigation, and update CalendarPage.tsx to conditionally render the Back to Leaves button.",
+    "backendWork": "None",
+    "databaseWork": "None",
+    "apiWork": "None",
+    "testingWork": "Verify sidebar menu items are clickable on mobile view. Verify confirmation box pops up on download click. Verify Back to Leaves button displays only when clicking View Team Calendar.",
+    "priority": "HIGH",
+    "estimatedHours": 3,
+    "actualHours": 3,
+    "dependencies": [
+      "TSK-ATT-016"
+    ],
+    "riskLevel": "LOW",
+    "status": "COMPLETED",
+    "completionPercentage": 100,
+    "owner": "Fullstack Team",
+    "expectedOutput": "Mobile sidebar is fully clickable. Download agent has a confirmation dialog. Calendar page has a back button when coming from leaves.",
+    "createdAt": "2026-06-30T11:15:00Z",
+    "updatedAt": "2026-06-30T11:35:00Z"
+  },
+  {
+    "taskId": "TSK-INC-001",
+    "moduleId": "MOD-PAYROLL",
+    "sprint": "Sprint 4",
+    "project": "HRMS",
+    "page": "Incentives Page",
+    "module": "Payroll",
+    "submodule": "Incentives Button Themes",
+    "title": "Align Incentives Page Button Themes to Premium Theme",
+    "description": "Convert primary buttons (Create Incentive, Apply Filters, Submit) and secondary buttons (Cancel) on the Incentives page to use the premium dark blue gradient and outline styles.",
+    "frontendWork": "Update IncentivesPage.css to style primary buttons with var(--color-accent-gradient) and secondary buttons with an outline adaptive overlay (rgba(148, 163, 184, 0.08)) and var(--color-text-strong) for high contrast.",
+    "backendWork": "None",
+    "databaseWork": "None",
+    "apiWork": "None",
+    "testingWork": "Verify button styles on Incentives page, assert text readability and hover/active animations.",
+    "priority": "HIGH",
+    "estimatedHours": 2,
+    "actualHours": 2,
+    "dependencies": [
+      "TSK-EMP-005"
+    ],
+    "riskLevel": "LOW",
+    "status": "COMPLETED",
+    "completionPercentage": 100,
+    "owner": "Fullstack Team",
+    "expectedOutput": "All buttons on the Incentives page follow the premium design system.",
+    "createdAt": "2026-06-30T11:40:00Z",
+    "updatedAt": "2026-06-30T11:55:00Z"
   }
 ]

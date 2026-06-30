@@ -246,14 +246,18 @@
       "TSK-DEPT-001",
       "TSK-LDB-002",
       "TSK-ATT-016",
-      "TSK-EMP-005"
+      "TSK-EMP-005",
+      "TSK-NAV-004",
+      "TSK-INC-001"
     ],
     "inProgressTasks": [],
     "newTasksCreated": [
       "TSK-DEPT-001",
       "TSK-LDB-002",
       "TSK-ATT-016",
-      "TSK-EMP-005"
+      "TSK-EMP-005",
+      "TSK-NAV-004",
+      "TSK-INC-001"
     ],
     "bugsFixed": [
       "Fixed all departments showing 0 count of employees on the remote server by committing and pushing the backend query updates",
@@ -261,12 +265,14 @@
       "Refined previous winner card layout to be a square block taking exactly half of the parent's height, with responsive overrides unsetting the aspect ratio on mobile",
       "Fixed vertical and horizontal alignment of Workday Progress header elements, centering the title and grouping the status dot/badge on the left",
       "Fixed a bug where a user who is not checked in was shown as ACTIVE with a pulsing green dot by implementing Not Checked In status logic and a gray offline dot",
-      "Fixed low contrast on leave page secondary buttons by using var(--color-text-strong) and a semi-transparent adaptive overlay"
+      "Fixed low contrast on leave page secondary buttons by using var(--color-text-strong) and a semi-transparent adaptive overlay",
+      "Fixed mobile sidebar menu clickability by increasing the sidebar's z-index to 1810 so it sits in front of the backdrop overlay",
+      "Fixed incentives page button styling by converting primary and secondary buttons to the premium dark blue gradient and outline themes"
     ],
     "blockers": [],
-    "hoursWorked": 12,
-    "dailyProgress": 4,
+    "hoursWorked": 16,
+    "dailyProgress": 6,
     "overallProjectProgress": 100,
-    "remarks": "Successfully redesigned the Departments page to display a grid of premium cards. The backend query was updated to fetch the active employee count in each department via Prisma relations, and the frontend renders modern gradient avatars, pill-shaped code badges, and hover lift effects. Also refined the Leaderboard page: resized the Previous Winner card to be a square block taking half the parent's height, replaced the trophy emoji with an animated party popper, and changed the employee list ranking avatars to use the same 6 premium linear gradients. Lastly, unified the button styling across the app by transforming the Add Department, Add Employee, Create Record, View Team Calendar, View Leave Balances, and Apply for Leave buttons to use the dark blue accent gradient and outline themes. Restructured the Workday Progress header to center the title horizontally while keeping the status dot and badge side-by-side on the left. Correctly handled the not-checked-in state by showing a Not Checked In status label, a gray dot, and a centered placeholder text overlay inside the progress bar rail. Created a seeding script to add test1@gmail.com and test2@gmail.com test employee accounts with default profiles and leave balances."
+    "remarks": "Successfully redesigned the Departments page to display a grid of premium cards. The backend query was updated to fetch the active employee count in each department via Prisma relations, and the frontend renders modern gradient avatars, pill-shaped code badges, and hover lift effects. Also refined the Leaderboard page: resized the Previous Winner card to be a square block taking half the parent's height, replaced the trophy emoji with an animated party popper, and changed the employee list ranking avatars to use the same 6 premium linear gradients. Lastly, unified the button styling across the app by transforming the Add Department, Add Employee, Create Record, View Team Calendar, View Leave Balances, Apply for Leave, Create Incentive, Apply Filters, and Cancel buttons to use the dark blue accent gradient and outline themes. Restructured the Workday Progress header to center the title horizontally while keeping the status dot and badge side-by-side on the left. Correctly handled the not-checked-in state by showing a Not Checked In status label, a gray dot, and a centered placeholder text overlay inside the progress bar rail. Created a seeding script to add test1@gmail.com and test2@gmail.com test employee accounts with default profiles and leave balances. Fixed mobile sidebar clickability, added a confirmation box before downloading the desktop agent, and added a conditional 'Back to Leaves' button on the Calendar page."
   }
 ]

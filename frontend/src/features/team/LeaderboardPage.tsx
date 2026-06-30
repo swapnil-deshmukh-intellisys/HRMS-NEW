@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Trophy, Clock, Timer, ArrowLeft, ChevronLeft, ChevronRight, Medal, Star, Plus, Minus, History } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { apiRequest } from "../../services/api";
+import { apiRequest, getFileUrl } from "../../services/api";
 import toast from "react-hot-toast";
 import Modal from "../../components/common/Modal";
 import "./LeaderboardPage.css";
@@ -14,6 +14,7 @@ type LeaderboardEmployee = {
   jobTitle: string | null;
   department: { name: string } | null;
   points?: number;
+  profilePictureUrl?: string | null;
 };
 
 type PointHistoryEntry = {
@@ -98,6 +99,54 @@ function ProgressBar({ value, max, color }: { value: number; max: number; color:
   return (
     <div className="lb-progress-track">
       <div className="lb-progress-fill" style={{ width: `${pct}%`, background: color }} />
+    </div>
+  );
+}
+
+const AVATAR_COLORS = [
+  "#e57373", // Red
+  "#f06292", // Pink
+  "#ba68c8", // Purple
+  "#9575cd", // Deep Purple
+  "#7986cb", // Indigo
+  "#64b5f6", // Blue
+  "#4fc3f7", // Light Blue
+  "#4dd0e1", // Cyan
+  "#4db6ac", // Teal
+  "#81c784", // Green
+  "#aed581", // Light Green
+  "#d4e157", // Lime
+  "#ffd54f", // Amber
+  "#ffb74d", // Orange
+  "#ff8a65", // Deep Orange
+  "#a1887f", // Brown
+  "#90a4ae"  // Blue Grey
+];
+
+function getAvatarColor(employeeId: number) {
+  const index = Math.abs(employeeId) % AVATAR_COLORS.length;
+  return AVATAR_COLORS[index];
+}
+
+function LeaderboardAvatar({ employee }: { employee: LeaderboardEmployee }) {
+  const [error, setError] = useState(false);
+  const initials = `${employee.firstName.charAt(0)}${employee.lastName.charAt(0)}`.toUpperCase();
+  
+  const hasPic = !!(employee.profilePictureUrl && !error);
+  const avatarBg = hasPic ? "transparent" : getAvatarColor(employee.id);
+
+  return (
+    <div className="lb-row-avatar" style={{ background: avatarBg }}>
+      {hasPic ? (
+        <img
+          src={getFileUrl(employee.profilePictureUrl!) || ""}
+          alt={`${employee.firstName} ${employee.lastName}`}
+          onError={() => setError(true)}
+          style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: "50%" }}
+        />
+      ) : (
+        initials
+      )}
     </div>
   );
 }
@@ -433,86 +482,67 @@ export default function LeaderboardPage({
         <>
           {/* Employee of the Month Hero / Current Month Split Hero */}
           {isCurrentMonth ? (
-            <div className="lb-hero-split">
-              {/* Previous Winner (Main Highlighted) */}
+            <div className="lb-hero-combined lb-eom-card">
+              <div className="lb-eom-glow" />
+              
+              {/* Previous Winner (Smaller Nested Container in Top-Left) */}
               {prevWinnerEntry ? (
-                <div className="lb-eom-card lb-hero-main">
-                  <div className="lb-eom-glow" />
-                  <div className="lb-eom-content">
-                    <div className="lb-eom-crown">🏆</div>
-                    <div className="lb-eom-label">
-                      Previous Month's Winner ({MONTH_NAMES[prevMonthIndex]} {prevMonthYear})
-                    </div>
-                    <div className="lb-eom-name">
+                <div className="lb-hero-nested-prev">
+                  <span className="lb-nested-crown">🏆</span>
+                  <div className="lb-nested-info">
+                    <span className="lb-nested-label">
+                      Prev Winner ({MONTH_NAMES[prevMonthIndex]})
+                    </span>
+                    <span className="lb-nested-name">
                       {prevWinnerEntry.employee.firstName} {prevWinnerEntry.employee.lastName}
-                    </div>
-                    <div className="lb-eom-role">
-                      {prevWinnerEntry.employee.jobTitle ?? "Employee"}
-                      {prevWinnerEntry.employee.department && ` · ${prevWinnerEntry.employee.department.name}`}
-                    </div>
-                    <div className="lb-eom-stats">
-                      <div className="lb-eom-stat">
-                        <Timer size={16} />
-                        <span><strong>{prevWinnerEntry.totalHours}h</strong> worked</span>
-                      </div>
-                      <div className="lb-eom-stat">
-                        <Clock size={16} />
-                        <span><strong>{prevWinnerEntry.presentDays}</strong> days present</span>
-                      </div>
-                      <div className="lb-eom-stat">
-                        <Star size={16} />
-                        <span><strong>{prevWinnerEntry.employee.points ?? 0}</strong> pts total</span>
-                      </div>
-                    </div>
+                    </span>
+                    <span className="lb-nested-meta">
+                      {prevWinnerEntry.totalHours}h worked · {prevWinnerEntry.presentDays}d present
+                    </span>
                   </div>
                 </div>
               ) : (
-                <div className="lb-eom-card lb-hero-main lb-hero-empty">
-                  <div className="lb-eom-content">
-                    <div className="lb-eom-crown">🏆</div>
-                    <div className="lb-eom-label">Previous Month's Winner</div>
-                    <div className="lb-eom-name" style={{ fontSize: "20px", opacity: 0.7 }}>No Data Available</div>
+                <div className="lb-hero-nested-prev lb-hero-nested-empty">
+                  <span className="lb-nested-crown">🏆</span>
+                  <div className="lb-nested-info">
+                    <span className="lb-nested-label">Prev Winner</span>
+                    <span className="lb-nested-name" style={{ opacity: 0.6 }}>No data</span>
                   </div>
                 </div>
               )}
 
-              {/* Current Winner in Progress (Sub Highlighted) */}
+              {/* Current Progress Leader (Prominently Focused in Main Area) */}
               {data.employeeOfMonth ? (
-                <div className="lb-eom-card lb-hero-sub">
-                  <div className="lb-eom-glow" />
-                  <div className="lb-eom-content">
-                    <div className="lb-eom-crown" style={{ animationDelay: "0.5s" }}>⚡</div>
-                    <div className="lb-eom-label">Current Leader (In Progress)</div>
-                    <div className="lb-eom-name">
-                      {data.employeeOfMonth.employee.firstName} {data.employeeOfMonth.employee.lastName}
+                <div className="lb-hero-current-main lb-eom-content">
+                  <div className="lb-eom-crown" style={{ animationDelay: "0.5s" }}>⚡</div>
+                  <div className="lb-eom-label">Current Leader (In Progress)</div>
+                  <div className="lb-eom-name">
+                    {data.employeeOfMonth.employee.firstName} {data.employeeOfMonth.employee.lastName}
+                  </div>
+                  <div className="lb-eom-role">
+                    {data.employeeOfMonth.employee.jobTitle ?? "Employee"}
+                    {data.employeeOfMonth.employee.department && ` · ${data.employeeOfMonth.employee.department.name}`}
+                  </div>
+                  <div className="lb-eom-stats">
+                    <div className="lb-eom-stat">
+                      <Timer size={16} />
+                      <span><strong>{data.employeeOfMonth.totalHours}h</strong> worked</span>
                     </div>
-                    <div className="lb-eom-role">
-                      {data.employeeOfMonth.employee.jobTitle ?? "Employee"}
-                      {data.employeeOfMonth.employee.department && ` · ${data.employeeOfMonth.employee.department.name}`}
+                    <div className="lb-eom-stat">
+                      <Clock size={16} />
+                      <span><strong>{data.employeeOfMonth.presentDays}</strong> days present</span>
                     </div>
-                    <div className="lb-eom-stats">
-                      <div className="lb-eom-stat">
-                        <Timer size={14} />
-                        <span><strong>{data.employeeOfMonth.totalHours}h</strong> worked</span>
-                      </div>
-                      <div className="lb-eom-stat">
-                        <Clock size={14} />
-                        <span><strong>{data.employeeOfMonth.presentDays}</strong> days present</span>
-                      </div>
-                      <div className="lb-eom-stat">
-                        <Star size={14} />
-                        <span><strong>{pointsMap[data.employeeOfMonth.employee.id] ?? 0}</strong> pts total</span>
-                      </div>
+                    <div className="lb-eom-stat">
+                      <Star size={16} />
+                      <span><strong>{pointsMap[data.employeeOfMonth.employee.id] ?? 0}</strong> pts total</span>
                     </div>
                   </div>
                 </div>
               ) : (
-                <div className="lb-eom-card lb-hero-sub lb-hero-empty">
-                  <div className="lb-eom-content">
-                    <div className="lb-eom-crown">⚡</div>
-                    <div className="lb-eom-label">Current Leader (In Progress)</div>
-                    <div className="lb-eom-name" style={{ fontSize: "20px", opacity: 0.7 }}>No Data Available</div>
-                  </div>
+                <div className="lb-hero-current-main lb-eom-content lb-hero-empty-state">
+                  <div className="lb-eom-crown">⚡</div>
+                  <div className="lb-eom-label">Current Leader (In Progress)</div>
+                  <div className="lb-eom-name" style={{ fontSize: "20px", opacity: 0.7 }}>No Data Available</div>
                 </div>
               )}
             </div>
@@ -593,28 +623,67 @@ export default function LeaderboardPage({
                 <h3>Work Hours Ranking</h3>
                 <span className="lb-ranking-period">{MONTH_NAMES[month - 1]} {year}</span>
               </div>
+              {(() => {
+                const selfIndex = data.workHoursRanking.findIndex(e => e.employee.id === currentEmployeeId);
+                if (selfIndex === -1) return null;
+                const selfEntry = data.workHoursRanking[selfIndex];
+                const total = data.workHoursRanking.length;
+                const percentile = Math.round(((total - selfIndex) / total) * 100);
+                let nextRankDiff = null;
+                if (selfIndex > 0) {
+                  const nextEntry = data.workHoursRanking[selfIndex - 1];
+                  nextRankDiff = +(nextEntry.totalHours - selfEntry.totalHours).toFixed(1);
+                }
+                return (
+                  <div className="lb-self-standing-summary">
+                    <div className="lb-standing-main">
+                      <span className="lb-standing-indicator">Your Standing</span>
+                      <div className="lb-standing-details">
+                        <span className="lb-standing-rank">
+                          Rank <strong>#{selfEntry.rank}</strong> of {total}
+                        </span>
+                        <span className="lb-standing-tier">({percentile}% Tier)</span>
+                      </div>
+                    </div>
+                    <div className="lb-standing-gamification">
+                      <span className="lb-standing-score">{selfEntry.totalHours}h worked</span>
+                      {nextRankDiff !== null && nextRankDiff > 0 && (
+                        <span className="lb-standing-next-tip">
+                          ⚡ {nextRankDiff}h behind Rank #{selfEntry.rank - 1}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })()}
               <div className="lb-ranking-list">
                 {data.workHoursRanking.map((entry) => {
                   const isPrevWinner = isCurrentMonth && entry.employee.id === prevWorkHoursWinnerId;
                   const isCurrentLeader = isCurrentMonth && entry.rank === 1;
+                  const isSelf = entry.employee.id === currentEmployeeId;
                   return (
                     <div
                       key={entry.employee.id}
                       className={`lb-row ${entry.rank <= 3 ? "lb-row--top" : ""} ${
                         isPrevWinner ? "lb-row--previous-winner" : ""
-                      } ${isCurrentLeader ? "lb-row--current-leader-inprogress" : ""}`}
+                      } ${isCurrentLeader ? "lb-row--current-leader-inprogress" : ""} ${
+                        isSelf ? "lb-row--self" : ""
+                      }`}
                     >
                       <div className="lb-row-rank">
                         <RankBadge rank={entry.rank} />
                       </div>
-                      <div className="lb-row-avatar">
-                        {entry.employee.firstName[0]}{entry.employee.lastName[0]}
-                      </div>
+                      <LeaderboardAvatar employee={entry.employee} />
                       <div className="lb-row-info">
                         <div className="lb-row-name">
                           {entry.employee.firstName} {entry.employee.lastName}
                           <span className="lb-row-code">#{entry.employee.employeeCode}</span>
                           <span className="lb-points-badge"><Star size={10} />{pointsMap[entry.employee.id] ?? 0} pts</span>
+                          {isSelf && (
+                            <span className="lb-badge lb-badge--self" title="This is you">
+                              You
+                            </span>
+                          )}
                           {isPrevWinner && (
                             <span className="lb-badge lb-badge--previous-winner" title="Winner of the previous month">
                               🏆 Previous Winner
@@ -676,28 +745,68 @@ export default function LeaderboardPage({
                   <p>No check-in data for this month.</p>
                 </div>
               ) : (
-                <div className="lb-ranking-list">
+                <>
+                  {(() => {
+                    const selfIndex = data.onTimeRanking.findIndex(e => e.employee.id === currentEmployeeId);
+                    if (selfIndex === -1) return null;
+                    const selfEntry = data.onTimeRanking[selfIndex];
+                    const total = data.onTimeRanking.length;
+                    const percentile = Math.round(((total - selfIndex) / total) * 100);
+                    let nextRankDiff = null;
+                    if (selfIndex > 0) {
+                      const nextEntry = data.onTimeRanking[selfIndex - 1];
+                      nextRankDiff = nextEntry.onTimeDays - selfEntry.onTimeDays;
+                    }
+                    return (
+                      <div className="lb-self-standing-summary">
+                        <div className="lb-standing-main">
+                          <span className="lb-standing-indicator">Your Standing</span>
+                          <div className="lb-standing-details">
+                            <span className="lb-standing-rank">
+                              Rank <strong>#{selfEntry.rank}</strong> of {total}
+                            </span>
+                            <span className="lb-standing-tier">({percentile}% Tier)</span>
+                          </div>
+                        </div>
+                        <div className="lb-standing-gamification">
+                          <span className="lb-standing-score">{selfEntry.onTimeRate}% rate ({selfEntry.onTimeDays} days)</span>
+                          {nextRankDiff !== null && nextRankDiff > 0 && (
+                            <span className="lb-standing-next-tip">
+                              ⚡ {nextRankDiff} check-in{nextRankDiff > 1 ? "s" : ""} behind Rank #{selfEntry.rank - 1}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })()}
+                  <div className="lb-ranking-list">
                   {data.onTimeRanking.map((entry) => {
                     const isPrevWinner = isCurrentMonth && entry.employee.id === prevOnTimeWinnerId;
                     const isCurrentLeader = isCurrentMonth && entry.rank === 1;
+                    const isSelf = entry.employee.id === currentEmployeeId;
                     return (
                       <div
                         key={entry.employee.id}
                         className={`lb-row ${entry.rank <= 3 ? "lb-row--top" : ""} ${
                           isPrevWinner ? "lb-row--previous-winner" : ""
-                        } ${isCurrentLeader ? "lb-row--current-leader-inprogress" : ""}`}
+                        } ${isCurrentLeader ? "lb-row--current-leader-inprogress" : ""} ${
+                          isSelf ? "lb-row--self" : ""
+                        }`}
                       >
                         <div className="lb-row-rank">
                           <RankBadge rank={entry.rank} />
                         </div>
-                        <div className="lb-row-avatar">
-                          {entry.employee.firstName[0]}{entry.employee.lastName[0]}
-                        </div>
+                        <LeaderboardAvatar employee={entry.employee} />
                         <div className="lb-row-info">
                           <div className="lb-row-name">
                             {entry.employee.firstName} {entry.employee.lastName}
                             <span className="lb-row-code">#{entry.employee.employeeCode}</span>
                             <span className="lb-points-badge"><Star size={10} />{pointsMap[entry.employee.id] ?? 0} pts</span>
+                            {isSelf && (
+                              <span className="lb-badge lb-badge--self" title="This is you">
+                                You
+                              </span>
+                            )}
                             {isPrevWinner && (
                               <span className="lb-badge lb-badge--previous-winner" title="Winner of the previous month">
                                 🏆 Previous Winner
@@ -743,7 +852,7 @@ export default function LeaderboardPage({
                     );
                   })}
                 </div>
-              )}
+              </>)}
             </div>
           )}
 
@@ -760,28 +869,69 @@ export default function LeaderboardPage({
                   <p>No points data available.</p>
                 </div>
               ) : (
-                <div className="lb-ranking-list">
+                <>
+                  {(() => {
+                    const selfIndex = data.pointsRanking.findIndex(e => e.employee.id === currentEmployeeId);
+                    if (selfIndex === -1) return null;
+                    const selfEntry = data.pointsRanking[selfIndex];
+                    const total = data.pointsRanking.length;
+                    const percentile = Math.round(((total - selfIndex) / total) * 100);
+                    
+                    const selfPoints = pointsMap[selfEntry.employee.id] ?? selfEntry.points;
+                    let nextRankDiff = null;
+                    if (selfIndex > 0) {
+                      const nextEntry = data.pointsRanking[selfIndex - 1];
+                      const nextPoints = pointsMap[nextEntry.employee.id] ?? nextEntry.points;
+                      nextRankDiff = nextPoints - selfPoints;
+                    }
+                    return (
+                      <div className="lb-self-standing-summary">
+                        <div className="lb-standing-main">
+                          <span className="lb-standing-indicator">Your Standing</span>
+                          <div className="lb-standing-details">
+                            <span className="lb-standing-rank">
+                              Rank <strong>#{selfEntry.rank}</strong> of {total}
+                            </span>
+                            <span className="lb-standing-tier">({percentile}% Tier)</span>
+                          </div>
+                        </div>
+                        <div className="lb-standing-gamification">
+                          <span className="lb-standing-score">{selfPoints} pts</span>
+                          {nextRankDiff !== null && nextRankDiff > 0 && (
+                            <span className="lb-standing-next-tip">
+                              ⚡ {nextRankDiff} pt{nextRankDiff > 1 ? "s" : ""} behind Rank #{selfEntry.rank - 1}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })()}
+                  <div className="lb-ranking-list">
                   {data.pointsRanking.map((entry) => {
                     const isCurrentLeader = entry.rank === 1;
                     const maxPoints = data.pointsRanking[0]?.points ?? 1;
+                    const isSelf = entry.employee.id === currentEmployeeId;
                     return (
                       <div
                         key={entry.employee.id}
                         className={`lb-row ${entry.rank <= 3 ? "lb-row--top" : ""} ${
                           isCurrentLeader ? "lb-row--current-leader-inprogress" : ""
-                        }`}
+                        } ${isSelf ? "lb-row--self" : ""}`}
                       >
                         <div className="lb-row-rank">
                           <RankBadge rank={entry.rank} />
                         </div>
-                        <div className="lb-row-avatar">
-                          {entry.employee.firstName[0]}{entry.employee.lastName[0]}
-                        </div>
+                        <LeaderboardAvatar employee={entry.employee} />
                         <div className="lb-row-info">
                           <div className="lb-row-name">
                             {entry.employee.firstName} {entry.employee.lastName}
                             <span className="lb-row-code">#{entry.employee.employeeCode}</span>
                             <span className="lb-points-badge"><Star size={10} />{pointsMap[entry.employee.id] ?? entry.points} pts</span>
+                            {isSelf && (
+                              <span className="lb-badge lb-badge--self" title="This is you">
+                                You
+                              </span>
+                            )}
                             {isCurrentLeader && (
                               <span className="lb-badge lb-badge--current-leader" title="Current Points Leader">
                                 👑 All-Time Leader
@@ -821,7 +971,7 @@ export default function LeaderboardPage({
                     );
                   })}
                 </div>
-              )}
+              </>)}
             </div>
           )}
           
@@ -1068,14 +1218,14 @@ export default function LeaderboardPage({
               gap: "8px"
             }}>
               <Trophy size={40} style={{ opacity: 0.35 }} />
-              <span style={{ fontSize: "14px", fontWeight: "500" }}>No points history found.</span>
+              <span style={{ fontSize: "12px", fontWeight: "500" }}>No points history found.</span>
             </div>
           ) : (
             <div className="lb-history-list" style={{ maxHeight: "400px", overflowY: "auto", display: "flex", flexDirection: "column", gap: "12px" }}>
               {pointsHistory.map(entry => (
                 <div key={entry.id} className="lb-history-item" style={{ padding: "16px", borderRadius: "8px", border: "1px solid #e2e8f0", background: "#f8fafc" }}>
                   <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "8px", alignItems: "center" }}>
-                    <strong style={{ fontSize: "16px", color: entry.mode === "add" ? "#059669" : entry.mode === "subtract" ? "#dc2626" : "#4f46e5", display: "flex", alignItems: "center", gap: "6px" }}>
+                    <strong style={{ fontSize: "12px", color: entry.mode === "add" ? "#059669" : entry.mode === "subtract" ? "#dc2626" : "#4f46e5", display: "flex", alignItems: "center", gap: "6px" }}>
                       {entry.mode === "add" ? <Plus size={14} /> : entry.mode === "subtract" ? <Minus size={14} /> : <Star size={14} />}
                       {entry.amount} pts
                     </strong>
@@ -1083,7 +1233,7 @@ export default function LeaderboardPage({
                       {new Date(entry.createdAt).toLocaleDateString()}
                     </span>
                   </div>
-                  <div style={{ fontSize: "14px", color: "#334155", marginBottom: "8px", lineHeight: "1.5" }}>{entry.reason}</div>
+                  <div style={{ fontSize: "12px", color: "#334155", marginBottom: "8px", lineHeight: "1.5" }}>{entry.reason}</div>
                   {entry.givenBy && (
                     <div style={{ fontSize: "12px", color: "#94a3b8", display: "flex", alignItems: "center", gap: "4px" }}>
                       <span style={{ width: "16px", height: "16px", borderRadius: "50%", background: "#cbd5e1", display: "flex", alignItems: "center", justifyContent: "center", color: "white", fontSize: "10px", fontWeight: "bold" }}>

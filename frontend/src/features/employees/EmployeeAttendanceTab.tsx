@@ -127,6 +127,84 @@ export default function EmployeeAttendanceTab({
     record: Attendance;
   } | null>(null);
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const getLatenessBreakdown = (rec: any) => {
+    const breakdown: string[] = [];
+    let totalLateness = 0;
+
+    // 1. Check-in lateness
+    const lateByMinutes = rec.lateByMinutes || 0;
+    if (lateByMinutes > 0) {
+      breakdown.push(`${lateByMinutes}m`);
+      totalLateness += lateByMinutes;
+    }
+
+    // 2. Break latenesses
+    if (rec.breakSessions && rec.breakSessions.length > 0) {
+      const emp = rec.employee || employee;
+      const shift = emp?.shift;
+      const hasBreaks = shift ? shift.hasBreaks : true;
+
+      if (hasBreaks) {
+        const shiftStartTimeStr = shift?.startTime || "09:00";
+        const shiftStartHour = parseInt(shiftStartTimeStr.split(":")[0], 10);
+        const isMorningShift = !isNaN(shiftStartHour) && shiftStartHour < 12;
+
+        const parseTimeToMinutes = (timeStr: string): number => {
+          const [hours, minutes] = timeStr.split(":").map(Number);
+          return (isNaN(hours) || isNaN(minutes)) ? 0 : hours * 60 + minutes;
+        };
+
+        const morningTeaStartMins = parseTimeToMinutes(shift?.morningTeaStart || "10:30");
+        const morningTeaEndMins = parseTimeToMinutes(shift?.morningTeaEnd || "11:15");
+        const lunchStartMins = parseTimeToMinutes(shift?.lunchStart || "12:00");
+        const lunchEndMins = parseTimeToMinutes(shift?.lunchEnd || "14:30");
+        const eveningTeaStartMins = parseTimeToMinutes(shift?.eveningTeaStart || "15:30");
+        const eveningTeaEndMins = parseTimeToMinutes(shift?.eveningTeaEnd || "17:00");
+        const dinnerStartMins = parseTimeToMinutes(shift?.dinnerStart || "20:00");
+        const dinnerEndMins = parseTimeToMinutes(shift?.dinnerEnd || "22:00");
+
+        for (const bs of rec.breakSessions) {
+          if (!bs.endTime) continue;
+
+          const durationMinutes = bs.durationMinutes || 0;
+          const bStartLocal = toZonedTime(new Date(bs.startTime), TIMEZONE);
+          const startHour = bStartLocal.getHours();
+          const startMin = bStartLocal.getMinutes();
+          const totalStartMins = startHour * 60 + startMin;
+
+          let allowedDuration = 0;
+          if (totalStartMins >= morningTeaStartMins && totalStartMins <= morningTeaEndMins) {
+            allowedDuration = (shift ? shift.allowMorningTea : true) ? 15 : 0;
+          } else if (totalStartMins >= lunchStartMins && totalStartMins <= lunchEndMins) {
+            allowedDuration = (isMorningShift && (shift ? shift.allowLunch : true)) ? 40 : 0;
+          } else if (totalStartMins >= eveningTeaStartMins && totalStartMins <= eveningTeaEndMins) {
+            allowedDuration = (shift ? shift.allowEveningTea : true) ? 20 : 0;
+          } else if (totalStartMins >= dinnerStartMins && totalStartMins <= dinnerEndMins) {
+            allowedDuration = (!isMorningShift && (shift ? shift.allowDinner : true)) ? 40 : 0;
+          }
+
+          if (allowedDuration > 0 && durationMinutes > allowedDuration) {
+            const breakLate = durationMinutes - allowedDuration;
+            if (breakLate > 0) {
+              breakdown.push(`${breakLate}m`);
+              totalLateness += breakLate;
+            }
+          }
+        }
+      }
+    }
+
+    if (totalLateness > 0) {
+      if (breakdown.length > 1) {
+        return `${breakdown.join(" + ")} = ${totalLateness}m`;
+      }
+      return `${breakdown[0]}`;
+    }
+
+    return "";
+  };
+
   const allMonths = useMemo(() => [
     { value: 0, name: "January" },
     { value: 1, name: "February" },
@@ -528,6 +606,8 @@ export default function EmployeeAttendanceTab({
               // eslint-disable-next-line @typescript-eslint/no-explicit-any
             } as any);
 
+            const latenessLabel = getLatenessBreakdown(displayRecord);
+
             return [
               <div className="table-cell-stack" key={`date-${date}`}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -551,7 +631,7 @@ export default function EmployeeAttendanceTab({
               </div>,
               displayRecord.status === "LEAVE" ? "-" : formatAttendanceTime(displayRecord.checkInTime),
               displayRecord.status === "LEAVE" ? "-" : formatAttendanceTime(displayRecord.checkOutTime),
-              displayRecord.lateByMinutes && displayRecord.lateByMinutes >= 5 ? (
+              latenessLabel ? (
                 <span key={`late-${date}`} style={{
                   fontWeight: '600',
                   color: '#b45309',
@@ -563,7 +643,7 @@ export default function EmployeeAttendanceTab({
                   display: 'inline-block',
                   whiteSpace: 'nowrap'
                 }}>
-                  {displayRecord.lateByMinutes} min late
+                  {latenessLabel}
                 </span>
               ) : (
                 <span key={`late-${date}`} className="muted">—</span>

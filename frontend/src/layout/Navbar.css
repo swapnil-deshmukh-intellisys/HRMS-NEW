@@ -110,13 +110,15 @@
   height: 42px;
   min-width: 42px;
   padding: 0;
-  border: 1px solid rgba(15, 23, 42, 0.12);
-  border-radius: 14px;
+  border: 1px solid rgba(15, 23, 42, 0.22) !important;
+  border-radius: 50%;
   background: linear-gradient(180deg, #ffffff, #f1f5f9);
+  filter: brightness(1.03);
+  transform: translateY(-1px);
   box-shadow:
     inset 0 1.5px 0 rgba(255, 255, 255, 1),
-    0 4px 0 rgba(15, 23, 42, 0.12),
-    0 8px 16px rgba(15, 23, 42, 0.08);
+    0 5px 0 rgba(15, 23, 42, 0.15),
+    0 12px 20px rgba(15, 23, 42, 0.1);
   color: var(--color-text-strong);
   transition: all 0.1s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
@@ -124,12 +126,12 @@
 }
 
 .topbar-icon-button:hover:not(:disabled) {
-  filter: brightness(1.03);
-  transform: translateY(-1px);
+  filter: none;
+  transform: translateY(0);
   box-shadow:
     inset 0 1.5px 0 rgba(255, 255, 255, 1),
-    0 5px 0 rgba(15, 23, 42, 0.15),
-    0 12px 20px rgba(15, 23, 42, 0.1);
+    0 4px 0 rgba(15, 23, 42, 0.12),
+    0 8px 16px rgba(15, 23, 42, 0.08);
 }
 
 .topbar-icon-button:active:not(:disabled) {
@@ -186,8 +188,15 @@
 }
 
 @keyframes popoverFadeIn {
-  from { opacity: 0; transform: translateY(8px) scale(0.98); }
-  to { opacity: 1; transform: translateY(0) scale(1); }
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 
 .topbar-notification-popover__header {
@@ -335,21 +344,27 @@
 .notif-icon--task {
   background: rgba(99, 102, 241, 0.1);
 }
+
 .notif-icon--leave {
   background: rgba(16, 185, 129, 0.1);
 }
+
 .notif-icon--attendance {
   background: rgba(245, 158, 11, 0.1);
 }
+
 .notif-icon--payroll {
   background: rgba(34, 197, 94, 0.1);
 }
+
 .notif-icon--announcement {
   background: rgba(239, 68, 68, 0.1);
 }
+
 .notif-icon--incentive {
   background: rgba(168, 85, 247, 0.1);
 }
+
 .notif-icon--default {
   background: rgba(15, 23, 42, 0.05);
 }
@@ -357,21 +372,27 @@
 .unread .notif-icon--task {
   background: rgba(99, 102, 241, 0.14);
 }
+
 .unread .notif-icon--leave {
   background: rgba(16, 185, 129, 0.14);
 }
+
 .unread .notif-icon--attendance {
   background: rgba(245, 158, 11, 0.14);
 }
+
 .unread .notif-icon--payroll {
   background: rgba(34, 197, 94, 0.14);
 }
+
 .unread .notif-icon--announcement {
   background: rgba(239, 68, 68, 0.14);
 }
+
 .unread .notif-icon--incentive {
   background: rgba(168, 85, 247, 0.14);
 }
+
 .unread .notif-icon--default {
   background: rgba(37, 99, 235, 0.1);
 }
@@ -431,9 +452,20 @@
 }
 
 @keyframes pulse {
-  0% { transform: scale(1); opacity: 0.35; }
-  70% { transform: scale(2.2); opacity: 0; }
-  100% { transform: scale(1); opacity: 0; }
+  0% {
+    transform: scale(1);
+    opacity: 0.35;
+  }
+
+  70% {
+    transform: scale(2.2);
+    opacity: 0;
+  }
+
+  100% {
+    transform: scale(1);
+    opacity: 0;
+  }
 }
 
 .topbar-notification-item__desc {
@@ -549,12 +581,13 @@
 
 .topbar-logout-button {
   color: var(--color-danger) !important;
-  background: linear-gradient(180deg, #ffffff, #fff1f2);
-  border-color: rgba(225, 29, 72, 0.2);
+  background: linear-gradient(180deg, #fff1f2, #ffe4e6);
+  border: 1px solid rgba(225, 29, 72, 0.38) !important;
+  transform: translateY(-1px);
   box-shadow:
     inset 0 1.5px 0 rgba(255, 255, 255, 1),
-    0 4px 0 #fda4af,
-    0 8px 16px rgba(225, 29, 72, 0.1);
+    0 5px 0 #fb7185,
+    0 12px 20px rgba(225, 29, 72, 0.15);
 }
 
 .topbar-logout-button svg {
@@ -562,12 +595,12 @@
 }
 
 .topbar-logout-button:hover:not(:disabled) {
-  background: linear-gradient(180deg, #fff1f2, #ffe4e6);
-  transform: translateY(-1px);
+  background: linear-gradient(180deg, #ffffff, #fff1f2);
+  transform: translateY(0);
   box-shadow:
     inset 0 1.5px 0 rgba(255, 255, 255, 1),
-    0 5px 0 #fb7185,
-    0 12px 20px rgba(225, 29, 72, 0.15);
+    0 4px 0 #fda4af,
+    0 8px 16px rgba(225, 29, 72, 0.1);
 }
 
 .topbar-logout-button:active:not(:disabled) {
@@ -643,37 +676,28 @@
   border: 1px solid rgba(148, 163, 184, 0.15);
   border-radius: 16px;
   font-family: var(--font-primary);
-  font-size: var(--text-sm);
+  font-size: 12px;
   font-weight: var(--fw-medium);
   color: var(--color-text-primary);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 1),
-    0 3px 0 rgba(15, 23, 42, 0.05),
-    0 8px 16px rgba(15, 23, 42, 0.03);
   white-space: nowrap;
   transition: all var(--transition-fast);
 }
 
 .topbar-shift-timer:hover {
   border-color: rgba(148, 163, 184, 0.25);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 1),
-    0 4px 0 rgba(15, 23, 42, 0.07),
-    0 12px 20px rgba(15, 23, 42, 0.05);
 }
 
-/* Clock icon — success green: confirms employee is actively checked in */
+/* Clock icon — neutral slate */
 .topbar-shift-timer__icon {
-  color: #059669;
-  opacity: 0.9;
+  color: #64748b;
+  opacity: 0.8;
   flex-shrink: 0;
 }
 
-/* "In 9:10 AM" — success green: positive confirmation of check-in time */
+/* "In 9:10 AM" — dark slate/black check-in time */
 .topbar-shift-timer__checkin {
   font-family: var(--font-primary);
-  font-size: var(--text-sm);
-  color: #059669;
+  color: #1e293b;
   font-weight: var(--fw-semibold);
 }
 
@@ -688,7 +712,6 @@
 /* "In" / "Shift:" labels — neutral muted, structural labels */
 .topbar-shift-timer__label {
   font-family: var(--font-primary);
-  font-size: var(--text-sm);
   color: #94a3b8;
   font-weight: var(--fw-normal);
 }
@@ -696,21 +719,19 @@
 /* Shared base for both values */
 .topbar-shift-timer__value {
   font-family: var(--font-primary);
-  font-size: var(--text-sm);
   font-weight: var(--fw-semibold);
   letter-spacing: -0.01em;
 }
 
-/* "7h 51m" — brand accent navy: active, in-progress work time */
+/* "7h 51m" — dark slate/black: active, in-progress work time */
 .topbar-shift-timer__value--elapsed {
-  color: var(--color-accent);
+  color: #1e293b;
 }
 
-/* "9h 20m" — warm slate: the target/quota, passive reference */
+/* "9h 20m" — dark slate: the target/quota, passive reference */
 .topbar-shift-timer__value--required {
-  color: #64748b;
+  color: #334155;
   font-weight: var(--fw-normal);
-  opacity: 0.75;
 }
 
 /* "/" divider */
@@ -733,28 +754,28 @@
   flex-shrink: 0;
 }
 
-/* "x min late" — amber warning on the left */
+/* "x min late" — neutral grey warning on the left */
 .topbar-shift-timer__late {
   font-family: var(--font-primary);
-  font-size: 11px;
+  font-size: 10px;
   font-weight: var(--fw-semibold);
-  color: #b45309;
-  background: rgba(245, 158, 11, 0.1);
-  border: 1px solid rgba(245, 158, 11, 0.2);
+  color: #475569;
+  background: rgba(148, 163, 184, 0.08);
+  border: 1px solid rgba(148, 163, 184, 0.2);
   border-radius: 6px;
   padding: 2px 7px;
   letter-spacing: 0.01em;
   white-space: nowrap;
 }
 
-/* "-x pts" — red penalty on the right */
+/* "-x pts" — black/dark slate penalty on the right */
 .topbar-shift-timer__penalty {
   font-family: var(--font-primary);
-  font-size: 11px;
+  font-size: 10px;
   font-weight: var(--fw-semibold);
-  color: #be123c;
-  background: rgba(225, 29, 72, 0.08);
-  border: 1px solid rgba(225, 29, 72, 0.18);
+  color: #0f172a;
+  background: rgba(15, 23, 42, 0.06);
+  border: 1px solid rgba(15, 23, 42, 0.15);
   border-radius: 6px;
   padding: 2px 7px;
   letter-spacing: 0.01em;

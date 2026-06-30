@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { createPortal } from "react-dom";
 import "./Modal.css";
 import { X } from "lucide-react";
@@ -12,6 +13,16 @@ type ModalProps = {
 };
 
 export default function Modal({ open, title, className = "", onClose, children }: ModalProps) {
+  useEffect(() => {
+    if (open) {
+      const originalOverflow = window.getComputedStyle(document.body).overflow;
+      document.body.style.overflow = "hidden";
+      return () => {
+        document.body.style.overflow = originalOverflow;
+      };
+    }
+  }, [open]);
+
   if (!open) return null;
 
   const modalRoot = document.getElementById("modal-root");

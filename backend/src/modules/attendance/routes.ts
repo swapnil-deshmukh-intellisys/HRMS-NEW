@@ -1183,7 +1183,21 @@ router.get("/", requireRoles("ADMIN", "HR", "MANAGER", "EMPLOYEE"), async (reque
       where = { employeeId: requestedEmployeeId };
     }
 
-    if (requestedDate) {
+    const requestedMonth = request.query.month ? Number(request.query.month) : undefined;
+    const requestedYear = request.query.year ? Number(request.query.year) : undefined;
+
+    if (requestedYear && requestedMonth) {
+      const startOfMonthDate = new Date(requestedYear, requestedMonth - 1, 1);
+      const endOfMonthDate = new Date(requestedYear, requestedMonth, 0);
+
+      where = {
+        ...where,
+        attendanceDate: {
+          gte: startOfDay(startOfMonthDate),
+          lte: endOfDay(endOfMonthDate),
+        },
+      };
+    } else if (requestedDate) {
       const dateRange = {
         gte: startOfDay(requestedDate),
         lte: endOfDay(requestedDate),
@@ -1672,6 +1686,7 @@ router.get(
               employeeCode: true,
               jobTitle: true,
               points: true,
+              profilePictureUrl: true,
               department: { select: { name: true } },
             },
           },
@@ -1741,6 +1756,7 @@ router.get(
           employeeCode: true,
           jobTitle: true,
           points: true,
+          profilePictureUrl: true,
           department: { select: { name: true } },
         },
         orderBy: { points: 'desc' }

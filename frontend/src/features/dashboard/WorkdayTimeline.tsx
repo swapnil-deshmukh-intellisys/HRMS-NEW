@@ -557,6 +557,19 @@ const WorkdayTimeline: React.FC<WorkdayTimelineProps> = ({
   const statusLabel = checkOutTime ? 'Completed' : isShiftOver ? 'Shift Ended' : isShiftPending ? 'Pending' : checkInIsLate ? 'Late' : checkInPct !== null ? 'Present' : 'Active';
   const statusClass = checkOutTime ? 'over' : isShiftOver ? 'over' : isShiftPending ? 'pending' : checkInIsLate ? 'late' : 'active';
 
+  const finalEndTimeLabel = useMemo(() => {
+    if (!endTime) return '';
+    const penalty = penaltyMinutes || 0;
+    if (penalty <= 0) return format12h(endTime);
+    
+    const [h, m] = endTime.split(':').map(Number);
+    const tempDate = new Date();
+    tempDate.setHours(h, m + penalty, 0, 0);
+    const newH = tempDate.getHours().toString().padStart(2, '0');
+    const newM = tempDate.getMinutes().toString().padStart(2, '0');
+    return format12h(`${newH}:${newM}`);
+  }, [endTime, penaltyMinutes]);
+
   return (
     <div className={`card wdt-premium-v2 ${isExpanded ? 'is-expanded' : 'is-collapsed'} ${className}`}>
       <div className="wdt-body-clipper">
@@ -704,11 +717,11 @@ const WorkdayTimeline: React.FC<WorkdayTimelineProps> = ({
 
             {isExpanded && (
               <div className="wdt-gauge-footer">
-                <span className="wdt-bound-label">{format12h(startTime)}</span>
+                <span className="wdt-bound-label">{checkInLabel || format12h(startTime)}</span>
                 <div className="wdt-gauge-steps">
                   {Array.from({ length: 8 }).map((_, i) => <div key={i} className="wdt-step" />)}
                 </div>
-                <span className="wdt-bound-label">{format12h(endTime)}</span>
+                <span className="wdt-bound-label">{finalEndTimeLabel}</span>
               </div>
             )}
           </div>

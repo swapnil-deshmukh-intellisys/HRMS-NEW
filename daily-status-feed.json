@@ -194,5 +194,12 @@
     "title": "Restrict Attendance History Monthly Filter to Employee Panel",
     "status": "COMPLETED",
     "narrative": "Modified the Attendance History page to conditionally hide the 'View by Month' dropdown filter from the Manager, HR, and Admin views. It is now only visible when the active user has the 'EMPLOYEE' role."
+  },
+  {
+    "date": "2026-07-01",
+    "taskId": "TSK-ATT-018",
+    "title": "Refine Attendance Status Dot and Active Labels in Workday Timeline",
+    "status": "COMPLETED",
+    "narrative": "Refactored the Workday Timeline header to set a green status dot (active class) for checked-in late employees, indicating their active presence in the shift. Renamed the fallback 'Present' label to 'Active' for on-time check-ins."
   }
 ]

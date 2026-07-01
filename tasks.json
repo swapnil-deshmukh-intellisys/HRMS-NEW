@@ -1303,5 +1303,34 @@
     "expectedOutput": "The View by Month dropdown is only visible when the user role is EMPLOYEE.",
     "createdAt": "2026-07-01T09:30:00Z",
     "updatedAt": "2026-07-01T09:40:00Z"
+  },
+  {
+    "taskId": "TSK-ATT-018",
+    "moduleId": "MOD-ATTENDANCE",
+    "sprint": "Sprint 4",
+    "project": "HRMS",
+    "page": "Dashboard Page",
+    "module": "Attendance",
+    "submodule": "Workday Timeline Header Indicators",
+    "title": "Refine Attendance Status Dot and Active Labels in Workday Timeline",
+    "description": "Ensure checked-in late employees display a green status dot (active class) instead of a brown status dot (late class), as they are present. Change the 'Present' status text to 'Active' for employees who are present and on time.",
+    "frontendWork": "Modify WorkdayTimeline.tsx to set statusClass to 'active' for late checked-in entries, and change the fallback statusLabel from 'Present' to 'Active'.",
+    "backendWork": "None",
+    "databaseWork": "None",
+    "apiWork": "None",
+    "testingWork": "Verify that checked-in late employees have a pulsing green status dot and a 'Late' text tag. Verify on-time checked-in employees have a pulsing green status dot and an 'Active' text tag.",
+    "priority": "MEDIUM",
+    "estimatedHours": 1,
+    "actualHours": 1,
+    "dependencies": [
+      "TSK-ATT-017"
+    ],
+    "riskLevel": "LOW",
+    "status": "COMPLETED",
+    "completionPercentage": 100,
+    "owner": "Fullstack Team",
+    "expectedOutput": "Late check-ins display a green dot and LATE tag. On-time check-ins display a green dot and ACTIVE tag.",
+    "createdAt": "2026-07-01T10:00:00Z",
+    "updatedAt": "2026-07-01T10:10:00Z"
   }
 ]

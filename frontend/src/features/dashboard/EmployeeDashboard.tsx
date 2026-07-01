@@ -19,18 +19,26 @@ export default function EmployeeDashboard({ token }: { token: string | null }) {
     <section className="stack">
       <article className="card dashboard-hero">
         <div className="dashboard-hero-copy">
-          <div className="dashboard-hero-top-row">
-            <ThoughtOfTheDay jobTitle={currentEmployee?.jobTitle} role="EMPLOYEE" />
-            <div className="dashboard-hero-header">
-              <h3>
-                Hi
-                {currentEmployee?.firstName ? (
-                  <>
-                    , <span className="greeting-name">{currentEmployee.firstName}</span>
-                  </>
-                ) : null}
-              </h3>
+          <div className="dashboard-hero-top-row management-top-row">
+            <div className="dashboard-hero-header dashboard-hero-header--left">
+              <div className="dashboard-hero-greeting-container">
+                <span className="greeting-text">Hi,</span>
+                <span className="greeting-name">
+                  {currentEmployee?.firstName} {currentEmployee?.lastName}
+                </span>
+                {currentEmployee?.jobTitle && (
+                  <span className="dashboard-hero-designation-badge">
+                    {currentEmployee.jobTitle}
+                  </span>
+                )}
+              </div>
+              <div className="dashboard-hero-context-title">
+                <span className="context-eyebrow">Personal Workspace</span>
+                <span className="context-divider">|</span>
+                <span className="context-title">Employee Dashboard</span>
+              </div>
             </div>
+            <ThoughtOfTheDay jobTitle={currentEmployee?.jobTitle} role="EMPLOYEE" />
           </div>
           <AnnouncementList token={token} />
           <DashboardHeroClocks />

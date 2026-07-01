@@ -1,5 +1,4 @@
 using System;
-using System.Windows.Forms;
 using Microsoft.Win32;
 
 namespace HRMS_Agent
@@ -7,7 +6,6 @@ namespace HRMS_Agent
     public class SessionMonitor
     {
         private bool _isStarted = false;
-        private PowerEventWindow? _powerWindow;
 
         public void Start()
         {
@@ -20,9 +18,8 @@ namespace HRMS_Agent
             // Session ending events (Shutdown/Logoff)
             SystemEvents.SessionEnding += OnSessionEnding;
 
-            // Create a hidden form to intercept WM_POWERBROADCAST sleep/wake events
-            _powerWindow = new PowerEventWindow();
-            _ = _powerWindow.Handle; // Accessing the handle property forces native handle creation
+            // Power mode changed events (Sleep/Wake)
+            SystemEvents.PowerModeChanged += OnPowerModeChanged;
         }
 
         public void Stop()
@@ -32,12 +29,7 @@ namespace HRMS_Agent
 
             SystemEvents.SessionSwitch -= OnSessionSwitch;
             SystemEvents.SessionEnding -= OnSessionEnding;
-
-            if (_powerWindow != null)
-            {
-                _powerWindow.Dispose();
-                _powerWindow = null;
-            }
+            SystemEvents.PowerModeChanged -= OnPowerModeChanged;
         }
 
         private async void OnSessionSwitch(object sender, SessionSwitchEventArgs e)
@@ -60,45 +52,38 @@ namespace HRMS_Agent
             }
         }
 
-        private async void OnSessionEnding(object sender, SessionEndingEventArgs e)
+        private void OnSessionEnding(object sender, SessionEndingEventArgs e)
         {
-            // Trigger SHUTDOWN log
-            await ApiSync.LogEventAsync("SHUTDOWN");
-        }
-    }
-
-    // Hidden Form to capture OS-level broadcast messages (which message-only windows don't receive)
-    internal class PowerEventWindow : Form
-    {
-        private const int WM_POWERBROADCAST = 0x0218;
-        private const int PBT_APMSUSPEND = 0x0004;
-        private const int PBT_APMRESUMEAUTOMATIC = 0x0012;
-        private const int PBT_APMRESUMESUSPEND = 0x0007;
-
-        public PowerEventWindow()
-        {
-            this.FormBorderStyle = FormBorderStyle.None;
-            this.ShowInTaskbar = false;
-            this.WindowState = FormWindowState.Minimized;
-            this.Size = new System.Drawing.Size(0, 0);
-            this.Visible = false;
-        }
-
-        protected override void WndProc(ref Message m)
-        {
-            if (m.Msg == WM_POWERBROADCAST)
+            // Trigger SHUTDOWN log synchronously to ensure it completes before OS terminates the process
+            try
             {
-                int wParam = m.WParam.ToInt32();
-                if (wParam == PBT_APMSUSPEND)
+                ApiSync.LogEventAsync("SHUTDOWN").GetAwaiter().GetResult();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Shutdown log error: {ex.Message}");
+            }
+        }
+
+        private void OnPowerModeChanged(object sender, PowerModeChangedEventArgs e)
+        {
+            try
+            {
+                if (e.Mode == PowerModes.Suspend)
                 {
-                    _ = ApiSync.LogEventAsync("SLEEP");
+                    // Trigger SLEEP log synchronously to ensure it completes before OS network adapter power down
+                    ApiSync.LogEventAsync("SLEEP").GetAwaiter().GetResult();
                 }
-                else if (wParam == PBT_APMRESUMEAUTOMATIC || wParam == PBT_APMRESUMESUSPEND)
+                else if (e.Mode == PowerModes.Resume)
                 {
+                    // Wake up can be run asynchronously
                     _ = ApiSync.LogEventAsync("WAKE");
                 }
             }
-            base.WndProc(ref m);
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Power event log error: {ex.Message}");
+            }
         }
     }
 }

@@ -1024,6 +1024,7 @@ export default function AttendancePage({ token, role, currentEmployeeId, current
                 const statusClass = isActive ? "active" : isAway ? "away" : "offline";
                 const statusLabel = isActive ? "Active" : isAway ? "Away" : "Offline";
                 const hasCheckIn = !!emp.checkInTime;
+                const isDesktopConnected = !!(emp.lastDesktopActive && (Date.now() - new Date(emp.lastDesktopActive).getTime() < 90000));
 
                 return (
                   <div key={emp.employeeId} className={`live-row live-row--${statusClass}`}>
@@ -1035,7 +1036,20 @@ export default function AttendancePage({ token, role, currentEmployeeId, current
                         <span className={`live-badge live-badge--${statusClass}`} />
                       </div>
                       <div className="live-row__identity">
-                        <span className="live-name">{emp.firstName} {emp.lastName}</span>
+                        <span className="live-name">
+                          {emp.firstName} {emp.lastName}
+                          {isDesktopConnected && (
+                            <span 
+                              className="live-desktop-active-icon" 
+                              title="Desktop Agent Connected & Online" 
+                              style={{ marginLeft: '6px', fontSize: '13px', display: 'inline-flex', verticalAlign: 'middle', cursor: 'help' }}
+                              role="img"
+                              aria-label="Desktop Agent Connected"
+                            >
+                              💻
+                            </span>
+                          )}
+                        </span>
                         <span className="live-code">#{emp.employeeCode}</span>
                       </div>
                     </div>

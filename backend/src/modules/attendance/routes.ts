@@ -1794,6 +1794,7 @@ router.get("/live-status", requireRoles("ADMIN", "HR", "MANAGER", "EMPLOYEE"), a
         firstName: true,
         lastName: true,
         employeeCode: true,
+        lastDesktopActive: true,
         user: {
           select: {
             email: true,
@@ -1856,6 +1857,7 @@ router.get("/live-status", requireRoles("ADMIN", "HR", "MANAGER", "EMPLOYEE"), a
         lastEventTime,
         checkInTime: todayAttendance?.checkInTime ?? null,
         checkOutTime: todayAttendance?.checkOutTime ?? null,
+        lastDesktopActive: emp.lastDesktopActive,
       };
     });
 

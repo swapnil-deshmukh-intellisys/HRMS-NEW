@@ -107,6 +107,12 @@ namespace HRMS_Agent
                 await RefreshStatusAndMenuAsync();
             };
 
+            // Sync offline queue immediately when network connection state changes
+            System.Net.NetworkInformation.NetworkChange.NetworkAddressChanged += (s, e) =>
+            {
+                _ = ApiSync.ProcessOfflineQueueAsync();
+            };
+
             // Start monitors
             _sessionMonitor.Start();
             _idleTracker.Start();
@@ -228,6 +234,9 @@ namespace HRMS_Agent
                 _dashboardForm?.UpdateState(null, new List<BreakSessionRecord>(), null);
                 return;
             }
+
+            // Sync offline queue in the background (survives offline sleep/shutdown events)
+            await ApiSync.ProcessOfflineQueueAsync();
 
             if (string.IsNullOrEmpty(ApiSync.CurrentName))
             {

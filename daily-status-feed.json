@@ -250,5 +250,12 @@
     "title": "Implement dynamic relatable thought pools for CEO, MD, HR, and regular employees",
     "status": "COMPLETED",
     "narrative": "Expanded the role-specific thoughts feature. Created 4 distinct motivational quote pools: (1) CEO thoughts on startup and corporate growth, (2) MD thoughts on strategic operations and standard systems, (3) HR thoughts on culture, empathy, and employee mentoring, and (4) Employee thoughts on clean code, software craftsmanship, and problem solving. Refactored ThoughtOfTheDay to check jobTitle/role properties and dynamically select the pool, and updated dashboard invocations."
+  },
+  {
+    "date": "2026-07-01",
+    "taskId": "TSK-DSH-006",
+    "title": "Refine Employee Hero layout: left-aligned greeting, designation badge, pill context and right-aligned thoughts",
+    "status": "COMPLETED",
+    "narrative": "Brought the Employee Dashboard hero section into full visual alignment with the refined Management Dashboard hero. Swapped components to place the user's name greeting, designation badge, and a new compact 'Personal Workspace | Employee Dashboard' pill context on the left, and right-aligned the ThoughtOfTheDay quotes on the right side."
   }
 ]

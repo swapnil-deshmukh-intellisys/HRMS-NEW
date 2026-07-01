@@ -1535,5 +1535,34 @@
     "expectedOutput": "CEO, MD, HR, and general employees receive highly relatable motivational quotes corresponding to their professional scope.",
     "createdAt": "2026-07-01T09:34:38Z",
     "updatedAt": "2026-07-01T09:35:01Z"
+  },
+  {
+    "taskId": "TSK-DSH-006",
+    "moduleId": "MOD-DASHBOARD",
+    "sprint": "Sprint 4",
+    "project": "HRMS",
+    "page": "Dashboard Page",
+    "module": "Role Dashboards & Analytics",
+    "submodule": "Employee Hero Layout Refinement",
+    "title": "Refine Employee Hero layout: left-aligned greeting, designation badge, pill context and right-aligned thoughts",
+    "description": "Brought the Employee Dashboard hero section into full visual alignment with the refined Management Dashboard hero. Swapped components to place the user's name greeting, designation badge, and a new compact 'Personal Workspace | Employee Dashboard' pill context on the left, and right-aligned the ThoughtOfTheDay quotes on the right side.",
+    "frontendWork": "Updated EmployeeDashboard.tsx to structure elements under left-align classes, matching ManagementDashboard layout.",
+    "backendWork": "None",
+    "databaseWork": "None",
+    "apiWork": "None",
+    "testingWork": "Verified production build compiles cleanly. Checked layout alignments on employee dashboard view.",
+    "priority": "MEDIUM",
+    "estimatedHours": 1,
+    "actualHours": 1,
+    "dependencies": [
+      "TSK-DSH-005"
+    ],
+    "riskLevel": "LOW",
+    "status": "COMPLETED",
+    "completionPercentage": 100,
+    "owner": "Fullstack Team",
+    "expectedOutput": "Employee dashboard displays greeting/designation on the left, compact personal workspace title pill underneath, and developer quotes right-aligned.",
+    "createdAt": "2026-07-01T09:39:21Z",
+    "updatedAt": "2026-07-01T09:39:26Z"
   }
 ]

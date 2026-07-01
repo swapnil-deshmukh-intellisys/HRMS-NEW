@@ -1564,5 +1564,34 @@
     "expectedOutput": "Employee dashboard displays greeting/designation on the left, compact personal workspace title pill underneath, and developer quotes right-aligned.",
     "createdAt": "2026-07-01T09:39:21Z",
     "updatedAt": "2026-07-01T09:39:26Z"
+  },
+  {
+    "taskId": "TSK-ATT-021",
+    "moduleId": "MOD-ATTENDANCE",
+    "sprint": "Sprint 4",
+    "project": "HRMS",
+    "page": "Attendance Page & Timeline Modal",
+    "module": "Attendance",
+    "submodule": "Desktop Event Sync Fix",
+    "title": "Fix desktop activity timeline data mapping and cleanup duplicate/offline synced breaks",
+    "description": "Resolved a critical bug where offline queued events uploaded from the Windows C# desktop client replayed previous dates (e.g., June 25th or 29th) but linked their break session transitions to the current calendar date in the database. Refactored the backend /desktop-event endpoint in routes.ts to parse the attendanceDate parameter from the event's actual timestamp instead of hardcoding today's date. Wrote and ran a database cleanup script (cleanup_harshada_breaks.ts) to correctly re-map Harshada Nichit's duplicate previous days' breaks (June 25th and 29th) to their correct historical records, clearing today's (July 1st) timeline logs.",
+    "frontendWork": "None",
+    "backendWork": "Updated POST /api/attendance/desktop-event handler in routes.ts. Created and executed scripts/cleanup_harshada_breaks.ts database repair script.",
+    "databaseWork": "Re-mapped 9 old corrupt breakSession records back to their corresponding historical attendance dates.",
+    "apiWork": "POST /api/attendance/desktop-event",
+    "testingWork": "Verified API response returns correctly for today's logs. Verified Harshada's workday timeline renders exactly 3 correct breaks today.",
+    "priority": "HIGH",
+    "estimatedHours": 1,
+    "actualHours": 1,
+    "dependencies": [
+      "TSK-DSH-006"
+    ],
+    "riskLevel": "LOW",
+    "status": "COMPLETED",
+    "completionPercentage": 100,
+    "owner": "Fullstack Team",
+    "expectedOutput": "Replayed desktop offline activity logs are correctly mapped to their corresponding calendar dates in the database; today's timeline correctly displays only today's breaks.",
+    "createdAt": "2026-07-01T09:51:57Z",
+    "updatedAt": "2026-07-01T09:52:06Z"
   }
 ]

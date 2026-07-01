@@ -1904,13 +1904,14 @@ router.post(
         },
       });
 
-      // Find today's attendance record (IST date)
-      const istDate = parseAttendanceDateInput();
+      // Find the attendance record for the date of the event's timestamp (in IST)
+      const eventDateStr = formatInTimeZone(parsedTime, TIMEZONE, 'yyyy-MM-dd');
+      const eventIstDate = parseAttendanceDateInput(eventDateStr);
       const attendance = await prisma.attendance.findUnique({
         where: {
           employeeId_attendanceDate: {
             employeeId,
-            attendanceDate: istDate,
+            attendanceDate: eventIstDate,
           },
         },
       });

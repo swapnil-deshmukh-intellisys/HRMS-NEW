@@ -215,5 +215,26 @@
     "title": "Implement Live Desktop Agent Connectivity Indicator in Telemetry Tracker",
     "status": "COMPLETED",
     "narrative": "Tracked live connection status of desktop agent by updating a lastDesktopActive database column. Identified desktop requests via User-Agent and displayed a laptop emoji (💻) next to active user names in the Workforce Live Status tracker."
+  },
+  {
+    "date": "2026-07-01",
+    "taskId": "TSK-ATT-019",
+    "title": "Fix Silent 401 Failure Hiding Desktop Event Logs in Timeline Modal",
+    "status": "COMPLETED",
+    "narrative": "Diagnosed and resolved a silent API failure in WorkdayTimeline.tsx where the loadDesktopLogs function was firing unauthenticated requests when the token was null (scenario: admin opens Timeline from the Live Telemetry Tracker tab). The backend returned 401, but the empty catch block swallowed it silently, leaving the Event Log section always blank. Added a one-line if (!token) return guard, mirroring the identical guard already present in the sibling loadBreaks function. Build verified clean. LOCK and UNLOCK events are now visible in the Event Log."
+  },
+  {
+    "date": "2026-07-01",
+    "taskId": "TSK-DSH-002",
+    "title": "Eliminate Hero Section White Flash on Page Load and Scroll Re-entry",
+    "status": "COMPLETED",
+    "narrative": "Traced a millisecond-long white strip flashing in the Dashboard hero section to a CSS cascade conflict: the .card base style (global.css) sets background: rgba(255,255,255,0.75), which the browser paints as a solid white layer before the background-image (bgh2.jpg) is composited. The fix was to split the .dashboard-hero background shorthand into a separate background-color: #0f172a (dark fallback, painted instantly in the first GPU frame) and background-image/position/size/repeat properties, eliminating the white flash on both initial load and scroll re-entry."
+  },
+  {
+    "date": "2026-07-01",
+    "taskId": "TSK-DSH-003",
+    "title": "Implement curated business-growth thought pool for CEO profile",
+    "status": "COMPLETED",
+    "narrative": "Developed a dedicated motivational thought pool focusing on startup and corporate business growth, partner coordination, IT product scaling, and operational leadership. Configured the ThoughtOfTheDay component to accept employeeId, checking if the logged-in user is Rutik Bhosle (employeeId: 34). Regular employees continue to receive the default team motivation quotes, while Rutik receives the CEO thought list."
   }
 ]

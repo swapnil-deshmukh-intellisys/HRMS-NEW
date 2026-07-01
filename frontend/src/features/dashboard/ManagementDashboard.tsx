@@ -67,7 +67,7 @@ export default function ManagementDashboard({ token, role }: { token: string | n
       <article className="card dashboard-hero">
         <div className="dashboard-hero-copy">
           <div className="dashboard-hero-top-row">
-            <ThoughtOfTheDay />
+            <ThoughtOfTheDay employeeId={data.currentEmployee?.id} />
             <div className="dashboard-hero-header">
               {bannerContent.eyebrow ? <p className="eyebrow">{bannerContent.eyebrow}</p> : null}
               <h3>{bannerContent.title}</h3>

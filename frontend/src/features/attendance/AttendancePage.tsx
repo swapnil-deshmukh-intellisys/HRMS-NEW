@@ -1228,34 +1228,36 @@ export default function AttendancePage({ token, role, currentEmployeeId, current
                 </button>
 
                 {/* View by Month Dropdown */}
-                <label className="attendance-filter-field">
-                  View by Month
-                  <div className="attendance-date-picker" style={{ position: "relative", display: "inline-block" }}>
-                    <select
-                      className={`attendance-date-input attendance-date-trigger ${filterMode === "MONTH" ? "attendance-date-trigger--active" : ""}`}
-                      style={{ minWidth: "160px", cursor: "pointer", paddingRight: "36px", appearance: "none", WebkitAppearance: "none", MozAppearance: "none" }}
-                      value={filterMode === "MONTH" ? `${filterMonth}-${filterYear}` : ""}
-                      onChange={(e) => {
-                        if (e.target.value === "") {
-                          setFilterMode("DAY");
-                        } else {
-                          const [m, y] = e.target.value.split("-").map(Number);
-                          setFilterMonth(m);
-                          setFilterYear(y);
-                          setFilterMode("MONTH");
-                        }
-                      }}
-                    >
-                      <option value="">Select Month</option>
-                      {monthOptions.map((opt) => (
-                        <option key={opt.value} value={opt.value}>
-                          {opt.label}
-                        </option>
-                      ))}
-                    </select>
-                    <ChevronDown size={16} className="attendance-date-chevron" style={{ position: "absolute", right: "12px", top: "50%", transform: "translateY(-50%)", pointerEvents: "none", color: "#64748b" }} />
-                  </div>
-                </label>
+                {role === "EMPLOYEE" && (
+                  <label className="attendance-filter-field">
+                    View by Month
+                    <div className="attendance-date-picker" style={{ position: "relative", display: "inline-block" }}>
+                      <select
+                        className={`attendance-date-input attendance-date-trigger ${filterMode === "MONTH" ? "attendance-date-trigger--active" : ""}`}
+                        style={{ minWidth: "160px", cursor: "pointer", paddingRight: "36px", appearance: "none", WebkitAppearance: "none", MozAppearance: "none" }}
+                        value={filterMode === "MONTH" ? `${filterMonth}-${filterYear}` : ""}
+                        onChange={(e) => {
+                          if (e.target.value === "") {
+                            setFilterMode("DAY");
+                          } else {
+                            const [m, y] = e.target.value.split("-").map(Number);
+                            setFilterMonth(m);
+                            setFilterYear(y);
+                            setFilterMode("MONTH");
+                          }
+                        }}
+                      >
+                        <option value="">Select Month</option>
+                        {monthOptions.map((opt) => (
+                          <option key={opt.value} value={opt.value}>
+                            {opt.label}
+                          </option>
+                        ))}
+                      </select>
+                      <ChevronDown size={16} className="attendance-date-chevron" style={{ position: "absolute", right: "12px", top: "50%", transform: "translateY(-50%)", pointerEvents: "none", color: "#64748b" }} />
+                    </div>
+                  </label>
+                )}
               </div>
               {showAttendanceOverviewFilters ? (
                 <div className="attendance-overview-row">

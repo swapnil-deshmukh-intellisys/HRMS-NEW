@@ -187,5 +187,12 @@
     "title": "Redesign and Center Desktop Reminder Popup with Topmost Fade Animation",
     "status": "COMPLETED",
     "narrative": "Redesigned the desktop reminder popup, doubling its size to 880x480 and scaling all controls. Positioned it in the center of the screen with a smooth opacity fade-in/fade-out animation, and forced topmost focus on load using BringToFront() and Activate() to ensure it displays above all running apps."
+  },
+  {
+    "date": "2026-07-01",
+    "taskId": "TSK-ATT-017",
+    "title": "Restrict Attendance History Monthly Filter to Employee Panel",
+    "status": "COMPLETED",
+    "narrative": "Modified the Attendance History page to conditionally hide the 'View by Month' dropdown filter from the Manager, HR, and Admin views. It is now only visible when the active user has the 'EMPLOYEE' role."
   }
 ]

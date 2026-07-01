@@ -1274,5 +1274,34 @@
     "expectedOutput": "Reminder popup is centered, large, fades in/out, and stays topmost above all running applications.",
     "createdAt": "2026-06-30T12:30:00Z",
     "updatedAt": "2026-06-30T13:00:00Z"
+  },
+  {
+    "taskId": "TSK-ATT-017",
+    "moduleId": "MOD-ATTENDANCE",
+    "sprint": "Sprint 4",
+    "project": "HRMS",
+    "page": "Attendance Page",
+    "module": "Attendance",
+    "submodule": "Attendance History Filters",
+    "title": "Restrict Attendance History Monthly Filter to Employee Panel",
+    "description": "Hide the 'View by Month' dropdown filter from the Manager, HR, and Admin views of the Attendance History page. Restrict it solely to the Employee Panel.",
+    "frontendWork": "Modify AttendancePage.tsx to conditionally render the 'View by Month' select box only when the role is 'EMPLOYEE'.",
+    "backendWork": "None",
+    "databaseWork": "None",
+    "apiWork": "None",
+    "testingWork": "Verify that the 'View by Month' filter dropdown appears on the Employee view of the Attendance page. Verify that it is completely hidden on the Manager, HR, and Admin views.",
+    "priority": "MEDIUM",
+    "estimatedHours": 1,
+    "actualHours": 1,
+    "dependencies": [
+      "TSK-ATT-016"
+    ],
+    "riskLevel": "LOW",
+    "status": "COMPLETED",
+    "completionPercentage": 100,
+    "owner": "Fullstack Team",
+    "expectedOutput": "The View by Month dropdown is only visible when the user role is EMPLOYEE.",
+    "createdAt": "2026-07-01T09:30:00Z",
+    "updatedAt": "2026-07-01T09:40:00Z"
   }
 ]

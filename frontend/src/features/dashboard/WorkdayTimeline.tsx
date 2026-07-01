@@ -508,6 +508,8 @@ const WorkdayTimeline: React.FC<WorkdayTimelineProps> = ({
     setHoverText(`${displayH}:${m.toString().padStart(2, '0')} ${period}`);
   };
 
+  const hasActiveBreak = breakSessions.some(s => !s.endTime);
+
   const uptimeStr = useMemo(() => {
     if (!checkInTime) return '--';
 
@@ -524,7 +526,6 @@ const WorkdayTimeline: React.FC<WorkdayTimelineProps> = ({
       }
     }
 
-    const hasActiveBreak = breakSessions.some(s => !s.endTime);
     if (hasActiveBreak) return '0m';
 
     const completedBreaks = breakSessions
@@ -554,8 +555,8 @@ const WorkdayTimeline: React.FC<WorkdayTimelineProps> = ({
   const requiredMins = 540 + (penaltyMinutes || 0);
   const isOvertime = workedTime ? (workedTime.hours * 60 + workedTime.minutes) > requiredMins : false;
 
-  const statusLabel = !checkInTime ? 'Not Checked In' : checkOutTime ? 'Completed' : isShiftOver ? 'Shift Ended' : isShiftPending ? 'Pending' : checkInIsLate ? 'Late' : checkInPct !== null ? 'Present' : 'Active';
-  const statusClass = !checkInTime ? 'offline' : checkOutTime ? 'over' : isShiftOver ? 'over' : isShiftPending ? 'pending' : checkInIsLate ? 'late' : 'active';
+  const statusLabel = !checkInTime ? 'Not Checked In' : checkOutTime ? 'Completed' : isShiftOver ? 'Shift Ended' : isShiftPending ? 'Pending' : hasActiveBreak ? 'Away / On Break' : 'Active';
+  const statusClass = !checkInTime ? 'offline' : checkOutTime ? 'over' : isShiftOver ? 'over' : isShiftPending ? 'pending' : hasActiveBreak ? 'away' : 'active';
 
   const finalEndTimeLabel = useMemo(() => {
     if (!endTime) return '';

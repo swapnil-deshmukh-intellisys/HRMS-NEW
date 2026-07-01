@@ -1680,5 +1680,34 @@
     "expectedOutput": "Desktop break reminder notifications trigger at the actual target break hours (10:45 AM, 1:00 PM, 4:10 PM) matching the notification popup strings.",
     "createdAt": "2026-07-01T10:23:21Z",
     "updatedAt": "2026-07-01T10:23:32Z"
+  },
+  {
+    "taskId": "TSK-ATT-025",
+    "moduleId": "MOD-ATTENDANCE",
+    "sprint": "Sprint 4",
+    "project": "HRMS",
+    "page": "Desktop Client App",
+    "module": "Attendance",
+    "submodule": "Packaging & Deployment",
+    "title": "Publish and package desktop agent binary zip for client deployment",
+    "description": "Published a self-contained Release build of the Windows C# desktop agent application using the local .NET SDK. Packaged the compilation directory (including system dependencies and framework assemblies) into a zipped archive (HRMS_Agent.zip) and placed it in the frontend's public downloads directory, allowing seamless desktop client updates from the web dashboard.",
+    "frontendWork": "Updated public download asset HRMS_Agent.zip.",
+    "backendWork": "None",
+    "databaseWork": "None",
+    "apiWork": "None",
+    "testingWork": "Verified zip archive is built and stored in frontend public folder for employee download.",
+    "priority": "MEDIUM",
+    "estimatedHours": 1,
+    "actualHours": 1,
+    "dependencies": [
+      "TSK-ATT-024"
+    ],
+    "riskLevel": "LOW",
+    "status": "COMPLETED",
+    "completionPercentage": 100,
+    "owner": "Fullstack Team",
+    "expectedOutput": "A compiled self-contained HRMS_Agent.zip file is generated and stored in the frontend public downloads directory.",
+    "createdAt": "2026-07-01T10:27:15Z",
+    "updatedAt": "2026-07-01T10:28:08Z"
   }
 ]

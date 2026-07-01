@@ -285,5 +285,12 @@
     "title": "Fix C# desktop agent break reminder popups triggering too early",
     "status": "COMPLETED",
     "narrative": "Resolved a timing issue in the Windows C# desktop agent application where break reminder popups triggered 20-30 minutes early relative to their hardcoded notification strings (e.g. triggering Lunch Reminder at 12:30 PM instead of 1:00 PM). Refactored Program.cs to trigger break reminders based on the actual target schedules (10:45 AM for Morning Tea, 1:00 PM for Lunch, and 4:10 PM for Evening Tea) instead of using the shift's wide allowed window start bounds."
+  },
+  {
+    "date": "2026-07-01",
+    "taskId": "TSK-ATT-025",
+    "title": "Publish and package desktop agent binary zip for client deployment",
+    "status": "COMPLETED",
+    "narrative": "Published a self-contained Release build of the Windows C# desktop agent application using the local .NET SDK. Packaged the compilation directory (including system dependencies and framework assemblies) into a zipped archive (HRMS_Agent.zip) and placed it in the frontend's public downloads directory, allowing seamless desktop client updates from the web dashboard."
   }
 ]

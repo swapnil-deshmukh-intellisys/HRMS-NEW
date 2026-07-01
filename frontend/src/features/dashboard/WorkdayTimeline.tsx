@@ -90,6 +90,7 @@ const WorkdayTimeline: React.FC<WorkdayTimelineProps> = ({
   }, [token]);
 
   const loadDesktopLogs = useCallback(async () => {
+    if (!token) return;
     try {
       const qs = new URLSearchParams();
       if (employeeId) qs.append('employeeId', employeeId.toString());

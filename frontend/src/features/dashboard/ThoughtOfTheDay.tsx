@@ -1,33 +1,30 @@
 import { useMemo } from "react";
 
-/** General motivational thoughts shown to all employees */
-const thoughts = [
-  "The only way to do great work is to love what you do.",
-  "Believe you can and you're halfway there.",
-  "Quality is not an act, it is a habit.",
-  "Your attitude determines your direction.",
-  "Do something today that your future self will thank you for.",
-  "Success is the sum of small efforts repeated day in and day out.",
-  "Focus on being productive instead of busy.",
-  "The expert in anything was once a beginner.",
-  "Your time is limited, so don't waste it living someone else's life.",
+/** General motivational thoughts shown to developers, QA, analysts, and tech staff */
+const employeeThoughts = [
+  "First, solve the problem. Then, write the code.",
+  "Clean code always looks like it was written by someone who cares.",
+  "Simplicity is the soul of efficiency.",
+  "The best error message is the one that never shows up because the system works flawlessly.",
+  "Growth begins at the end of your console log of errors.",
+  "A clever person solves a problem. A wise person avoids it through solid design.",
+  "Code is like humor. When you have to explain it, it's bad.",
+  "Every bug you fix is a step toward building a more robust software craftsman.",
+  "Productivity isn't about working more hours. It's about making each hour count.",
+  "Continuous learning is the minimum requirement for success in our field.",
+  "Great developers write code that humans can understand, not just machines.",
+  "Design is not just what it looks like and feels like. Design is how it works.",
+  "Testing is an investment in your peace of mind and the client's trust.",
+  "Small refactors today prevent massive rewrites tomorrow.",
+  "Stay curious, write clean code, and never stop building.",
   "Opportunity is missed by most people because it is dressed in overalls and looks like work.",
   "Hard work beats talent when talent doesn't work hard.",
-  "Don't wait for opportunity. Create it.",
-  "The only person you should try to be better than is the person you were yesterday.",
   "Small progress is still progress.",
-  "Stay positive, work hard, and make it happen.",
-  "Good things come to those who work.",
-  "Every accomplishment starts with the decision to try.",
-  "Challenges are what make life interesting; overcoming them is what makes life meaningful.",
-  "The secret of getting ahead is getting started.",
-  "If you can dream it, you can do it.",
+  "Believe you can and you're halfway there.",
+  "Success is the sum of small efforts repeated day in and day out.",
 ];
 
-/**
- * CEO / founder / business-growth thoughts curated specifically
- * for Rutik Bhosle — entrepreneur, CEO and IT company builder.
- */
+/** CEO thoughts focusing on business growth, partner coordination, IT scaling, and entrepreneurship */
 const ceoThoughts = [
   "Build the company you wish existed. Then make the world need it.",
   "Every great business started with someone who refused to accept the world as it is.",
@@ -49,24 +46,68 @@ const ceoThoughts = [
   "The IT industry rewards those who solve real problems, not those who chase trends.",
   "Partnerships are leverage. Choose partners who multiply your strengths.",
   "The gap between where you are and where you want to be is called consistent action.",
-  "Think like a founder, act like an operator, inspire like a leader.",
-  "You are not just running a company. You are building a legacy.",
-  "Every line of code your team ships is a brick in the empire you are building.",
-  "The best time to plant a tree was 10 years ago. The second best time is today — for your next product line.",
-  "Speed is a feature. Velocity is a culture. You choose which company you build.",
+];
+
+/** Managing Director (MD) thoughts focusing on strategy, execution, system design, and organizational alignment */
+const mdThoughts = [
+  "Good strategy is about making choices, trade-offs; it's about deliberately choosing to be different.",
+  "Execution is everything. The best strategy is useless without action.",
+  "Excellence is not a destination; it is a continuous journey that we build day by day.",
+  "A company is only as strong as its operations and the systems that support them.",
+  "Management is efficiency in climbing the ladder of success; leadership determines whether the ladder is leaning against the right wall.",
+  "Customer satisfaction is worthless. Customer loyalty is priceless.",
+  "Build a system that functions smoothly even in your absence. That is the true test of operational excellence.",
+  "A business that makes nothing but money is a poor business.",
+  "Quality means doing it right when no one is looking.",
+  "Operations keeps the lights on, strategy decides where we shine them next.",
+  "Growth is never by mere chance; it is the result of forces working together.",
+  "Strategy is not the consequence of planning, but the starting point.",
+  "Focus on details, align the processes, and the results will take care of themselves.",
+  "Empower your managers to execute, and guide them with clear, long-term vision.",
+  "Operational discipline is the bridge between goals and accomplishments.",
+  "Scale requires standardization. Build robust systems to unlock corporate potential.",
+];
+
+/** HR thoughts focusing on company culture, mentoring, synergy, talent growth, and employee support */
+const hrThoughts = [
+  "Train people well enough so they can leave, treat them well enough so they don't want to.",
+  "Human resources isn't a thing we do. It's the run that runs our business.",
+  "Appreciation can make a day, even change a life. Your willingness to put it into words is all that is necessary.",
+  "Culture is what people do when no one is looking.",
+  "An employee's motivation is a direct reflection of their work environment.",
+  "The art of mentoring is the art of assisting discovery.",
+  "To build a great company, start by building a great place to work.",
+  "Synergy is the highest activity of life — it creates new, untapped alternatives.",
+  "Behind every successful project is a team of motivated, supported individuals.",
+  "We don't build businesses. We build people, and then people build the business.",
+  "A workplace built on empathy and growth compiles the most resilient teams.",
+  "Listen with curiosity. Speak with honesty. Act with integrity.",
+  "Our greatest asset is the potential of our people. Invest in it daily.",
+  "A positive work culture is the fuel that keeps productivity burning.",
 ];
 
 interface ThoughtOfTheDayProps {
-  /** Optional employeeId to serve role-specific thoughts */
-  employeeId?: number | null;
+  /** Optional job title to serve role-specific thoughts */
+  jobTitle?: string | null;
+  /** Optional role to serve role-specific thoughts */
+  role?: string | null;
 }
 
-/** Rutik Bhosle's employee ID (ADMIN / CEO) */
-const RUTIK_EMPLOYEE_ID = 34;
-
-export default function ThoughtOfTheDay({ employeeId }: ThoughtOfTheDayProps = {}) {
+export default function ThoughtOfTheDay({ jobTitle, role }: ThoughtOfTheDayProps) {
   const thought = useMemo(() => {
-    const pool = employeeId === RUTIK_EMPLOYEE_ID ? ceoThoughts : thoughts;
+    // Select the appropriate thought pool based on jobTitle or role
+    let pool = employeeThoughts;
+    
+    const titleLower = (jobTitle || "").toLowerCase();
+    const roleLower = (role || "").toLowerCase();
+
+    if (titleLower.includes("ceo")) {
+      pool = ceoThoughts;
+    } else if (titleLower.includes("managing director") || titleLower === "md") {
+      pool = mdThoughts;
+    } else if (roleLower === "hr" || titleLower.includes("hr") || titleLower.includes("human resources")) {
+      pool = hrThoughts;
+    }
 
     // Current date in YYYY-MM-DD format to ensure same thought for the whole day
     const now = new Date();
@@ -81,7 +122,7 @@ export default function ThoughtOfTheDay({ employeeId }: ThoughtOfTheDayProps = {
 
     const index = Math.abs(hash) % pool.length;
     return pool[index];
-  }, [employeeId]);
+  }, [jobTitle, role]);
 
   return (
     <p className="thought-of-the-day">

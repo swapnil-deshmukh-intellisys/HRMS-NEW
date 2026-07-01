@@ -91,7 +91,7 @@ export default function ManagementDashboard({ token, role }: { token: string | n
                 ) : null}
               </div>
             </div>
-            <ThoughtOfTheDay employeeId={data.currentEmployee?.id} />
+            <ThoughtOfTheDay jobTitle={data.currentEmployee?.jobTitle} role={role} />
           </div>
           <AnnouncementList token={token} refreshSignal={announcementKey} onCreateClick={() => setAnnouncementModalOpen(true)} />
           <DashboardHeroClocks />

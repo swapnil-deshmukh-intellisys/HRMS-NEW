@@ -323,7 +323,11 @@
       "TSK-DSH-004",
       "TSK-DSH-005",
       "TSK-DSH-006",
-      "TSK-ATT-021"
+      "TSK-ATT-021",
+      "TSK-ATT-022",
+      "TSK-ATT-023",
+      "TSK-ATT-024",
+      "TSK-ATT-025"
     ],
     "inProgressTasks": [],
     "newTasksCreated": [
@@ -333,17 +337,24 @@
       "TSK-DSH-004",
       "TSK-DSH-005",
       "TSK-DSH-006",
-      "TSK-ATT-021"
+      "TSK-ATT-021",
+      "TSK-ATT-022",
+      "TSK-ATT-023",
+      "TSK-ATT-024",
+      "TSK-ATT-025"
     ],
     "bugsFixed": [
       "Fixed silent 401 failure in WorkdayTimeline.tsx loadDesktopLogs: added if (!token) return guard so unauthenticated requests no longer fire and swallow errors silently",
       "Fixed white flash on hero section: separated .dashboard-hero background-color (#0f172a) from background-image so the browser has a solid dark fallback before compositing bgh2.jpg",
-      "Fixed desktop activity timeline data mapping: updated /desktop-event to parse the attendance Date from the event's actual timestamp instead of hardcoding today's date, resolving corrupt replayed offline logs"
+      "Fixed desktop activity timeline data mapping: updated /desktop-event to parse the attendance Date from the event's actual timestamp instead of hardcoding today's date, resolving corrupt replayed offline logs",
+      "Fixed Workday Timeline Event Log clutter: filtered out redundant desktop logs (e.g. Screen Locked, Went Idle) that occur within 60s of a corresponding Break Session, and hid transient break sessions lasting less than 1 minute",
+      "Smart break classification: refactored WorkdayTimeline.tsx to show locks/idle times as actual tea/lunch breaks only if they fall within official scheduled break hours or were manually triggered; otherwise they are cleanly represented by their raw desktop activity events (e.g., Screen Locked, Went Idle)",
+      "Fixed C# desktop agent break reminder popups triggering too early: updated trigger condition in Program.cs to use actual scheduled target times (10:45 AM, 1:00 PM, 4:10 PM) matching the notification texts"
     ],
     "blockers": [],
-    "hoursWorked": 7,
-    "dailyProgress": 7,
+    "hoursWorked": 11,
+    "dailyProgress": 11,
     "overallProjectProgress": 100,
-    "remarks": "Completed bug fixes and dashboard features: (1) Added token guard to WorkdayTimeline.tsx. (2) Eliminated hero section white flash on .dashboard-hero. (3) Added dynamic relatable thoughts pools for CEO, MD, HR, and general employees. (4) Redesigned hero layouts on both dashboards. (5) Fixed the desktop offline sync date mapping logic in /desktop-event and cleaned up 9 previous days' break records mapped to Harshada Nichit's July 1st attendance."
+    "remarks": "Completed bug fixes and dashboard features: (1) Added token guard to WorkdayTimeline.tsx. (2) Eliminated hero section white flash on .dashboard-hero. (3) Added dynamic relatable thoughts pools. (4) Redesigned hero layouts. (5) Fixed the desktop offline sync date mapping logic. (6) Filtered out duplicate/redundant timeline log items. (7) Classified locks/idle times as breaks only during scheduled hours. (8) Aligned desktop reminder triggers. (9) Published and packaged the self-contained Release build of the desktop agent (HRMS_Agent.zip) in the public downloads directory."
   }
 ]

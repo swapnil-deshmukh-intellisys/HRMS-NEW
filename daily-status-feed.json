@@ -264,5 +264,33 @@
     "title": "Fix desktop activity timeline data mapping and cleanup duplicate/offline synced breaks",
     "status": "COMPLETED",
     "narrative": "Resolved a critical bug where offline queued events uploaded from the Windows C# desktop client replayed previous dates (e.g., June 25th or 29th) but linked their break session transitions to the current calendar date in the database. Refactored the backend /desktop-event endpoint in routes.ts to parse the attendanceDate parameter from the event's actual timestamp instead of hardcoding today's date. Wrote and ran a database cleanup script (cleanup_harshada_breaks.ts) to correctly re-map Harshada Nichit's duplicate previous days' breaks (June 25th and 29th) to their correct historical records, clearing today's (July 1st) timeline logs."
+  },
+  {
+    "date": "2026-07-01",
+    "taskId": "TSK-ATT-022",
+    "title": "Clean up Workday Timeline Event Log redundancy and transient breaks",
+    "status": "COMPLETED",
+    "narrative": "Resolved visual clutter in the Event Log where redundant desktop activity logs (e.g. Screen Locked, Went Idle) and their triggered break sessions (Lunch Break Started, etc.) were both listed at the exact same minute. Refactored WorkdayTimeline.tsx to: (1) filter out raw desktop activity logs if they correspond to a break session transition within 60 seconds; (2) hide transient break sessions that lasted less than 1 minute (e.g., brief 10-second screen locks) from the text log list, keeping the Event Log clean, structured, and easy to read."
+  },
+  {
+    "date": "2026-07-01",
+    "taskId": "TSK-ATT-023",
+    "title": "Implement smart break event classification matching scheduled ranges in timeline logs",
+    "status": "COMPLETED",
+    "narrative": "Implemented a smart visual mapping rule in WorkdayTimeline.tsx for logs and activity: (1) Locks, suspends, and idle times are classified as official breaks (e.g. Lunch Break, Tea Break) only if they overlap with the company's official break schedule ranges or were manually started from the web dashboard; (2) Lock/idle periods outside scheduled break hours are displayed with their actual telemetry descriptions (e.g., Screen Locked, Went Idle) instead of generic tea/lunch breaks, providing clear and accurate timelines."
+  },
+  {
+    "date": "2026-07-01",
+    "taskId": "TSK-ATT-024",
+    "title": "Fix C# desktop agent break reminder popups triggering too early",
+    "status": "COMPLETED",
+    "narrative": "Resolved a timing issue in the Windows C# desktop agent application where break reminder popups triggered 20-30 minutes early relative to their hardcoded notification strings (e.g. triggering Lunch Reminder at 12:30 PM instead of 1:00 PM). Refactored Program.cs to trigger break reminders based on the actual target schedules (10:45 AM for Morning Tea, 1:00 PM for Lunch, and 4:10 PM for Evening Tea) instead of using the shift's wide allowed window start bounds."
+  },
+  {
+    "date": "2026-07-01",
+    "taskId": "TSK-ATT-025",
+    "title": "Publish and package desktop agent binary zip for client deployment",
+    "status": "COMPLETED",
+    "narrative": "Published a self-contained Release build of the Windows C# desktop agent application using the local .NET SDK. Packaged the compilation directory (including system dependencies and framework assemblies) into a zipped archive (HRMS_Agent.zip) and placed it in the frontend's public downloads directory, allowing seamless desktop client updates from the web dashboard."
   }
 ]

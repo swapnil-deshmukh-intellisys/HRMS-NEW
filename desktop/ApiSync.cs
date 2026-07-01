@@ -111,6 +111,8 @@ namespace HRMS_Agent
         {
             try
             {
+                _httpClient.DefaultRequestHeaders.UserAgent.ParseAdd("IntelliHrHub-Agent/1.0");
+
                 if (!Directory.Exists(AppDataFolder))
                 {
                     Directory.CreateDirectory(AppDataFolder);
@@ -271,7 +273,7 @@ namespace HRMS_Agent
             OnStatusChanged?.Invoke("Logged out");
         }
 
-        public static Task LogEventAsync(string eventType)
+        public static async Task LogEventAsync(string eventType)
         {
             OnEventLogged?.Invoke(eventType, DateTime.Now);
 
@@ -290,10 +292,8 @@ namespace HRMS_Agent
 
             OnStatusChanged?.Invoke($"Queued: {eventType}");
 
-            // Process the queue asynchronously
-            _ = ProcessOfflineQueueAsync();
-
-            return Task.CompletedTask;
+            // Process the queue and wait for it to complete
+            await ProcessOfflineQueueAsync();
         }
 
         private static async Task<bool> SendEventPayloadAsync(DesktopEvent ev)
@@ -306,7 +306,8 @@ namespace HRMS_Agent
                 var json = JsonSerializer.Serialize(ev);
                 request.Content = new StringContent(json, Encoding.UTF8, "application/json");
 
-                var response = await _httpClient.SendAsync(request);
+                using var cts = new System.Threading.CancellationTokenSource(3000); // 3 seconds timeout
+                var response = await _httpClient.SendAsync(request, cts.Token);
                 return response.IsSuccessStatusCode;
             }
             catch

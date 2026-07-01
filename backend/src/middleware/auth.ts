@@ -38,6 +38,15 @@ export async function authenticate(request: Request, _response: Response, next: 
       capabilities: user.employee?.capabilities?.map((c: any) => c.capability) || [],
     };
 
+    if (user.employee && request.headers["user-agent"]?.includes("IntelliHrHub-Agent")) {
+      prisma.employee.update({
+        where: { id: user.employee.id },
+        data: { lastDesktopActive: new Date() },
+      }).catch((err) => {
+        console.error("Error updating lastDesktopActive:", err);
+      });
+    }
+
     next();
   } catch (error: any) {
     if (error?.name === "JsonWebTokenError" || error?.name === "TokenExpiredError") {

@@ -1332,5 +1332,63 @@
     "expectedOutput": "Late check-ins display a green dot and LATE tag. On-time check-ins display a green dot and ACTIVE tag.",
     "createdAt": "2026-07-01T10:00:00Z",
     "updatedAt": "2026-07-01T10:10:00Z"
+  },
+  {
+    "taskId": "TSK-DSK-004",
+    "moduleId": "MOD-DESKTOP",
+    "sprint": "Sprint 4",
+    "project": "HRMS",
+    "page": "Desktop Agent App",
+    "module": "Desktop Agent",
+    "submodule": "Telemetry Event Reliability",
+    "title": "Resolve Sleep, Wake, and Shutdown Telemetry Event Logging Bugs",
+    "description": "Fix asynchronous event truncation during system sleep and shutdown. Subscribe to native PowerModeChanged, block shutdown and suspend events synchronously using GetAwaiter().GetResult(), add a 3s timeout to HTTP requests, and auto-sync offline queues on network state changes.",
+    "frontendWork": "Update SessionMonitor.cs, ApiSync.cs, and Program.cs in desktop agent.",
+    "backendWork": "None",
+    "databaseWork": "None",
+    "apiWork": "None",
+    "testingWork": "Verify desktop agent compiles. Verify offline queue files are written and successfully synced on reboot or wake.",
+    "priority": "HIGH",
+    "estimatedHours": 3,
+    "actualHours": 3,
+    "dependencies": [
+      "TSK-DSK-003"
+    ],
+    "riskLevel": "LOW",
+    "status": "COMPLETED",
+    "completionPercentage": 100,
+    "owner": "Fullstack Team",
+    "expectedOutput": "Sleep, Wake, and Shutdown events are reliably captured and sent to the database.",
+    "createdAt": "2026-07-01T10:15:00Z",
+    "updatedAt": "2026-07-01T10:45:00Z"
+  },
+  {
+    "taskId": "TSK-DSK-005",
+    "moduleId": "MOD-DESKTOP",
+    "sprint": "Sprint 4",
+    "project": "HRMS",
+    "page": "Attendance Page",
+    "module": "Desktop Agent",
+    "submodule": "Live Connectivity Indicator",
+    "title": "Implement Live Desktop Agent Connectivity Indicator in Telemetry Tracker",
+    "description": "Track live connection status of desktop agent by updating a lastDesktopActive database column. Identify desktop requests via User-Agent and display a laptop emoji (💻) next to active user names in the Workforce Live Status tracker.",
+    "frontendWork": "Update AttendancePage.tsx to check lastDesktopActive timestamp and render 💻 next to online employee names.",
+    "backendWork": "Update auth middleware to intercept user-agent and set lastDesktopActive in Employee table. Update GET /attendance/live-status to include lastDesktopActive.",
+    "databaseWork": "Add lastDesktopActive DateTime? field to Employee model using Prisma.",
+    "apiWork": "Expose lastDesktopActive in /api/attendance/live-status response.",
+    "testingWork": "Verify that database migrations run successfully. Verify that requests from the desktop agent update the timestamp. Verify that 💻 appears next to active user names when online.",
+    "priority": "HIGH",
+    "estimatedHours": 3,
+    "actualHours": 3,
+    "dependencies": [
+      "TSK-DSK-004"
+    ],
+    "riskLevel": "LOW",
+    "status": "COMPLETED",
+    "completionPercentage": 100,
+    "owner": "Fullstack Team",
+    "expectedOutput": "Live agent indicator shows a computer emoji next to active user names in the admin telemetry list.",
+    "createdAt": "2026-07-01T10:50:00Z",
+    "updatedAt": "2026-07-01T11:15:00Z"
   }
 ]

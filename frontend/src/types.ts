@@ -278,6 +278,7 @@ export type LiveStatus = {
   lastEventTime: string | null;
   checkInTime: string | null;
   checkOutTime: string | null;
+  lastDesktopActive: string | null;
 };
 
 export type AttendanceRegularizationRequest = {

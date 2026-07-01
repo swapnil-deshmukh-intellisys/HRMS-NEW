@@ -322,7 +322,8 @@
       "TSK-DSH-003",
       "TSK-DSH-004",
       "TSK-DSH-005",
-      "TSK-DSH-006"
+      "TSK-DSH-006",
+      "TSK-ATT-021"
     ],
     "inProgressTasks": [],
     "newTasksCreated": [
@@ -331,16 +332,18 @@
       "TSK-DSH-003",
       "TSK-DSH-004",
       "TSK-DSH-005",
-      "TSK-DSH-006"
+      "TSK-DSH-006",
+      "TSK-ATT-021"
     ],
     "bugsFixed": [
       "Fixed silent 401 failure in WorkdayTimeline.tsx loadDesktopLogs: added if (!token) return guard so unauthenticated requests no longer fire and swallow errors silently",
-      "Fixed white flash on hero section: separated .dashboard-hero background-color (#0f172a) from background-image so the browser has a solid dark fallback before compositing bgh2.jpg"
+      "Fixed white flash on hero section: separated .dashboard-hero background-color (#0f172a) from background-image so the browser has a solid dark fallback before compositing bgh2.jpg",
+      "Fixed desktop activity timeline data mapping: updated /desktop-event to parse the attendance Date from the event's actual timestamp instead of hardcoding today's date, resolving corrupt replayed offline logs"
     ],
     "blockers": [],
-    "hoursWorked": 6,
-    "dailyProgress": 6,
+    "hoursWorked": 7,
+    "dailyProgress": 7,
     "overallProjectProgress": 100,
-    "remarks": "Completed two critical bug fixes and implemented dashboard features: (1) Added token guard to WorkdayTimeline.tsx. (2) Eliminated hero section white flash on .dashboard-hero. (3) Added dynamic relatable thoughts pools for CEO, MD, HR, and general employees. (4) Redesigned hero layouts on both Employee and Management dashboards to place name greeting and designation badges on the left in a small style context pill, and quotes right-aligned on the right."
+    "remarks": "Completed bug fixes and dashboard features: (1) Added token guard to WorkdayTimeline.tsx. (2) Eliminated hero section white flash on .dashboard-hero. (3) Added dynamic relatable thoughts pools for CEO, MD, HR, and general employees. (4) Redesigned hero layouts on both dashboards. (5) Fixed the desktop offline sync date mapping logic in /desktop-event and cleaned up 9 previous days' break records mapped to Harshada Nichit's July 1st attendance."
   }
 ]

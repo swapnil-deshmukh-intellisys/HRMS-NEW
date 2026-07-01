@@ -257,5 +257,12 @@
     "title": "Refine Employee Hero layout: left-aligned greeting, designation badge, pill context and right-aligned thoughts",
     "status": "COMPLETED",
     "narrative": "Brought the Employee Dashboard hero section into full visual alignment with the refined Management Dashboard hero. Swapped components to place the user's name greeting, designation badge, and a new compact 'Personal Workspace | Employee Dashboard' pill context on the left, and right-aligned the ThoughtOfTheDay quotes on the right side."
+  },
+  {
+    "date": "2026-07-01",
+    "taskId": "TSK-ATT-021",
+    "title": "Fix desktop activity timeline data mapping and cleanup duplicate/offline synced breaks",
+    "status": "COMPLETED",
+    "narrative": "Resolved a critical bug where offline queued events uploaded from the Windows C# desktop client replayed previous dates (e.g., June 25th or 29th) but linked their break session transitions to the current calendar date in the database. Refactored the backend /desktop-event endpoint in routes.ts to parse the attendanceDate parameter from the event's actual timestamp instead of hardcoding today's date. Wrote and ran a database cleanup script (cleanup_harshada_breaks.ts) to correctly re-map Harshada Nichit's duplicate previous days' breaks (June 25th and 29th) to their correct historical records, clearing today's (July 1st) timeline logs."
   }
 ]

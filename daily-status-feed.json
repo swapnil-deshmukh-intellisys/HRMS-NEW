@@ -236,5 +236,12 @@
     "title": "Implement curated business-growth thought pool for CEO profile",
     "status": "COMPLETED",
     "narrative": "Developed a dedicated motivational thought pool focusing on startup and corporate business growth, partner coordination, IT product scaling, and operational leadership. Configured the ThoughtOfTheDay component to accept employeeId, checking if the logged-in user is Rutik Bhosle (employeeId: 34). Regular employees continue to receive the default team motivation quotes, while Rutik receives the CEO thought list."
+  },
+  {
+    "date": "2026-07-01",
+    "taskId": "TSK-DSH-004",
+    "title": "Refine Management Hero layout: left-aligned greeting, designation badge, pill context and right-aligned thoughts",
+    "status": "COMPLETED",
+    "narrative": "Swapped the layout of the dashboard hero section for managers/admins. Swapped the placement of the greeting and ThoughtOfTheDay components to put the greeting, name, and designation on the left and thoughts on the right. Styled the title group as a compact horizontal pill/card, and added CEO/Manager designation badges next to the name."
   }
 ]

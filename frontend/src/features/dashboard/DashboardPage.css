@@ -54,6 +54,78 @@
   /* Keep greeting together */
 }
 
+.dashboard-hero-header--left {
+  align-items: flex-start !important;
+  text-align: left !important;
+}
+
+.dashboard-hero-greeting-container {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.dashboard-hero-greeting-container .greeting-text {
+  font-size: 1.6rem;
+  font-weight: 600;
+  color: #ffffff;
+}
+
+.dashboard-hero-greeting-container .greeting-name {
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: #f97316; /* Vibrant Orange */
+}
+
+.dashboard-hero-designation-badge {
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 9999px;
+  background: rgba(249, 115, 22, 0.15);
+  color: #f97316;
+  border: 1px solid rgba(249, 115, 22, 0.3);
+  margin-left: 4px;
+}
+
+.dashboard-hero-context-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  background: rgba(255, 255, 255, 0.08);
+  padding: 4px 12px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  width: max-content;
+}
+
+.context-eyebrow {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: rgba(255, 255, 255, 0.50);
+  font-weight: 600;
+}
+
+.context-divider {
+  color: rgba(255, 255, 255, 0.3);
+  font-weight: 300;
+  font-size: 0.8rem;
+}
+
+.context-title {
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.85);
+  font-weight: 500;
+}
+
+.management-top-row .thought-of-the-day {
+  text-align: right;
+  max-width: 550px;
+}
+
 .dashboard-hero-copy .eyebrow,
 .dashboard-hero-copy .muted {
   color: rgba(255, 255, 255, 0.9);

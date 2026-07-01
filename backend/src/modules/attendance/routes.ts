@@ -1814,6 +1814,11 @@ router.get("/live-status", requireRoles("ADMIN", "HR", "MANAGER", "EMPLOYEE"), a
           },
         },
         desktopActivityLogs: {
+          where: {
+            timestamp: {
+              gte: today,
+            },
+          },
           orderBy: { timestamp: "desc" },
           take: 1,
         },

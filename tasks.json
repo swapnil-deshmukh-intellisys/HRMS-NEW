@@ -1709,5 +1709,34 @@
     "expectedOutput": "A compiled self-contained HRMS_Agent.zip file is generated and stored in the frontend public downloads directory.",
     "createdAt": "2026-07-01T10:27:15Z",
     "updatedAt": "2026-07-01T10:28:08Z"
+  },
+  {
+    "taskId": "TSK-ATT-026",
+    "moduleId": "MOD-ATTENDANCE",
+    "sprint": "Sprint 4",
+    "project": "HRMS",
+    "page": "Live Status Board / Active Workspace",
+    "module": "Attendance",
+    "submodule": "Live Activity Query Filter",
+    "title": "Filter live-status activity logs query to the current date",
+    "description": "Resolved a bug where employees who haven't sent desktop events today were showing old offline-synced sleep/lock times from previous days (e.g. June 26th) in their live status metadata and being incorrectly marked as AWAY. Refactored the GET /api/attendance/live-status endpoint in routes.ts to filter desktopActivityLogs selection to only include events occurring greater than or equal to the start of today.",
+    "frontendWork": "None",
+    "backendWork": "Added timestamp gte today where condition to desktopActivityLogs selection in live-status route.",
+    "databaseWork": "None",
+    "apiWork": "GET /api/attendance/live-status",
+    "testingWork": "Verified API response returns correctly for active statuses. Checked that historical events no longer pollute live dashboards.",
+    "priority": "HIGH",
+    "estimatedHours": 1,
+    "actualHours": 1,
+    "dependencies": [
+      "TSK-ATT-025"
+    ],
+    "riskLevel": "LOW",
+    "status": "COMPLETED",
+    "completionPercentage": 100,
+    "owner": "Fullstack Team",
+    "expectedOutput": "Employee live status and last event time are only calculated using today's activity events; historical events are ignored.",
+    "createdAt": "2026-07-01T12:19:17Z",
+    "updatedAt": "2026-07-01T12:19:27Z"
   }
 ]

@@ -292,5 +292,12 @@
     "title": "Publish and package desktop agent binary zip for client deployment",
     "status": "COMPLETED",
     "narrative": "Published a self-contained Release build of the Windows C# desktop agent application using the local .NET SDK. Packaged the compilation directory (including system dependencies and framework assemblies) into a zipped archive (HRMS_Agent.zip) and placed it in the frontend's public downloads directory, allowing seamless desktop client updates from the web dashboard."
+  },
+  {
+    "date": "2026-07-01",
+    "taskId": "TSK-ATT-026",
+    "title": "Filter live-status activity logs query to the current date",
+    "status": "COMPLETED",
+    "narrative": "Resolved a bug where employees who haven't sent desktop events today were showing old offline-synced sleep/lock times from previous days (e.g. June 26th) in their live status metadata and being incorrectly marked as AWAY. Refactored the GET /api/attendance/live-status endpoint in routes.ts to filter desktopActivityLogs selection to only include events occurring greater than or equal to the start of today."
   }
 ]

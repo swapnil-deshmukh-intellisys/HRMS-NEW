@@ -1477,5 +1477,34 @@
     "expectedOutput": "CEO profile receives business growth motivational quotes, while regular employees receive standard motivation.",
     "createdAt": "2026-07-01T08:56:08Z",
     "updatedAt": "2026-07-01T08:58:15Z"
+  },
+  {
+    "taskId": "TSK-DSH-004",
+    "moduleId": "MOD-DASHBOARD",
+    "sprint": "Sprint 4",
+    "project": "HRMS",
+    "page": "Dashboard Page",
+    "module": "Role Dashboards & Analytics",
+    "submodule": "Management Hero Layout Refinement",
+    "title": "Refine Management Hero layout: left-aligned greeting, designation badge, pill context and right-aligned thoughts",
+    "description": "Adjusted the layout of the dashboard hero section for managers/admins. Swapped the placement of the greeting and ThoughtOfTheDay components to put the greeting, name, and designation on the left and thoughts on the right. Styled the title group as a compact horizontal pill/card, and added CEO/Manager designation badges next to the name.",
+    "frontendWork": "Updated ManagementDashboard.tsx and added CSS layout overrides in DashboardPage.css.",
+    "backendWork": "None",
+    "databaseWork": "None",
+    "apiWork": "None",
+    "testingWork": "Verified production build compiles cleanly. Checked that layout aligns nicely on localhost.",
+    "priority": "MEDIUM",
+    "estimatedHours": 1,
+    "actualHours": 1,
+    "dependencies": [
+      "TSK-DSH-003"
+    ],
+    "riskLevel": "LOW",
+    "status": "COMPLETED",
+    "completionPercentage": 100,
+    "owner": "Fullstack Team",
+    "expectedOutput": "CEO/Manager dashboard displays greeting/designation on the left, compact title pill underneath, and quotes right-aligned.",
+    "createdAt": "2026-07-01T09:12:29Z",
+    "updatedAt": "2026-07-01T09:12:34Z"
   }
 ]

@@ -66,12 +66,32 @@ export default function ManagementDashboard({ token, role }: { token: string | n
     <>
       <article className="card dashboard-hero">
         <div className="dashboard-hero-copy">
-          <div className="dashboard-hero-top-row">
-            <ThoughtOfTheDay employeeId={data.currentEmployee?.id} />
-            <div className="dashboard-hero-header">
-              {bannerContent.eyebrow ? <p className="eyebrow">{bannerContent.eyebrow}</p> : null}
-              <h3>{bannerContent.title}</h3>
+          <div className="dashboard-hero-top-row management-top-row">
+            <div className="dashboard-hero-header dashboard-hero-header--left">
+              <div className="dashboard-hero-greeting-container">
+                <span className="greeting-text">Welcome,</span>
+                <span className="greeting-name">
+                  {data.currentEmployee?.firstName} {data.currentEmployee?.lastName}
+                </span>
+                {data.currentEmployee?.jobTitle && (
+                  <span className="dashboard-hero-designation-badge">
+                    {data.currentEmployee.jobTitle}
+                  </span>
+                )}
+              </div>
+              <div className="dashboard-hero-context-title">
+                {bannerContent.eyebrow ? (
+                  <span className="context-eyebrow">{bannerContent.eyebrow}</span>
+                ) : null}
+                {bannerContent.eyebrow && bannerContent.title ? (
+                  <span className="context-divider">|</span>
+                ) : null}
+                {bannerContent.title ? (
+                  <span className="context-title">{bannerContent.title}</span>
+                ) : null}
+              </div>
             </div>
+            <ThoughtOfTheDay employeeId={data.currentEmployee?.id} />
           </div>
           <AnnouncementList token={token} refreshSignal={announcementKey} onCreateClick={() => setAnnouncementModalOpen(true)} />
           <DashboardHeroClocks />

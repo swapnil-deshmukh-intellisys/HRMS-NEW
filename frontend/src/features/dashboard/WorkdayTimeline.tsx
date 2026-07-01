@@ -34,18 +34,34 @@ function format12h(timeStr: string): string {
   return `${displayH}:${m.toString().padStart(2, '0')} ${period}`;
 }
 
-const getBreakName = (dateInput: Date | string): string => {
+interface ScheduledBreak {
+  isBreak: boolean;
+  type: "Morning Tea Break" | "Lunch Break" | "Evening Tea Break" | null;
+}
+
+const getScheduledBreakInfo = (dateInput: Date | string): ScheduledBreak => {
   const date = toZonedTime(new Date(dateInput), 'Asia/Kolkata');
   const hour = date.getHours();
   const minute = date.getMinutes();
-  if (hour === 10 || (hour === 11 && minute <= 15)) {
-    return "Morning Tea Break";
-  } else if (hour === 12 || hour === 13) {
-    return "Lunch Break";
-  } else {
-    return "Evening Tea Break";
+  
+  // Morning Tea Break: 10:45 AM - 11:00 AM (flexible: 10:40 AM to 11:15 AM)
+  if ((hour === 10 && minute >= 40) || (hour === 11 && minute <= 15)) {
+    return { isBreak: true, type: "Morning Tea Break" };
   }
+  
+  // Lunch Break: 1:00 PM - 1:40 PM (flexible: 12:55 PM to 2:15 PM)
+  if ((hour === 12 && minute >= 55) || hour === 13 || (hour === 14 && minute <= 15)) {
+    return { isBreak: true, type: "Lunch Break" };
+  }
+  
+  // Evening Tea Break: 4:10 PM - 4:30 PM (flexible: 4:00 PM to 4:45 PM)
+  if (hour === 16 && minute >= 0 && minute <= 45) {
+    return { isBreak: true, type: "Evening Tea Break" };
+  }
+  
+  return { isBreak: false, type: null };
 };
+
 
 
 const WorkdayTimeline: React.FC<WorkdayTimelineProps> = ({
@@ -410,6 +426,39 @@ const WorkdayTimeline: React.FC<WorkdayTimelineProps> = ({
       const isIdleStart = log.eventType === 'IDLE_START';
       const isIdleEnd = log.eventType === 'IDLE_END';
       
+      const logTime = new Date(log.timestamp);
+      
+      // If this desktop activity corresponds to an active scheduled break session (within 60s),
+      // we hide it to prevent duplicate logs. If it falls outside scheduled break hours, we
+      // keep the raw desktop event because it is more informative ("Screen Locked", "Went Idle", etc.).
+      const matchesScheduledBreak = breakSessions.some(session => {
+        const breakStart = new Date(session.startTime);
+        const breakEnd = session.endTime ? new Date(session.endTime) : null;
+        
+        // Skip comparing with transient breaks under 1 minute since they are filtered out
+        const breakDurationMs = breakEnd ? (breakEnd.getTime() - breakStart.getTime()) : 0;
+        if (breakEnd && breakDurationMs < 60000) {
+          return false;
+        }
+
+        const isStartInBreak = getScheduledBreakInfo(breakStart).isBreak;
+        const isManual = !desktopLogs.some(l => Math.abs(new Date(l.timestamp).getTime() - breakStart.getTime()) < 60000);
+        
+        // Only hide the desktop log if the corresponding break is official/scheduled or manual
+        if (!isStartInBreak && !isManual) {
+          return false;
+        }
+
+        const startDiff = Math.abs(logTime.getTime() - breakStart.getTime()) < 60000;
+        const endDiff = breakEnd ? Math.abs(logTime.getTime() - breakEnd.getTime()) < 60000 : false;
+        
+        return startDiff || endDiff;
+      });
+
+      if (matchesScheduledBreak) {
+        return; // Filter out redundant desktop activity item
+      }
+      
       let icon = <Power size={14} color="var(--wdt-accent-rose)" />;
       let desc = 'Shutdown';
       
@@ -429,7 +478,7 @@ const WorkdayTimeline: React.FC<WorkdayTimelineProps> = ({
 
       items.push({
         key: `desktop-${log.id}`,
-        timestamp: new Date(log.timestamp),
+        timestamp: logTime,
         icon,
         desc,
       });
@@ -438,7 +487,25 @@ const WorkdayTimeline: React.FC<WorkdayTimelineProps> = ({
     // 4. Break Sessions
     breakSessions.forEach((session) => {
       const startD = new Date(session.startTime);
-      const name = getBreakName(startD);
+      const breakInfo = getScheduledBreakInfo(startD);
+      const isManual = !desktopLogs.some(l => Math.abs(new Date(l.timestamp).getTime() - startD.getTime()) < 60000);
+
+      // If it is not a scheduled break hour and not manually triggered from the web,
+      // we skip displaying it as a "Break" text item in the Event Log.
+      // Instead, the Event Log will show the actual desktop events (Screen Locked, Went Idle, etc.)
+      if (!breakInfo.isBreak && !isManual) {
+        return;
+      }
+
+      // If the break session has ended and lasted less than 1 minute, skip it to prevent transient clutter
+      if (session.endTime) {
+        const durationMs = new Date(session.endTime).getTime() - startD.getTime();
+        if (durationMs < 60000) {
+          return;
+        }
+      }
+
+      const name = breakInfo.type || "Custom Break";
 
       items.push({
         key: `break-start-${session.id}`,

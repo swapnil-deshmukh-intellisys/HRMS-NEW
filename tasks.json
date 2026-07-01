@@ -1593,5 +1593,63 @@
     "expectedOutput": "Replayed desktop offline activity logs are correctly mapped to their corresponding calendar dates in the database; today's timeline correctly displays only today's breaks.",
     "createdAt": "2026-07-01T09:51:57Z",
     "updatedAt": "2026-07-01T09:52:06Z"
+  },
+  {
+    "taskId": "TSK-ATT-022",
+    "moduleId": "MOD-ATTENDANCE",
+    "sprint": "Sprint 4",
+    "project": "HRMS",
+    "page": "Attendance Page & Timeline Modal",
+    "module": "Attendance",
+    "submodule": "Timeline Redundancy Filter",
+    "title": "Clean up Workday Timeline Event Log redundancy and transient breaks",
+    "description": "Resolved visual clutter in the Event Log where redundant desktop activity logs (e.g. Screen Locked, Went Idle) and their triggered break sessions (Lunch Break Started, etc.) were both listed at the exact same minute. Refactored WorkdayTimeline.tsx to: (1) filter out raw desktop activity logs if they correspond to a break session transition within 60 seconds; (2) hide transient break sessions that lasted less than 1 minute (e.g., brief 10-second screen locks) from the text log list, keeping the Event Log clean, structured, and easy to read.",
+    "frontendWork": "Refactored WorkdayTimeline.tsx combinedLogItems logic to apply matchesBreak and duration filter checks.",
+    "backendWork": "None",
+    "databaseWork": "None",
+    "apiWork": "None",
+    "testingWork": "Verified production build compiles cleanly. Checked that Harshada's workday timeline log list now displays clean, structured, and non-repetitive events.",
+    "priority": "HIGH",
+    "estimatedHours": 1,
+    "actualHours": 1,
+    "dependencies": [
+      "TSK-ATT-021"
+    ],
+    "riskLevel": "LOW",
+    "status": "COMPLETED",
+    "completionPercentage": 100,
+    "owner": "Fullstack Team",
+    "expectedOutput": "Event Log displays non-repetitive, clear activity events; transient breaks under 1 minute are hidden from the text log while maintaining accurate progress bar representation.",
+    "createdAt": "2026-07-01T10:02:05Z",
+    "updatedAt": "2026-07-01T10:02:10Z"
+  },
+  {
+    "taskId": "TSK-ATT-023",
+    "moduleId": "MOD-ATTENDANCE",
+    "sprint": "Sprint 4",
+    "project": "HRMS",
+    "page": "Attendance Page & Timeline Modal",
+    "module": "Attendance",
+    "submodule": "Smart Break Event Classification",
+    "title": "Implement smart break event classification matching scheduled ranges in timeline logs",
+    "description": "Implemented a smart visual mapping rule in WorkdayTimeline.tsx for logs and activity: (1) Locks, suspends, and idle times are classified as official breaks (e.g. Lunch Break, Tea Break) only if they overlap with the company's official break schedule ranges or were manually started from the web dashboard; (2) Lock/idle periods outside scheduled break hours are displayed with their actual telemetry descriptions (e.g., Screen Locked, Went Idle) instead of generic tea/lunch breaks, providing clear and accurate timelines.",
+    "frontendWork": "Refactored WorkdayTimeline.tsx to include getScheduledBreakInfo helper and update combinedLogItems logic to apply the smart mapping rule.",
+    "backendWork": "None",
+    "databaseWork": "None",
+    "apiWork": "None",
+    "testingWork": "Verified production build compiles cleanly. Checked that locks outside break hours are shown as 'Screen Locked' and inside as 'Lunch/Tea Break'.",
+    "priority": "HIGH",
+    "estimatedHours": 1,
+    "actualHours": 1,
+    "dependencies": [
+      "TSK-ATT-022"
+    ],
+    "riskLevel": "LOW",
+    "status": "COMPLETED",
+    "completionPercentage": 100,
+    "owner": "Fullstack Team",
+    "expectedOutput": "Timeline logs list actual break sessions during official break hours and fallback raw activity events outside break hours, with no duplicate list items.",
+    "createdAt": "2026-07-01T10:17:08Z",
+    "updatedAt": "2026-07-01T10:17:20Z"
   }
 ]

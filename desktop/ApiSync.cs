@@ -303,7 +303,8 @@ namespace HRMS_Agent
                 using var request = new HttpRequestMessage(HttpMethod.Post, $"{_config.ApiUrl}/api/attendance/desktop-event");
                 request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _config.Token);
                 
-                var json = JsonSerializer.Serialize(ev);
+                var options = new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
+                var json = JsonSerializer.Serialize(ev, options);
                 request.Content = new StringContent(json, Encoding.UTF8, "application/json");
 
                 using var cts = new System.Threading.CancellationTokenSource(3000); // 3 seconds timeout

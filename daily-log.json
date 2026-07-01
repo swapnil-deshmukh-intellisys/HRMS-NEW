@@ -304,12 +304,13 @@
       "Fixed monthly attendance history dropdown filter showing up in Manager, HR, and Admin views by wrapping it in an employee-only role check",
       "Fixed brown status dot showing up for checked-in late employees by forcing active class (green dot) for all checked-in states",
       "Fixed C# desktop agent sleep and shutdown event truncation by implementing synchronous blocking handlers and a 3-second fail-fast request timeout",
-      "Implemented live desktop agent connection tracking using lastDesktopActive database column and user-agent detection, displaying a laptop icon (💻) next to active user names in the Workforce Live Status telemetry table"
+      "Implemented live desktop agent connection tracking using lastDesktopActive database column and user-agent detection, displaying a laptop icon (💻) next to active user names in the Workforce Live Status telemetry table",
+      "Fixed desktop agent event sync failure caused by PascalCase vs. camelCase naming mismatch on eventType and timestamp between C# and Express Zod validation"
     ],
     "blockers": [],
-    "hoursWorked": 8,
+    "hoursWorked": 9,
     "dailyProgress": 4,
     "overallProjectProgress": 100,
-    "remarks": "Restricted the View by Month dropdown select box on the Attendance History tab to the Employee panel, making it hidden in the other 3 administrative panels. Refined the Workday Progress header status tags: renamed the 'Present' tag to 'Active' for on-time checked-in employees, and ensured late check-ins use a green pulsing dot to indicate active shift presence. Fully resolved the C# desktop agent telemetry capture bugs for sleep, wake, and shutdown events using native OS power mode listeners, synchronous blocking handlers, and network state auto-sync. Built and integrated a live desktop connectivity indicator (💻) in the Workforce Live status table on the admin page."
+    "remarks": "Restricted the View by Month dropdown select box on the Attendance History tab to the Employee panel, making it hidden in the other 3 administrative panels. Refined the Workday Progress header status tags: renamed the 'Present' tag to 'Active' for on-time checked-in employees, and ensured late check-ins use a green pulsing dot to indicate active shift presence. Fully resolved the C# desktop agent telemetry capture bugs for sleep, wake, and shutdown events using native OS power mode listeners, synchronous blocking handlers, and network state auto-sync. Built and integrated a live desktop connectivity indicator (💻) in the Workforce Live status table on the admin page. Resolved capitalization mismatch on event logs to support seamless, backwards-compatible local event sync."
   }
 ]

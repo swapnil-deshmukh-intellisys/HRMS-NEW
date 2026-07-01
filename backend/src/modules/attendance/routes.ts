@@ -1868,8 +1868,10 @@ router.get("/live-status", requireRoles("ADMIN", "HR", "MANAGER", "EMPLOYEE"), a
 });
 
 const desktopEventSchema = z.object({
-  eventType: z.enum(["LOCK", "UNLOCK", "SLEEP", "WAKE", "SHUTDOWN", "IDLE_START", "IDLE_END"]),
-  timestamp: z.string(),
+  eventType: z.enum(["LOCK", "UNLOCK", "SLEEP", "WAKE", "SHUTDOWN", "IDLE_START", "IDLE_END"]).optional(),
+  timestamp: z.string().optional(),
+  EventType: z.enum(["LOCK", "UNLOCK", "SLEEP", "WAKE", "SHUTDOWN", "IDLE_START", "IDLE_END"]).optional(),
+  Timestamp: z.string().optional(),
 });
 
 router.post(
@@ -1883,7 +1885,13 @@ router.post(
         throw new AppError("Employee profile not found for this user context", 404);
       }
 
-      const { eventType, timestamp } = request.body;
+      const eventType = request.body.eventType || request.body.EventType;
+      const timestamp = request.body.timestamp || request.body.Timestamp;
+
+      if (!eventType || !timestamp) {
+        throw new AppError("Both eventType (or EventType) and timestamp (or Timestamp) are required", 400);
+      }
+
       const parsedTime = new Date(timestamp);
 
       // 1. Log the desktop event

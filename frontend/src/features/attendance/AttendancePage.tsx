@@ -627,10 +627,21 @@ export default function AttendancePage({ token, role, currentEmployeeId, current
 
     const intervalId = window.setInterval(() => {
       void reloadAttendance();
-    }, 30000);
+    }, 10000);
 
     return () => window.clearInterval(intervalId);
   }, [filterDate, reloadAttendance, today]);
+
+  // Sync Attendance data instantly when the browser tab/window gains focus
+  useEffect(() => {
+    const handleFocus = () => {
+      void reloadAttendance();
+      void reloadEmployees();
+      void reloadRegularizations();
+    };
+    window.addEventListener("focus", handleFocus);
+    return () => window.removeEventListener("focus", handleFocus);
+  }, [reloadAttendance, reloadEmployees, reloadRegularizations]);
 
   useEffect(() => {
     reloadRegularizations();

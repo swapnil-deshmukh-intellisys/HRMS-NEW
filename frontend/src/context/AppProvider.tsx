@@ -173,12 +173,24 @@ export function AppProvider({ children, token, role }: { children: ReactNode; to
   useEffect(() => {
     if (token) {
       void refreshLiveStatuses();
-      const interval = setInterval(refreshLiveStatuses, 30000);
+      const interval = setInterval(refreshLiveStatuses, 10000);
       return () => clearInterval(interval);
     } else {
       setLiveStatuses({});
     }
   }, [token, refreshLiveStatuses]);
+
+  // Sync state instantly when the browser tab/window gains focus
+  useEffect(() => {
+    const handleFocus = () => {
+      if (token) {
+        void refreshLiveStatuses();
+        void refreshSummary();
+      }
+    };
+    window.addEventListener("focus", handleFocus);
+    return () => window.removeEventListener("focus", handleFocus);
+  }, [token, refreshLiveStatuses, refreshSummary]);
 
   useEffect(() => {
     const handleBreakUpdated = () => {

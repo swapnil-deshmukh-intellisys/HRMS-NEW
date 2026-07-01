@@ -634,7 +634,8 @@ namespace HRMS_Agent
             // 2. Morning Tea Break Reminder
             if (allowMorningTea && hasCheckedIn && !hasCheckedOut && !isOnBreak && _lastMorningTeaReminderDate != today)
             {
-                if (currentTime >= morningTeaStart.Add(TimeSpan.FromMinutes(20)) && currentTime <= morningTeaEnd)
+                var morningTeaTarget = new TimeSpan(10, 45, 0);
+                if (currentTime >= morningTeaTarget && currentTime <= morningTeaTarget.Add(TimeSpan.FromMinutes(15)))
                 {
                     bool tookMorningTea = breaks.Exists(b => {
                         if (DateTimeOffset.TryParse(b.StartTime, out var startOffset))
@@ -657,7 +658,8 @@ namespace HRMS_Agent
             // 3. Lunch Break Reminder
             if (allowLunch && hasCheckedIn && !hasCheckedOut && !isOnBreak && _lastLunchReminderDate != today)
             {
-                if (currentTime >= lunchStart.Add(TimeSpan.FromMinutes(30)) && currentTime <= lunchEnd)
+                var lunchTarget = new TimeSpan(13, 0, 0);
+                if (currentTime >= lunchTarget && currentTime <= lunchTarget.Add(TimeSpan.FromMinutes(15)))
                 {
                     bool tookLunch = breaks.Exists(b => {
                         if (DateTimeOffset.TryParse(b.StartTime, out var startOffset))
@@ -680,7 +682,8 @@ namespace HRMS_Agent
             // 4. Evening Tea Break Reminder
             if (allowEveningTea && hasCheckedIn && !hasCheckedOut && !isOnBreak && _lastEveningTeaReminderDate != today)
             {
-                if (currentTime >= eveningTeaStart.Add(TimeSpan.FromMinutes(20)) && currentTime <= eveningTeaEnd)
+                var eveningTeaTarget = new TimeSpan(16, 10, 0);
+                if (currentTime >= eveningTeaTarget && currentTime <= eveningTeaTarget.Add(TimeSpan.FromMinutes(15)))
                 {
                     bool tookEveningTea = breaks.Exists(b => {
                         if (DateTimeOffset.TryParse(b.StartTime, out var startOffset))

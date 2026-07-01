@@ -1651,5 +1651,34 @@
     "expectedOutput": "Timeline logs list actual break sessions during official break hours and fallback raw activity events outside break hours, with no duplicate list items.",
     "createdAt": "2026-07-01T10:17:08Z",
     "updatedAt": "2026-07-01T10:17:20Z"
+  },
+  {
+    "taskId": "TSK-ATT-024",
+    "moduleId": "MOD-ATTENDANCE",
+    "sprint": "Sprint 4",
+    "project": "HRMS",
+    "page": "Desktop Client App",
+    "module": "Attendance",
+    "submodule": "Desktop Agent Reminders",
+    "title": "Fix C# desktop agent break reminder popups triggering too early",
+    "description": "Resolved a timing issue in the Windows C# desktop agent application where break reminder popups triggered 20-30 minutes early relative to their hardcoded notification strings (e.g. triggering Lunch Reminder at 12:30 PM instead of 1:00 PM). Refactored Program.cs to trigger break reminders based on the actual target schedules (10:45 AM for Morning Tea, 1:00 PM for Lunch, and 4:10 PM for Evening Tea) instead of using the shift's wide allowed window start bounds.",
+    "frontendWork": "None",
+    "backendWork": "None",
+    "databaseWork": "None",
+    "apiWork": "None",
+    "testingWork": "Verified build succeeds with local dotnet SDK. Confirmed reminder time checks are correct.",
+    "priority": "HIGH",
+    "estimatedHours": 1,
+    "actualHours": 1,
+    "dependencies": [
+      "TSK-ATT-023"
+    ],
+    "riskLevel": "LOW",
+    "status": "COMPLETED",
+    "completionPercentage": 100,
+    "owner": "Fullstack Team",
+    "expectedOutput": "Desktop break reminder notifications trigger at the actual target break hours (10:45 AM, 1:00 PM, 4:10 PM) matching the notification popup strings.",
+    "createdAt": "2026-07-01T10:23:21Z",
+    "updatedAt": "2026-07-01T10:23:32Z"
   }
 ]

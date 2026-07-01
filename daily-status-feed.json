@@ -278,5 +278,12 @@
     "title": "Implement smart break event classification matching scheduled ranges in timeline logs",
     "status": "COMPLETED",
     "narrative": "Implemented a smart visual mapping rule in WorkdayTimeline.tsx for logs and activity: (1) Locks, suspends, and idle times are classified as official breaks (e.g. Lunch Break, Tea Break) only if they overlap with the company's official break schedule ranges or were manually started from the web dashboard; (2) Lock/idle periods outside scheduled break hours are displayed with their actual telemetry descriptions (e.g., Screen Locked, Went Idle) instead of generic tea/lunch breaks, providing clear and accurate timelines."
+  },
+  {
+    "date": "2026-07-01",
+    "taskId": "TSK-ATT-024",
+    "title": "Fix C# desktop agent break reminder popups triggering too early",
+    "status": "COMPLETED",
+    "narrative": "Resolved a timing issue in the Windows C# desktop agent application where break reminder popups triggered 20-30 minutes early relative to their hardcoded notification strings (e.g. triggering Lunch Reminder at 12:30 PM instead of 1:00 PM). Refactored Program.cs to trigger break reminders based on the actual target schedules (10:45 AM for Morning Tea, 1:00 PM for Lunch, and 4:10 PM for Evening Tea) instead of using the shift's wide allowed window start bounds."
   }
 ]

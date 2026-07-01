@@ -1506,5 +1506,34 @@
     "expectedOutput": "CEO/Manager dashboard displays greeting/designation on the left, compact title pill underneath, and quotes right-aligned.",
     "createdAt": "2026-07-01T09:12:29Z",
     "updatedAt": "2026-07-01T09:12:34Z"
+  },
+  {
+    "taskId": "TSK-DSH-005",
+    "moduleId": "MOD-DASHBOARD",
+    "sprint": "Sprint 4",
+    "project": "HRMS",
+    "page": "Dashboard Page",
+    "module": "Role Dashboards & Analytics",
+    "submodule": "Relatable Thought Pools by Role",
+    "title": "Implement dynamic relatable thought pools for CEO, MD, HR, and regular employees",
+    "description": "Expanded the role-specific thoughts feature. Created 4 distinct motivational quote pools: (1) CEO thoughts on startup and corporate growth, (2) MD thoughts on strategic operations and standard systems, (3) HR thoughts on culture, empathy, and employee mentoring, and (4) Employee thoughts on clean code, software craftsmanship, and problem solving. Refactored ThoughtOfTheDay to check jobTitle/role properties and dynamically select the pool, and updated dashboard invocations.",
+    "frontendWork": "Updated ThoughtOfTheDay.tsx, EmployeeDashboard.tsx, and ManagementDashboard.tsx to pass jobTitle and role props.",
+    "backendWork": "None",
+    "databaseWork": "None",
+    "apiWork": "None",
+    "testingWork": "Verified production build compiles cleanly. Checked that CEO, MD, HR, and developer accounts see relatable quotes according to their titles/roles.",
+    "priority": "MEDIUM",
+    "estimatedHours": 1,
+    "actualHours": 1,
+    "dependencies": [
+      "TSK-DSH-004"
+    ],
+    "riskLevel": "LOW",
+    "status": "COMPLETED",
+    "completionPercentage": 100,
+    "owner": "Fullstack Team",
+    "expectedOutput": "CEO, MD, HR, and general employees receive highly relatable motivational quotes corresponding to their professional scope.",
+    "createdAt": "2026-07-01T09:34:38Z",
+    "updatedAt": "2026-07-01T09:35:01Z"
   }
 ]

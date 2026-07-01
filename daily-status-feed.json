@@ -243,5 +243,12 @@
     "title": "Refine Management Hero layout: left-aligned greeting, designation badge, pill context and right-aligned thoughts",
     "status": "COMPLETED",
     "narrative": "Swapped the layout of the dashboard hero section for managers/admins. Swapped the placement of the greeting and ThoughtOfTheDay components to put the greeting, name, and designation on the left and thoughts on the right. Styled the title group as a compact horizontal pill/card, and added CEO/Manager designation badges next to the name."
+  },
+  {
+    "date": "2026-07-01",
+    "taskId": "TSK-DSH-005",
+    "title": "Implement dynamic relatable thought pools for CEO, MD, HR, and regular employees",
+    "status": "COMPLETED",
+    "narrative": "Expanded the role-specific thoughts feature. Created 4 distinct motivational quote pools: (1) CEO thoughts on startup and corporate growth, (2) MD thoughts on strategic operations and standard systems, (3) HR thoughts on culture, empathy, and employee mentoring, and (4) Employee thoughts on clean code, software craftsmanship, and problem solving. Refactored ThoughtOfTheDay to check jobTitle/role properties and dynamically select the pool, and updated dashboard invocations."
   }
 ]

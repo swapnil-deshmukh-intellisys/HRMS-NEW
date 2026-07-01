@@ -20,7 +20,7 @@ export default function EmployeeDashboard({ token }: { token: string | null }) {
       <article className="card dashboard-hero">
         <div className="dashboard-hero-copy">
           <div className="dashboard-hero-top-row">
-            <ThoughtOfTheDay employeeId={currentEmployee?.id} />
+            <ThoughtOfTheDay jobTitle={currentEmployee?.jobTitle} role="EMPLOYEE" />
             <div className="dashboard-hero-header">
               <h3>
                 Hi
